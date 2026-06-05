@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/grid_models.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/services/grid_builder.dart';
 import 'package:orbit/services/xlsx_parser.dart';
@@ -36,21 +37,34 @@ void refreshSchedule(WidgetRef ref) {
 
 final selectedWeekStartProvider = StateProvider<DateTime?>((ref) => null);
 
-final weekGridProvider = FutureProvider((ref) async {
+DateTime? earliestWeekStartFromSessions(List<CourseSession> sessions) {
+  if (sessions.isEmpty) {
+    return null;
+  }
+  final earliest = sessions
+      .map((session) => session.date)
+      .reduce((a, b) => a.isBefore(b) ? a : b);
+  return weekStartFor(earliest);
+}
+
+final weekGridProvider = Provider<WeekGrid?>((ref) {
   ref.watch(scheduleRefreshProvider);
-  final repository = ref.watch(scheduleRepositoryProvider);
-  final gridBuilder = ref.watch(gridBuilderProvider);
+  final sessions = ref.watch(sessionsProvider).valueOrNull;
+  if (sessions == null) {
+    return null;
+  }
+  if (sessions.isEmpty) {
+    return null;
+  }
 
   var weekStart = ref.watch(selectedWeekStartProvider);
-  weekStart ??= await repository.getEarliestWeekStart();
+  weekStart ??= earliestWeekStartFromSessions(sessions);
   if (weekStart == null) {
     return null;
   }
-  weekStart = weekStartFor(weekStart);
 
-  final weekSessions = await repository.getSessionsForWeek(weekStart);
-  return gridBuilder.buildWeekGrid(
-    weekStart: weekStart,
-    sessions: weekSessions,
-  );
+  return ref.read(gridBuilderProvider).buildWeekGrid(
+        weekStart: weekStartFor(weekStart),
+        sessions: sessions,
+      );
 });

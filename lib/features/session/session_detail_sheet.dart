@@ -64,51 +64,128 @@ class SessionDetailSheet extends ConsumerWidget {
           if (session.note != null && session.note!.trim().isNotEmpty)
             _DetailRow(icon: Icons.sticky_note_2_outlined, text: session.note!),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await SessionEditSheet.show(context, session);
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: Text(l10n.editSession),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await SessionNoteSheet.show(context, session);
-                  },
-                  icon: const Icon(Icons.sticky_note_2_outlined, size: 18),
-                  label: Text(l10n.addSessionNote),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await SessionActionMenu.confirmAndDelete(
-                      context: context,
-                      ref: ref,
-                      session: session,
-                    );
-                  },
-                  icon: Icon(Icons.delete_outline, size: 18, color: colorScheme.error),
-                  label: Text(
-                    l10n.deleteSession,
-                    style: TextStyle(color: colorScheme.error),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _SessionActionButtons(session: session),
         ],
       ),
+    );
+  }
+}
+
+enum _ActionButtonMode { full, short, iconOnly }
+
+class _SessionActionButtons extends ConsumerWidget {
+  const _SessionActionButtons({required this.session});
+
+  final CourseSession session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final mode = width >= 420
+            ? _ActionButtonMode.full
+            : width >= 300
+                ? _ActionButtonMode.short
+                : _ActionButtonMode.iconOnly;
+
+        final editLabel = mode == _ActionButtonMode.full
+            ? l10n.editSession
+            : l10n.editSessionShort;
+        final noteLabel = mode == _ActionButtonMode.full
+            ? l10n.addSessionNote
+            : l10n.addSessionNoteShort;
+        final deleteLabel = mode == _ActionButtonMode.full
+            ? l10n.deleteSession
+            : l10n.deleteSessionShort;
+
+        Widget buildButton({
+          required VoidCallback onPressed,
+          required IconData icon,
+          required String label,
+          required String tooltip,
+          Color? foregroundColor,
+        }) {
+          if (mode == _ActionButtonMode.iconOnly) {
+            return OutlinedButton(
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: foregroundColor,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              ),
+              child: Tooltip(
+                message: tooltip,
+                child: Icon(icon, size: 18, color: foregroundColor),
+              ),
+            );
+          }
+
+          return OutlinedButton.icon(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: foregroundColor,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            ),
+            icon: Icon(icon, size: 18, color: foregroundColor),
+            label: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: mode == _ActionButtonMode.short
+                  ? const TextStyle(fontSize: 13)
+                  : null,
+            ),
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: buildButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await SessionEditSheet.show(context, session);
+                },
+                icon: Icons.edit_outlined,
+                label: editLabel,
+                tooltip: l10n.editSession,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: buildButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await SessionNoteSheet.show(context, session);
+                },
+                icon: Icons.sticky_note_2_outlined,
+                label: noteLabel,
+                tooltip: l10n.addSessionNote,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: buildButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await SessionActionMenu.confirmAndDelete(
+                    context: context,
+                    ref: ref,
+                    session: session,
+                  );
+                },
+                icon: Icons.delete_outline,
+                label: deleteLabel,
+                tooltip: l10n.deleteSession,
+                foregroundColor: colorScheme.error,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

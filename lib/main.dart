@@ -30,6 +30,7 @@ Future<void> main(List<String> args) async {
   }
 
   final database = await openAppDatabase();
+  registerAppDatabase(database);
 
   runApp(
     ProviderScope(

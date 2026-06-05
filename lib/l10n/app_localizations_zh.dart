@@ -285,7 +285,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editSession => '編輯課程';
 
   @override
+  String get editSessionShort => '編輯';
+
+  @override
   String get addSessionNote => '新增備註';
+
+  @override
+  String get addSessionNoteShort => '備註';
 
   @override
   String get sessionNoteTitle => '課程備註';
@@ -576,6 +582,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get deleteSession => '刪除此節課';
+
+  @override
+  String get deleteSessionShort => '刪除';
 
   @override
   String get deleteSessionConfirmTitle => '確認刪除此節課？';
@@ -908,7 +917,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get editSession => '编辑课程';
 
   @override
+  String get editSessionShort => '编辑';
+
+  @override
   String get addSessionNote => '添加备注';
+
+  @override
+  String get addSessionNoteShort => '备注';
 
   @override
   String get sessionNoteTitle => '课程备注';
@@ -1199,6 +1214,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get deleteSession => '删除此节课';
+
+  @override
+  String get deleteSessionShort => '删除';
 
   @override
   String get deleteSessionConfirmTitle => '确认删除此节课？';
@@ -1531,7 +1549,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get editSession => '編輯課程';
 
   @override
+  String get editSessionShort => '編輯';
+
+  @override
   String get addSessionNote => '新增備註';
+
+  @override
+  String get addSessionNoteShort => '備註';
 
   @override
   String get sessionNoteTitle => '課程備註';
@@ -1822,6 +1846,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get deleteSession => '刪除此節課';
+
+  @override
+  String get deleteSessionShort => '刪除';
 
   @override
   String get deleteSessionConfirmTitle => '確認刪除此節課？';

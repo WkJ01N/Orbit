@@ -1,7 +1,7 @@
 name: orbit
 description: 跨平台课表提醒应用，支援 Windows 與 Android。
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.12.1
@@ -44,6 +44,14 @@ flutter_launcher_icons:
     generate: true
     image_path: icon.png
     icon_size: 256
+
+# 使用系统自带的 SQLite，避免 flutter test / build 时从 GitHub 下载预编译库（国内网络易卡住）。
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name_windows: winsqlite3
+      name: sqlite3
 
 flutter:
   generate: true

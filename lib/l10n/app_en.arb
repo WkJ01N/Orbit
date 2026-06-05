@@ -157,7 +157,9 @@
   "launchAtStartup": "Launch at startup",
   "launchAtStartupSubtitle": "Start minimized to the system tray when Windows boots",
   "editSession": "Edit class",
+  "editSessionShort": "Edit",
   "addSessionNote": "Add note",
+  "addSessionNoteShort": "Note",
   "sessionNoteTitle": "Class note",
   "sessionNoteHint": "Add a personal note for this class session",
   "editSessionTitle": "Edit class details",
@@ -318,6 +320,7 @@
   "actionConfirmDisable": "Turn off",
   "actionDelete": "Delete",
   "deleteSession": "Delete this class",
+  "deleteSessionShort": "Delete",
   "deleteSessionConfirmTitle": "Delete this class session?",
   "deleteSessionConfirmContent": "{course}\n{date} {time} · {room}",
   "@deleteSessionConfirmContent": {

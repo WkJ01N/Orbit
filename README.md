@@ -2,30 +2,30 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.0.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.0.1** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
 | 导入 | 多文件并行解析、自动合并去重；导入成功可跳转课表 |
-| 课表网格 | 周切换、周选择器、批量删除；支持周一至周日 |
+| 课表网格 | 左右滑动 / 按钮切换周次（无动画）；周选择器、批量删除；支持周一至周日 |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组 |
 | 提醒 | 课前通知、次日摘要、打卡提醒；Android 可选系统闹钟 |
-| 课程管理 | 编辑、备注、单节删除；详情页快捷操作 |
-| Windows | 系统托盘、最小化到托盘、可选开机自启 |
+| 课程管理 | 编辑、备注、单节删除；详情页响应式快捷操作（窄屏自适应） |
+| Windows | 系统托盘、最小化到托盘、单实例启动、快速退出、可选开机自启 |
 | Android | AlarmManager 后台维护；电池优化引导 |
 | 多语言 | 繁体中文、简体中文、English |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.0.0/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.0.1/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.0.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.0.0-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.0.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.0.1-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -41,7 +41,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 49 项测试
+flutter test          # 48 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -60,6 +60,36 @@ flutter build apk --release
 | Android | `build/app/outputs/flutter-apk/app-release.apk` |
 
 可将 `Release` 目录整份复制为分发包；Windows 必须保留 `data/` 子目录（含 `app.so`、`flutter_assets/` 等）。
+
+打包示例（可选）：
+
+```bash
+# Windows zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.0.1/orbit-v1.0.1-windows-x64.zip
+
+# Android APK
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.0.1/orbit-v1.0.1-release.apk
+```
+
+## 更新日志
+
+### v1.0.1
+
+**课表与界面**
+- 课表页支持左右滑动切换周次（无过渡动画）
+- 修复周切换时整页闪烁（`weekGridProvider` 改为同步派生，避免 loading 占位）
+- 修复设置中「清除所有课表」后仍显示「本周无课程」而非全局空态的问题
+- 课程详情底部按钮窄屏自适应（编辑 / 备注 / 删除；极窄屏仅显示图标）
+- 窄屏星期 Chip 垂直居中；「接下来」列表左侧状态竖条对齐优化
+
+**Windows**
+- 单实例启动：重复打开应用时激活已有窗口，不新增任务栏图标
+- 托盘「退出」加速：清理托盘图标与 SQLite 后 `exit(0)`，退出时间由约 5 秒降至 1 秒内
+- 应用显示名称统一为 **Orbit**
+
+**其他**
+- 版本号升至 1.0.1（`pubspec.yaml` build `+2`）
+- 测试增至 48 项（含空态与翻页回归用例）
 
 ## 课表 xlsx 格式
 
@@ -101,7 +131,7 @@ test/                单元测试与 Widget 测试（含程序化 xlsx 夹具）
 
 ## 构建注意事项
 
-**sqlite3 原生库**：首次构建会从 GitHub Releases 下载预编译库，需可访问网络。请勿在 `pubspec.yaml` 中设置 `hooks.user_defines.sqlite3 = test-sqlite3`，否则 Android 构建会失败。
+**sqlite3 原生库**：项目已在 `pubspec.yaml` 配置 `hooks.user_defines.sqlite3.source: system`，使用各平台系统自带的 SQLite（Windows 为 `winsqlite3.dll`），避免 `flutter test` / `flutter build` 时从 GitHub Releases 下载预编译库——在国内网络或未配置代理时，该下载步骤可能长时间无输出、看似卡住。若需固定 SQLite 版本或启用加密扩展，可改回默认 `source: sqlite3` 并确保能访问 GitHub，或参考 [sqlite3 hook 文档](https://pub.dev/documentation/sqlite3/latest/topics/hook-topic.html) 自定义构建。
 
 **Windows**：可先执行 `flutter precache --windows` 预拉引擎。
 

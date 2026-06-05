@@ -4,6 +4,7 @@
 #include <flutter_windows.h>
 
 #include "resource.h"
+#include "single_instance.h"
 
 namespace {
 
@@ -178,6 +179,16 @@ Win32Window::MessageHandler(HWND hwnd,
                             UINT const message,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
+  const UINT show_existing_message = GetShowExistingInstanceMessage();
+  if (show_existing_message != 0 && message == show_existing_message) {
+    if (::IsIconic(hwnd)) {
+      ::ShowWindow(hwnd, SW_RESTORE);
+    }
+    ::ShowWindow(hwnd, SW_SHOW);
+    ::SetForegroundWindow(hwnd);
+    return 0;
+  }
+
   switch (message) {
     case WM_DESTROY:
       window_handle_ = nullptr;

@@ -375,6 +375,7 @@ class _SettingsBody extends ConsumerWidget {
       try {
         await ref.read(scheduleRepositoryProvider).clearAll();
         await ref.read(reminderSchedulerProvider).cancelAll();
+        ref.read(selectedWeekStartProvider.notifier).state = null;
         refreshSchedule(ref);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

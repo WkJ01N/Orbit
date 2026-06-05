@@ -592,11 +592,23 @@ abstract class AppLocalizations {
   /// **'Edit class'**
   String get editSession;
 
+  /// No description provided for @editSessionShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editSessionShort;
+
   /// No description provided for @addSessionNote.
   ///
   /// In en, this message translates to:
   /// **'Add note'**
   String get addSessionNote;
+
+  /// No description provided for @addSessionNoteShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get addSessionNoteShort;
 
   /// No description provided for @sessionNoteTitle.
   ///
@@ -1119,6 +1131,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete this class'**
   String get deleteSession;
+
+  /// No description provided for @deleteSessionShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteSessionShort;
 
   /// No description provided for @deleteSessionConfirmTitle.
   ///

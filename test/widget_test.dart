@@ -12,7 +12,8 @@ import 'package:orbit/providers/app_providers.dart';
 List<Override> _testOverrides() => [
       localeProvider.overrideWith(() => _FixedLocaleNotifier()),
       reminderSettingsProvider.overrideWith(() => _FixedReminderSettingsNotifier()),
-      weekGridProvider.overrideWith((ref) async => null),
+      sessionsProvider.overrideWith((ref) async => []),
+      weekGridProvider.overrideWith((ref) => null),
       upcomingSessionsProvider.overrideWith((ref) async => []),
     ];
 

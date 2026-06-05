@@ -294,7 +294,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editSession => 'Edit class';
 
   @override
+  String get editSessionShort => 'Edit';
+
+  @override
   String get addSessionNote => 'Add note';
+
+  @override
+  String get addSessionNoteShort => 'Note';
 
   @override
   String get sessionNoteTitle => 'Class note';
@@ -601,6 +607,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteSession => 'Delete this class';
+
+  @override
+  String get deleteSessionShort => 'Delete';
 
   @override
   String get deleteSessionConfirmTitle => 'Delete this class session?';

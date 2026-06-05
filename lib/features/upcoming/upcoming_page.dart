@@ -231,23 +231,27 @@ class _SessionCard extends ConsumerWidget {
           onTap: () => SessionDetailSheet.show(context, session),
           child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 4,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: isOngoing
-                      ? colorScheme.primary
-                      : isPast
-                          ? colorScheme.outlineVariant
-                          : colorScheme.secondary,
-                  borderRadius: BorderRadius.circular(2),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 4,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: isOngoing
+                          ? colorScheme.primary
+                          : isPast
+                              ? colorScheme.outlineVariant
+                              : colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+                const SizedBox(width: 12),
+                Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -281,11 +285,12 @@ class _SessionCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 88,
-                child: SessionCountdownLabel(session: session, now: now),
-              ),
-            ],
+                SizedBox(
+                  width: 88,
+                  child: SessionCountdownLabel(session: session, now: now),
+                ),
+              ],
+            ),
           ),
         ),
         ),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:orbit/providers/database_providers.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -79,6 +80,7 @@ class TrayService with TrayListener {
       return;
     }
     trayManager.removeListener(this);
+    await trayManager.destroy();
     _initialized = false;
   }
 
@@ -144,6 +146,11 @@ Future<void> exitDesktopApp() async {
   if (!Platform.isWindows) {
     return;
   }
-  await TrayService.instance.dispose();
-  await windowManager.destroy();
+  try {
+    await TrayService.instance.dispose();
+    await closeAppDatabase();
+  } catch (_) {
+    // 退出路径不因清理失败而阻塞。
+  }
+  exit(0);
 }
