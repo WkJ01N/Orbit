@@ -545,13 +545,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get enableCheckInReminder => '打卡提醒';
 
   @override
-  String get enableCheckInReminderSubtitle => '在課程開始時提醒透過 WEMUST 藍牙打卡';
+  String get enableCheckInReminderSubtitle => '在課程開始時提醒透過校園 App 藍牙打卡';
 
   @override
   String get checkInDisableConfirm1Title => '要關閉打卡提醒嗎？';
 
   @override
-  String get checkInDisableConfirm1Content => '關閉後可能錯過 WEMUST 藍牙打卡提醒。';
+  String get checkInDisableConfirm1Content => '關閉後可能錯過校園 App 藍牙打卡提醒。';
 
   @override
   String get checkInDisableConfirm2Title => '確定要關閉嗎？';
@@ -609,7 +609,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String notificationCheckInBody(String course) {
-    return '請開啟 WEMUST 完成 $course 藍牙打卡';
+    return '請開啟校園 App 完成 $course 藍牙打卡';
   }
 
   @override
@@ -1168,13 +1168,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get enableCheckInReminder => '打卡提醒';
 
   @override
-  String get enableCheckInReminderSubtitle => '在课程开始时提醒通过 WEMUST 蓝牙打卡';
+  String get enableCheckInReminderSubtitle => '在课程开始时提醒通过校园 App 蓝牙打卡';
 
   @override
   String get checkInDisableConfirm1Title => '要关闭打卡提醒吗？';
 
   @override
-  String get checkInDisableConfirm1Content => '关闭后可能错过 WEMUST 蓝牙打卡提醒。';
+  String get checkInDisableConfirm1Content => '关闭后可能错过校园 App 蓝牙打卡提醒。';
 
   @override
   String get checkInDisableConfirm2Title => '确定要关闭吗？';
@@ -1232,7 +1232,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String notificationCheckInBody(String course) {
-    return '请打开 WEMUST 完成 $course 蓝牙打卡';
+    return '请打开校园 App 完成 $course 蓝牙打卡';
   }
 
   @override
@@ -1791,13 +1791,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get enableCheckInReminder => '打卡提醒';
 
   @override
-  String get enableCheckInReminderSubtitle => '在課程開始時提醒透過 WEMUST 藍牙打卡';
+  String get enableCheckInReminderSubtitle => '在課程開始時提醒透過校園 App 藍牙打卡';
 
   @override
   String get checkInDisableConfirm1Title => '要關閉打卡提醒嗎？';
 
   @override
-  String get checkInDisableConfirm1Content => '關閉後可能錯過 WEMUST 藍牙打卡提醒。';
+  String get checkInDisableConfirm1Content => '關閉後可能錯過校園 App 藍牙打卡提醒。';
 
   @override
   String get checkInDisableConfirm2Title => '確定要關閉嗎？';
@@ -1855,7 +1855,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String notificationCheckInBody(String course) {
-    return '請開啟 WEMUST 完成 $course 藍牙打卡';
+    return '請開啟校園 App 完成 $course 藍牙打卡';
   }
 
   @override

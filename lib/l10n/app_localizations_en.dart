@@ -567,14 +567,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enableCheckInReminderSubtitle =>
-      'Notify at class start time to check in via WEMUST Bluetooth';
+      'Notify at class start time to check in via campus app Bluetooth';
 
   @override
   String get checkInDisableConfirm1Title => 'Turn off check-in reminders?';
 
   @override
   String get checkInDisableConfirm1Content =>
-      'You may miss WEMUST Bluetooth check-in reminders.';
+      'You may miss campus app Bluetooth check-in reminders.';
 
   @override
   String get checkInDisableConfirm2Title => 'Are you sure?';
@@ -635,7 +635,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String notificationCheckInBody(String course) {
-    return 'Open WEMUST and complete Bluetooth check-in for $course';
+    return 'Open the campus app and complete Bluetooth check-in for $course';
   }
 
   @override

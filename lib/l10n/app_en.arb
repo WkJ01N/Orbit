@@ -307,9 +307,9 @@
   "alarmSetFailed": "Failed to open system alarm",
   "alarmNoClassTomorrow": "No classes tomorrow",
   "enableCheckInReminder": "Check-in reminder",
-  "enableCheckInReminderSubtitle": "Notify at class start time to check in via WEMUST Bluetooth",
+  "enableCheckInReminderSubtitle": "Notify at class start time to check in via campus app Bluetooth",
   "checkInDisableConfirm1Title": "Turn off check-in reminders?",
-  "checkInDisableConfirm1Content": "You may miss WEMUST Bluetooth check-in reminders.",
+  "checkInDisableConfirm1Content": "You may miss campus app Bluetooth check-in reminders.",
   "checkInDisableConfirm2Title": "Are you sure?",
   "checkInDisableConfirm2Content": "Without reminders, you may forget to check in on time.",
   "checkInDisableConfirm3Title": "Final confirmation",
@@ -339,7 +339,7 @@
       "room": {"type": "String"}
     }
   },
-  "notificationCheckInBody": "Open WEMUST and complete Bluetooth check-in for {course}",
+  "notificationCheckInBody": "Open the campus app and complete Bluetooth check-in for {course}",
   "@notificationCheckInBody": {
     "placeholders": {
       "course": {"type": "String"}

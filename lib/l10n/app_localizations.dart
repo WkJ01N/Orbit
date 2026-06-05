@@ -1057,7 +1057,7 @@ abstract class AppLocalizations {
   /// No description provided for @enableCheckInReminderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Notify at class start time to check in via WEMUST Bluetooth'**
+  /// **'Notify at class start time to check in via campus app Bluetooth'**
   String get enableCheckInReminderSubtitle;
 
   /// No description provided for @checkInDisableConfirm1Title.
@@ -1069,7 +1069,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkInDisableConfirm1Content.
   ///
   /// In en, this message translates to:
-  /// **'You may miss WEMUST Bluetooth check-in reminders.'**
+  /// **'You may miss campus app Bluetooth check-in reminders.'**
   String get checkInDisableConfirm1Content;
 
   /// No description provided for @checkInDisableConfirm2Title.
@@ -1170,7 +1170,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCheckInBody.
   ///
   /// In en, this message translates to:
-  /// **'Open WEMUST and complete Bluetooth check-in for {course}'**
+  /// **'Open the campus app and complete Bluetooth check-in for {course}'**
   String notificationCheckInBody(String course);
 
   /// No description provided for @notificationNextDayTitle.
