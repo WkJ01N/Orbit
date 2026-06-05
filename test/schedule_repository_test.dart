@@ -6,6 +6,7 @@ import 'package:orbit/data/repositories/schedule_repository.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/services/xlsx_parser.dart';
+import 'xlsx_test_fixtures.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 CourseSession _session({
@@ -114,15 +115,14 @@ void main() {
   });
 
   group('importFromFiles', () {
-    test('從 xlsx 樣本匯入', () async {
-      final bytes = File('assets/samples/學生課表20260429105346.xlsx')
-          .readAsBytesSync();
+    test('從 xlsx 測試資料匯入', () async {
+      final bytes = weekOneFixture();
       final imported = await repository.importFromFiles([
         (bytes: bytes, fileName: 'week1.xlsx'),
       ]);
 
-      expect(imported.length, 11);
-      expect((await repository.getAllSessions()).length, 11);
+      expect(imported.length, 3);
+      expect((await repository.getAllSessions()).length, 3);
     });
   });
 }
