@@ -1,0 +1,358 @@
+{
+  "@@locale": "en",
+  "appTitle": "Orbit Schedule",
+  "navGrid": "Schedule",
+  "navUpcoming": "Upcoming",
+  "navImport": "Import",
+  "navSettings": "Settings",
+  "gridTitle": "Schedule",
+  "gridPrevWeek": "Previous week",
+  "gridNextWeek": "Next week",
+  "gridThisWeek": "This week",
+  "gridLoadFailed": "Failed to load: {error}",
+  "@gridLoadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "gridImportHint": "Please import your schedule on the Import tab first",
+  "gridBatchDelete": "Batch delete",
+  "gridBatchDeleteTitle": "Batch delete classes",
+  "gridBatchDeleteStart": "Start",
+  "gridBatchDeleteEnd": "End",
+  "gridBatchDeletePreview": "Will delete {count} class sessions",
+  "@gridBatchDeletePreview": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "gridBatchDeleteConfirm1Title": "Delete classes in range?",
+  "gridBatchDeleteConfirm1Content": "This will delete {count} class sessions fully within the selected time range.",
+  "@gridBatchDeleteConfirm1Content": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "gridBatchDeleteConfirm2Title": "Confirm deletion",
+  "gridBatchDeleteConfirm2Content": "Deleted sessions cannot be recovered. Continue?",
+  "gridBatchDeleteNone": "No classes fully within the selected range",
+  "gridBatchDeleteDone": "Deleted {count} class sessions",
+  "@gridBatchDeleteDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "gridBatchDeleteInvalidRange": "End time must be after start time",
+  "gridWeekPickerYear": "Change year",
+  "gridWeekPickerMonth": "Change month",
+  "gridNoSessionsThisWeek": "No classes this week",
+  "gridTimeColumn": "Time",
+  "weekdayMon": "Mon",
+  "weekdayTue": "Tue",
+  "weekdayWed": "Wed",
+  "weekdayThu": "Thu",
+  "weekdayFri": "Fri",
+  "weekdaySat": "Sat",
+  "weekdaySun": "Sun",
+  "gridNoSessionsThisWeekSubtitle": "Switch to another week or import a schedule",
+  "actionRetry": "Retry",
+  "importViewGrid": "View schedule",
+  "resyncPartialFailed": "{count} reminder(s) could not be scheduled",
+  "@resyncPartialFailed": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "androidBatteryOptimizationGuided": "Setup guided",
+  "trayInitFailed": "System tray unavailable",
+  "importPickMissingPath": "Could not read file: {name}",
+  "@importPickMissingPath": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "upcomingGoToGrid": "View schedule",
+  "gridUntilTime": "until {time}",
+  "@gridUntilTime": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "gridEmptyTitle": "No schedule imported",
+  "gridEmptySubtitle": "Go to Import and select your xlsx schedule files",
+  "gridImportNow": "Import now",
+  "upcomingTitle": "Upcoming classes",
+  "upcomingLoadFailed": "Failed to load: {error}",
+  "@upcomingLoadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "groupToday": "Today",
+  "groupTomorrow": "Tomorrow",
+  "groupThisWeek": "This week",
+  "groupLater": "After {date}",
+  "@groupLater": {
+    "placeholders": {
+      "date": {"type": "String"}
+    }
+  },
+  "inClass": "In class",
+  "upcomingEmptyTitle": "No upcoming classes",
+  "upcomingEmptySubtitle": "All classes have ended, or no schedule imported yet",
+  "importTitle": "Import schedule",
+  "importInProgress": "Importing schedule…",
+  "importConfirm": "Confirm import",
+  "importCancel": "Cancel",
+  "importPickTitle": "Select xlsx schedule files",
+  "importPickSubtitle": "You can select multiple weekly schedules at once",
+  "importSuccess": "Imported {count} class sessions",
+  "@importSuccess": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importPickFailed": "Failed to pick files: {error}",
+  "@importPickFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importParseFailed": "Parse failed ({error})",
+  "@importParseFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sessionCount": "{count} classes",
+  "@sessionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "settingsTitle": "Settings",
+  "settingsLoadFailed": "Failed to load settings: {error}",
+  "@settingsLoadFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sectionReminders": "Class reminders",
+  "sectionData": "Data management",
+  "sectionLanguage": "Language",
+  "sectionAppearance": "Appearance",
+  "themeColorTitle": "Theme color",
+  "themeColorSubtitle": "Choose the app's accent color",
+  "themeColorCustom": "Custom",
+  "themeColorCustomTitle": "Custom color",
+  "themeColorInvalidHex": "Enter a valid 6-digit hex color (e.g. 39C5BB)",
+  "actionApply": "Apply",
+  "sectionSystem": "System",
+  "launchAtStartup": "Launch at startup",
+  "launchAtStartupSubtitle": "Start minimized to the system tray when Windows boots",
+  "editSession": "Edit class",
+  "addSessionNote": "Add note",
+  "sessionNoteTitle": "Class note",
+  "sessionNoteHint": "Add a personal note for this class session",
+  "editSessionTitle": "Edit class details",
+  "fieldCourseName": "Course name",
+  "fieldRoom": "Room",
+  "fieldTeachers": "Teachers (comma separated)",
+  "fieldStartTime": "Start time",
+  "fieldEndTime": "End time",
+  "sessionUpdated": "Class updated",
+  "sessionNoteSaved": "Note saved",
+  "editSessionEndBeforeStart": "End time must be after start time",
+  "countdownStartsIn": "{days}d {hours}h {minutes}m",
+  "@countdownStartsIn": {
+    "placeholders": {
+      "days": {"type": "int"},
+      "hours": {"type": "int"},
+      "minutes": {"type": "int"}
+    }
+  },
+  "countdownSoon": "Soon · {countdown}",
+  "@countdownSoon": {
+    "placeholders": {
+      "countdown": {"type": "String"}
+    }
+  },
+  "enableReminders": "Enable class reminders",
+  "enableRemindersSubtitle": "Send system notifications before class",
+  "leadTimeTitle": "Reminder lead time",
+  "leadTimeSubtitle": "Notify {minutes} minutes before class",
+  "@leadTimeSubtitle": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "leadTimeOption": "{minutes} min",
+  "@leadTimeOption": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "resyncReminders": "Resync reminders",
+  "resyncRemindersSubtitle": "Reschedule all reminders from current schedule",
+  "sectionAndroidBackground": "Background reminders (Android)",
+  "androidBackgroundSubtitle": "Reminders use system alarms and do not require the app to stay open. Complete the settings below for best reliability.",
+  "androidCheckReminderPermissions": "Check reminder permissions",
+  "androidPermissionsChecked": "Notification and exact alarm permissions requested",
+  "androidBatteryOptimization": "Battery optimization exemption",
+  "androidBatteryOptimizationHint": "Tap to allow ignoring battery optimization",
+  "androidBatteryOptimizationDone": "Battery optimization exemption configured",
+  "androidAutostartHint": "On some devices, also enable autostart and allow background activity in system settings.",
+  "deleteEndedSessions": "Delete ended classes",
+  "deleteEndedSessionsSubtitle": "Remove class sessions that have already finished",
+  "deleteEndedConfirm1Title": "Delete ended classes?",
+  "deleteEndedConfirm1Content": "This will delete {count} ended class sessions from your schedule.",
+  "@deleteEndedConfirm1Content": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deleteEndedConfirm2Title": "Confirm deletion",
+  "deleteEndedConfirm2Content": "Deleted sessions cannot be recovered. Continue?",
+  "deleteEndedNone": "No ended classes to delete",
+  "deleteEndedDone": "Deleted {count} ended class sessions",
+  "@deleteEndedDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "clearAllData": "Clear all schedules",
+  "clearAllDataSubtitle": "Delete all imported class data",
+  "settingsVersion": "Version {version}",
+  "@settingsVersion": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "settingsGithub": "GitHub repository",
+  "settingsGithubOpenFailed": "Could not open link",
+  "appTagline": "Orbit — class reminder app",
+  "resyncDone": "Reminders rescheduled",
+  "confirmClearTitle": "Confirm clear",
+  "confirmClearContent": "This will delete all imported schedule data and cannot be undone.",
+  "actionCancel": "Cancel",
+  "actionClear": "Clear",
+  "dataCleared": "Schedule data cleared",
+  "languageTitle": "App language",
+  "languageSubtitle": "Choose display language",
+  "langZhHant": "Traditional Chinese",
+  "langZhHans": "Simplified Chinese",
+  "langEn": "English",
+  "languageChangedHint": "Language updated. Tap Resync reminders to update notification text.",
+  "notificationChannelName": "Class reminders",
+  "notificationChannelDesc": "Notifications before class starts",
+  "notificationTitle": "Class starting in {minutes} min",
+  "@notificationTitle": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "notificationBody": "{course} @ {room}",
+  "@notificationBody": {
+    "placeholders": {
+      "course": {"type": "String"},
+      "room": {"type": "String"}
+    }
+  },
+  "notificationTime": "Time: {time}",
+  "@notificationTime": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "notificationRoom": "Room: {room}",
+  "@notificationRoom": {
+    "placeholders": {
+      "room": {"type": "String"}
+    }
+  },
+  "notificationTeachers": "Teachers: {teachers}",
+  "@notificationTeachers": {
+    "placeholders": {
+      "teachers": {"type": "String"}
+    }
+  },
+  "teachersNotProvided": "Not provided",
+  "sectionAdvancedReminders": "Advanced reminders",
+  "enableNextDaySummary": "Next-day schedule preview",
+  "enableNextDaySummarySubtitle": "Notify the evening before with tomorrow's first class and class count",
+  "nextDaySummaryTimeTitle": "Preview notification time",
+  "nextDaySummaryTimeSubtitle": "Send at {time} the day before",
+  "@nextDaySummaryTimeSubtitle": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "enableSystemAlarm": "System alarm for first class (Android)",
+  "enableSystemAlarmSubtitle": "Open the system clock app to set an alarm for tomorrow's first class",
+  "systemAlarmLeadTitle": "Alarm lead time",
+  "systemAlarmLeadSubtitle": "Alarm rings {minutes} minutes before first class",
+  "@systemAlarmLeadSubtitle": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "setTomorrowAlarm": "Set alarm for tomorrow",
+  "alarmSetSuccess": "System alarm screen opened",
+  "alarmSetFailed": "Failed to open system alarm",
+  "alarmNoClassTomorrow": "No classes tomorrow",
+  "enableCheckInReminder": "Check-in reminder",
+  "enableCheckInReminderSubtitle": "Notify at class start time to check in via WEMUST Bluetooth",
+  "checkInDisableConfirm1Title": "Turn off check-in reminders?",
+  "checkInDisableConfirm1Content": "You may miss WEMUST Bluetooth check-in reminders.",
+  "checkInDisableConfirm2Title": "Are you sure?",
+  "checkInDisableConfirm2Content": "Without reminders, you may forget to check in on time.",
+  "checkInDisableConfirm3Title": "Final confirmation",
+  "checkInDisableConfirm3Content": "This will disable all check-in reminders. Continue?",
+  "actionContinue": "Continue",
+  "actionConfirmDisable": "Turn off",
+  "actionDelete": "Delete",
+  "deleteSession": "Delete this class",
+  "deleteSessionConfirmTitle": "Delete this class session?",
+  "deleteSessionConfirmContent": "{course}\n{date} {time} · {room}",
+  "@deleteSessionConfirmContent": {
+    "placeholders": {
+      "course": {"type": "String"},
+      "date": {"type": "String"},
+      "time": {"type": "String"},
+      "room": {"type": "String"}
+    }
+  },
+  "sessionDeleted": "Class session deleted",
+  "trayShow": "Show Orbit",
+  "trayExit": "Exit",
+  "trayHiddenHint": "Orbit is running in the background. Use the tray icon to show or exit.",
+  "notificationCheckInTitle": "Check in now: {course} @ {room}",
+  "@notificationCheckInTitle": {
+    "placeholders": {
+      "course": {"type": "String"},
+      "room": {"type": "String"}
+    }
+  },
+  "notificationCheckInBody": "Open WEMUST and complete Bluetooth check-in for {course}",
+  "@notificationCheckInBody": {
+    "placeholders": {
+      "course": {"type": "String"}
+    }
+  },
+  "notificationNextDayTitle": "Tomorrow's schedule",
+  "notificationNextDayBody": "{count} classes tomorrow. First class at {time}.",
+  "@notificationNextDayBody": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "time": {"type": "String"}
+    }
+  },
+  "notificationNextDayNoClassTitle": "Tomorrow's schedule",
+  "notificationNextDayNoClassBody": "No classes scheduled for tomorrow."
+}
