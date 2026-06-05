@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.0.0** · 作者 [WkJ01N](https://github.com/WkJ01N) · 仓库 [github.com/WkJ01N/Orbit](https://github.com/WkJ01N/Orbit)
+**版本 1.0.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -112,6 +112,6 @@ assets/samples/      样本课表
 - `kotlin.incremental=false`：规避 E: 项目盘与 C: Pub 缓存跨盘时 Kotlin 增量编译崩溃
 - Gradle 可指向本机已下载发行版，避免重复下载损坏
 
-## 作者
+## 开源许可
 
-本项目由 **[WkJ01N](https://github.com/WkJ01N)** 开发与维护。
+本项目采用 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html)（GPL-3.0）开源。完整许可文本见仓库根目录 [LICENSE.md](LICENSE.md)。
