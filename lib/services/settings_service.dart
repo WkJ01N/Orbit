@@ -16,7 +16,6 @@ class SettingsService {
   static const _systemAlarmLeadMinutesKey = 'system_alarm_lead_minutes';
   static const _checkInReminderEnabledKey = 'check_in_reminder_enabled';
   static const _launchAtStartupKey = 'launch_at_startup';
-  static const _batteryOptimizationAckKey = 'battery_optimization_ack';
 
   SharedPreferences? _prefs;
 
@@ -94,15 +93,5 @@ class SettingsService {
   Future<void> saveLaunchAtStartup(bool enabled) async {
     final prefs = await _prefsInstance();
     await prefs.setBool(_launchAtStartupKey, enabled);
-  }
-
-  Future<bool> loadBatteryOptimizationAcknowledged() async {
-    final prefs = await _prefsInstance();
-    return prefs.getBool(_batteryOptimizationAckKey) ?? false;
-  }
-
-  Future<void> saveBatteryOptimizationAcknowledged(bool acknowledged) async {
-    final prefs = await _prefsInstance();
-    await prefs.setBool(_batteryOptimizationAckKey, acknowledged);
   }
 }

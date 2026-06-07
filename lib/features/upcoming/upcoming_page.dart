@@ -7,7 +7,9 @@ import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/core/widgets/empty_state.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/features/search/session_search_page.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
+import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/features/session/session_countdown.dart';
 import 'package:orbit/features/session/session_countdown_label.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
@@ -26,7 +28,16 @@ class UpcomingPage extends ConsumerWidget {
     final upcomingAsync = ref.watch(upcomingSessionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.upcomingTitle)),
+      appBar: AppBar(
+        title: Text(l10n.upcomingTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: l10n.searchSessions,
+            onPressed: () => SessionSearchPage.show(context),
+          ),
+        ],
+      ),
       body: upcomingAsync.when(
         data: (sessions) {
           if (sessions.isEmpty) {
@@ -41,6 +52,11 @@ class UpcomingPage extends ConsumerWidget {
           retryLabel: l10n.actionRetry,
           onRetry: () => ref.invalidate(upcomingSessionsProvider),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => SessionEditSheet.showCreate(context),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.addSession),
       ),
     );
   }

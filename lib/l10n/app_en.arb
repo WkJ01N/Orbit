@@ -63,7 +63,6 @@
       "count": {"type": "int"}
     }
   },
-  "androidBatteryOptimizationGuided": "Setup guided",
   "trayInitFailed": "System tray unavailable",
   "importPickMissingPath": "Could not read file: {name}",
   "@importPickMissingPath": {
@@ -207,8 +206,10 @@
   "androidCheckReminderPermissions": "Check reminder permissions",
   "androidPermissionsChecked": "Notification and exact alarm permissions requested",
   "androidBatteryOptimization": "Battery optimization exemption",
-  "androidBatteryOptimizationHint": "Tap to allow ignoring battery optimization",
-  "androidBatteryOptimizationDone": "Battery optimization exemption configured",
+  "androidBatteryOptimizationSubtitleOn": "Exempt from battery optimization for more reliable reminders",
+  "androidBatteryOptimizationSubtitleOff": "Enable to improve background reminder reliability",
+  "androidBatteryOptimizationDisableConfirmTitle": "Turn off battery optimization exemption?",
+  "androidBatteryOptimizationDisableConfirmContent": "You will be taken to system settings to restore battery optimization. Background reminders may be less reliable.",
   "androidAutostartHint": "On some devices, also enable autostart and allow background activity in system settings.",
   "deleteEndedSessions": "Delete ended classes",
   "deleteEndedSessionsSubtitle": "Remove class sessions that have already finished",
@@ -357,5 +358,134 @@
     }
   },
   "notificationNextDayNoClassTitle": "Tomorrow's schedule",
-  "notificationNextDayNoClassBody": "No classes scheduled for tomorrow."
+  "notificationNextDayNoClassBody": "No classes scheduled for tomorrow.",
+  "exportScheduleJson": "Export JSON backup",
+  "exportScheduleJsonSubtitle": "Save all schedule data for restore or migration",
+  "exportScheduleXlsx": "Export as xlsx",
+  "exportScheduleXlsxSubtitle": "Export in the same format as import",
+  "restoreFromBackup": "Restore from backup",
+  "restoreFromBackupSubtitle": "Import schedule from a JSON backup file",
+  "exportDone": "Exported {count} class sessions",
+  "@exportDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "exportNothingToExport": "No schedule data to export",
+  "restoreConfirmTitle": "Restore backup?",
+  "restoreConfirmContent": "This will merge {count} class sessions from the backup.",
+  "@restoreConfirmContent": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreDone": "Restored {count} class sessions",
+  "@restoreDone": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "restoreFailed": "Restore failed: {error}",
+  "@restoreFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "backupInvalidFormat": "Invalid backup file format",
+  "backupUnsupportedVersion": "Unsupported backup version",
+  "addSession": "Add class",
+  "addSessionTitle": "Add class",
+  "fieldDate": "Date",
+  "fieldCourseCode": "Course code",
+  "fieldSection": "Section",
+  "defaultClassType": "General class",
+  "sessionCreated": "Class added",
+  "sessionCreateRequiredFields": "Course name and room are required",
+  "sessionTimeConflict": "Another class overlaps this time slot",
+  "actionCreate": "Create",
+  "sessionSaveFailed": "Failed to save: {error}",
+  "@sessionSaveFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "deleteFailed": "Delete failed: {error}",
+  "@deleteFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "languageChangedResynced": "Language updated and reminders resynced",
+  "searchSessions": "Search classes",
+  "searchHint": "Search by course, room, or teacher",
+  "searchNoResults": "No matching classes",
+  "importFormatTitle": "Schedule file format",
+  "importFormatSubtitle": "xlsx columns A–M (one row per class session)",
+  "importFormatColumn": "Col",
+  "importFormatField": "Field",
+  "importFormatExample": "Example",
+  "importFormatClassType": "Class type",
+  "importFormatClassTypeExample": "General class",
+  "importFormatRoom": "Room",
+  "importFormatRoomExample": "A001",
+  "importFormatCapacity": "Capacity",
+  "importFormatCapacityExample": "67",
+  "importFormatFaculty": "Faculty",
+  "importFormatFacultyExample": "Example Faculty",
+  "importFormatDate": "Date",
+  "importFormatDateExample": "2026-07-27",
+  "importFormatWeekday": "Weekday",
+  "importFormatWeekdayExample": "1 (Mon) – 7 (Sun)",
+  "importFormatCourseName": "Course name",
+  "importFormatCourseNameExample": "Physics",
+  "importFormatCourseCode": "Course code",
+  "importFormatCourseCodeExample": "P0721",
+  "importFormatSection": "Section",
+  "importFormatSectionExample": "EX1",
+  "importFormatStartTime": "Start time",
+  "importFormatStartTimeExample": "12:30",
+  "importFormatEndTime": "End time",
+  "importFormatEndTimeExample": "15:20",
+  "importFormatTeachers": "Teachers",
+  "importFormatTeachersExample": "Miku,null",
+  "importFormatSemester": "Semester",
+  "importFormatSemesterExample": "2606",
+  "xlsxErrorNoSheet": "No worksheet found in file",
+  "xlsxErrorEmptySheet": "Schedule file is empty",
+  "xlsxErrorNoSessions": "No class sessions parsed",
+  "xlsxErrorInsufficientColumns": "Insufficient columns ({detail})",
+  "@xlsxErrorInsufficientColumns": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "xlsxErrorInvalidDate": "Invalid date: {detail}",
+  "@xlsxErrorInvalidDate": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "xlsxErrorInvalidTime": "Invalid time: {detail}",
+  "@xlsxErrorInvalidTime": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "reminderSyncFailed": "Reminder sync failed: {error}",
+  "@reminderSyncFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "reminderResyncFailedBanner": "Reminders could not be synced. Tap Resync to try again.",
+  "androidNotificationsEnabled": "Notifications enabled",
+  "androidNotificationsDisabled": "Notifications disabled",
+  "androidExactAlarmsEnabled": "Exact alarms allowed",
+  "androidExactAlarmsDisabled": "Exact alarms not allowed"
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
@@ -26,6 +27,10 @@ Future<void> reminderMaintenanceCallback() async {
       settings: settings,
       copy: copy,
     );
+    ReminderScheduler.shared.markRescheduleSuccess();
+  } catch (error, stackTrace) {
+    debugPrint('Reminder maintenance callback failed: $error');
+    debugPrint('$stackTrace');
   } finally {
     await database?.close();
   }

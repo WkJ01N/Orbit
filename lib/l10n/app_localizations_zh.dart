@@ -133,9 +133,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get androidBatteryOptimizationGuided => '已引導設定';
-
-  @override
   String get trayInitFailed => '系統匣不可用';
 
   @override
@@ -378,10 +375,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get androidBatteryOptimization => '電池最佳化豁免';
 
   @override
-  String get androidBatteryOptimizationHint => '點擊允許忽略電池最佳化';
+  String get androidBatteryOptimizationSubtitleOn => '已豁免電池最佳化，背景提醒更可靠';
 
   @override
-  String get androidBatteryOptimizationDone => '已設定電池最佳化豁免';
+  String get androidBatteryOptimizationSubtitleOff => '開啟後可提高背景提醒可靠性';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmTitle => '關閉電池最佳化豁免？';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmContent =>
+      '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
   String get androidAutostartHint => '部分機型還需在系統設定中開啟自啟動並允許背景執行。';
@@ -634,6 +638,250 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notificationNextDayNoClassBody => '明天沒有課程安排。';
+
+  @override
+  String get exportScheduleJson => '匯出 JSON 備份';
+
+  @override
+  String get exportScheduleJsonSubtitle => '儲存全部課表資料，用於還原或遷移';
+
+  @override
+  String get exportScheduleXlsx => '匯出為 xlsx';
+
+  @override
+  String get exportScheduleXlsxSubtitle => '以與匯入相同的格式匯出';
+
+  @override
+  String get restoreFromBackup => '從備份還原';
+
+  @override
+  String get restoreFromBackupSubtitle => '從 JSON 備份檔案匯入課表';
+
+  @override
+  String exportDone(int count) {
+    return '已匯出 $count 節課';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '匯出失敗：$error';
+  }
+
+  @override
+  String get exportNothingToExport => '沒有可匯出的課表資料';
+
+  @override
+  String get restoreConfirmTitle => '還原備份？';
+
+  @override
+  String restoreConfirmContent(int count) {
+    return '將合併備份中的 $count 節課。';
+  }
+
+  @override
+  String restoreDone(int count) {
+    return '已還原 $count 節課';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return '還原失敗：$error';
+  }
+
+  @override
+  String get backupInvalidFormat => '備份檔案格式無效';
+
+  @override
+  String get backupUnsupportedVersion => '不支援的備份版本';
+
+  @override
+  String get addSession => '新增課程';
+
+  @override
+  String get addSessionTitle => '新增課程';
+
+  @override
+  String get fieldDate => '日期';
+
+  @override
+  String get fieldCourseCode => '科目編號';
+
+  @override
+  String get fieldSection => '班別';
+
+  @override
+  String get defaultClassType => '一般課堂';
+
+  @override
+  String get sessionCreated => '已新增課程';
+
+  @override
+  String get sessionCreateRequiredFields => '科目名稱和課室為必填項';
+
+  @override
+  String get sessionTimeConflict => '該時段已有其他課程';
+
+  @override
+  String get actionCreate => '建立';
+
+  @override
+  String sessionSaveFailed(String error) {
+    return '儲存失敗：$error';
+  }
+
+  @override
+  String deleteFailed(String error) {
+    return '刪除失敗：$error';
+  }
+
+  @override
+  String get languageChangedResynced => '語言已更新，提醒已重新同步';
+
+  @override
+  String get searchSessions => '搜尋課程';
+
+  @override
+  String get searchHint => '按科目、課室或教師搜尋';
+
+  @override
+  String get searchNoResults => '沒有符合的課程';
+
+  @override
+  String get importFormatTitle => '課表檔案格式';
+
+  @override
+  String get importFormatSubtitle => 'xlsx 欄 A–M（每列一節課）';
+
+  @override
+  String get importFormatColumn => '欄';
+
+  @override
+  String get importFormatField => '欄位';
+
+  @override
+  String get importFormatExample => '範例';
+
+  @override
+  String get importFormatClassType => '課堂類型';
+
+  @override
+  String get importFormatClassTypeExample => '一般課堂';
+
+  @override
+  String get importFormatRoom => '課室';
+
+  @override
+  String get importFormatRoomExample => 'A001';
+
+  @override
+  String get importFormatCapacity => '人數';
+
+  @override
+  String get importFormatCapacityExample => '67';
+
+  @override
+  String get importFormatFaculty => '學院名稱';
+
+  @override
+  String get importFormatFacultyExample => '範例學院';
+
+  @override
+  String get importFormatDate => '日期';
+
+  @override
+  String get importFormatDateExample => '2026-07-27';
+
+  @override
+  String get importFormatWeekday => '星期';
+
+  @override
+  String get importFormatWeekdayExample => '1（週一）~ 7（週日）';
+
+  @override
+  String get importFormatCourseName => '科目名稱';
+
+  @override
+  String get importFormatCourseNameExample => '物理';
+
+  @override
+  String get importFormatCourseCode => '科目編號';
+
+  @override
+  String get importFormatCourseCodeExample => 'P0721';
+
+  @override
+  String get importFormatSection => '班別名稱';
+
+  @override
+  String get importFormatSectionExample => 'EX1';
+
+  @override
+  String get importFormatStartTime => '開始時間';
+
+  @override
+  String get importFormatStartTimeExample => '12:30';
+
+  @override
+  String get importFormatEndTime => '結束時間';
+
+  @override
+  String get importFormatEndTimeExample => '15:20';
+
+  @override
+  String get importFormatTeachers => '教師';
+
+  @override
+  String get importFormatTeachersExample => 'Miku,null';
+
+  @override
+  String get importFormatSemester => '學期';
+
+  @override
+  String get importFormatSemesterExample => '2606';
+
+  @override
+  String get xlsxErrorNoSheet => '檔案中找不到工作表';
+
+  @override
+  String get xlsxErrorEmptySheet => '課表內容為空';
+
+  @override
+  String get xlsxErrorNoSessions => '未解析到任何課程資料';
+
+  @override
+  String xlsxErrorInsufficientColumns(String detail) {
+    return '資料欄不足（$detail 欄）';
+  }
+
+  @override
+  String xlsxErrorInvalidDate(String detail) {
+    return '無法解析日期：$detail';
+  }
+
+  @override
+  String xlsxErrorInvalidTime(String detail) {
+    return '無法解析時間：$detail';
+  }
+
+  @override
+  String reminderSyncFailed(String error) {
+    return '提醒同步失敗：$error';
+  }
+
+  @override
+  String get reminderResyncFailedBanner => '提醒未能同步，請點「重新同步提醒」重試。';
+
+  @override
+  String get androidNotificationsEnabled => '通知已開啟';
+
+  @override
+  String get androidNotificationsDisabled => '通知未開啟';
+
+  @override
+  String get androidExactAlarmsEnabled => '精確鬧鐘已允許';
+
+  @override
+  String get androidExactAlarmsDisabled => '精確鬧鐘未允許';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -763,9 +1011,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String resyncPartialFailed(int count) {
     return '$count 条提醒未能排定';
   }
-
-  @override
-  String get androidBatteryOptimizationGuided => '已引导设置';
 
   @override
   String get trayInitFailed => '系统托盘不可用';
@@ -1010,10 +1255,17 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get androidBatteryOptimization => '电池优化豁免';
 
   @override
-  String get androidBatteryOptimizationHint => '点击允许忽略电池优化';
+  String get androidBatteryOptimizationSubtitleOn => '已豁免电池优化，后台提醒更可靠';
 
   @override
-  String get androidBatteryOptimizationDone => '已配置电池优化豁免';
+  String get androidBatteryOptimizationSubtitleOff => '开启后可提高后台提醒可靠性';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmTitle => '关闭电池优化豁免？';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmContent =>
+      '将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。';
 
   @override
   String get androidAutostartHint => '部分机型还需在系统设置中开启自启动并允许后台运行。';
@@ -1266,6 +1518,250 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get notificationNextDayNoClassBody => '明天没有课程安排。';
+
+  @override
+  String get exportScheduleJson => '导出 JSON 备份';
+
+  @override
+  String get exportScheduleJsonSubtitle => '保存全部课表数据，用于恢复或迁移';
+
+  @override
+  String get exportScheduleXlsx => '导出为 xlsx';
+
+  @override
+  String get exportScheduleXlsxSubtitle => '以与导入相同的格式导出';
+
+  @override
+  String get restoreFromBackup => '从备份恢复';
+
+  @override
+  String get restoreFromBackupSubtitle => '从 JSON 备份文件导入课表';
+
+  @override
+  String exportDone(int count) {
+    return '已导出 $count 节课';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '导出失败：$error';
+  }
+
+  @override
+  String get exportNothingToExport => '没有可导出的课表数据';
+
+  @override
+  String get restoreConfirmTitle => '恢复备份？';
+
+  @override
+  String restoreConfirmContent(int count) {
+    return '将合并备份中的 $count 节课。';
+  }
+
+  @override
+  String restoreDone(int count) {
+    return '已恢复 $count 节课';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return '恢复失败：$error';
+  }
+
+  @override
+  String get backupInvalidFormat => '备份文件格式无效';
+
+  @override
+  String get backupUnsupportedVersion => '不支持的备份版本';
+
+  @override
+  String get addSession => '添加课程';
+
+  @override
+  String get addSessionTitle => '添加课程';
+
+  @override
+  String get fieldDate => '日期';
+
+  @override
+  String get fieldCourseCode => '科目编号';
+
+  @override
+  String get fieldSection => '班别';
+
+  @override
+  String get defaultClassType => '一般课堂';
+
+  @override
+  String get sessionCreated => '已添加课程';
+
+  @override
+  String get sessionCreateRequiredFields => '科目名称和课室为必填项';
+
+  @override
+  String get sessionTimeConflict => '该时段已有其他课程';
+
+  @override
+  String get actionCreate => '创建';
+
+  @override
+  String sessionSaveFailed(String error) {
+    return '保存失败：$error';
+  }
+
+  @override
+  String deleteFailed(String error) {
+    return '删除失败：$error';
+  }
+
+  @override
+  String get languageChangedResynced => '语言已更新，提醒已重新同步';
+
+  @override
+  String get searchSessions => '搜索课程';
+
+  @override
+  String get searchHint => '按科目、课室或教师搜索';
+
+  @override
+  String get searchNoResults => '没有匹配的课程';
+
+  @override
+  String get importFormatTitle => '课表文件格式';
+
+  @override
+  String get importFormatSubtitle => 'xlsx 列 A–M（每行一节课）';
+
+  @override
+  String get importFormatColumn => '列';
+
+  @override
+  String get importFormatField => '字段';
+
+  @override
+  String get importFormatExample => '示例';
+
+  @override
+  String get importFormatClassType => '课堂类型';
+
+  @override
+  String get importFormatClassTypeExample => '一般课堂';
+
+  @override
+  String get importFormatRoom => '课室';
+
+  @override
+  String get importFormatRoomExample => 'A001';
+
+  @override
+  String get importFormatCapacity => '人数';
+
+  @override
+  String get importFormatCapacityExample => '67';
+
+  @override
+  String get importFormatFaculty => '学院名称';
+
+  @override
+  String get importFormatFacultyExample => '示例学院';
+
+  @override
+  String get importFormatDate => '日期';
+
+  @override
+  String get importFormatDateExample => '2026-07-27';
+
+  @override
+  String get importFormatWeekday => '星期';
+
+  @override
+  String get importFormatWeekdayExample => '1（周一）~ 7（周日）';
+
+  @override
+  String get importFormatCourseName => '科目名称';
+
+  @override
+  String get importFormatCourseNameExample => '物理';
+
+  @override
+  String get importFormatCourseCode => '科目编号';
+
+  @override
+  String get importFormatCourseCodeExample => 'P0721';
+
+  @override
+  String get importFormatSection => '班别名称';
+
+  @override
+  String get importFormatSectionExample => 'EX1';
+
+  @override
+  String get importFormatStartTime => '开始时间';
+
+  @override
+  String get importFormatStartTimeExample => '12:30';
+
+  @override
+  String get importFormatEndTime => '结束时间';
+
+  @override
+  String get importFormatEndTimeExample => '15:20';
+
+  @override
+  String get importFormatTeachers => '教师';
+
+  @override
+  String get importFormatTeachersExample => 'Miku,null';
+
+  @override
+  String get importFormatSemester => '学期';
+
+  @override
+  String get importFormatSemesterExample => '2606';
+
+  @override
+  String get xlsxErrorNoSheet => '文件中找不到工作表';
+
+  @override
+  String get xlsxErrorEmptySheet => '课表内容为空';
+
+  @override
+  String get xlsxErrorNoSessions => '未解析到任何课程数据';
+
+  @override
+  String xlsxErrorInsufficientColumns(String detail) {
+    return '数据列不足（$detail 列）';
+  }
+
+  @override
+  String xlsxErrorInvalidDate(String detail) {
+    return '无法解析日期：$detail';
+  }
+
+  @override
+  String xlsxErrorInvalidTime(String detail) {
+    return '无法解析时间：$detail';
+  }
+
+  @override
+  String reminderSyncFailed(String error) {
+    return '提醒同步失败：$error';
+  }
+
+  @override
+  String get reminderResyncFailedBanner => '提醒未能同步，请点「重新同步提醒」重试。';
+
+  @override
+  String get androidNotificationsEnabled => '通知已开启';
+
+  @override
+  String get androidNotificationsDisabled => '通知未开启';
+
+  @override
+  String get androidExactAlarmsEnabled => '精确闹钟已允许';
+
+  @override
+  String get androidExactAlarmsDisabled => '精确闹钟未允许';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1395,9 +1891,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String resyncPartialFailed(int count) {
     return '$count 條提醒未能排定';
   }
-
-  @override
-  String get androidBatteryOptimizationGuided => '已引導設定';
 
   @override
   String get trayInitFailed => '系統匣不可用';
@@ -1642,10 +2135,17 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get androidBatteryOptimization => '電池最佳化豁免';
 
   @override
-  String get androidBatteryOptimizationHint => '點擊允許忽略電池最佳化';
+  String get androidBatteryOptimizationSubtitleOn => '已豁免電池最佳化，背景提醒更可靠';
 
   @override
-  String get androidBatteryOptimizationDone => '已設定電池最佳化豁免';
+  String get androidBatteryOptimizationSubtitleOff => '開啟後可提高背景提醒可靠性';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmTitle => '關閉電池最佳化豁免？';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmContent =>
+      '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
   String get androidAutostartHint => '部分機型還需在系統設定中開啟自啟動並允許背景執行。';
@@ -1898,4 +2398,248 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get notificationNextDayNoClassBody => '明天沒有課程安排。';
+
+  @override
+  String get exportScheduleJson => '匯出 JSON 備份';
+
+  @override
+  String get exportScheduleJsonSubtitle => '儲存全部課表資料，用於還原或遷移';
+
+  @override
+  String get exportScheduleXlsx => '匯出為 xlsx';
+
+  @override
+  String get exportScheduleXlsxSubtitle => '以與匯入相同的格式匯出';
+
+  @override
+  String get restoreFromBackup => '從備份還原';
+
+  @override
+  String get restoreFromBackupSubtitle => '從 JSON 備份檔案匯入課表';
+
+  @override
+  String exportDone(int count) {
+    return '已匯出 $count 節課';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '匯出失敗：$error';
+  }
+
+  @override
+  String get exportNothingToExport => '沒有可匯出的課表資料';
+
+  @override
+  String get restoreConfirmTitle => '還原備份？';
+
+  @override
+  String restoreConfirmContent(int count) {
+    return '將合併備份中的 $count 節課。';
+  }
+
+  @override
+  String restoreDone(int count) {
+    return '已還原 $count 節課';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return '還原失敗：$error';
+  }
+
+  @override
+  String get backupInvalidFormat => '備份檔案格式無效';
+
+  @override
+  String get backupUnsupportedVersion => '不支援的備份版本';
+
+  @override
+  String get addSession => '新增課程';
+
+  @override
+  String get addSessionTitle => '新增課程';
+
+  @override
+  String get fieldDate => '日期';
+
+  @override
+  String get fieldCourseCode => '科目編號';
+
+  @override
+  String get fieldSection => '班別';
+
+  @override
+  String get defaultClassType => '一般課堂';
+
+  @override
+  String get sessionCreated => '已新增課程';
+
+  @override
+  String get sessionCreateRequiredFields => '科目名稱和課室為必填項';
+
+  @override
+  String get sessionTimeConflict => '該時段已有其他課程';
+
+  @override
+  String get actionCreate => '建立';
+
+  @override
+  String sessionSaveFailed(String error) {
+    return '儲存失敗：$error';
+  }
+
+  @override
+  String deleteFailed(String error) {
+    return '刪除失敗：$error';
+  }
+
+  @override
+  String get languageChangedResynced => '語言已更新，提醒已重新同步';
+
+  @override
+  String get searchSessions => '搜尋課程';
+
+  @override
+  String get searchHint => '按科目、課室或教師搜尋';
+
+  @override
+  String get searchNoResults => '沒有符合的課程';
+
+  @override
+  String get importFormatTitle => '課表檔案格式';
+
+  @override
+  String get importFormatSubtitle => 'xlsx 欄 A–M（每列一節課）';
+
+  @override
+  String get importFormatColumn => '欄';
+
+  @override
+  String get importFormatField => '欄位';
+
+  @override
+  String get importFormatExample => '範例';
+
+  @override
+  String get importFormatClassType => '課堂類型';
+
+  @override
+  String get importFormatClassTypeExample => '一般課堂';
+
+  @override
+  String get importFormatRoom => '課室';
+
+  @override
+  String get importFormatRoomExample => 'A001';
+
+  @override
+  String get importFormatCapacity => '人數';
+
+  @override
+  String get importFormatCapacityExample => '67';
+
+  @override
+  String get importFormatFaculty => '學院名稱';
+
+  @override
+  String get importFormatFacultyExample => '範例學院';
+
+  @override
+  String get importFormatDate => '日期';
+
+  @override
+  String get importFormatDateExample => '2026-07-27';
+
+  @override
+  String get importFormatWeekday => '星期';
+
+  @override
+  String get importFormatWeekdayExample => '1（週一）~ 7（週日）';
+
+  @override
+  String get importFormatCourseName => '科目名稱';
+
+  @override
+  String get importFormatCourseNameExample => '物理';
+
+  @override
+  String get importFormatCourseCode => '科目編號';
+
+  @override
+  String get importFormatCourseCodeExample => 'P0721';
+
+  @override
+  String get importFormatSection => '班別名稱';
+
+  @override
+  String get importFormatSectionExample => 'EX1';
+
+  @override
+  String get importFormatStartTime => '開始時間';
+
+  @override
+  String get importFormatStartTimeExample => '12:30';
+
+  @override
+  String get importFormatEndTime => '結束時間';
+
+  @override
+  String get importFormatEndTimeExample => '15:20';
+
+  @override
+  String get importFormatTeachers => '教師';
+
+  @override
+  String get importFormatTeachersExample => 'Miku,null';
+
+  @override
+  String get importFormatSemester => '學期';
+
+  @override
+  String get importFormatSemesterExample => '2606';
+
+  @override
+  String get xlsxErrorNoSheet => '檔案中找不到工作表';
+
+  @override
+  String get xlsxErrorEmptySheet => '課表內容為空';
+
+  @override
+  String get xlsxErrorNoSessions => '未解析到任何課程資料';
+
+  @override
+  String xlsxErrorInsufficientColumns(String detail) {
+    return '資料欄不足（$detail 欄）';
+  }
+
+  @override
+  String xlsxErrorInvalidDate(String detail) {
+    return '無法解析日期：$detail';
+  }
+
+  @override
+  String xlsxErrorInvalidTime(String detail) {
+    return '無法解析時間：$detail';
+  }
+
+  @override
+  String reminderSyncFailed(String error) {
+    return '提醒同步失敗：$error';
+  }
+
+  @override
+  String get reminderResyncFailedBanner => '提醒未能同步，請點「重新同步提醒」重試。';
+
+  @override
+  String get androidNotificationsEnabled => '通知已開啟';
+
+  @override
+  String get androidNotificationsDisabled => '通知未開啟';
+
+  @override
+  String get androidExactAlarmsEnabled => '精確鬧鐘已允許';
+
+  @override
+  String get androidExactAlarmsDisabled => '精確鬧鐘未允許';
 }

@@ -68,7 +68,7 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.importFailed('$e'))),
+          SnackBar(content: Text(l10n.sessionSaveFailed('$e'))),
         );
       }
     }

@@ -8,9 +8,13 @@ import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/features/settings/battery_disable_dialog.dart';
 import 'package:orbit/features/settings/check_in_disable_dialog.dart';
 import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
+import 'package:orbit/features/settings/export_backup_actions.dart';
+import 'package:orbit/features/settings/reminder_setting_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
+import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/alarm_intent_service.dart';
@@ -51,6 +55,8 @@ class _SettingsBody extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final currentLocale = ref.watch(localeProvider);
     final themeColor = ref.watch(themeColorProvider);
+    final rescheduleError = ref.watch(lastRescheduleErrorProvider);
+    final notifier = ref.read(reminderSettingsProvider.notifier);
 
     return ListView(
       children: [
@@ -66,9 +72,17 @@ class _SettingsBody extends ConsumerWidget {
                 return;
               }
               await ref.read(localeProvider.notifier).setLocale(locale);
+              if (!context.mounted) {
+                return;
+              }
+              await applyReminderUpdate(
+                context,
+                ref,
+                () => ref.read(reminderSettingsProvider.notifier).resyncReminders(),
+              );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l10n.languageChangedHint)),
+                  SnackBar(content: Text(l10n.languageChangedResynced)),
                 );
               }
             },
@@ -96,13 +110,29 @@ class _SettingsBody extends ConsumerWidget {
           const SizedBox(height: 8),
         ],
         SectionHeader(title: l10n.sectionReminders),
+        if (rescheduleError != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: MaterialBanner(
+              content: Text(l10n.reminderResyncFailedBanner),
+              leading: Icon(Icons.warning_amber, color: colorScheme.error),
+              actions: [
+                TextButton(
+                  onPressed: () => _resyncReminders(context, ref),
+                  child: Text(l10n.resyncReminders),
+                ),
+              ],
+            ),
+          ),
         SwitchListTile(
           title: Text(l10n.enableReminders),
           subtitle: Text(l10n.enableRemindersSubtitle),
           value: settings.enabled,
-          onChanged: (enabled) {
-            ref.read(reminderSettingsProvider.notifier).setEnabled(enabled);
-          },
+          onChanged: (enabled) => applyReminderUpdate(
+            context,
+            ref,
+            () => notifier.setEnabled(enabled),
+          ),
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
@@ -115,9 +145,11 @@ class _SettingsBody extends ConsumerWidget {
             onChanged: settings.enabled
                 ? (value) {
                     if (value != null) {
-                      ref
-                          .read(reminderSettingsProvider.notifier)
-                          .updateLeadMinutes(value);
+                      applyReminderUpdate(
+                        context,
+                        ref,
+                        () => notifier.updateLeadMinutes(value),
+                      );
                     }
                   }
                 : null,
@@ -151,11 +183,11 @@ class _SettingsBody extends ConsumerWidget {
           title: Text(l10n.enableNextDaySummary),
           subtitle: Text(l10n.enableNextDaySummarySubtitle),
           value: settings.nextDaySummaryEnabled,
-          onChanged: (enabled) {
-            ref
-                .read(reminderSettingsProvider.notifier)
-                .setNextDaySummaryEnabled(enabled);
-          },
+          onChanged: (enabled) => applyReminderUpdate(
+            context,
+            ref,
+            () => notifier.setNextDaySummaryEnabled(enabled),
+          ),
         ),
         ListTile(
           enabled: settings.nextDaySummaryEnabled,
@@ -175,16 +207,20 @@ class _SettingsBody extends ConsumerWidget {
           value: settings.checkInReminderEnabled,
           onChanged: (enabled) async {
             if (enabled) {
-              await ref
-                  .read(reminderSettingsProvider.notifier)
-                  .setCheckInReminderEnabled(true);
+              await applyReminderUpdate(
+                context,
+                ref,
+                () => notifier.setCheckInReminderEnabled(true),
+              );
               return;
             }
             final confirmed = await confirmDisableCheckInReminder(context);
             if (confirmed && context.mounted) {
-              await ref
-                  .read(reminderSettingsProvider.notifier)
-                  .setCheckInReminderEnabled(false);
+              await applyReminderUpdate(
+                context,
+                ref,
+                () => notifier.setCheckInReminderEnabled(false),
+              );
             }
           },
         ),
@@ -240,6 +276,24 @@ class _SettingsBody extends ConsumerWidget {
         const SizedBox(height: 16),
         SectionHeader(title: l10n.sectionData),
         ListTile(
+          title: Text(l10n.exportScheduleJson),
+          subtitle: Text(l10n.exportScheduleJsonSubtitle),
+          leading: const Icon(Icons.backup_outlined),
+          onTap: () => exportScheduleJson(context, ref),
+        ),
+        ListTile(
+          title: Text(l10n.exportScheduleXlsx),
+          subtitle: Text(l10n.exportScheduleXlsxSubtitle),
+          leading: const Icon(Icons.table_view_outlined),
+          onTap: () => exportScheduleXlsx(context, ref),
+        ),
+        ListTile(
+          title: Text(l10n.restoreFromBackup),
+          subtitle: Text(l10n.restoreFromBackupSubtitle),
+          leading: const Icon(Icons.restore_outlined),
+          onTap: () => restoreFromBackup(context, ref),
+        ),
+        ListTile(
           title: Text(l10n.deleteEndedSessions),
           subtitle: Text(l10n.deleteEndedSessionsSubtitle),
           leading: Icon(Icons.event_busy, color: colorScheme.error),
@@ -293,9 +347,13 @@ class _SettingsBody extends ConsumerWidget {
       ),
     );
     if (picked != null) {
-      await ref
-          .read(reminderSettingsProvider.notifier)
-          .setNextDaySummaryTime(picked);
+      await applyReminderUpdate(
+        context,
+        ref,
+        () => ref
+            .read(reminderSettingsProvider.notifier)
+            .setNextDaySummaryTime(picked),
+      );
     }
   }
 
@@ -327,24 +385,23 @@ class _SettingsBody extends ConsumerWidget {
 
   Future<void> _resyncReminders(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    try {
-      final failures =
-          await ref.read(reminderSettingsProvider.notifier).resyncReminders();
-      if (!context.mounted) {
-        return;
-      }
+    await applyReminderUpdate(
+      context,
+      ref,
+      () => ref.read(reminderSettingsProvider.notifier).resyncReminders(),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    final syncError = ref.read(lastRescheduleErrorProvider);
+    if (syncError == null) {
+      final failures = ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
       final message = failures > 0
           ? l10n.resyncPartialFailed(failures)
           : l10n.resyncDone;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.settingsLoadFailed('$e'))),
-        );
-      }
     }
   }
 
@@ -665,37 +722,90 @@ class _AndroidBackgroundSection extends ConsumerStatefulWidget {
 }
 
 class _AndroidBackgroundSectionState
-    extends ConsumerState<_AndroidBackgroundSection> {
-  bool _batteryAcknowledged = false;
+    extends ConsumerState<_AndroidBackgroundSection> with WidgetsBindingObserver {
+  bool _isIgnoringBatteryOptimizations = false;
+  ReminderPermissionStatus? _permissionStatus;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadBatteryStatus();
+    _loadPermissionStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadBatteryStatus();
+      _loadPermissionStatus();
+    }
+  }
+
+  Future<void> _loadPermissionStatus() async {
+    final status =
+        await AndroidReminderGuard.instance.queryPermissionStatus();
+    if (mounted) {
+      setState(() => _permissionStatus = status);
+    }
   }
 
   Future<void> _loadBatteryStatus() async {
-    final acknowledged =
-        await AndroidReminderGuard.instance.isBatteryOptimizationAcknowledged();
+    final ignoring =
+        await AndroidReminderGuard.instance.isIgnoringBatteryOptimizations();
     if (mounted) {
-      setState(() => _batteryAcknowledged = acknowledged);
+      setState(() => _isIgnoringBatteryOptimizations = ignoring);
     }
   }
 
   Future<void> _checkPermissions() async {
     await AndroidReminderGuard.instance.ensureReminderPermissions();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.androidPermissionsChecked),
-        ),
-      );
+    await _loadPermissionStatus();
+    if (!mounted) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final status = _permissionStatus ?? ReminderPermissionStatus.unknown;
+    final message = _permissionStatusMessage(l10n, status);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+    if (!status.allGranted) {
+      await AndroidReminderGuard.instance.openNotificationSettings();
     }
   }
 
-  Future<void> _requestBatteryOptimization() async {
-    await AndroidReminderGuard.instance.requestIgnoreBatteryOptimizations();
-    await _loadBatteryStatus();
+  String _permissionStatusMessage(
+    AppLocalizations l10n,
+    ReminderPermissionStatus status,
+  ) {
+    final parts = <String>[
+      status.notificationsEnabled
+          ? l10n.androidNotificationsEnabled
+          : l10n.androidNotificationsDisabled,
+      status.exactAlarmsEnabled
+          ? l10n.androidExactAlarmsEnabled
+          : l10n.androidExactAlarmsDisabled,
+    ];
+    return parts.join(' · ');
+  }
+
+  Future<void> _onBatteryOptimizationChanged(bool enabled) async {
+    if (enabled) {
+      await AndroidReminderGuard.instance.requestIgnoreBatteryOptimizations();
+      return;
+    }
+
+    final confirmed = await confirmDisableBatteryOptimization(context);
+    if (confirmed && mounted) {
+      await AndroidReminderGuard.instance.openAppBatterySettings();
+    }
   }
 
   @override
@@ -717,23 +827,21 @@ class _AndroidBackgroundSectionState
         ),
         ListTile(
           title: Text(l10n.androidCheckReminderPermissions),
+          subtitle: _permissionStatus == null
+              ? null
+              : Text(_permissionStatusMessage(l10n, _permissionStatus!)),
           trailing: const Icon(Icons.notifications_active_outlined),
           onTap: _checkPermissions,
         ),
-        ListTile(
+        SwitchListTile(
           title: Text(l10n.androidBatteryOptimization),
           subtitle: Text(
-            _batteryAcknowledged
-                ? l10n.androidBatteryOptimizationGuided
-                : l10n.androidBatteryOptimizationHint,
+            _isIgnoringBatteryOptimizations
+                ? l10n.androidBatteryOptimizationSubtitleOn
+                : l10n.androidBatteryOptimizationSubtitleOff,
           ),
-          trailing: Icon(
-            _batteryAcknowledged ? Icons.check_circle : Icons.battery_saver,
-            color: _batteryAcknowledged
-                ? Theme.of(context).colorScheme.primary
-                : null,
-          ),
-          onTap: _requestBatteryOptimization,
+          value: _isIgnoringBatteryOptimizations,
+          onChanged: _onBatteryOptimizationChanged,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

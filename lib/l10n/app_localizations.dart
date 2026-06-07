@@ -328,12 +328,6 @@ abstract class AppLocalizations {
   /// **'{count} reminder(s) could not be scheduled'**
   String resyncPartialFailed(int count);
 
-  /// No description provided for @androidBatteryOptimizationGuided.
-  ///
-  /// In en, this message translates to:
-  /// **'Setup guided'**
-  String get androidBatteryOptimizationGuided;
-
   /// No description provided for @trayInitFailed.
   ///
   /// In en, this message translates to:
@@ -760,17 +754,29 @@ abstract class AppLocalizations {
   /// **'Battery optimization exemption'**
   String get androidBatteryOptimization;
 
-  /// No description provided for @androidBatteryOptimizationHint.
+  /// No description provided for @androidBatteryOptimizationSubtitleOn.
   ///
   /// In en, this message translates to:
-  /// **'Tap to allow ignoring battery optimization'**
-  String get androidBatteryOptimizationHint;
+  /// **'Exempt from battery optimization for more reliable reminders'**
+  String get androidBatteryOptimizationSubtitleOn;
 
-  /// No description provided for @androidBatteryOptimizationDone.
+  /// No description provided for @androidBatteryOptimizationSubtitleOff.
   ///
   /// In en, this message translates to:
-  /// **'Battery optimization exemption configured'**
-  String get androidBatteryOptimizationDone;
+  /// **'Enable to improve background reminder reliability'**
+  String get androidBatteryOptimizationSubtitleOff;
+
+  /// No description provided for @androidBatteryOptimizationDisableConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off battery optimization exemption?'**
+  String get androidBatteryOptimizationDisableConfirmTitle;
+
+  /// No description provided for @androidBatteryOptimizationDisableConfirmContent.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be taken to system settings to restore battery optimization. Background reminders may be less reliable.'**
+  String get androidBatteryOptimizationDisableConfirmContent;
 
   /// No description provided for @androidAutostartHint.
   ///
@@ -1214,6 +1220,450 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No classes scheduled for tomorrow.'**
   String get notificationNextDayNoClassBody;
+
+  /// No description provided for @exportScheduleJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Export JSON backup'**
+  String get exportScheduleJson;
+
+  /// No description provided for @exportScheduleJsonSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save all schedule data for restore or migration'**
+  String get exportScheduleJsonSubtitle;
+
+  /// No description provided for @exportScheduleXlsx.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as xlsx'**
+  String get exportScheduleXlsx;
+
+  /// No description provided for @exportScheduleXlsxSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export in the same format as import'**
+  String get exportScheduleXlsxSubtitle;
+
+  /// No description provided for @restoreFromBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from backup'**
+  String get restoreFromBackup;
+
+  /// No description provided for @restoreFromBackupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import schedule from a JSON backup file'**
+  String get restoreFromBackupSubtitle;
+
+  /// No description provided for @exportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported {count} class sessions'**
+  String exportDone(int count);
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {error}'**
+  String exportFailed(String error);
+
+  /// No description provided for @exportNothingToExport.
+  ///
+  /// In en, this message translates to:
+  /// **'No schedule data to export'**
+  String get exportNothingToExport;
+
+  /// No description provided for @restoreConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore backup?'**
+  String get restoreConfirmTitle;
+
+  /// No description provided for @restoreConfirmContent.
+  ///
+  /// In en, this message translates to:
+  /// **'This will merge {count} class sessions from the backup.'**
+  String restoreConfirmContent(int count);
+
+  /// No description provided for @restoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {count} class sessions'**
+  String restoreDone(int count);
+
+  /// No description provided for @restoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed: {error}'**
+  String restoreFailed(String error);
+
+  /// No description provided for @backupInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid backup file format'**
+  String get backupInvalidFormat;
+
+  /// No description provided for @backupUnsupportedVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported backup version'**
+  String get backupUnsupportedVersion;
+
+  /// No description provided for @addSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Add class'**
+  String get addSession;
+
+  /// No description provided for @addSessionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add class'**
+  String get addSessionTitle;
+
+  /// No description provided for @fieldDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get fieldDate;
+
+  /// No description provided for @fieldCourseCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Course code'**
+  String get fieldCourseCode;
+
+  /// No description provided for @fieldSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get fieldSection;
+
+  /// No description provided for @defaultClassType.
+  ///
+  /// In en, this message translates to:
+  /// **'General class'**
+  String get defaultClassType;
+
+  /// No description provided for @sessionCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Class added'**
+  String get sessionCreated;
+
+  /// No description provided for @sessionCreateRequiredFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Course name and room are required'**
+  String get sessionCreateRequiredFields;
+
+  /// No description provided for @sessionTimeConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Another class overlaps this time slot'**
+  String get sessionTimeConflict;
+
+  /// No description provided for @actionCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get actionCreate;
+
+  /// No description provided for @sessionSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save: {error}'**
+  String sessionSaveFailed(String error);
+
+  /// No description provided for @deleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete failed: {error}'**
+  String deleteFailed(String error);
+
+  /// No description provided for @languageChangedResynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Language updated and reminders resynced'**
+  String get languageChangedResynced;
+
+  /// No description provided for @searchSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Search classes'**
+  String get searchSessions;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by course, room, or teacher'**
+  String get searchHint;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching classes'**
+  String get searchNoResults;
+
+  /// No description provided for @importFormatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule file format'**
+  String get importFormatTitle;
+
+  /// No description provided for @importFormatSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'xlsx columns A–M (one row per class session)'**
+  String get importFormatSubtitle;
+
+  /// No description provided for @importFormatColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Col'**
+  String get importFormatColumn;
+
+  /// No description provided for @importFormatField.
+  ///
+  /// In en, this message translates to:
+  /// **'Field'**
+  String get importFormatField;
+
+  /// No description provided for @importFormatExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example'**
+  String get importFormatExample;
+
+  /// No description provided for @importFormatClassType.
+  ///
+  /// In en, this message translates to:
+  /// **'Class type'**
+  String get importFormatClassType;
+
+  /// No description provided for @importFormatClassTypeExample.
+  ///
+  /// In en, this message translates to:
+  /// **'General class'**
+  String get importFormatClassTypeExample;
+
+  /// No description provided for @importFormatRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get importFormatRoom;
+
+  /// No description provided for @importFormatRoomExample.
+  ///
+  /// In en, this message translates to:
+  /// **'A001'**
+  String get importFormatRoomExample;
+
+  /// No description provided for @importFormatCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Capacity'**
+  String get importFormatCapacity;
+
+  /// No description provided for @importFormatCapacityExample.
+  ///
+  /// In en, this message translates to:
+  /// **'67'**
+  String get importFormatCapacityExample;
+
+  /// No description provided for @importFormatFaculty.
+  ///
+  /// In en, this message translates to:
+  /// **'Faculty'**
+  String get importFormatFaculty;
+
+  /// No description provided for @importFormatFacultyExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example Faculty'**
+  String get importFormatFacultyExample;
+
+  /// No description provided for @importFormatDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get importFormatDate;
+
+  /// No description provided for @importFormatDateExample.
+  ///
+  /// In en, this message translates to:
+  /// **'2026-07-27'**
+  String get importFormatDateExample;
+
+  /// No description provided for @importFormatWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday'**
+  String get importFormatWeekday;
+
+  /// No description provided for @importFormatWeekdayExample.
+  ///
+  /// In en, this message translates to:
+  /// **'1 (Mon) – 7 (Sun)'**
+  String get importFormatWeekdayExample;
+
+  /// No description provided for @importFormatCourseName.
+  ///
+  /// In en, this message translates to:
+  /// **'Course name'**
+  String get importFormatCourseName;
+
+  /// No description provided for @importFormatCourseNameExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Physics'**
+  String get importFormatCourseNameExample;
+
+  /// No description provided for @importFormatCourseCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Course code'**
+  String get importFormatCourseCode;
+
+  /// No description provided for @importFormatCourseCodeExample.
+  ///
+  /// In en, this message translates to:
+  /// **'P0721'**
+  String get importFormatCourseCodeExample;
+
+  /// No description provided for @importFormatSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get importFormatSection;
+
+  /// No description provided for @importFormatSectionExample.
+  ///
+  /// In en, this message translates to:
+  /// **'EX1'**
+  String get importFormatSectionExample;
+
+  /// No description provided for @importFormatStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get importFormatStartTime;
+
+  /// No description provided for @importFormatStartTimeExample.
+  ///
+  /// In en, this message translates to:
+  /// **'12:30'**
+  String get importFormatStartTimeExample;
+
+  /// No description provided for @importFormatEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get importFormatEndTime;
+
+  /// No description provided for @importFormatEndTimeExample.
+  ///
+  /// In en, this message translates to:
+  /// **'15:20'**
+  String get importFormatEndTimeExample;
+
+  /// No description provided for @importFormatTeachers.
+  ///
+  /// In en, this message translates to:
+  /// **'Teachers'**
+  String get importFormatTeachers;
+
+  /// No description provided for @importFormatTeachersExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Miku,null'**
+  String get importFormatTeachersExample;
+
+  /// No description provided for @importFormatSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester'**
+  String get importFormatSemester;
+
+  /// No description provided for @importFormatSemesterExample.
+  ///
+  /// In en, this message translates to:
+  /// **'2606'**
+  String get importFormatSemesterExample;
+
+  /// No description provided for @xlsxErrorNoSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'No worksheet found in file'**
+  String get xlsxErrorNoSheet;
+
+  /// No description provided for @xlsxErrorEmptySheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule file is empty'**
+  String get xlsxErrorEmptySheet;
+
+  /// No description provided for @xlsxErrorNoSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No class sessions parsed'**
+  String get xlsxErrorNoSessions;
+
+  /// No description provided for @xlsxErrorInsufficientColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Insufficient columns ({detail})'**
+  String xlsxErrorInsufficientColumns(String detail);
+
+  /// No description provided for @xlsxErrorInvalidDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid date: {detail}'**
+  String xlsxErrorInvalidDate(String detail);
+
+  /// No description provided for @xlsxErrorInvalidTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid time: {detail}'**
+  String xlsxErrorInvalidTime(String detail);
+
+  /// No description provided for @reminderSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder sync failed: {error}'**
+  String reminderSyncFailed(String error);
+
+  /// No description provided for @reminderResyncFailedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders could not be synced. Tap Resync to try again.'**
+  String get reminderResyncFailedBanner;
+
+  /// No description provided for @androidNotificationsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications enabled'**
+  String get androidNotificationsEnabled;
+
+  /// No description provided for @androidNotificationsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications disabled'**
+  String get androidNotificationsDisabled;
+
+  /// No description provided for @androidExactAlarmsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms allowed'**
+  String get androidExactAlarmsEnabled;
+
+  /// No description provided for @androidExactAlarmsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms not allowed'**
+  String get androidExactAlarmsDisabled;
 }
 
 class _AppLocalizationsDelegate

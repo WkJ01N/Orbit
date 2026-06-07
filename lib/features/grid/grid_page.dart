@@ -4,6 +4,8 @@ import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/core/widgets/empty_state.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/features/grid/grid_batch_delete_dialog.dart';
+import 'package:orbit/features/search/session_search_page.dart';
+import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/features/grid/grid_week_picker.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
@@ -38,6 +40,7 @@ class GridPage extends ConsumerWidget {
                       ref,
                       displayedWeekStart: grid.weekStart,
                     ),
+            onSearch: () => SessionSearchPage.show(context),
           ),
           loading: () => _GridAppBar(
             weekStart: grid?.weekStart,
@@ -47,6 +50,7 @@ class GridPage extends ConsumerWidget {
               ref.read(selectedWeekStartProvider.notifier).state = weekStart;
             },
             onGoToCurrentWeek: () => _goToCurrentWeek(ref),
+            onSearch: () => SessionSearchPage.show(context),
           ),
           error: (_, _) => _GridAppBar(
             weekStart: grid?.weekStart,
@@ -56,6 +60,7 @@ class GridPage extends ConsumerWidget {
               ref.read(selectedWeekStartProvider.notifier).state = weekStart;
             },
             onGoToCurrentWeek: () => _goToCurrentWeek(ref),
+            onSearch: () => SessionSearchPage.show(context),
           ),
         ),
       ),
@@ -72,6 +77,14 @@ class GridPage extends ConsumerWidget {
           retryLabel: l10n.actionRetry,
           onRetry: () => ref.invalidate(sessionsProvider),
         ),
+      ),
+      floatingActionButton: sessionsAsync.maybeWhen(
+        data: (_) => FloatingActionButton.extended(
+          onPressed: () => SessionEditSheet.showCreate(context),
+          icon: const Icon(Icons.add),
+          label: Text(l10n.addSession),
+        ),
+        orElse: () => null,
       ),
     );
   }
@@ -101,6 +114,7 @@ class _GridAppBar extends StatelessWidget {
     required this.onSelectWeek,
     required this.onGoToCurrentWeek,
     this.onBatchDelete,
+    this.onSearch,
   });
 
   final DateTime? weekStart;
@@ -109,6 +123,7 @@ class _GridAppBar extends StatelessWidget {
   final ValueChanged<DateTime> onSelectWeek;
   final VoidCallback onGoToCurrentWeek;
   final VoidCallback? onBatchDelete;
+  final VoidCallback? onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -164,10 +179,21 @@ class _GridAppBar extends StatelessWidget {
               ),
               Positioned(
                 right: 4,
-                child: IconButton(
-                  icon: const Icon(Icons.today),
-                  onPressed: onGoToCurrentWeek,
-                  tooltip: l10n.gridThisWeek,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onSearch != null)
+                      IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: onSearch,
+                        tooltip: l10n.searchSessions,
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.today),
+                      onPressed: onGoToCurrentWeek,
+                      tooltip: l10n.gridThisWeek,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -189,7 +215,7 @@ class _EmptyState extends StatelessWidget {
     return EmptyState(
       icon: Icons.calendar_today_outlined,
       title: l10n.gridEmptyTitle,
-      subtitle: l10n.gridEmptySubtitle,
+      subtitle: l10n.gridImportHint,
       action: FilledButton.icon(
         onPressed: onImport,
         icon: const Icon(Icons.upload_file),

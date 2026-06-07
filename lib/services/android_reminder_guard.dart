@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter/services.dart';
+import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/reminder_background.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
@@ -9,6 +11,7 @@ import 'package:orbit/services/settings_service.dart';
 
 const _maintenanceAlarmId = 90400;
 const _androidPackageName = 'com.must.orbit.orbit';
+const _batteryChannel = MethodChannel('com.must.orbit.orbit/battery');
 
 class AndroidReminderGuard {
   AndroidReminderGuard._();
@@ -51,8 +54,40 @@ class AndroidReminderGuard {
     await _scheduler.initialize(copy: copy);
   }
 
-  Future<bool> isBatteryOptimizationAcknowledged() {
-    return _settingsService.loadBatteryOptimizationAcknowledged();
+  Future<ReminderPermissionStatus> queryPermissionStatus() {
+    return _scheduler.queryPermissionStatus();
+  }
+
+  Future<void> openNotificationSettings() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    final intent = AndroidIntent(
+      action: 'android.settings.APP_NOTIFICATION_SETTINGS',
+      arguments: {
+        'android.provider.extra.APP_PACKAGE': _androidPackageName,
+      },
+    );
+    try {
+      await intent.launch();
+    } catch (_) {
+      await openAppBatterySettings();
+    }
+  }
+
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    if (!Platform.isAndroid) {
+      return false;
+    }
+    try {
+      final result = await _batteryChannel.invokeMethod<bool>(
+        'isIgnoringBatteryOptimizations',
+      );
+      return result ?? false;
+    } on PlatformException {
+      return false;
+    }
   }
 
   Future<void> requestIgnoreBatteryOptimizations() async {
@@ -66,13 +101,23 @@ class AndroidReminderGuard {
         data: 'package:$_androidPackageName',
       );
       await intent.launch();
-      await _settingsService.saveBatteryOptimizationAcknowledged(true);
     } catch (_) {
       final fallback = AndroidIntent(
         action: 'android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS',
       );
       await fallback.launch();
-      await _settingsService.saveBatteryOptimizationAcknowledged(true);
     }
+  }
+
+  Future<void> openAppBatterySettings() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    final intent = AndroidIntent(
+      action: 'android.settings.APPLICATION_DETAILS_SETTINGS',
+      data: 'package:$_androidPackageName',
+    );
+    await intent.launch();
   }
 }

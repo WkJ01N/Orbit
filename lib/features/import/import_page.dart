@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
 import 'package:orbit/core/routing/app_tab.dart';
+import 'package:orbit/features/import/import_format_help.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -51,6 +52,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const ImportFormatHelp(),
+          const SizedBox(height: 12),
           _PickCard(
             onPick: _pickFiles,
             isPicking: _isPicking,
@@ -125,7 +128,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               ),
             );
           } on XlsxParseException catch (e) {
-            return (error: '${file.name}: ${e.message}', preview: null);
+            return (error: '${file.name}: ${e.localizedMessage(l10n)}', preview: null);
           } catch (e) {
             return (
               error: '${file.name}: ${l10n.importParseFailed('$e')}',
@@ -168,7 +171,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       final repository = ref.read(scheduleRepositoryProvider);
       final allSessions = files.expand((f) => f.sessions).toList();
       await repository.importParsedSessions(allSessions);
-      await rescheduleAllReminders(ref);
+      final failures =
+          await ref.read(reminderSettingsProvider.notifier).resyncReminders();
       refreshSchedule(ref);
 
       if (mounted) {
@@ -176,9 +180,12 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           _isImporting = false;
           _previewFiles = null;
         });
+        final message = failures > 0
+            ? '${l10n.importSuccess(allSessions.length)} ${l10n.resyncPartialFailed(failures)}'
+            : l10n.importSuccess(allSessions.length);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.importSuccess(allSessions.length)),
+            content: Text(message),
             action: SnackBarAction(
               label: l10n.importViewGrid,
               onPressed: () => navigateToAppTab(ref, AppTab.grid),

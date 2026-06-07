@@ -147,7 +147,7 @@ class _SessionActionButtons extends ConsumerWidget {
               child: buildButton(
                 onPressed: () async {
                   Navigator.pop(context);
-                  await SessionEditSheet.show(context, session);
+                  await SessionEditSheet.showEdit(context, session);
                 },
                 icon: Icons.edit_outlined,
                 label: editLabel,

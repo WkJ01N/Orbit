@@ -120,6 +120,36 @@ class AppDatabase {
     return rows.map(CourseSession.fromMap).toList();
   }
 
+  Future<CourseSession?> getSessionById(String id) async {
+    final rows = await _db.query(
+      _tableName,
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return CourseSession.fromMap(rows.first);
+  }
+
+  Future<List<CourseSession>> searchSessions(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return [];
+    }
+    final pattern = '%$trimmed%';
+    final rows = await _db.query(
+      _tableName,
+      where:
+          'course_name LIKE ? OR course_code LIKE ? OR room LIKE ? OR teachers LIKE ?',
+      whereArgs: [pattern, pattern, pattern, pattern],
+      orderBy: 'start_at ASC',
+      limit: 100,
+    );
+    return rows.map(CourseSession.fromMap).toList();
+  }
+
   Future<List<CourseSession>> getUpcomingSessions(DateTime from) async {
     final rows = await _db.query(
       _tableName,

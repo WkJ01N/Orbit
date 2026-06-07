@@ -2,30 +2,31 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.0.1** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.0.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
-| 导入 | 多文件并行解析、自动合并去重；导入成功可跳转课表 |
-| 课表网格 | 左右滑动 / 按钮切换周次（无动画）；周选择器、批量删除；支持周一至周日 |
-| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组 |
-| 提醒 | 课前通知、次日摘要、打卡提醒；Android 可选系统闹钟 |
+| 导入 | 多文件并行解析、自动合并去重；导入成功可跳转课表；格式说明与本地化错误提示 |
+| 导出与备份 | 课表导出为 JSON / xlsx；JSON 备份恢复 |
+| 课表网格 | 左右滑动 / 按钮切换周次（无动画）；周选择器、批量删除；手动添加 / 编辑课程；课程搜索 |
+| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；FAB 快速添加课程 |
+| 提醒 | 课前通知、次日摘要、打卡提醒；通知点击跳转课程详情；Android 可选系统闹钟 |
 | 课程管理 | 编辑、备注、单节删除；详情页响应式快捷操作（窄屏自适应） |
 | Windows | 系统托盘、最小化到托盘、单实例启动、快速退出、可选开机自启 |
-| Android | AlarmManager 后台维护；电池优化引导 |
+| Android | AlarmManager 后台维护；电池优化双向开关；权限分项引导；重启后自动维护闹钟 |
 | 多语言 | 繁体中文、简体中文、English |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.0.1/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.0.2/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.0.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.0.1-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.0.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.0.2-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -41,7 +42,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 48 项测试
+flutter test          # 51 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -65,13 +66,39 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.0.1/orbit-v1.0.1-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.0.2/orbit-v1.0.2-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.0.1/orbit-v1.0.1-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.0.2/orbit-v1.0.2-release.apk
 ```
 
 ## 更新日志
+
+完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.0.2
+
+**导入与导出**
+- 课表导出 JSON / xlsx；JSON 备份恢复
+- 导入格式说明；xlsx 解析错误本地化提示
+
+**课表**
+- 手动添加 / 编辑单节课程（网格与「接下来」FAB）
+- 课程搜索（科目、课室、教师等）
+
+**提醒**
+- 通知点击跳转课程详情
+- Android 电池优化双向开关，同步系统真实状态
+- Android 权限分项展示与跳转设置；重启后自动维护闹钟
+
+**稳定性**
+- 提醒重排串行化；后台维护容错；冷启动通知延后处理
+- 前台 6 小时 debounce 重新同步；时区统一 `timezone_utils`
+- 设置页提醒失败 SnackBar / MaterialBanner 反馈
+
+**其他**
+- 版本号升至 1.0.2（`pubspec.yaml` build `+3`）
+- 测试增至 51 项
 
 ### v1.0.1
 

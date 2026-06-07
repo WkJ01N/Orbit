@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
@@ -67,6 +68,8 @@ final reminderSettingsProvider =
   ReminderSettingsNotifier.new,
 );
 
+final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
+
 class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
   @override
   Future<ReminderSettings> build() async {
@@ -77,30 +80,30 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     return settings;
   }
 
-  Future<void> _saveAndReschedule(ReminderSettings updated) async {
+  Future<int> _saveAndReschedule(ReminderSettings updated) async {
     await ref.read(settingsServiceProvider).save(updated);
     state = AsyncData(updated);
-    await _rescheduleReminders();
+    return _rescheduleReminders();
   }
 
-  Future<void> updateLeadMinutes(int minutes) async {
+  Future<int> updateLeadMinutes(int minutes) async {
     final current = state.value ?? const ReminderSettings();
-    await _saveAndReschedule(current.copyWith(leadMinutes: minutes));
+    return _saveAndReschedule(current.copyWith(leadMinutes: minutes));
   }
 
-  Future<void> setEnabled(bool enabled) async {
+  Future<int> setEnabled(bool enabled) async {
     final current = state.value ?? const ReminderSettings();
-    await _saveAndReschedule(current.copyWith(enabled: enabled));
+    return _saveAndReschedule(current.copyWith(enabled: enabled));
   }
 
-  Future<void> setNextDaySummaryEnabled(bool enabled) async {
+  Future<int> setNextDaySummaryEnabled(bool enabled) async {
     final current = state.value ?? const ReminderSettings();
-    await _saveAndReschedule(current.copyWith(nextDaySummaryEnabled: enabled));
+    return _saveAndReschedule(current.copyWith(nextDaySummaryEnabled: enabled));
   }
 
-  Future<void> setNextDaySummaryTime(TimeOfDay time) async {
+  Future<int> setNextDaySummaryTime(TimeOfDay time) async {
     final current = state.value ?? const ReminderSettings();
-    await _saveAndReschedule(
+    return _saveAndReschedule(
       current.copyWith(
         nextDaySummaryHour: time.hour,
         nextDaySummaryMinute: time.minute,
@@ -122,32 +125,41 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     state = AsyncData(updated);
   }
 
-  Future<void> setCheckInReminderEnabled(bool enabled) async {
+  Future<int> setCheckInReminderEnabled(bool enabled) async {
     final current = state.value ?? const ReminderSettings();
-    await _saveAndReschedule(
+    return _saveAndReschedule(
       current.copyWith(checkInReminderEnabled: enabled),
     );
   }
 
-  Future<int> resyncReminders() async {
+  Future<int> resyncReminders() {
     return _rescheduleReminders();
   }
 
   Future<int> _rescheduleReminders() async {
-    final settings = state.value ?? const ReminderSettings();
-    final locale = ref.read(localeProvider);
-    final copy = notificationCopyFor(locale);
-    final repository = ref.read(scheduleRepositoryProvider);
-    final upcoming = await repository.getUpcomingSessions();
-    final all = await repository.getAllSessions();
-    final scheduler = ref.read(reminderSchedulerProvider);
-    await scheduler.rescheduleAll(
-      upcomingSessions: upcoming,
-      allSessions: all,
-      settings: settings,
-      copy: copy,
-    );
-    return scheduler.lastScheduleFailureCount;
+    try {
+      final settings = state.value ?? const ReminderSettings();
+      final locale = ref.read(localeProvider);
+      final copy = notificationCopyFor(locale);
+      final repository = ref.read(scheduleRepositoryProvider);
+      final upcoming = await repository.getUpcomingSessions();
+      final all = await repository.getAllSessions();
+      final scheduler = ref.read(reminderSchedulerProvider);
+      await scheduler.rescheduleAll(
+        upcomingSessions: upcoming,
+        allSessions: all,
+        settings: settings,
+        copy: copy,
+      );
+      ref.read(lastRescheduleErrorProvider.notifier).state = null;
+      scheduler.markRescheduleSuccess();
+      return scheduler.lastScheduleFailureCount;
+    } catch (error, stackTrace) {
+      debugPrint('Reminder reschedule failed: $error');
+      debugPrint('$stackTrace');
+      ref.read(lastRescheduleErrorProvider.notifier).state = '$error';
+      return 0;
+    }
   }
 }
 

@@ -28,7 +28,7 @@ class SessionActionMenu {
 
     switch (action) {
       case SessionAction.edit:
-        await SessionEditSheet.show(context, session);
+        await SessionEditSheet.showEdit(context, session);
       case SessionAction.note:
         await SessionNoteSheet.show(context, session);
       case SessionAction.delete:
@@ -169,15 +169,24 @@ class SessionActionMenu {
     );
 
     if (confirmed == true) {
-      await ref.read(scheduleRepositoryProvider).deleteSession(session.id);
-      await rescheduleAllReminders(ref);
-      refreshSchedule(ref);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.sessionDeleted)),
-        );
+      try {
+        await ref.read(scheduleRepositoryProvider).deleteSession(session.id);
+        await rescheduleAllReminders(ref);
+        refreshSchedule(ref);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.sessionDeleted)),
+          );
+        }
+        return true;
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.deleteFailed('$e'))),
+          );
+        }
+        return false;
       }
-      return true;
     }
     return false;
   }

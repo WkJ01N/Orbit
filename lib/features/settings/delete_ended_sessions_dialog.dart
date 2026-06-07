@@ -41,14 +41,22 @@ Future<void> deleteEndedSessionsWithFeedback(
     return;
   }
 
-  final deleted =
-      await ref.read(scheduleRepositoryProvider).deleteEndedSessions();
-  await rescheduleAllReminders(ref);
-  refreshSchedule(ref);
+  try {
+    final deleted =
+        await ref.read(scheduleRepositoryProvider).deleteEndedSessions();
+    await rescheduleAllReminders(ref);
+    refreshSchedule(ref);
 
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.deleteEndedDone(deleted))),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.deleteEndedDone(deleted))),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.deleteFailed('$e'))),
+      );
+    }
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/desktop/desktop_shell.dart';
 import 'package:orbit/core/routing/app_shell.dart';
+import 'package:orbit/core/routing/notification_listener.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -29,7 +30,9 @@ class OrbitApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const DesktopShell(child: AppShell()),
+      home: const OrbitNotificationListener(
+        child: DesktopShell(child: AppShell()),
+      ),
     );
   }
 }

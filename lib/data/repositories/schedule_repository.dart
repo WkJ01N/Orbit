@@ -1,6 +1,8 @@
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/services/schedule_backup_service.dart';
+import 'package:orbit/services/xlsx_exporter.dart';
 import 'package:orbit/services/xlsx_parser.dart';
 
 class ScheduleRepository {
@@ -32,6 +34,54 @@ class ScheduleRepository {
 
   Future<List<CourseSession>> getAllSessions() {
     return _database.getAllSessions();
+  }
+
+  Future<CourseSession?> getSessionById(String id) {
+    return _database.getSessionById(id);
+  }
+
+  Future<List<CourseSession>> searchSessions(String query) {
+    return _database.searchSessions(query);
+  }
+
+  Future<List<int>> exportToXlsxBytes() async {
+    final sessions = await getAllSessions();
+    return XlsxExporter().exportBytes(sessions);
+  }
+
+  Future<String> exportToJsonBackup() async {
+    final sessions = await getAllSessions();
+    return ScheduleBackupService().encodeToJson(sessions);
+  }
+
+  Future<List<CourseSession>> importFromJsonBackup(String raw) async {
+    final sessions = ScheduleBackupService().decodeFromJson(raw);
+    return importParsedSessions(sessions);
+  }
+
+  Future<void> insertSession(CourseSession session) async {
+    await _database.upsertSessions([session]);
+  }
+
+  Future<bool> hasTimeConflict(CourseSession candidate, {String? excludeId}) async {
+    final sessions = await getAllSessions();
+    for (final existing in sessions) {
+      if (excludeId != null && existing.id == excludeId) {
+        continue;
+      }
+      if (!_sameDate(existing.date, candidate.date)) {
+        continue;
+      }
+      if (existing.startAt.isBefore(candidate.endAt) &&
+          candidate.startAt.isBefore(existing.endAt)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _sameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   Future<List<CourseSession>> getUpcomingSessions({DateTime? from}) {

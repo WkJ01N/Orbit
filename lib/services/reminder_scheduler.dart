@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
+import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
+
+typedef NotificationTapCallback = void Function(String? payload);
 
 class ReminderScheduler {
   ReminderScheduler._();
@@ -17,7 +20,13 @@ class ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _permissionsRequested = false;
   int lastScheduleFailureCount = 0;
+  NotificationTapCallback? _notificationTapCallback;
+  Future<void> _rescheduleChain = Future.value();
+  DateTime? _lastSuccessfulRescheduleAt;
+
+  static const _foregroundResyncDebounce = Duration(hours: 6);
 
   static const _channelId = 'orbit_course_reminders';
   static const _classLeadBase = 1;
@@ -25,18 +34,12 @@ class ReminderScheduler {
   static const _nextDaySummaryBase = 1000000;
   static const _nextDaySummaryDays = 30;
 
-  Future<void> initialize({required NotificationCopy copy}) async {
+  Future<void> ensurePluginInitialized() async {
     if (_initialized) {
-      await _ensureAndroidChannel(copy);
       return;
     }
 
-    tz_data.initializeTimeZones();
-    try {
-      tz.setLocalLocation(tz.getLocation('Asia/Macau'));
-    } catch (_) {
-      tz.setLocalLocation(tz.local);
-    }
+    configureReminderTimezone();
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const windowsSettings = WindowsInitializationSettings(
@@ -49,17 +52,79 @@ class ReminderScheduler {
       windows: windowsSettings,
     );
 
-    await _plugin.initialize(initSettings);
+    await _plugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationResponse,
+    );
+    _initialized = true;
+  }
+
+  Future<void> initialize({required NotificationCopy copy}) async {
+    await ensurePluginInitialized();
 
     if (Platform.isAndroid) {
       final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      await androidPlugin?.requestNotificationsPermission();
-      await androidPlugin?.requestExactAlarmsPermission();
+      if (!_permissionsRequested) {
+        await androidPlugin?.requestNotificationsPermission();
+        await androidPlugin?.requestExactAlarmsPermission();
+        _permissionsRequested = true;
+      }
       await _ensureAndroidChannel(copy);
     }
+  }
 
-    _initialized = true;
+  void registerNotificationTapHandler(NotificationTapCallback callback) {
+    _notificationTapCallback = callback;
+  }
+
+  Future<String?> getLaunchNotificationPayload() async {
+    await ensurePluginInitialized();
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp != true) {
+      return null;
+    }
+    return details?.notificationResponse?.payload;
+  }
+
+  void markRescheduleSuccess() {
+    _lastSuccessfulRescheduleAt = DateTime.now();
+  }
+
+  bool shouldResyncOnForeground() {
+    final last = _lastSuccessfulRescheduleAt;
+    if (last == null) {
+      return true;
+    }
+    return DateTime.now().difference(last) >= _foregroundResyncDebounce;
+  }
+
+  Future<ReminderPermissionStatus> queryPermissionStatus() async {
+    if (!Platform.isAndroid) {
+      return const ReminderPermissionStatus(
+        notificationsEnabled: true,
+        exactAlarmsEnabled: true,
+      );
+    }
+
+    await ensurePluginInitialized();
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin == null) {
+      return ReminderPermissionStatus.unknown;
+    }
+
+    final notifications = await androidPlugin.areNotificationsEnabled() ?? false;
+    final exactAlarms =
+        await androidPlugin.canScheduleExactNotifications() ?? false;
+    return ReminderPermissionStatus(
+      notificationsEnabled: notifications,
+      exactAlarmsEnabled: exactAlarms,
+    );
+  }
+
+  void _onNotificationResponse(NotificationResponse response) {
+    _notificationTapCallback?.call(response.payload);
   }
 
   Future<void> _ensureAndroidChannel(NotificationCopy copy) async {
@@ -79,6 +144,23 @@ class ReminderScheduler {
   }
 
   Future<void> rescheduleAll({
+    required List<CourseSession> upcomingSessions,
+    required List<CourseSession> allSessions,
+    required ReminderSettings settings,
+    required NotificationCopy copy,
+  }) {
+    _rescheduleChain = _rescheduleChain.then(
+      (_) => _rescheduleAllImpl(
+        upcomingSessions: upcomingSessions,
+        allSessions: allSessions,
+        settings: settings,
+        copy: copy,
+      ),
+    );
+    return _rescheduleChain;
+  }
+
+  Future<void> _rescheduleAllImpl({
     required List<CourseSession> upcomingSessions,
     required List<CourseSession> allSessions,
     required ReminderSettings settings,

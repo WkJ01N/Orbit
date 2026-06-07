@@ -137,9 +137,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get androidBatteryOptimizationGuided => 'Setup guided';
-
-  @override
   String get trayInitFailed => 'System tray unavailable';
 
   @override
@@ -390,12 +387,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get androidBatteryOptimization => 'Battery optimization exemption';
 
   @override
-  String get androidBatteryOptimizationHint =>
-      'Tap to allow ignoring battery optimization';
+  String get androidBatteryOptimizationSubtitleOn =>
+      'Exempt from battery optimization for more reliable reminders';
 
   @override
-  String get androidBatteryOptimizationDone =>
-      'Battery optimization exemption configured';
+  String get androidBatteryOptimizationSubtitleOff =>
+      'Enable to improve background reminder reliability';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmTitle =>
+      'Turn off battery optimization exemption?';
+
+  @override
+  String get androidBatteryOptimizationDisableConfirmContent =>
+      'You will be taken to system settings to restore battery optimization. Background reminders may be less reliable.';
 
   @override
   String get androidAutostartHint =>
@@ -661,4 +666,254 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationNextDayNoClassBody =>
       'No classes scheduled for tomorrow.';
+
+  @override
+  String get exportScheduleJson => 'Export JSON backup';
+
+  @override
+  String get exportScheduleJsonSubtitle =>
+      'Save all schedule data for restore or migration';
+
+  @override
+  String get exportScheduleXlsx => 'Export as xlsx';
+
+  @override
+  String get exportScheduleXlsxSubtitle =>
+      'Export in the same format as import';
+
+  @override
+  String get restoreFromBackup => 'Restore from backup';
+
+  @override
+  String get restoreFromBackupSubtitle =>
+      'Import schedule from a JSON backup file';
+
+  @override
+  String exportDone(int count) {
+    return 'Exported $count class sessions';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get exportNothingToExport => 'No schedule data to export';
+
+  @override
+  String get restoreConfirmTitle => 'Restore backup?';
+
+  @override
+  String restoreConfirmContent(int count) {
+    return 'This will merge $count class sessions from the backup.';
+  }
+
+  @override
+  String restoreDone(int count) {
+    return 'Restored $count class sessions';
+  }
+
+  @override
+  String restoreFailed(String error) {
+    return 'Restore failed: $error';
+  }
+
+  @override
+  String get backupInvalidFormat => 'Invalid backup file format';
+
+  @override
+  String get backupUnsupportedVersion => 'Unsupported backup version';
+
+  @override
+  String get addSession => 'Add class';
+
+  @override
+  String get addSessionTitle => 'Add class';
+
+  @override
+  String get fieldDate => 'Date';
+
+  @override
+  String get fieldCourseCode => 'Course code';
+
+  @override
+  String get fieldSection => 'Section';
+
+  @override
+  String get defaultClassType => 'General class';
+
+  @override
+  String get sessionCreated => 'Class added';
+
+  @override
+  String get sessionCreateRequiredFields => 'Course name and room are required';
+
+  @override
+  String get sessionTimeConflict => 'Another class overlaps this time slot';
+
+  @override
+  String get actionCreate => 'Create';
+
+  @override
+  String sessionSaveFailed(String error) {
+    return 'Failed to save: $error';
+  }
+
+  @override
+  String deleteFailed(String error) {
+    return 'Delete failed: $error';
+  }
+
+  @override
+  String get languageChangedResynced =>
+      'Language updated and reminders resynced';
+
+  @override
+  String get searchSessions => 'Search classes';
+
+  @override
+  String get searchHint => 'Search by course, room, or teacher';
+
+  @override
+  String get searchNoResults => 'No matching classes';
+
+  @override
+  String get importFormatTitle => 'Schedule file format';
+
+  @override
+  String get importFormatSubtitle =>
+      'xlsx columns A–M (one row per class session)';
+
+  @override
+  String get importFormatColumn => 'Col';
+
+  @override
+  String get importFormatField => 'Field';
+
+  @override
+  String get importFormatExample => 'Example';
+
+  @override
+  String get importFormatClassType => 'Class type';
+
+  @override
+  String get importFormatClassTypeExample => 'General class';
+
+  @override
+  String get importFormatRoom => 'Room';
+
+  @override
+  String get importFormatRoomExample => 'A001';
+
+  @override
+  String get importFormatCapacity => 'Capacity';
+
+  @override
+  String get importFormatCapacityExample => '67';
+
+  @override
+  String get importFormatFaculty => 'Faculty';
+
+  @override
+  String get importFormatFacultyExample => 'Example Faculty';
+
+  @override
+  String get importFormatDate => 'Date';
+
+  @override
+  String get importFormatDateExample => '2026-07-27';
+
+  @override
+  String get importFormatWeekday => 'Weekday';
+
+  @override
+  String get importFormatWeekdayExample => '1 (Mon) – 7 (Sun)';
+
+  @override
+  String get importFormatCourseName => 'Course name';
+
+  @override
+  String get importFormatCourseNameExample => 'Physics';
+
+  @override
+  String get importFormatCourseCode => 'Course code';
+
+  @override
+  String get importFormatCourseCodeExample => 'P0721';
+
+  @override
+  String get importFormatSection => 'Section';
+
+  @override
+  String get importFormatSectionExample => 'EX1';
+
+  @override
+  String get importFormatStartTime => 'Start time';
+
+  @override
+  String get importFormatStartTimeExample => '12:30';
+
+  @override
+  String get importFormatEndTime => 'End time';
+
+  @override
+  String get importFormatEndTimeExample => '15:20';
+
+  @override
+  String get importFormatTeachers => 'Teachers';
+
+  @override
+  String get importFormatTeachersExample => 'Miku,null';
+
+  @override
+  String get importFormatSemester => 'Semester';
+
+  @override
+  String get importFormatSemesterExample => '2606';
+
+  @override
+  String get xlsxErrorNoSheet => 'No worksheet found in file';
+
+  @override
+  String get xlsxErrorEmptySheet => 'Schedule file is empty';
+
+  @override
+  String get xlsxErrorNoSessions => 'No class sessions parsed';
+
+  @override
+  String xlsxErrorInsufficientColumns(String detail) {
+    return 'Insufficient columns ($detail)';
+  }
+
+  @override
+  String xlsxErrorInvalidDate(String detail) {
+    return 'Invalid date: $detail';
+  }
+
+  @override
+  String xlsxErrorInvalidTime(String detail) {
+    return 'Invalid time: $detail';
+  }
+
+  @override
+  String reminderSyncFailed(String error) {
+    return 'Reminder sync failed: $error';
+  }
+
+  @override
+  String get reminderResyncFailedBanner =>
+      'Reminders could not be synced. Tap Resync to try again.';
+
+  @override
+  String get androidNotificationsEnabled => 'Notifications enabled';
+
+  @override
+  String get androidNotificationsDisabled => 'Notifications disabled';
+
+  @override
+  String get androidExactAlarmsEnabled => 'Exact alarms allowed';
+
+  @override
+  String get androidExactAlarmsDisabled => 'Exact alarms not allowed';
 }

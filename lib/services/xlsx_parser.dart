@@ -1,13 +1,38 @@
 import 'package:excel/excel.dart';
+import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 
-class XlsxParseException implements Exception {
-  XlsxParseException(this.message);
+enum XlsxParseErrorCode {
+  noSheet,
+  emptySheet,
+  noSessions,
+  insufficientColumns,
+  invalidDate,
+  invalidTime,
+}
 
-  final String message;
+class XlsxParseException implements Exception {
+  XlsxParseException(this.code, {this.detail});
+
+  final XlsxParseErrorCode code;
+  final String? detail;
+
+  String localizedMessage(AppLocalizations l10n) {
+    return switch (code) {
+      XlsxParseErrorCode.noSheet => l10n.xlsxErrorNoSheet,
+      XlsxParseErrorCode.emptySheet => l10n.xlsxErrorEmptySheet,
+      XlsxParseErrorCode.noSessions => l10n.xlsxErrorNoSessions,
+      XlsxParseErrorCode.insufficientColumns =>
+        l10n.xlsxErrorInsufficientColumns(detail ?? ''),
+      XlsxParseErrorCode.invalidDate =>
+        l10n.xlsxErrorInvalidDate(detail ?? ''),
+      XlsxParseErrorCode.invalidTime =>
+        l10n.xlsxErrorInvalidTime(detail ?? ''),
+    };
+  }
 
   @override
-  String toString() => 'XlsxParseException: $message';
+  String toString() => 'XlsxParseException($code, $detail)';
 }
 
 class XlsxParser {
@@ -17,12 +42,12 @@ class XlsxParser {
   }) {
     final excel = Excel.decodeBytes(bytes);
     if (excel.tables.isEmpty) {
-      throw XlsxParseException('檔案中找不到工作表');
+      throw XlsxParseException(XlsxParseErrorCode.noSheet);
     }
 
     final sheet = excel.tables.values.first;
     if (sheet.maxRows <= 1) {
-      throw XlsxParseException('課表內容為空');
+      throw XlsxParseException(XlsxParseErrorCode.emptySheet);
     }
 
     final sessions = <CourseSession>[];
@@ -35,7 +60,7 @@ class XlsxParser {
     }
 
     if (sessions.isEmpty) {
-      throw XlsxParseException('未解析到任何課程資料');
+      throw XlsxParseException(XlsxParseErrorCode.noSessions);
     }
 
     return sessions;
@@ -58,7 +83,10 @@ class XlsxParser {
     String? sourceFile,
   }) {
     if (row.length < 13) {
-      throw XlsxParseException('資料列欄位不足（第 ${row.length} 欄）');
+      throw XlsxParseException(
+        XlsxParseErrorCode.insufficientColumns,
+        detail: row.length.toString(),
+      );
     }
 
     final date = _parseDate(row[4]);
@@ -146,7 +174,7 @@ class XlsxParser {
     final value = raw.trim();
     final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
     if (match == null) {
-      throw XlsxParseException('無法解析日期：$value');
+      throw XlsxParseException(XlsxParseErrorCode.invalidDate, detail: value);
     }
     return DateTime(
       int.parse(match.group(1)!),
@@ -167,7 +195,7 @@ class XlsxParser {
     final value = raw.trim();
     final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
     if (match == null) {
-      throw XlsxParseException('無法解析時間：$value');
+      throw XlsxParseException(XlsxParseErrorCode.invalidTime, detail: value);
     }
     return DateTime(
       date.year,
