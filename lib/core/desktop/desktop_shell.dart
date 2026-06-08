@@ -14,13 +14,16 @@ class DesktopShell extends StatefulWidget {
   State<DesktopShell> createState() => _DesktopShellState();
 }
 
-class _DesktopShellState extends State<DesktopShell> with WindowListener {
+class _DesktopShellState extends State<DesktopShell>
+    with WindowListener, WidgetsBindingObserver {
   bool _trayHintShown = false;
+  Locale? _lastLocale;
 
   @override
   void initState() {
     super.initState();
     if (Platform.isWindows) {
+      WidgetsBinding.instance.addObserver(this);
       windowManager.addListener(this);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _initTray();
@@ -53,20 +56,58 @@ class _DesktopShellState extends State<DesktopShell> with WindowListener {
   @override
   void dispose() {
     if (Platform.isWindows) {
+      WidgetsBinding.instance.removeObserver(this);
       windowManager.removeListener(this);
     }
     super.dispose();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!Platform.isWindows) {
+      return;
+    }
+    final locale = Localizations.localeOf(context);
+    if (_lastLocale != null && _lastLocale != locale) {
+      final l10n = AppLocalizations.of(context)!;
+      TrayService.instance.updateLabels(
+        showLabel: l10n.trayShow,
+        exitLabel: l10n.trayExit,
+        tooltip: l10n.appTitle,
+      );
+    }
+    _lastLocale = locale;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      TrayService.instance.repairIfNeeded();
+    }
+  }
+
+  @override
+  void onWindowFocus() {
+    TrayService.instance.repairIfNeeded();
+  }
+
+  @override
   void onWindowClose() {
-    hideMainWindow();
+    // On the first close, show the hint while the window is still visible, then
+    // hide shortly after so the user actually sees where the app went.
     if (!_trayHintShown && mounted) {
       _trayHintShown = true;
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.trayHiddenHint)),
+        SnackBar(
+          content: Text(l10n.trayHiddenHint),
+          duration: const Duration(seconds: 2),
+        ),
       );
+      Future.delayed(const Duration(milliseconds: 1500), hideMainWindow);
+    } else {
+      hideMainWindow();
     }
   }
 

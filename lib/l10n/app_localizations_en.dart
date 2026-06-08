@@ -753,6 +753,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionTimeConflict => 'Another class overlaps this time slot';
 
   @override
+  String sessionSavedWithOverride(int count) {
+    return 'Saved. Replaced $count overlapping class(es).';
+  }
+
+  @override
+  String get importStrategyTitle => 'Duplicate weeks detected';
+
+  @override
+  String importStrategyMessage(int count) {
+    return '$count week(s) in this import already contain classes. Choose how to import them.';
+  }
+
+  @override
+  String get importStrategyReplaceWeek => 'Replace whole week';
+
+  @override
+  String get importStrategyReplaceWeekDesc =>
+      'Delete all existing classes in those weeks, then import the new ones.';
+
+  @override
+  String get importStrategyMerge => 'Merge and overwrite conflicts';
+
+  @override
+  String get importStrategyMergeDesc =>
+      'Keep other classes; replace only those whose time overlaps an imported class.';
+
+  @override
   String get actionCreate => 'Create';
 
   @override
@@ -777,6 +804,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchNoResults => 'No matching classes';
+
+  @override
+  String searchFailed(String error) {
+    return 'Search failed: $error';
+  }
+
+  @override
+  String searchResultsTruncated(int count) {
+    return 'Showing first $count results only';
+  }
+
+  @override
+  String gridBatchDeleteFailed(String error) {
+    return 'Batch delete failed: $error';
+  }
+
+  @override
+  String clearAllFailed(String error) {
+    return 'Failed to clear schedule: $error';
+  }
+
+  @override
+  String launchAtStartupFailed(String error) {
+    return 'Failed to update startup setting: $error';
+  }
+
+  @override
+  String get sectionSchedule => 'Schedule';
+
+  @override
+  String get gridDefaultWeekTitle => 'Default week';
+
+  @override
+  String get gridDefaultWeekSubtitle =>
+      'Which week to show when opening the schedule';
+
+  @override
+  String get gridDefaultWeekSmart => 'Smart';
+
+  @override
+  String get gridDefaultWeekCurrent => 'This week';
+
+  @override
+  String get gridDefaultWeekEarliest => 'Earliest week with classes';
+
+  @override
+  String get exportInProgress => 'Exporting…';
 
   @override
   String get importFormatTitle => 'Schedule file format';

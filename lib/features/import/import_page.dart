@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
 import 'package:orbit/core/routing/app_tab.dart';
+import 'package:orbit/data/repositories/schedule_repository.dart';
 import 'package:orbit/features/import/import_format_help.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
@@ -165,12 +166,28 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     if (files == null || files.isEmpty) {
       return;
     }
+
+    final repository = ref.read(scheduleRepositoryProvider);
+    final allSessions = files.expand((f) => f.sessions).toList();
+
+    final overlappingWeeks = await repository.findOverlappingWeeks(allSessions);
+    if (!mounted) {
+      return;
+    }
+
+    var strategy = ImportMergeStrategy.mergeOverwrite;
+    if (overlappingWeeks.isNotEmpty) {
+      final picked = await _pickImportStrategy(overlappingWeeks.length);
+      if (picked == null || !mounted) {
+        return;
+      }
+      strategy = picked;
+    }
+
     setState(() => _isImporting = true);
 
     try {
-      final repository = ref.read(scheduleRepositoryProvider);
-      final allSessions = files.expand((f) => f.sessions).toList();
-      await repository.importParsedSessions(allSessions);
+      await repository.importParsedSessionsWithStrategy(allSessions, strategy);
       final failures =
           await ref.read(reminderSettingsProvider.notifier).resyncReminders();
       refreshSchedule(ref);
@@ -201,6 +218,106 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         });
       }
     }
+  }
+
+  Future<ImportMergeStrategy?> _pickImportStrategy(int weekCount) {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<ImportMergeStrategy>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(l10n.importStrategyTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.importStrategyMessage(weekCount)),
+              const SizedBox(height: 16),
+              _ImportStrategyOption(
+                icon: Icons.delete_sweep_outlined,
+                title: l10n.importStrategyReplaceWeek,
+                description: l10n.importStrategyReplaceWeekDesc,
+                onTap: () => Navigator.pop(
+                  context,
+                  ImportMergeStrategy.replaceWeek,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ImportStrategyOption(
+                icon: Icons.merge_outlined,
+                title: l10n.importStrategyMerge,
+                description: l10n.importStrategyMergeDesc,
+                onTap: () => Navigator.pop(
+                  context,
+                  ImportMergeStrategy.mergeOverwrite,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.actionCancel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ImportStrategyOption extends StatelessWidget {
+  const _ImportStrategyOption({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

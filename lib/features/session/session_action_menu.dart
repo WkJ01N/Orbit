@@ -171,11 +171,14 @@ class SessionActionMenu {
     if (confirmed == true) {
       try {
         await ref.read(scheduleRepositoryProvider).deleteSession(session.id);
-        await rescheduleAllReminders(ref);
+        final failures = await rescheduleAllReminders(ref);
         refreshSchedule(ref);
         if (context.mounted) {
+          final message = failures > 0
+              ? '${l10n.sessionDeleted} ${l10n.resyncPartialFailed(failures)}'
+              : l10n.sessionDeleted;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.sessionDeleted)),
+            SnackBar(content: Text(message)),
           );
         }
         return true;

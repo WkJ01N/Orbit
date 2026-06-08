@@ -61,3 +61,60 @@ bool weekHasSessions(DateTime weekStart, List<CourseSession> sessions) {
   }
   return false;
 }
+
+/// Which week the schedule grid opens to when the user has not picked a week.
+enum GridDefaultWeekMode { smart, current, earliest }
+
+DateTime? earliestWeekStartFromSessions(List<CourseSession> sessions) {
+  if (sessions.isEmpty) {
+    return null;
+  }
+  final earliest = sessions
+      .map((session) => session.date)
+      .reduce((a, b) => a.isBefore(b) ? a : b);
+  return weekStartFor(earliest);
+}
+
+/// Resolves the week to display based on the user's [mode] preference.
+/// Returns null when there are no sessions.
+DateTime? resolveDefaultWeekStart(
+  List<CourseSession> sessions,
+  GridDefaultWeekMode mode,
+) {
+  if (sessions.isEmpty) {
+    return null;
+  }
+  final thisWeek = weekStartFor(DateTime.now());
+  switch (mode) {
+    case GridDefaultWeekMode.current:
+      return thisWeek;
+    case GridDefaultWeekMode.earliest:
+      return earliestWeekStartFromSessions(sessions);
+    case GridDefaultWeekMode.smart:
+      if (weekHasSessions(thisWeek, sessions)) {
+        return thisWeek;
+      }
+      return _nearestWeekWithSessions(sessions, thisWeek) ??
+          earliestWeekStartFromSessions(sessions);
+  }
+}
+
+DateTime? _nearestWeekWithSessions(
+  List<CourseSession> sessions,
+  DateTime reference,
+) {
+  final weeks = sessions.map((s) => weekStartFor(s.date)).toSet();
+  DateTime? best;
+  int? bestDistance;
+  for (final week in weeks) {
+    final distance = week.difference(reference).inDays.abs();
+    // On ties, prefer the upcoming week so users land on classes ahead of them.
+    if (bestDistance == null ||
+        distance < bestDistance ||
+        (distance == bestDistance && week.isAfter(best!))) {
+      best = week;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}

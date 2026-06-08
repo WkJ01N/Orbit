@@ -2,31 +2,31 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.0.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.0.3** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
-| 导入 | 多文件并行解析、自动合并去重；导入成功可跳转课表；格式说明与本地化错误提示 |
-| 导出与备份 | 课表导出为 JSON / xlsx；JSON 备份恢复 |
-| 课表网格 | 左右滑动 / 按钮切换周次（无动画）；周选择器、批量删除；手动添加 / 编辑课程；课程搜索 |
+| 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
+| 导出与备份 | 课表导出为 JSON / xlsx；JSON 备份恢复；导出 / 还原进行中状态 |
+| 课表网格 | 左右滑动 / 按钮切换周次（无动画）；默认周次可设（智能 / 本周 / 最早）；周选择器、批量删除；手动添加 / 编辑课程；冲突覆盖保存；课程搜索（简繁互搜） |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；FAB 快速添加课程 |
-| 提醒 | 课前通知、次日摘要、打卡提醒；通知点击跳转课程详情；Android 可选系统闹钟 |
+| 提醒 | 课前通知、次日摘要、打卡提醒；通知点击跳转课程详情；重排失败全局 Banner / SnackBar 反馈；Android 可选系统闹钟 |
 | 课程管理 | 编辑、备注、单节删除；详情页响应式快捷操作（窄屏自适应） |
-| Windows | 系统托盘、最小化到托盘、单实例启动、快速退出、可选开机自启 |
-| Android | AlarmManager 后台维护；电池优化双向开关；权限分项引导；重启后自动维护闹钟 |
+| Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启 |
+| Android | AlarmManager 后台维护；电池优化双向开关；权限分项引导（含精确闹钟）；重启后自动维护闹钟 |
 | 多语言 | 繁体中文、简体中文、English |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.0.2/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.0.3/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.0.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.0.2-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.0.3-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.0.3-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -42,7 +42,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 51 项测试
+flutter test          # 54 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -66,15 +66,34 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.0.2/orbit-v1.0.2-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.0.3/orbit-v1.0.3-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.0.2/orbit-v1.0.2-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.0.3/orbit-v1.0.3-release.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.0.3
+
+**导入与课表**
+- 重复周导入策略（整周替换 / 合并并覆盖冲突）；手动编辑冲突覆盖保存
+- 默认周次设置（智能 / 本周 / 最早）；简繁互搜；搜索 loading / 错误 / 截断提示
+- 当周无课「立即导入」入口
+
+**提醒**
+- 增删改后重排部分失败 SnackBar；全局 MaterialBanner 提示重新同步
+- Android 精确闹钟权限直达授权页
+
+**Windows**
+- 锁屏 / 合盖后托盘图标自检恢复；通知点击唤窗；关闭前托盘提示；托盘随语言更新
+
+**稳定性与其他**
+- 提醒部分失败全局可感知；导出 / 还原 loading；保存防双击；语义化错误文案
+- 修复搜索详情跳转、Android 导出取消误报成功、精确闹钟跳转
+- 版本号 1.0.3（build `+4`）；测试 54 项
 
 ### v1.0.2
 

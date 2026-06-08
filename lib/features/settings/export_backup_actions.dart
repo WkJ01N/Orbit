@@ -31,11 +31,11 @@ Future<void> exportScheduleJson(
       allowedExtensions: ['json'],
       bytes: utf8.encode(json),
     );
-    if (path == null && !Platform.isAndroid) {
+    if (path == null) {
       return;
     }
 
-    if (path != null && !Platform.isAndroid) {
+    if (!Platform.isAndroid) {
       await File(path).writeAsString(json);
     }
 
@@ -70,11 +70,11 @@ Future<void> exportScheduleXlsx(
       allowedExtensions: ['xlsx'],
       bytes: Uint8List.fromList(bytes),
     );
-    if (path == null && !Platform.isAndroid) {
+    if (path == null) {
       return;
     }
 
-    if (path != null && !Platform.isAndroid) {
+    if (!Platform.isAndroid) {
       await File(path).writeAsBytes(bytes);
     }
 

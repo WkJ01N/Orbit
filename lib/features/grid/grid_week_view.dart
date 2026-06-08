@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/adjacent_page_pager.dart';
+import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/features/grid/grid_pager_cache.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/features/session/current_time_indicator.dart';
@@ -237,6 +238,12 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => navigateToAppTab(ref, AppTab.import),
+              icon: const Icon(Icons.upload_file),
+              label: Text(l10n.gridImportNow),
             ),
           ],
         ),

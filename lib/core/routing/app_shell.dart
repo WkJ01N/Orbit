@@ -6,6 +6,7 @@ import 'package:orbit/features/settings/settings_page.dart';
 import 'package:orbit/features/upcoming/upcoming_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
+import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/navigation_providers.dart';
 
 class _NavItem {
@@ -29,6 +30,8 @@ class AppShell extends ConsumerWidget {
     ImportPage(),
     SettingsPage(),
   ];
+
+  static const _settingsIndex = 3;
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
     return [
@@ -64,6 +67,39 @@ class AppShell extends ConsumerWidget {
 
     void onDestinationSelected(int index) {
       ref.read(appNavIndexProvider.notifier).state = index;
+    }
+
+    // The settings page renders its own banner inside the reminders section, so
+    // suppress the global one there to avoid showing it twice.
+    final rescheduleError = ref.watch(lastRescheduleErrorProvider);
+    final showReminderBanner =
+        rescheduleError != null && selectedIndex != AppShell._settingsIndex;
+
+    Widget wrapWithBanner(Widget content) {
+      if (!showReminderBanner) {
+        return content;
+      }
+      return Column(
+        children: [
+          MaterialBanner(
+            content: Text(l10n.reminderResyncFailedBanner),
+            leading: Icon(Icons.warning_amber, color: colorScheme.error),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    ref.read(lastRescheduleErrorProvider.notifier).state = null,
+                child: Text(l10n.actionCancel),
+              ),
+              TextButton(
+                onPressed: () =>
+                    ref.read(reminderSettingsProvider.notifier).resyncReminders(),
+                child: Text(l10n.resyncReminders),
+              ),
+            ],
+          ),
+          Expanded(child: content),
+        ],
+      );
     }
 
     return LayoutBuilder(
@@ -105,9 +141,11 @@ class AppShell extends ConsumerWidget {
                   color: colorScheme.outlineVariant,
                 ),
                 Expanded(
-                  child: IndexedStack(
-                    index: selectedIndex,
-                    children: _pages,
+                  child: wrapWithBanner(
+                    IndexedStack(
+                      index: selectedIndex,
+                      children: _pages,
+                    ),
                   ),
                 ),
               ],
@@ -116,9 +154,11 @@ class AppShell extends ConsumerWidget {
         }
 
         return Scaffold(
-          body: IndexedStack(
-            index: selectedIndex,
-            children: _pages,
+          body: wrapWithBanner(
+            IndexedStack(
+              index: selectedIndex,
+              children: _pages,
+            ),
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: selectedIndex,

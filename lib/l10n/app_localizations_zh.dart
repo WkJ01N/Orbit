@@ -722,6 +722,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionTimeConflict => '該時段已有其他課程';
 
   @override
+  String sessionSavedWithOverride(int count) {
+    return '已儲存，並覆蓋了 $count 節時間衝突的課程。';
+  }
+
+  @override
+  String get importStrategyTitle => '偵測到重複週次';
+
+  @override
+  String importStrategyMessage(int count) {
+    return '本次匯入有 $count 個週次已存在課程，請選擇匯入方式。';
+  }
+
+  @override
+  String get importStrategyReplaceWeek => '整週取代';
+
+  @override
+  String get importStrategyReplaceWeekDesc => '刪除這些週次原有的全部課程，再匯入新課程。';
+
+  @override
+  String get importStrategyMerge => '合併並覆蓋衝突';
+
+  @override
+  String get importStrategyMergeDesc => '保留其他課程，僅取代與匯入課程時間重疊的課程。';
+
+  @override
   String get actionCreate => '建立';
 
   @override
@@ -745,6 +770,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchNoResults => '沒有符合的課程';
+
+  @override
+  String searchFailed(String error) {
+    return '搜尋失敗：$error';
+  }
+
+  @override
+  String searchResultsTruncated(int count) {
+    return '僅顯示前 $count 條結果';
+  }
+
+  @override
+  String gridBatchDeleteFailed(String error) {
+    return '批量刪除失敗：$error';
+  }
+
+  @override
+  String clearAllFailed(String error) {
+    return '清除課表失敗：$error';
+  }
+
+  @override
+  String launchAtStartupFailed(String error) {
+    return '更新開機啟動設定失敗：$error';
+  }
+
+  @override
+  String get sectionSchedule => '課表';
+
+  @override
+  String get gridDefaultWeekTitle => '預設週次';
+
+  @override
+  String get gridDefaultWeekSubtitle => '開啟課表時顯示的週次';
+
+  @override
+  String get gridDefaultWeekSmart => '智能';
+
+  @override
+  String get gridDefaultWeekCurrent => '本週';
+
+  @override
+  String get gridDefaultWeekEarliest => '最早有課週';
+
+  @override
+  String get exportInProgress => '正在匯出…';
 
   @override
   String get importFormatTitle => '課表檔案格式';
@@ -1602,6 +1673,31 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sessionTimeConflict => '该时段已有其他课程';
 
   @override
+  String sessionSavedWithOverride(int count) {
+    return '已保存，并覆盖了 $count 节时间冲突的课程。';
+  }
+
+  @override
+  String get importStrategyTitle => '检测到重复周次';
+
+  @override
+  String importStrategyMessage(int count) {
+    return '本次导入有 $count 个周次已存在课程，请选择导入方式。';
+  }
+
+  @override
+  String get importStrategyReplaceWeek => '整周替换';
+
+  @override
+  String get importStrategyReplaceWeekDesc => '删除这些周次原有的全部课程，再导入新课程。';
+
+  @override
+  String get importStrategyMerge => '合并并覆盖冲突';
+
+  @override
+  String get importStrategyMergeDesc => '保留其他课程，仅替换与导入课程时间重叠的课程。';
+
+  @override
   String get actionCreate => '创建';
 
   @override
@@ -1625,6 +1721,52 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get searchNoResults => '没有匹配的课程';
+
+  @override
+  String searchFailed(String error) {
+    return '搜索失败：$error';
+  }
+
+  @override
+  String searchResultsTruncated(int count) {
+    return '仅显示前 $count 条结果';
+  }
+
+  @override
+  String gridBatchDeleteFailed(String error) {
+    return '批量删除失败：$error';
+  }
+
+  @override
+  String clearAllFailed(String error) {
+    return '清除课表失败：$error';
+  }
+
+  @override
+  String launchAtStartupFailed(String error) {
+    return '更新开机启动设置失败：$error';
+  }
+
+  @override
+  String get sectionSchedule => '课表';
+
+  @override
+  String get gridDefaultWeekTitle => '默认周次';
+
+  @override
+  String get gridDefaultWeekSubtitle => '打开课表时显示的周次';
+
+  @override
+  String get gridDefaultWeekSmart => '智能';
+
+  @override
+  String get gridDefaultWeekCurrent => '本周';
+
+  @override
+  String get gridDefaultWeekEarliest => '最早有课周';
+
+  @override
+  String get exportInProgress => '正在导出…';
 
   @override
   String get importFormatTitle => '课表文件格式';
@@ -2482,6 +2624,31 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sessionTimeConflict => '該時段已有其他課程';
 
   @override
+  String sessionSavedWithOverride(int count) {
+    return '已儲存，並覆蓋了 $count 節時間衝突的課程。';
+  }
+
+  @override
+  String get importStrategyTitle => '偵測到重複週次';
+
+  @override
+  String importStrategyMessage(int count) {
+    return '本次匯入有 $count 個週次已存在課程，請選擇匯入方式。';
+  }
+
+  @override
+  String get importStrategyReplaceWeek => '整週取代';
+
+  @override
+  String get importStrategyReplaceWeekDesc => '刪除這些週次原有的全部課程，再匯入新課程。';
+
+  @override
+  String get importStrategyMerge => '合併並覆蓋衝突';
+
+  @override
+  String get importStrategyMergeDesc => '保留其他課程，僅取代與匯入課程時間重疊的課程。';
+
+  @override
   String get actionCreate => '建立';
 
   @override
@@ -2505,6 +2672,52 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get searchNoResults => '沒有符合的課程';
+
+  @override
+  String searchFailed(String error) {
+    return '搜尋失敗：$error';
+  }
+
+  @override
+  String searchResultsTruncated(int count) {
+    return '僅顯示前 $count 條結果';
+  }
+
+  @override
+  String gridBatchDeleteFailed(String error) {
+    return '批量刪除失敗：$error';
+  }
+
+  @override
+  String clearAllFailed(String error) {
+    return '清除課表失敗：$error';
+  }
+
+  @override
+  String launchAtStartupFailed(String error) {
+    return '更新開機啟動設定失敗：$error';
+  }
+
+  @override
+  String get sectionSchedule => '課表';
+
+  @override
+  String get gridDefaultWeekTitle => '預設週次';
+
+  @override
+  String get gridDefaultWeekSubtitle => '開啟課表時顯示的週次';
+
+  @override
+  String get gridDefaultWeekSmart => '智能';
+
+  @override
+  String get gridDefaultWeekCurrent => '本週';
+
+  @override
+  String get gridDefaultWeekEarliest => '最早有課週';
+
+  @override
+  String get exportInProgress => '正在匯出…';
 
   @override
   String get importFormatTitle => '課表檔案格式';

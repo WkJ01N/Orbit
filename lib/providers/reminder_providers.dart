@@ -151,9 +151,15 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
         settings: settings,
         copy: copy,
       );
-      ref.read(lastRescheduleErrorProvider.notifier).state = null;
+      final failures = scheduler.lastScheduleFailureCount;
+      if (failures > 0) {
+        ref.read(lastRescheduleErrorProvider.notifier).state =
+            'partial:$failures';
+      } else {
+        ref.read(lastRescheduleErrorProvider.notifier).state = null;
+      }
       scheduler.markRescheduleSuccess();
-      return scheduler.lastScheduleFailureCount;
+      return failures;
     } catch (error, stackTrace) {
       debugPrint('Reminder reschedule failed: $error');
       debugPrint('$stackTrace');

@@ -31,6 +31,7 @@ class SessionNoteSheet extends ConsumerStatefulWidget {
 
 class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
   late final TextEditingController _noteController;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -45,6 +46,9 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) {
+      return;
+    }
     final l10n = AppLocalizations.of(context)!;
     final note = _noteController.text.trim();
     final updated = widget.session.copyWith(
@@ -52,6 +56,7 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
       clearNote: note.isEmpty,
     );
 
+    setState(() => _saving = true);
     try {
       await ref.read(scheduleRepositoryProvider).updateSession(
             widget.session,
@@ -70,6 +75,10 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.sessionSaveFailed('$e'))),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
       }
     }
   }
@@ -96,8 +105,14 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
           ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: _save,
-            child: Text(l10n.actionApply),
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(l10n.actionApply),
           ),
         ],
       ),

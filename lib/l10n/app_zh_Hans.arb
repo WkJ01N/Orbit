@@ -220,6 +220,23 @@
   "sessionCreated": "已添加课程",
   "sessionCreateRequiredFields": "科目名称和课室为必填项",
   "sessionTimeConflict": "该时段已有其他课程",
+  "sessionSavedWithOverride": "已保存，并覆盖了 {count} 节时间冲突的课程。",
+  "@sessionSavedWithOverride": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importStrategyTitle": "检测到重复周次",
+  "importStrategyMessage": "本次导入有 {count} 个周次已存在课程，请选择导入方式。",
+  "@importStrategyMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importStrategyReplaceWeek": "整周替换",
+  "importStrategyReplaceWeekDesc": "删除这些周次原有的全部课程，再导入新课程。",
+  "importStrategyMerge": "合并并覆盖冲突",
+  "importStrategyMergeDesc": "保留其他课程，仅替换与导入课程时间重叠的课程。",
   "actionCreate": "创建",
   "sessionSaveFailed": "保存失败：{error}",
   "deleteFailed": "删除失败：{error}",
@@ -227,6 +244,43 @@
   "searchSessions": "搜索课程",
   "searchHint": "按科目、课室或教师搜索",
   "searchNoResults": "没有匹配的课程",
+  "searchFailed": "搜索失败：{error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "searchResultsTruncated": "仅显示前 {count} 条结果",
+  "@searchResultsTruncated": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "gridBatchDeleteFailed": "批量删除失败：{error}",
+  "@gridBatchDeleteFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "clearAllFailed": "清除课表失败：{error}",
+  "@clearAllFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "launchAtStartupFailed": "更新开机启动设置失败：{error}",
+  "@launchAtStartupFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sectionSchedule": "课表",
+  "gridDefaultWeekTitle": "默认周次",
+  "gridDefaultWeekSubtitle": "打开课表时显示的周次",
+  "gridDefaultWeekSmart": "智能",
+  "gridDefaultWeekCurrent": "本周",
+  "gridDefaultWeekEarliest": "最早有课周",
+  "exportInProgress": "正在导出…",
   "importFormatTitle": "课表文件格式",
   "importFormatSubtitle": "xlsx 列 A–M（每行一节课）",
   "importFormatColumn": "列",

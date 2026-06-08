@@ -5,6 +5,7 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/grid_models.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/services/grid_builder.dart';
+import 'package:orbit/services/settings_service.dart';
 import 'package:orbit/services/xlsx_parser.dart';
 
 final xlsxParserProvider = Provider<XlsxParser>((ref) => XlsxParser());
@@ -37,14 +38,26 @@ void refreshSchedule(WidgetRef ref) {
 
 final selectedWeekStartProvider = StateProvider<DateTime?>((ref) => null);
 
-DateTime? earliestWeekStartFromSessions(List<CourseSession> sessions) {
-  if (sessions.isEmpty) {
-    return null;
+final gridDefaultWeekModeProvider =
+    NotifierProvider<GridDefaultWeekModeNotifier, GridDefaultWeekMode>(
+  GridDefaultWeekModeNotifier.new,
+);
+
+class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
+  @override
+  GridDefaultWeekMode build() {
+    _load();
+    return GridDefaultWeekMode.smart;
   }
-  final earliest = sessions
-      .map((session) => session.date)
-      .reduce((a, b) => a.isBefore(b) ? a : b);
-  return weekStartFor(earliest);
+
+  Future<void> _load() async {
+    state = await SettingsService().loadGridDefaultWeekMode();
+  }
+
+  Future<void> setMode(GridDefaultWeekMode mode) async {
+    await SettingsService().saveGridDefaultWeekMode(mode);
+    state = mode;
+  }
 }
 
 final weekGridProvider = Provider<WeekGrid?>((ref) {
@@ -57,8 +70,9 @@ final weekGridProvider = Provider<WeekGrid?>((ref) {
     return null;
   }
 
+  final mode = ref.watch(gridDefaultWeekModeProvider);
   var weekStart = ref.watch(selectedWeekStartProvider);
-  weekStart ??= earliestWeekStartFromSessions(sessions);
+  weekStart ??= resolveDefaultWeekStart(sessions, mode);
   if (weekStart == null) {
     return null;
   }

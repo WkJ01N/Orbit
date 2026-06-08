@@ -52,6 +52,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   late DateTime _date;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -179,6 +180,9 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) {
+      return;
+    }
     final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
     final room = _roomController.text.trim();
@@ -198,33 +202,26 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     }
 
     final repository = ref.read(scheduleRepositoryProvider);
-    final hasConflict = await repository.hasTimeConflict(
-      finalSession,
-      excludeId: widget.session?.id,
-    );
-    if (hasConflict && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionTimeConflict)),
-      );
-    }
 
+    setState(() => _saving = true);
     try {
-      if (widget.isCreateMode) {
-        await repository.insertSession(finalSession);
-      } else {
-        await repository.updateSession(widget.session!, finalSession);
-      }
-      await rescheduleAllReminders(ref);
+      final overwritten = await repository.saveSessionWithConflictResolution(
+        finalSession,
+        original: widget.session,
+      );
+      final failures = await rescheduleAllReminders(ref);
       refreshSchedule(ref);
 
       if (mounted) {
         Navigator.pop(context, true);
+        final baseMessage = overwritten > 0
+            ? l10n.sessionSavedWithOverride(overwritten)
+            : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
+        final message = failures > 0
+            ? '$baseMessage ${l10n.resyncPartialFailed(failures)}'
+            : baseMessage;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated,
-            ),
-          ),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {
@@ -232,6 +229,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.sessionSaveFailed('$e'))),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
       }
     }
   }
@@ -325,8 +326,14 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _save,
-              child: Text(widget.isCreateMode ? l10n.actionCreate : l10n.actionApply),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(widget.isCreateMode ? l10n.actionCreate : l10n.actionApply),
             ),
           ],
         ),

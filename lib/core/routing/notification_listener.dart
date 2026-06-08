@@ -8,6 +8,7 @@ import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/notification_providers.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
+import 'package:orbit/services/tray_service.dart';
 
 class OrbitNotificationListener extends ConsumerStatefulWidget {
   const OrbitNotificationListener({super.key, required this.child});
@@ -103,6 +104,12 @@ class _OrbitNotificationListenerState
   }
 
   Future<void> _handlePayload(BuildContext context, String payload) async {
+    // On Windows the window may be hidden in the tray; surface it so tapping a
+    // notification has a visible effect instead of silently routing.
+    if (Platform.isWindows) {
+      await showMainWindow();
+    }
+
     if (payload.startsWith('next_day')) {
       navigateToAppTab(ref, AppTab.upcoming);
       return;

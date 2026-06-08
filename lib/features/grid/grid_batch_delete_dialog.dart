@@ -157,19 +157,22 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
       final deleted = await ref
           .read(scheduleRepositoryProvider)
           .deleteSessionsFullyInRange(_rangeStart, _rangeEnd);
-      await rescheduleAllReminders(ref);
+      final failures = await rescheduleAllReminders(ref);
       refreshSchedule(ref);
 
       if (mounted) {
         Navigator.pop(context);
+        final message = failures > 0
+            ? '${l10n.gridBatchDeleteDone(deleted)} ${l10n.resyncPartialFailed(failures)}'
+            : l10n.gridBatchDeleteDone(deleted);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.gridBatchDeleteDone(deleted))),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.gridLoadFailed('$e'))),
+          SnackBar(content: Text(l10n.gridBatchDeleteFailed('$e'))),
         );
       }
     }

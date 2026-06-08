@@ -17,6 +17,7 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/services/alarm_intent_service.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -96,6 +97,9 @@ class _SettingsBody extends ConsumerWidget {
                 .toList(),
           ),
         ),
+        const SizedBox(height: 8),
+        SectionHeader(title: l10n.sectionSchedule),
+        _GridDefaultWeekTile(),
         const SizedBox(height: 8),
         SectionHeader(title: l10n.sectionAppearance),
         _ThemeColorTile(
@@ -275,24 +279,7 @@ class _SettingsBody extends ConsumerWidget {
         ],
         const SizedBox(height: 16),
         SectionHeader(title: l10n.sectionData),
-        ListTile(
-          title: Text(l10n.exportScheduleJson),
-          subtitle: Text(l10n.exportScheduleJsonSubtitle),
-          leading: const Icon(Icons.backup_outlined),
-          onTap: () => exportScheduleJson(context, ref),
-        ),
-        ListTile(
-          title: Text(l10n.exportScheduleXlsx),
-          subtitle: Text(l10n.exportScheduleXlsxSubtitle),
-          leading: const Icon(Icons.table_view_outlined),
-          onTap: () => exportScheduleXlsx(context, ref),
-        ),
-        ListTile(
-          title: Text(l10n.restoreFromBackup),
-          subtitle: Text(l10n.restoreFromBackupSubtitle),
-          leading: const Icon(Icons.restore_outlined),
-          onTap: () => restoreFromBackup(context, ref),
-        ),
+        _ExportBackupSection(),
         ListTile(
           title: Text(l10n.deleteEndedSessions),
           subtitle: Text(l10n.deleteEndedSessionsSubtitle),
@@ -394,8 +381,13 @@ class _SettingsBody extends ConsumerWidget {
       return;
     }
     final syncError = ref.read(lastRescheduleErrorProvider);
-    if (syncError == null) {
-      final failures = ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
+    // 'partial:N' is a partial-failure sentinel (see reminder_providers.dart);
+    // a real exception stores the full error string.
+    final isFullFailure =
+        syncError != null && !syncError.startsWith('partial:');
+    if (!isFullFailure) {
+      final failures =
+          ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
       final message = failures > 0
           ? l10n.resyncPartialFailed(failures)
           : l10n.resyncDone;
@@ -442,11 +434,117 @@ class _SettingsBody extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.settingsLoadFailed('$e'))),
+            SnackBar(content: Text(l10n.clearAllFailed('$e'))),
           );
         }
       }
     }
+  }
+}
+
+class _GridDefaultWeekTile extends ConsumerWidget {
+  const _GridDefaultWeekTile();
+
+  String _modeLabel(AppLocalizations l10n, GridDefaultWeekMode mode) {
+    return switch (mode) {
+      GridDefaultWeekMode.smart => l10n.gridDefaultWeekSmart,
+      GridDefaultWeekMode.current => l10n.gridDefaultWeekCurrent,
+      GridDefaultWeekMode.earliest => l10n.gridDefaultWeekEarliest,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final mode = ref.watch(gridDefaultWeekModeProvider);
+
+    return ListTile(
+      title: Text(l10n.gridDefaultWeekTitle),
+      subtitle: Text(l10n.gridDefaultWeekSubtitle),
+      trailing: DropdownButton<GridDefaultWeekMode>(
+        value: mode,
+        underline: const SizedBox.shrink(),
+        onChanged: (value) {
+          if (value != null) {
+            ref.read(gridDefaultWeekModeProvider.notifier).setMode(value);
+            ref.read(selectedWeekStartProvider.notifier).state = null;
+          }
+        },
+        items: GridDefaultWeekMode.values
+            .map(
+              (item) => DropdownMenuItem(
+                value: item,
+                child: Text(_modeLabel(l10n, item)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _ExportBackupSection extends ConsumerStatefulWidget {
+  const _ExportBackupSection();
+
+  @override
+  ConsumerState<_ExportBackupSection> createState() =>
+      _ExportBackupSectionState();
+}
+
+class _ExportBackupSectionState extends ConsumerState<_ExportBackupSection> {
+  bool _busy = false;
+
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_busy) {
+      return ListTile(
+        leading: const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        title: Text(l10n.exportInProgress),
+      );
+    }
+
+    return Column(
+      children: [
+        ListTile(
+          title: Text(l10n.exportScheduleJson),
+          subtitle: Text(l10n.exportScheduleJsonSubtitle),
+          leading: const Icon(Icons.backup_outlined),
+          onTap: () => _run(() => exportScheduleJson(context, ref)),
+        ),
+        ListTile(
+          title: Text(l10n.exportScheduleXlsx),
+          subtitle: Text(l10n.exportScheduleXlsxSubtitle),
+          leading: const Icon(Icons.table_view_outlined),
+          onTap: () => _run(() => exportScheduleXlsx(context, ref)),
+        ),
+        ListTile(
+          title: Text(l10n.restoreFromBackup),
+          subtitle: Text(l10n.restoreFromBackupSubtitle),
+          leading: const Icon(Icons.restore_outlined),
+          onTap: () => _run(() => restoreFromBackup(context, ref)),
+        ),
+      ],
+    );
   }
 }
 
@@ -498,7 +596,7 @@ class _LaunchAtStartupTileState extends ConsumerState<_LaunchAtStartupTile> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      AppLocalizations.of(context)!.settingsLoadFailed('$e'),
+                      AppLocalizations.of(context)!.launchAtStartupFailed('$e'),
                     ),
                   ),
                 );

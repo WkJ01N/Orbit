@@ -63,6 +63,20 @@ class AndroidReminderGuard {
       return;
     }
 
+    final status = await queryPermissionStatus();
+    if (!status.exactAlarmsEnabled) {
+      try {
+        final exactAlarmIntent = AndroidIntent(
+          action: 'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+          data: 'package:$_androidPackageName',
+        );
+        await exactAlarmIntent.launch();
+        return;
+      } catch (_) {
+        // Fall through to general notification settings.
+      }
+    }
+
     final intent = AndroidIntent(
       action: 'android.settings.APP_NOTIFICATION_SETTINGS',
       arguments: {

@@ -1,8 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -15,35 +13,34 @@ class TrayService with TrayListener {
   static const _trayIconAsset = 'assets/icons/tray_icon.ico';
 
   bool _initialized = false;
+  bool _repairing = false;
+  bool _listenerAttached = false;
   VoidCallback? _onShowWindow;
   VoidCallback? _onExitApp;
+  String? _showLabel;
+  String? _exitLabel;
+  String? _tooltip;
 
-  Future<String> _resolveTrayIconPath() async {
-    final bundled = File(
-      p.join(
-        p.dirname(Platform.resolvedExecutable),
-        'data',
-        'flutter_assets',
-        'assets',
-        'icons',
-        'tray_icon.ico',
+  Future<void> _applyTrayState() async {
+    await trayManager.setIcon(_trayIconAsset);
+    await trayManager.setToolTip(_tooltip!);
+    await trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(key: 'show', label: _showLabel!),
+          MenuItem(key: 'exit', label: _exitLabel!),
+        ],
       ),
     );
-    if (bundled.existsSync()) {
-      return bundled.path;
+    _ensureListener();
+  }
+
+  void _ensureListener() {
+    if (_listenerAttached) {
+      return;
     }
-
-    final bytes = await rootBundle.load(_trayIconAsset);
-    final temp = File(
-      p.join((await getTemporaryDirectory()).path, 'orbit_tray.ico'),
-    );
-    await temp.writeAsBytes(
-      bytes.buffer.asUint8List(
-        bytes.offsetInBytes,
-        bytes.lengthInBytes,
-      ),
-    );
-    return temp.path;
+    trayManager.addListener(this);
+    _listenerAttached = true;
   }
 
   Future<void> initialize({
@@ -59,20 +56,60 @@ class TrayService with TrayListener {
 
     _onShowWindow = onShowWindow;
     _onExitApp = onExitApp;
+    _showLabel = showLabel;
+    _exitLabel = exitLabel;
+    _tooltip = tooltip;
 
-    final iconPath = await _resolveTrayIconPath();
-    await trayManager.setIcon(iconPath);
-    await trayManager.setToolTip(tooltip);
-    await trayManager.setContextMenu(
-      Menu(
-        items: [
-          MenuItem(key: 'show', label: showLabel),
-          MenuItem(key: 'exit', label: exitLabel),
-        ],
-      ),
-    );
-    trayManager.addListener(this);
+    await _applyTrayState();
     _initialized = true;
+  }
+
+  /// Re-applies the tray labels and tooltip after a language change so the
+  /// context menu does not keep showing the previous locale's text.
+  Future<void> updateLabels({
+    required String showLabel,
+    required String exitLabel,
+    required String tooltip,
+  }) async {
+    if (!Platform.isWindows || !_initialized) {
+      return;
+    }
+    _showLabel = showLabel;
+    _exitLabel = exitLabel;
+    _tooltip = tooltip;
+    try {
+      await _applyTrayState();
+    } catch (_) {
+      // 托盘文案更新失败不应阻塞语言切换。
+    }
+  }
+
+  Future<void> repairIfNeeded() async {
+    if (!Platform.isWindows || !_initialized || _repairing) {
+      return;
+    }
+    if (_showLabel == null || _exitLabel == null || _tooltip == null) {
+      return;
+    }
+
+    _repairing = true;
+    try {
+      final bounds = await trayManager.getBounds();
+      if (bounds != null) {
+        return;
+      }
+      await trayManager.destroy();
+      await _applyTrayState();
+    } catch (_) {
+      try {
+        await trayManager.destroy();
+        await _applyTrayState();
+      } catch (_) {
+        // 托盘恢复失败时不阻塞窗口操作。
+      }
+    } finally {
+      _repairing = false;
+    }
   }
 
   Future<void> dispose() async {
@@ -80,6 +117,7 @@ class TrayService with TrayListener {
       return;
     }
     trayManager.removeListener(this);
+    _listenerAttached = false;
     await trayManager.destroy();
     _initialized = false;
   }
@@ -133,6 +171,7 @@ Future<void> showMainWindow() async {
   }
   await windowManager.show();
   await windowManager.focus();
+  await TrayService.instance.repairIfNeeded();
 }
 
 Future<void> hideMainWindow() async {
@@ -140,6 +179,7 @@ Future<void> hideMainWindow() async {
     return;
   }
   await windowManager.hide();
+  await TrayService.instance.repairIfNeeded();
 }
 
 Future<void> exitDesktopApp() async {

@@ -1365,6 +1365,48 @@ abstract class AppLocalizations {
   /// **'Another class overlaps this time slot'**
   String get sessionTimeConflict;
 
+  /// No description provided for @sessionSavedWithOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. Replaced {count} overlapping class(es).'**
+  String sessionSavedWithOverride(int count);
+
+  /// No description provided for @importStrategyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate weeks detected'**
+  String get importStrategyTitle;
+
+  /// No description provided for @importStrategyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} week(s) in this import already contain classes. Choose how to import them.'**
+  String importStrategyMessage(int count);
+
+  /// No description provided for @importStrategyReplaceWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace whole week'**
+  String get importStrategyReplaceWeek;
+
+  /// No description provided for @importStrategyReplaceWeekDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all existing classes in those weeks, then import the new ones.'**
+  String get importStrategyReplaceWeekDesc;
+
+  /// No description provided for @importStrategyMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge and overwrite conflicts'**
+  String get importStrategyMerge;
+
+  /// No description provided for @importStrategyMergeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep other classes; replace only those whose time overlaps an imported class.'**
+  String get importStrategyMergeDesc;
+
   /// No description provided for @actionCreate.
   ///
   /// In en, this message translates to:
@@ -1406,6 +1448,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No matching classes'**
   String get searchNoResults;
+
+  /// No description provided for @searchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed: {error}'**
+  String searchFailed(String error);
+
+  /// No description provided for @searchResultsTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing first {count} results only'**
+  String searchResultsTruncated(int count);
+
+  /// No description provided for @gridBatchDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch delete failed: {error}'**
+  String gridBatchDeleteFailed(String error);
+
+  /// No description provided for @clearAllFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to clear schedule: {error}'**
+  String clearAllFailed(String error);
+
+  /// No description provided for @launchAtStartupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update startup setting: {error}'**
+  String launchAtStartupFailed(String error);
+
+  /// No description provided for @sectionSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get sectionSchedule;
+
+  /// No description provided for @gridDefaultWeekTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default week'**
+  String get gridDefaultWeekTitle;
+
+  /// No description provided for @gridDefaultWeekSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which week to show when opening the schedule'**
+  String get gridDefaultWeekSubtitle;
+
+  /// No description provided for @gridDefaultWeekSmart.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart'**
+  String get gridDefaultWeekSmart;
+
+  /// No description provided for @gridDefaultWeekCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get gridDefaultWeekCurrent;
+
+  /// No description provided for @gridDefaultWeekEarliest.
+  ///
+  /// In en, this message translates to:
+  /// **'Earliest week with classes'**
+  String get gridDefaultWeekEarliest;
+
+  /// No description provided for @exportInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting…'**
+  String get exportInProgress;
 
   /// No description provided for @importFormatTitle.
   ///

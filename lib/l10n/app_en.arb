@@ -408,6 +408,23 @@
   "sessionCreated": "Class added",
   "sessionCreateRequiredFields": "Course name and room are required",
   "sessionTimeConflict": "Another class overlaps this time slot",
+  "sessionSavedWithOverride": "Saved. Replaced {count} overlapping class(es).",
+  "@sessionSavedWithOverride": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importStrategyTitle": "Duplicate weeks detected",
+  "importStrategyMessage": "{count} week(s) in this import already contain classes. Choose how to import them.",
+  "@importStrategyMessage": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importStrategyReplaceWeek": "Replace whole week",
+  "importStrategyReplaceWeekDesc": "Delete all existing classes in those weeks, then import the new ones.",
+  "importStrategyMerge": "Merge and overwrite conflicts",
+  "importStrategyMergeDesc": "Keep other classes; replace only those whose time overlaps an imported class.",
   "actionCreate": "Create",
   "sessionSaveFailed": "Failed to save: {error}",
   "@sessionSaveFailed": {
@@ -425,6 +442,43 @@
   "searchSessions": "Search classes",
   "searchHint": "Search by course, room, or teacher",
   "searchNoResults": "No matching classes",
+  "searchFailed": "Search failed: {error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "searchResultsTruncated": "Showing first {count} results only",
+  "@searchResultsTruncated": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "gridBatchDeleteFailed": "Batch delete failed: {error}",
+  "@gridBatchDeleteFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "clearAllFailed": "Failed to clear schedule: {error}",
+  "@clearAllFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "launchAtStartupFailed": "Failed to update startup setting: {error}",
+  "@launchAtStartupFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "sectionSchedule": "Schedule",
+  "gridDefaultWeekTitle": "Default week",
+  "gridDefaultWeekSubtitle": "Which week to show when opening the schedule",
+  "gridDefaultWeekSmart": "Smart",
+  "gridDefaultWeekCurrent": "This week",
+  "gridDefaultWeekEarliest": "Earliest week with classes",
+  "exportInProgress": "Exporting…",
   "importFormatTitle": "Schedule file format",
   "importFormatSubtitle": "xlsx columns A–M (one row per class session)",
   "importFormatColumn": "Col",

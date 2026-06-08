@@ -1,7 +1,7 @@
 name: orbit
 description: 跨平台课表提醒应用，支援 Windows 與 Android。
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.12.1
@@ -25,7 +25,7 @@ dependencies:
   shared_preferences: ^2.5.3
   intl: ^0.20.2
   window_manager: ^0.4.3
-  tray_manager: ^0.2.4
+  tray_manager: ^0.5.2
   android_intent_plus: ^5.3.0
   launch_at_startup: ^0.3.1
   url_launcher: ^6.3.1

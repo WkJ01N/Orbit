@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +17,7 @@ class SettingsService {
   static const _systemAlarmLeadMinutesKey = 'system_alarm_lead_minutes';
   static const _checkInReminderEnabledKey = 'check_in_reminder_enabled';
   static const _launchAtStartupKey = 'launch_at_startup';
+  static const _gridDefaultWeekModeKey = 'grid_default_week_mode';
 
   SharedPreferences? _prefs;
 
@@ -93,5 +95,19 @@ class SettingsService {
   Future<void> saveLaunchAtStartup(bool enabled) async {
     final prefs = await _prefsInstance();
     await prefs.setBool(_launchAtStartupKey, enabled);
+  }
+
+  Future<GridDefaultWeekMode> loadGridDefaultWeekMode() async {
+    final prefs = await _prefsInstance();
+    final saved = prefs.getString(_gridDefaultWeekModeKey);
+    return GridDefaultWeekMode.values.firstWhere(
+      (mode) => mode.name == saved,
+      orElse: () => GridDefaultWeekMode.smart,
+    );
+  }
+
+  Future<void> saveGridDefaultWeekMode(GridDefaultWeekMode mode) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString(_gridDefaultWeekModeKey, mode.name);
   }
 }

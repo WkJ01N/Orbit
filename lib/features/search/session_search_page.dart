@@ -24,9 +24,12 @@ class SessionSearchPage extends ConsumerStatefulWidget {
 }
 
 class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
+  static const _resultLimit = 100;
+
   final _controller = TextEditingController();
   List<CourseSession> _results = [];
   bool _searched = false;
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -44,13 +47,25 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
       return;
     }
 
-    final results =
-        await ref.read(scheduleRepositoryProvider).searchSessions(query);
-    if (mounted) {
-      setState(() {
-        _results = results;
-        _searched = true;
-      });
+    setState(() => _loading = true);
+    try {
+      final results =
+          await ref.read(scheduleRepositoryProvider).searchSessions(query);
+      if (mounted) {
+        setState(() {
+          _results = results;
+          _searched = true;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.searchFailed('$e'))),
+        );
+      }
     }
   }
 
@@ -58,11 +73,12 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
     ref.read(selectedWeekStartProvider.notifier).state =
         weekStartFor(session.date);
     navigateToAppTab(ref, AppTab.grid);
-    if (!mounted) {
-      return;
-    }
-    Navigator.pop(context);
-    await SessionDetailSheet.show(context, session);
+    // Capture the navigator's own context before popping so the detail sheet is
+    // shown on a context that stays mounted after the search page is removed.
+    final navigator = Navigator.of(context);
+    final navigatorContext = navigator.context;
+    navigator.pop();
+    await SessionDetailSheet.show(navigatorContext, session);
   }
 
   @override
@@ -91,32 +107,49 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
               onSubmitted: (_) => _search(),
             ),
           ),
-          Expanded(
-            child: _results.isEmpty
-                ? Center(
-                    child: Text(
-                      _searched ? l10n.searchNoResults : l10n.searchHint,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+          if (!_loading && _results.length >= _resultLimit)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                l10n.searchResultsTruncated(_resultLimit),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  )
-                : ListView.separated(
-                    itemCount: _results.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final session = _results[index];
-                      return ListTile(
-                        title: Text(session.courseName),
-                        subtitle: Text(
-                          '${formatIsoDate(session.date)} · '
-                          '${formatTimeHm(session.startAt)} · ${session.room}',
+              ),
+            ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _results.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searched ? l10n.searchNoResults : l10n.searchHint,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _openSession(session),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.separated(
+                        itemCount: _results.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final session = _results[index];
+                          return ListTile(
+                            title: Text(session.courseName),
+                            subtitle: Text(
+                              '${formatIsoDate(session.date)} · '
+                              '${formatTimeHm(session.startAt)} · ${session.room}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _openSession(session),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

@@ -15,7 +15,12 @@ Future<void> applyReminderUpdate(
       return;
     }
     final syncError = ref.read(lastRescheduleErrorProvider);
-    if (syncError != null) {
+    // A 'partial:N' sentinel means some individual notifications failed to
+    // schedule but the overall call succeeded; display the count-based message.
+    // Any other non-null value is a real exception string.
+    final isPartialFailure =
+        syncError != null && syncError.startsWith('partial:');
+    if (syncError != null && !isPartialFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l10n.reminderSyncFailed(syncError))),
       );

@@ -75,6 +75,31 @@ class AppDatabase {
     );
   }
 
+  /// Transactionally deletes [deleteIds] then upserts [upsert]. Used for
+  /// conflict-overwrite saves and strategy-based imports so that removing the
+  /// old rows and writing the new ones cannot leave the table half-updated.
+  Future<void> replaceSessions({
+    required List<String> deleteIds,
+    required List<CourseSession> upsert,
+  }) async {
+    await _db.transaction((txn) async {
+      for (final id in deleteIds) {
+        await txn.delete(
+          _tableName,
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+      for (final session in upsert) {
+        await txn.insert(
+          _tableName,
+          session.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
   Future<void> updateSessionWithIdChange(
     String oldId,
     CourseSession session,
