@@ -793,8 +793,38 @@ abstract class AppLocalizations {
   /// No description provided for @androidAutostartHint.
   ///
   /// In en, this message translates to:
-  /// **'On some devices, also enable autostart and allow background activity in system settings.'**
+  /// **'On OriginOS / iQOO and similar devices, also enable autostart and unrestricted background activity in system settings.'**
   String get androidAutostartHint;
+
+  /// No description provided for @androidKillBackgroundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'After swiping the app away from recents, reminders rely on system alarms registered below. Complete all settings on this page for best reliability.'**
+  String get androidKillBackgroundHint;
+
+  /// No description provided for @androidTestBackgroundReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Test background reminder (1 min)'**
+  String get androidTestBackgroundReminder;
+
+  /// No description provided for @androidTestBackgroundReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedules a test alarm. Swipe the app away from recents and wait one minute.'**
+  String get androidTestBackgroundReminderSubtitle;
+
+  /// No description provided for @androidTestBackgroundReminderScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.'**
+  String get androidTestBackgroundReminderScheduled;
+
+  /// No description provided for @androidTestBackgroundReminderFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not schedule the test reminder. Check exact alarm permission.'**
+  String get androidTestBackgroundReminderFailed;
 
   /// No description provided for @deleteEndedSessions.
   ///
@@ -1784,6 +1814,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} reminder(s) scheduled'**
   String reminderScheduledCount(int count);
+
+  /// No description provided for @reminderRegisteredAlarmCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} system alarm(s) registered'**
+  String reminderRegisteredAlarmCount(int count);
 
   /// No description provided for @androidNotificationsEnabled.
   ///

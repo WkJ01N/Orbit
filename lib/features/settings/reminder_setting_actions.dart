@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
@@ -15,11 +17,6 @@ Future<void> applyReminderUpdate(
       return;
     }
     final syncError = ref.read(lastRescheduleErrorProvider);
-    // Sentinels written by the reschedule flow:
-    //  - 'partial:N' : some individual notifications failed to schedule.
-    //  - 'verify'    : the OS reported no pending alarms despite no exception
-    //                  (typical of OEMs silently dropping exact alarms).
-    // Any other non-null value is a real exception string.
     final isPartialFailure =
         syncError != null && syncError.startsWith('partial:');
     final isVerifyFailure = syncError == 'verify';
@@ -43,4 +40,25 @@ Future<void> applyReminderUpdate(
       );
     }
   }
+}
+
+String reminderResyncSuccessMessage(AppLocalizations l10n, WidgetRef ref) {
+  final failures = ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
+  if (failures > 0) {
+    return l10n.resyncPartialFailed(failures);
+  }
+
+  if (Platform.isAndroid) {
+    final alarmCount = ref.read(lastRegisteredAlarmCountProvider);
+    if (alarmCount > 0) {
+      return '${l10n.resyncDone} ${l10n.reminderRegisteredAlarmCount(alarmCount)}';
+    }
+  }
+
+  final pending = ref.read(lastScheduledCountProvider);
+  if (pending > 0) {
+    return '${l10n.resyncDone} ${l10n.reminderScheduledCount(pending)}';
+  }
+
+  return l10n.resyncDone;
 }

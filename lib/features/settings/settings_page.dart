@@ -390,13 +390,8 @@ class _SettingsBody extends ConsumerWidget {
     final isFullFailure =
         syncError != null && !syncError.startsWith('partial:');
     if (!isFullFailure) {
-      final failures =
-          ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
-      final message = failures > 0
-          ? l10n.resyncPartialFailed(failures)
-          : l10n.resyncDone;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text(reminderResyncSuccessMessage(l10n, ref))),
       );
     }
   }
@@ -910,6 +905,27 @@ class _AndroidBackgroundSectionState
     }
   }
 
+  Future<void> _scheduleTestReminder() async {
+    final l10n = AppLocalizations.of(context)!;
+    await AndroidReminderGuard.instance.ensureReminderPermissions();
+    final ok = await AndroidReminderGuard.instance.scheduleBackgroundTestReminder(
+      title: l10n.androidTestBackgroundReminder,
+      body: l10n.androidTestBackgroundReminderSubtitle,
+    );
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? l10n.androidTestBackgroundReminderScheduled
+              : l10n.androidTestBackgroundReminderFailed,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -944,6 +960,21 @@ class _AndroidBackgroundSectionState
           ),
           value: _isIgnoringBatteryOptimizations,
           onChanged: _onBatteryOptimizationChanged,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            l10n.androidKillBackgroundHint,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
+        ListTile(
+          title: Text(l10n.androidTestBackgroundReminder),
+          subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
+          trailing: const Icon(Icons.alarm_on_outlined),
+          onTap: _scheduleTestReminder,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

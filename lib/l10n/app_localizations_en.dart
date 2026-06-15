@@ -410,7 +410,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidAutostartHint =>
-      'On some devices, also enable autostart and allow background activity in system settings.';
+      'On OriginOS / iQOO and similar devices, also enable autostart and unrestricted background activity in system settings.';
+
+  @override
+  String get androidKillBackgroundHint =>
+      'After swiping the app away from recents, reminders rely on system alarms registered below. Complete all settings on this page for best reliability.';
+
+  @override
+  String get androidTestBackgroundReminder =>
+      'Test background reminder (1 min)';
+
+  @override
+  String get androidTestBackgroundReminderSubtitle =>
+      'Schedules a test alarm. Swipe the app away from recents and wait one minute.';
+
+  @override
+  String get androidTestBackgroundReminderScheduled =>
+      'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.';
+
+  @override
+  String get androidTestBackgroundReminderFailed =>
+      'Could not schedule the test reminder. Check exact alarm permission.';
 
   @override
   String get deleteEndedSessions => 'Delete ended classes';
@@ -996,6 +1016,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String reminderScheduledCount(int count) {
     return '$count reminder(s) scheduled';
+  }
+
+  @override
+  String reminderRegisteredAlarmCount(int count) {
+    return '$count system alarm(s) registered';
   }
 
   @override

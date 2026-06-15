@@ -212,7 +212,12 @@
   "androidBatteryOptimizationSubtitleOff": "Enable to improve background reminder reliability",
   "androidBatteryOptimizationDisableConfirmTitle": "Turn off battery optimization exemption?",
   "androidBatteryOptimizationDisableConfirmContent": "You will be taken to system settings to restore battery optimization. Background reminders may be less reliable.",
-  "androidAutostartHint": "On some devices, also enable autostart and allow background activity in system settings.",
+  "androidAutostartHint": "On OriginOS / iQOO and similar devices, also enable autostart and unrestricted background activity in system settings.",
+  "androidKillBackgroundHint": "After swiping the app away from recents, reminders rely on system alarms registered below. Complete all settings on this page for best reliability.",
+  "androidTestBackgroundReminder": "Test background reminder (1 min)",
+  "androidTestBackgroundReminderSubtitle": "Schedules a test alarm. Swipe the app away from recents and wait one minute.",
+  "androidTestBackgroundReminderScheduled": "Test reminder scheduled in 1 minute. Swipe the app from recents and wait.",
+  "androidTestBackgroundReminderFailed": "Could not schedule the test reminder. Check exact alarm permission.",
   "deleteEndedSessions": "Delete ended classes",
   "deleteEndedSessionsSubtitle": "Remove class sessions that have already finished",
   "deleteEndedConfirm1Title": "Delete ended classes?",
@@ -543,6 +548,12 @@
   "reminderScheduleVerifyFailed": "Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.",
   "reminderScheduleVerifyFailedBanner": "The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.",
   "reminderScheduledCount": "{count} reminder(s) scheduled",
+  "reminderRegisteredAlarmCount": "{count} system alarm(s) registered",
+  "@reminderRegisteredAlarmCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "@reminderScheduledCount": {
     "placeholders": {
       "count": {"type": "int"}

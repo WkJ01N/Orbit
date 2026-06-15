@@ -8,6 +8,8 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/services/android_reminder_guard.dart';
+import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
 
 typedef NotificationTapCallback = void Function(String? payload);
@@ -31,6 +33,9 @@ class ReminderScheduler {
   /// reschedule, as reported by the OS. -1 means the platform does not support
   /// querying (e.g. Windows) so verification is skipped.
   int lastPendingCount = -1;
+
+  /// Number of Android AlarmManager one-shots registered in the last reschedule.
+  int lastRegisteredAlarmCount = 0;
 
   NotificationTapCallback? _notificationTapCallback;
   Future<void> _rescheduleChain = Future.value();
@@ -160,7 +165,7 @@ class ReminderScheduler {
         _channelId,
         copy.channelName,
         description: copy.channelDescription,
-        importance: Importance.high,
+        importance: Importance.max,
       ),
     );
   }
@@ -190,10 +195,14 @@ class ReminderScheduler {
   }) async {
     await initialize(copy: copy);
     await cancelAll();
+    if (Platform.isAndroid) {
+      await AndroidReminderGuard.instance.cancelAllReminderAlarms();
+    }
     _cancelNearTermTimers();
     lastScheduleFailureCount = 0;
     lastExpectedCount = 0;
     lastPendingCount = -1;
+    lastRegisteredAlarmCount = 0;
 
     final now = DateTime.now();
     var classLeadId = _classLeadBase;
@@ -269,6 +278,16 @@ class ReminderScheduler {
     await Future.wait(scheduleTasks);
 
     lastExpectedCount = expected;
+    if (Platform.isAndroid) {
+      final alarmSpecs = buildReminderAlarmSpecs(
+        upcomingSessions: upcomingSessions,
+        settings: settings,
+        now: now,
+        copy: copy,
+      );
+      lastRegisteredAlarmCount =
+          await AndroidReminderGuard.instance.scheduleReminderAlarms(alarmSpecs);
+    }
     await _verifyPendingCount();
   }
 
@@ -430,8 +449,10 @@ class ReminderScheduler {
         _channelId,
         copy.channelName,
         channelDescription: copy.channelDescription,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
         styleInformation: BigTextStyleInformation(
           copy.bigTextFor(
             course: session.courseName,
@@ -476,8 +497,10 @@ class ReminderScheduler {
         _channelId,
         copy.channelName,
         channelDescription: copy.channelDescription,
-        importance: Importance.high,
-        priority: Priority.high,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
       ),
       windows: const WindowsNotificationDetails(),
     );

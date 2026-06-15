@@ -1,3 +1,30 @@
+# Orbit v1.1.1
+
+**平台：** Windows · Android
+
+## 新功能与改进
+
+### Android
+
+- 课前 / 打卡提醒通过 `AlarmManager.oneShotAt` 逐条注册，App 退到后台或被系统杀进程后仍可触发
+- 每 6 小时维护闹钟，设备重启后自动恢复排程
+- 设置页新增「后台提醒（Android）」区块：电池优化开关、OriginOS / iQOO 自启动提示、「测试后台提醒（1 分钟）」按钮
+
+### 课表
+
+- 宽屏表头改用 `SliverPersistentHeader` 吸顶，与表体共享同一垂直滚动 viewport；导入多时段课表出现纵向滚动条时，周日期与下方课程列仍对齐
+
+## 修复
+
+- 修复宽屏导入课表后纵向滚动条占用表体宽度、导致表头与课程列水平错位的问题
+
+## 其他
+
+- 版本号 1.1.1（`pubspec.yaml` build `+6`）
+- 测试增至 76 项（含宽屏表头 / 表体对齐、AlarmManager 注册表用例）
+
+---
+
 # Orbit v1.1.0
 
 **平台：** Windows · Android

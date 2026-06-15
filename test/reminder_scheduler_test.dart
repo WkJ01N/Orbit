@@ -1,7 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 CourseSession _manualSession({required DateTime startAt}) {
@@ -94,6 +98,34 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('buildReminderAlarmSpecs produces class-lead and check-in alarms', () {
+    final now = DateTime(2026, 6, 15, 10, 0);
+    final session = _manualSession(
+      startAt: DateTime(2026, 6, 15, 11, 0),
+    );
+    final copy = NotificationCopy.fromL10n(lookupL10n(const Locale('zh')));
+    final settings = const ReminderSettings(
+      enabled: true,
+      checkInReminderEnabled: true,
+      leadMinutes: 15,
+    );
+
+    final specs = buildReminderAlarmSpecs(
+      upcomingSessions: [session],
+      settings: settings,
+      now: now,
+      copy: copy,
+    );
+
+    expect(specs.length, 2);
+    expect(specs.first.alarmId, 1);
+    expect(specs.first.payload, isNot(contains('checkin_')));
+    expect(specs.last.alarmId, 500000);
+    expect(specs.last.payload, startsWith('checkin_'));
+    expect(specs.first.fireAt, DateTime(2026, 6, 15, 10, 45));
+    expect(specs.last.fireAt, session.startAt);
   });
 
   test('manual session in upcoming list yields schedulable reminders', () {

@@ -125,7 +125,12 @@
   "androidBatteryOptimizationSubtitleOff": "开启后可提高后台提醒可靠性",
   "androidBatteryOptimizationDisableConfirmTitle": "关闭电池优化豁免？",
   "androidBatteryOptimizationDisableConfirmContent": "将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。",
-  "androidAutostartHint": "部分机型还需在系统设置中开启自启动并允许后台运行。",
+  "androidAutostartHint": "OriginOS / iQOO 等机型还需在系统设置中开启自启动并允许后台高耗电。",
+  "androidKillBackgroundHint": "从最近任务划掉应用后，提醒依赖下方注册的系统闹钟。请完成本页全部设置以获得最佳可靠性。",
+  "androidTestBackgroundReminder": "测试后台提醒（1 分钟）",
+  "androidTestBackgroundReminderSubtitle": "注册一条测试闹钟。请划掉应用后等待 1 分钟。",
+  "androidTestBackgroundReminderScheduled": "已注册 1 分钟后的测试提醒。请从最近任务划掉应用并等待。",
+  "androidTestBackgroundReminderFailed": "无法注册测试提醒，请检查精确闹钟权限。",
   "deleteEndedSessions": "删除已结束的课程",
   "deleteEndedSessionsSubtitle": "移除已经上完的课节记录",
   "deleteEndedConfirm1Title": "删除已结束的课程？",
@@ -325,6 +330,12 @@
   "reminderScheduleVerifyFailed": "提醒已保存，但系统未能写入任何闹钟。OriginOS / iQOO 请同时允许自启动与后台高耗电。再开启精确闹钟、关闭电池优化后重新同步。",
   "reminderScheduleVerifyFailedBanner": "系统未能写入任何提醒。请检查精确闹钟、电池优化与自启动（OriginOS / iQOO），然后重新同步。",
   "reminderScheduledCount": "已排定 {count} 条提醒",
+  "reminderRegisteredAlarmCount": "已注册 {count} 条系统闹钟",
+  "@reminderRegisteredAlarmCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "@reminderScheduledCount": {
     "placeholders": {
       "count": {"type": "int"}

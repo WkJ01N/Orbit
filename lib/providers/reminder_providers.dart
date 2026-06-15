@@ -74,6 +74,9 @@ final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
 /// reschedule (-1 when verification is unavailable, e.g. on Windows).
 final lastScheduledCountProvider = StateProvider<int>((ref) => -1);
 
+/// Android AlarmManager one-shots registered after the last reschedule.
+final lastRegisteredAlarmCountProvider = StateProvider<int>((ref) => 0);
+
 class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
   @override
   Future<ReminderSettings> build() async {
@@ -159,6 +162,8 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       final failures = scheduler.lastScheduleFailureCount;
       ref.read(lastScheduledCountProvider.notifier).state =
           scheduler.lastPendingCount;
+      ref.read(lastRegisteredAlarmCountProvider.notifier).state =
+          scheduler.lastRegisteredAlarmCount;
       if (scheduler.lastScheduleVerificationFailed) {
         // The plugin reported success but the OS queued nothing: surface a
         // dedicated message so the user can fix exact-alarm / battery settings.

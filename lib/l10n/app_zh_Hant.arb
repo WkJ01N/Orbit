@@ -125,7 +125,12 @@
   "androidBatteryOptimizationSubtitleOff": "開啟後可提高背景提醒可靠性",
   "androidBatteryOptimizationDisableConfirmTitle": "關閉電池最佳化豁免？",
   "androidBatteryOptimizationDisableConfirmContent": "將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。",
-  "androidAutostartHint": "部分機型還需在系統設定中開啟自啟動並允許背景執行。",
+  "androidAutostartHint": "OriginOS / iQOO 等機型還需在系統設定中開啟自啟動並允許背景高耗電。",
+  "androidKillBackgroundHint": "從最近任務划掉應用後，提醒依賴下方註冊的系統鬧鐘。請完成本頁全部設定以獲得最佳可靠性。",
+  "androidTestBackgroundReminder": "測試背景提醒（1 分鐘）",
+  "androidTestBackgroundReminderSubtitle": "註冊一條測試鬧鐘。請划掉應用後等待 1 分鐘。",
+  "androidTestBackgroundReminderScheduled": "已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。",
+  "androidTestBackgroundReminderFailed": "無法註冊測試提醒，請檢查精確鬧鐘權限。",
   "deleteEndedSessions": "刪除已結束的課程",
   "deleteEndedSessionsSubtitle": "移除已經上完的課節記錄",
   "deleteEndedConfirm1Title": "刪除已結束的課程？",
@@ -325,6 +330,12 @@
   "reminderScheduleVerifyFailed": "提醒已儲存，但系統未能寫入任何鬧鐘。OriginOS / iQOO 請同時允許自啟動與背景高耗電。再開啟精確鬧鐘、關閉電池最佳化後重新同步。",
   "reminderScheduleVerifyFailedBanner": "系統未能寫入任何提醒。請檢查精確鬧鐘、電池最佳化與自啟動（OriginOS / iQOO），然後重新同步。",
   "reminderScheduledCount": "已排定 {count} 則提醒",
+  "reminderRegisteredAlarmCount": "已註冊 {count} 條系統鬧鐘",
+  "@reminderRegisteredAlarmCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "@reminderScheduledCount": {
     "placeholders": {
       "count": {"type": "int"}

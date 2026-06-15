@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.1.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.1.1** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -21,12 +21,12 @@
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.1.0/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.1.1/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.1.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.1.0-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.1.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.1.1-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -42,7 +42,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 70 项测试
+flutter test          # 76 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -66,15 +66,28 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.1.0/orbit-v1.1.0-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.1.1/orbit-v1.1.1-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.1.0/orbit-v1.1.0-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.1.1/orbit-v1.1.1-release.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.1.1
+
+**Android**
+- 课前 / 打卡提醒 `AlarmManager.oneShotAt` 注册；6 小时维护闹钟；重启后自动恢复
+- 设置页「后台提醒」：电池优化、OriginOS 自启动提示、1 分钟测试按钮
+
+**课表**
+- 宽屏 pinned 表头与表体共享垂直 viewport，纵向滚动条不再导致列错位
+
+**修复与其他**
+- 修复宽屏导入多时段课表后表头与课程列水平错位
+- 版本号 1.1.1（build `+6`）；测试 76 项；预编译包见 `release/v1.1.1/`
 
 ### v1.1.0
 

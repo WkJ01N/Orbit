@@ -394,7 +394,25 @@ class AppLocalizationsZh extends AppLocalizations {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint => '部分機型還需在系統設定中開啟自啟動並允許背景執行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 等機型還需在系統設定中開啟自啟動並允許背景高耗電。';
+
+  @override
+  String get androidKillBackgroundHint =>
+      '從最近任務划掉應用後，提醒依賴下方註冊的系統鬧鐘。請完成本頁全部設定以獲得最佳可靠性。';
+
+  @override
+  String get androidTestBackgroundReminder => '測試背景提醒（1 分鐘）';
+
+  @override
+  String get androidTestBackgroundReminderSubtitle => '註冊一條測試鬧鐘。請划掉應用後等待 1 分鐘。';
+
+  @override
+  String get androidTestBackgroundReminderScheduled =>
+      '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
+
+  @override
+  String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';
 
   @override
   String get deleteEndedSessions => '刪除已結束的課程';
@@ -962,6 +980,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String reminderRegisteredAlarmCount(int count) {
+    return '已註冊 $count 條系統鬧鐘';
+  }
+
+  @override
   String get androidNotificationsEnabled => '通知已開啟';
 
   @override
@@ -1364,7 +1387,25 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。';
 
   @override
-  String get androidAutostartHint => '部分机型还需在系统设置中开启自启动并允许后台运行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 等机型还需在系统设置中开启自启动并允许后台高耗电。';
+
+  @override
+  String get androidKillBackgroundHint =>
+      '从最近任务划掉应用后，提醒依赖下方注册的系统闹钟。请完成本页全部设置以获得最佳可靠性。';
+
+  @override
+  String get androidTestBackgroundReminder => '测试后台提醒（1 分钟）';
+
+  @override
+  String get androidTestBackgroundReminderSubtitle => '注册一条测试闹钟。请划掉应用后等待 1 分钟。';
+
+  @override
+  String get androidTestBackgroundReminderScheduled =>
+      '已注册 1 分钟后的测试提醒。请从最近任务划掉应用并等待。';
+
+  @override
+  String get androidTestBackgroundReminderFailed => '无法注册测试提醒，请检查精确闹钟权限。';
 
   @override
   String get deleteEndedSessions => '删除已结束的课程';
@@ -1932,6 +1973,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
+  String reminderRegisteredAlarmCount(int count) {
+    return '已注册 $count 条系统闹钟';
+  }
+
+  @override
   String get androidNotificationsEnabled => '通知已开启';
 
   @override
@@ -2334,7 +2380,25 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint => '部分機型還需在系統設定中開啟自啟動並允許背景執行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 等機型還需在系統設定中開啟自啟動並允許背景高耗電。';
+
+  @override
+  String get androidKillBackgroundHint =>
+      '從最近任務划掉應用後，提醒依賴下方註冊的系統鬧鐘。請完成本頁全部設定以獲得最佳可靠性。';
+
+  @override
+  String get androidTestBackgroundReminder => '測試背景提醒（1 分鐘）';
+
+  @override
+  String get androidTestBackgroundReminderSubtitle => '註冊一條測試鬧鐘。請划掉應用後等待 1 分鐘。';
+
+  @override
+  String get androidTestBackgroundReminderScheduled =>
+      '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
+
+  @override
+  String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';
 
   @override
   String get deleteEndedSessions => '刪除已結束的課程';
@@ -2899,6 +2963,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String reminderScheduledCount(int count) {
     return '已排定 $count 則提醒';
+  }
+
+  @override
+  String reminderRegisteredAlarmCount(int count) {
+    return '已註冊 $count 條系統鬧鐘';
   }
 
   @override

@@ -6,6 +6,7 @@ import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/adjacent_page_pager.dart';
 import 'package:orbit/features/grid/grid_pager_cache.dart';
+import 'package:orbit/features/grid/grid_week_header_delegate.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/features/session/current_time_indicator.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
@@ -31,6 +32,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   int? _crossWeekDirection;
   final _chipKeys = <int, GlobalKey>{};
   final _horizontalScrollController = ScrollController();
+  final _verticalScrollController = ScrollController();
   final _focusNode = FocusNode();
 
   // These fields are updated by the scroll listener but do NOT trigger a
@@ -40,6 +42,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   static const _rowHeight = 64.0;
   static const _timeColumnWidth = 52.0;
+  static const _tableHeaderExtent = 52.0;
 
   @override
   void initState() {
@@ -57,6 +60,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     _horizontalScrollController
       ..removeListener(_updateHorizontalScrollEdges)
       ..dispose();
+    _verticalScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -304,104 +308,114 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       final selectedDay = day ?? defaultWeekdayForGrid(grid);
       final tableWidth = constraints.maxWidth;
       final columnWidths = <int, TableColumnWidth>{
-        0: const FixedColumnWidth(52),
-        1: FixedColumnWidth(tableWidth - 52),
+        0: const FixedColumnWidth(_timeColumnWidth),
+        1: FixedColumnWidth(tableWidth - _timeColumnWidth),
       };
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTableHeader(
+      return _buildPinnedGridScroll(
+        colorScheme: colorScheme,
+        header: _buildTableHeader(
+          context,
+          grid: grid,
+          weekdays: [selectedDay],
+          colorScheme: colorScheme,
+          l10n: l10n,
+          columnWidths: columnWidths,
+        ),
+        body: CurrentTimeIndicator(
+          grid: grid,
+          isCurrentWeek: _isCurrentWeekFor(grid),
+          rowHeight: _rowHeight,
+          headerHeight: 0,
+          timeColumnWidth: _timeColumnWidth,
+          now: now,
+          visibleWeekdays: [selectedDay],
+          child: _buildDayTableBody(
             context,
             grid: grid,
-            weekdays: [selectedDay],
+            day: selectedDay,
             colorScheme: colorScheme,
+            now: now,
             l10n: l10n,
-            columnWidths: columnWidths,
+            tableWidth: tableWidth,
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: CurrentTimeIndicator(
-                grid: grid,
-                isCurrentWeek: _isCurrentWeekFor(grid),
-                rowHeight: _rowHeight,
-                headerHeight: 0,
-                timeColumnWidth: _timeColumnWidth,
-                now: now,
-                visibleWeekdays: [selectedDay],
-                child: _buildDayTableBody(
-                  context,
-                  grid: grid,
-                  day: selectedDay,
-                  colorScheme: colorScheme,
-                  now: now,
-                  l10n: l10n,
-                  tableWidth: tableWidth,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       );
     }
 
     final weekdays = presentWeekdays(grid);
     final dayWidth =
-        ((constraints.maxWidth - 52) / weekdays.length).clamp(72.0, 160.0);
+        ((constraints.maxWidth - _timeColumnWidth) / weekdays.length)
+            .clamp(72.0, 160.0);
     final columnWidths = <int, TableColumnWidth>{
-      0: const FixedColumnWidth(52),
+      0: const FixedColumnWidth(_timeColumnWidth),
       for (var i = 1; i <= weekdays.length; i++) i: FixedColumnWidth(dayWidth),
     };
-    // Both header and body live inside the same horizontal scroll view and the
-    // same fixed-width box, so the day columns always align with the header
-    // regardless of the vertical scrollbar. The header stays pinned while only
-    // the body scrolls vertically.
-    final contentWidth =
-        (52 + dayWidth * weekdays.length).clamp(constraints.maxWidth, double.infinity);
+    // Header and body share one vertical scroll viewport so the scrollbar no
+    // longer shrinks only the body and misaligns day columns with the header.
+    final contentWidth = (_timeColumnWidth + dayWidth * weekdays.length)
+        .clamp(constraints.maxWidth, double.infinity);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       controller: _horizontalScrollController,
       child: SizedBox(
         width: contentWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTableHeader(
+        child: _buildPinnedGridScroll(
+          colorScheme: colorScheme,
+          header: _buildTableHeader(
+            context,
+            grid: grid,
+            weekdays: weekdays,
+            colorScheme: colorScheme,
+            l10n: l10n,
+            columnWidths: columnWidths,
+          ),
+          body: CurrentTimeIndicator(
+            grid: grid,
+            isCurrentWeek: _isCurrentWeekFor(grid),
+            rowHeight: _rowHeight,
+            headerHeight: 0,
+            timeColumnWidth: _timeColumnWidth,
+            now: now,
+            visibleWeekdays: weekdays,
+            dayColumnIndex: weekdays.contains(now.weekday)
+                ? weekdays.indexOf(now.weekday)
+                : null,
+            dayColumnWidth: dayWidth,
+            child: _buildWeekTableBody(
               context,
               grid: grid,
               weekdays: weekdays,
               colorScheme: colorScheme,
+              now: now,
               l10n: l10n,
-              columnWidths: columnWidths,
+              dayWidth: dayWidth,
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: CurrentTimeIndicator(
-                  grid: grid,
-                  isCurrentWeek: _isCurrentWeekFor(grid),
-                  rowHeight: _rowHeight,
-                  headerHeight: 0,
-                  timeColumnWidth: _timeColumnWidth,
-                  now: now,
-                  visibleWeekdays: weekdays,
-                  dayColumnIndex: weekdays.contains(now.weekday)
-                      ? weekdays.indexOf(now.weekday)
-                      : null,
-                  dayColumnWidth: dayWidth,
-                  child: _buildWeekTableBody(
-                    context,
-                    grid: grid,
-                    weekdays: weekdays,
-                    colorScheme: colorScheme,
-                    now: now,
-                    l10n: l10n,
-                    dayWidth: dayWidth,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPinnedGridScroll({
+    required ColorScheme colorScheme,
+    required Widget header,
+    required Widget body,
+  }) {
+    return Scrollbar(
+      controller: _verticalScrollController,
+      child: CustomScrollView(
+        controller: _verticalScrollController,
+        slivers: [
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: WeekGridTableHeaderDelegate(
+              header: header,
+              extent: _tableHeaderExtent,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+            ),
+          ),
+          SliverToBoxAdapter(child: body),
+        ],
       ),
     );
   }
@@ -521,8 +535,8 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     return Table(
       border: TableBorder.all(color: colorScheme.outlineVariant, width: 0.5),
       columnWidths: {
-        0: const FixedColumnWidth(52),
-        1: FixedColumnWidth(tableWidth - 52),
+        0: const FixedColumnWidth(_timeColumnWidth),
+        1: FixedColumnWidth(tableWidth - _timeColumnWidth),
       },
       children: [
         for (final timeLabel in grid.timeLabels)
@@ -543,7 +557,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     return Table(
       border: TableBorder.all(color: colorScheme.outlineVariant, width: 0.5),
       columnWidths: {
-        0: const FixedColumnWidth(52),
+        0: const FixedColumnWidth(_timeColumnWidth),
         for (var i = 1; i <= weekdays.length; i++) i: FixedColumnWidth(dayWidth),
       },
       children: [

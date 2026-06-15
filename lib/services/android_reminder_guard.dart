@@ -3,15 +3,20 @@ import 'dart:io';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
+import 'package:orbit/models/notification_copy.dart';
+import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
-import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/reminder_alarm_callbacks.dart';
+import 'package:orbit/services/reminder_alarm_registry.dart';
 import 'package:orbit/services/reminder_background.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
 
-const _maintenanceAlarmId = 90400;
+const maintenanceAlarmId = 90400;
 const _androidPackageName = 'com.must.orbit.orbit';
 const _batteryChannel = MethodChannel('com.must.orbit.orbit/battery');
+const _maintenanceInterval = Duration(hours: 6);
 
 class AndroidReminderGuard {
   AndroidReminderGuard._();
@@ -35,13 +40,88 @@ class AndroidReminderGuard {
       return;
     }
 
+    await AndroidAlarmManager.cancel(maintenanceAlarmId);
     await AndroidAlarmManager.periodic(
-      const Duration(hours: 24),
-      _maintenanceAlarmId,
+      _maintenanceInterval,
+      maintenanceAlarmId,
       reminderMaintenanceCallback,
       exact: true,
       wakeup: true,
       rescheduleOnReboot: true,
+      allowWhileIdle: true,
+    );
+  }
+
+  /// Registers one-shot AlarmManager alarms for each [spec]. Returns the count
+  /// successfully scheduled with the OS.
+  Future<int> scheduleReminderAlarms(List<ReminderAlarmSpec> specs) async {
+    if (!Platform.isAndroid || !_initialized) {
+      return 0;
+    }
+
+    await ReminderAlarmRegistry.saveBatch(specs);
+    var scheduled = 0;
+    for (final spec in specs) {
+      final ok = await AndroidAlarmManager.oneShotAt(
+        spec.fireAt,
+        spec.alarmId,
+        fireReminderAlarm,
+        alarmClock: true,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+        rescheduleOnReboot: true,
+      );
+      if (ok) {
+        scheduled++;
+      }
+    }
+    return scheduled;
+  }
+
+  Future<void> cancelAllReminderAlarms() async {
+    if (!Platform.isAndroid || !_initialized) {
+      await ReminderAlarmRegistry.clearAll();
+      return;
+    }
+
+    final entries = await ReminderAlarmRegistry.loadAll();
+    for (final alarmId in entries.keys) {
+      await AndroidAlarmManager.cancel(alarmId);
+    }
+    await AndroidAlarmManager.cancel(backgroundTestAlarmId);
+    await ReminderAlarmRegistry.clearAll();
+  }
+
+  /// Schedules a test notification one minute from now via AlarmManager.
+  Future<bool> scheduleBackgroundTestReminder({
+    required String title,
+    required String body,
+  }) async {
+    if (!Platform.isAndroid || !_initialized) {
+      return false;
+    }
+
+    await AndroidAlarmManager.cancel(backgroundTestAlarmId);
+    final fireAt = DateTime.now().add(const Duration(minutes: 1));
+    final spec = ReminderAlarmSpec(
+      alarmId: backgroundTestAlarmId,
+      notificationId: backgroundTestAlarmId,
+      title: title,
+      body: body,
+      payload: 'test_background_reminder',
+      fireAt: fireAt,
+    );
+    await ReminderAlarmRegistry.upsert(spec);
+    return AndroidAlarmManager.oneShotAt(
+      fireAt,
+      backgroundTestAlarmId,
+      fireReminderAlarm,
+      alarmClock: true,
+      exact: true,
+      wakeup: true,
+      allowWhileIdle: true,
+      rescheduleOnReboot: false,
     );
   }
 
@@ -50,7 +130,9 @@ class AndroidReminderGuard {
       return;
     }
     final locale = await _settingsService.loadLocale();
-    final copy = notificationCopyFor(locale);
+    final copy = NotificationCopy.fromL10n(
+      lookupL10n(locale),
+    );
     await _scheduler.initialize(copy: copy);
   }
 
