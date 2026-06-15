@@ -7,7 +7,6 @@ import 'package:orbit/features/upcoming/upcoming_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/providers/app_providers.dart';
-import 'package:orbit/providers/navigation_providers.dart';
 
 class _NavItem {
   const _NavItem({
@@ -82,7 +81,11 @@ class AppShell extends ConsumerWidget {
       return Column(
         children: [
           MaterialBanner(
-            content: Text(l10n.reminderResyncFailedBanner),
+            content: Text(
+              rescheduleError == 'verify'
+                  ? l10n.reminderScheduleVerifyFailedBanner
+                  : l10n.reminderResyncFailedBanner,
+            ),
             leading: Icon(Icons.warning_amber, color: colorScheme.error),
             actions: [
               TextButton(
@@ -142,7 +145,7 @@ class AppShell extends ConsumerWidget {
                 ),
                 Expanded(
                   child: wrapWithBanner(
-                    IndexedStack(
+                    _FadeIndexedStack(
                       index: selectedIndex,
                       children: _pages,
                     ),
@@ -155,7 +158,7 @@ class AppShell extends ConsumerWidget {
 
         return Scaffold(
           body: wrapWithBanner(
-            IndexedStack(
+            _FadeIndexedStack(
               index: selectedIndex,
               children: _pages,
             ),
@@ -174,6 +177,60 @@ class AppShell extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// An [IndexedStack] that fades in the newly selected child whenever the
+/// [index] changes, while keeping all children alive in memory.
+class _FadeIndexedStack extends StatefulWidget {
+  const _FadeIndexedStack({
+    required this.index,
+    required this.children,
+  });
+
+  final int index;
+  final List<Widget> children;
+
+  @override
+  State<_FadeIndexedStack> createState() => _FadeIndexedStackState();
+}
+
+class _FadeIndexedStackState extends State<_FadeIndexedStack>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+    value: 1.0,
+  );
+  late final CurvedAnimation _fade = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOut,
+  );
+
+  @override
+  void didUpdateWidget(_FadeIndexedStack old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _fade.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: IndexedStack(
+        index: widget.index,
+        children: widget.children,
+      ),
     );
   }
 }

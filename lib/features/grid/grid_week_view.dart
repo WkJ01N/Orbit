@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/adjacent_page_pager.dart';
-import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/features/grid/grid_pager_cache.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/features/session/current_time_indicator.dart';
@@ -32,8 +31,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   int? _crossWeekDirection;
   final _chipKeys = <int, GlobalKey>{};
   final _horizontalScrollController = ScrollController();
-  final _headerScrollController = ScrollController();
   final _focusNode = FocusNode();
+
+  // These fields are updated by the scroll listener but do NOT trigger a
+  // rebuild — the AdjacentPagePager reads them lazily via closures.
   bool _horizontalAtStart = true;
   bool _horizontalAtEnd = true;
 
@@ -56,7 +57,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     _horizontalScrollController
       ..removeListener(_updateHorizontalScrollEdges)
       ..dispose();
-    _headerScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -92,23 +92,17 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     });
   }
 
+  /// Updates the scroll edge flags WITHOUT calling [setState].
+  ///
+  /// The [AdjacentPagePager] reads these via closures at gesture time, so a
+  /// rebuild is not required for the values to take effect.
   void _updateHorizontalScrollEdges() {
     if (!_horizontalScrollController.hasClients) {
       return;
     }
     final position = _horizontalScrollController.position;
-    if (_headerScrollController.hasClients &&
-        _headerScrollController.offset != position.pixels) {
-      _headerScrollController.jumpTo(position.pixels);
-    }
-    final atStart = position.pixels <= position.minScrollExtent + 0.5;
-    final atEnd = position.pixels >= position.maxScrollExtent - 0.5;
-    if (atStart != _horizontalAtStart || atEnd != _horizontalAtEnd) {
-      setState(() {
-        _horizontalAtStart = atStart;
-        _horizontalAtEnd = atEnd;
-      });
-    }
+    _horizontalAtStart = position.pixels <= position.minScrollExtent + 0.5;
+    _horizontalAtEnd = position.pixels >= position.maxScrollExtent - 0.5;
   }
 
   GridPagerSlot _currentDaySlot() {
@@ -239,12 +233,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => navigateToAppTab(ref, AppTab.import),
-              icon: const Icon(Icons.upload_file),
-              label: Text(l10n.gridImportNow),
-            ),
           ],
         ),
       ),
@@ -338,6 +326,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                 rowHeight: _rowHeight,
                 headerHeight: 0,
                 timeColumnWidth: _timeColumnWidth,
+                now: now,
                 child: _buildDayTableBody(
                   context,
                   grid: grid,
@@ -361,16 +350,21 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       0: const FixedColumnWidth(52),
       for (var i = 1; i <= weekdays.length; i++) i: FixedColumnWidth(dayWidth),
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          controller: _headerScrollController,
-          physics: const NeverScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: _buildTableHeader(
+    // Both header and body live inside the same horizontal scroll view and the
+    // same fixed-width box, so the day columns always align with the header
+    // regardless of the vertical scrollbar. The header stays pinned while only
+    // the body scrolls vertically.
+    final contentWidth =
+        (52 + dayWidth * weekdays.length).clamp(constraints.maxWidth, double.infinity);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      controller: _horizontalScrollController,
+      child: SizedBox(
+        width: contentWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTableHeader(
               context,
               grid: grid,
               weekdays: weekdays,
@@ -378,22 +372,16 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               l10n: l10n,
               columnWidths: columnWidths,
             ),
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _horizontalScrollController,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
                 child: CurrentTimeIndicator(
                   grid: grid,
                   isCurrentWeek: _isCurrentWeekFor(grid),
                   rowHeight: _rowHeight,
                   headerHeight: 0,
                   timeColumnWidth: _timeColumnWidth,
+                  now: now,
                   child: _buildWeekTableBody(
                     context,
                     grid: grid,
@@ -406,9 +394,9 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                 ),
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -443,6 +431,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     final weekdays = presentWeekdays(widget.grid);
     final isEmptyWeek = isEmptyWeekGrid(widget.grid);
 
+    // Watch the shared time provider so Chip highlights and the time indicator
+    // stay in sync and update together once per minute.
+    final now = ref.watch(currentTimeProvider);
+
     var selectedDay = DateTime.monday;
     if (!isEmptyWeek) {
       selectedDay = _selectedWeekday ?? defaultWeekdayForGrid(widget.grid);
@@ -455,7 +447,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       }
     }
 
-    final now = DateTime.now();
     final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
@@ -648,35 +639,52 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     AppLocalizations l10n,
   ) {
     if (sessions.isEmpty) {
-      return const SizedBox(height: 64);
+      return const SizedBox(height: _rowHeight);
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final session in sessions)
-          GridSessionChip(
-            session: session,
-            colorScheme: colorScheme,
-            now: now,
-            l10n: l10n,
-            isSelected: _selectedSessionId == session.id,
-            onTap: () {
-              setState(() => _selectedSessionId = session.id);
-              SessionDetailSheet.show(context, session);
-            },
-            onMenu: (position) => SessionActionMenu.show(
-              context: context,
-              ref: ref,
+    // Every data row is pinned to _rowHeight so the left time axis keeps the
+    // same slot heights across weeks regardless of how many classes fall on a
+    // given day. Overflow (rare multi-class slots) is clipped rather than
+    // stretching the whole row.
+    //
+    // RepaintBoundary isolates each cell so that the per-minute time-indicator
+    // rebuild only forces cells whose actual paint output changed (e.g. a
+    // session that just became "ongoing") to be repainted.
+    return RepaintBoundary(
+      child: SizedBox(
+        height: _rowHeight,
+        child: ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final session in sessions)
+                GridSessionChip(
+              key: ValueKey(session.id),
               session: session,
-              position: position,
-              onDeleted: () {
-                if (_selectedSessionId == session.id) {
-                  setState(() => _selectedSessionId = null);
-                }
+              colorScheme: colorScheme,
+              now: now,
+              l10n: l10n,
+              isSelected: _selectedSessionId == session.id,
+              onTap: () {
+                setState(() => _selectedSessionId = session.id);
+                SessionDetailSheet.show(context, session);
               },
+              onMenu: (position) => SessionActionMenu.show(
+                context: context,
+                ref: ref,
+                session: session,
+                position: position,
+                onDeleted: () {
+                  if (_selectedSessionId == session.id) {
+                    setState(() => _selectedSessionId = null);
+                  }
+                },
+              ),
             ),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -723,6 +731,10 @@ class GridSessionChip extends StatelessWidget {
     final endTime =
         '${session.endAt.hour.toString().padLeft(2, '0')}:${session.endAt.minute.toString().padLeft(2, '0')}';
 
+    // Inherit font family and scaling from the theme while keeping the small
+    // sizes needed to fit within the fixed 64-pixel row height.
+    final baseStyle = Theme.of(context).textTheme.labelSmall;
+
     return GestureDetector(
       onTap: onTap,
       onLongPress: () => onMenu(null),
@@ -739,20 +751,26 @@ class GridSessionChip extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               session.courseName,
-              style: TextStyle(
+              style: baseStyle?.copyWith(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: fg,
               ),
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
               '${session.room} · ${l10n.gridUntilTime(endTime)}',
-              style: TextStyle(fontSize: 9, color: fg.withAlpha(180)),
+              style: baseStyle?.copyWith(
+                fontSize: 9,
+                color: fg.withAlpha(180),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

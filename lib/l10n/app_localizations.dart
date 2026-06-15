@@ -307,7 +307,7 @@ abstract class AppLocalizations {
   /// No description provided for @gridNoSessionsThisWeekSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Switch to another week or import a schedule'**
+  /// **'Switch to another week to view classes'**
   String get gridNoSessionsThisWeekSubtitle;
 
   /// No description provided for @actionRetry.
@@ -681,6 +681,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Soon · {countdown}'**
   String countdownSoon(String countdown);
+
+  /// No description provided for @countdownSoonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get countdownSoonLabel;
 
   /// No description provided for @enableReminders.
   ///
@@ -1754,6 +1760,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reminders could not be synced. Tap Resync to try again.'**
   String get reminderResyncFailedBanner;
+
+  /// No description provided for @reminderScheduleVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.'**
+  String get reminderScheduleVerifyFailed;
+
+  /// No description provided for @reminderScheduleVerifyFailedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'The system did not queue any reminders. Check exact alarm and battery settings, then resync.'**
+  String get reminderScheduleVerifyFailedBanner;
+
+  /// No description provided for @reminderScheduledCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reminder(s) scheduled'**
+  String reminderScheduledCount(int count);
 
   /// No description provided for @androidNotificationsEnabled.
   ///

@@ -23,18 +23,22 @@ class SessionCountdownLabel extends StatelessWidget {
     }
 
     if (isSessionOngoing(now, session.startAt, session.endAt)) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          l10n.inClass,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onPrimaryContainer,
+      // Vertically center the badge so it lines up with the card's accent bar.
+      return Align(
+        alignment: Alignment.center,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            l10n.inClass,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onPrimaryContainer,
+            ),
           ),
         ),
       );
@@ -44,11 +48,34 @@ class SessionCountdownLabel extends StatelessWidget {
     final soon = isSessionStartingSoon(now, session.startAt);
     final label = l10n.countdownStartsIn(parts.days, parts.hours, parts.minutes);
 
+    if (soon) {
+      // Show the "soon" prefix and the countdown on separate lines so a long
+      // Chinese countdown does not wrap awkwardly inside the narrow column.
+      final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w700,
+          );
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(l10n.countdownSoonLabel, style: style, textAlign: TextAlign.end),
+          Text(
+            label,
+            style: style,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+
     return Text(
-      soon ? l10n.countdownSoon(label) : label,
+      label,
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: soon ? colorScheme.primary : colorScheme.onSurfaceVariant,
-            fontWeight: soon ? FontWeight.w700 : FontWeight.w500,
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
           ),
       textAlign: TextAlign.end,
     );

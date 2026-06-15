@@ -54,7 +54,7 @@
   "weekdayFri": "Fri",
   "weekdaySat": "Sat",
   "weekdaySun": "Sun",
-  "gridNoSessionsThisWeekSubtitle": "Switch to another week or import a schedule",
+  "gridNoSessionsThisWeekSubtitle": "Switch to another week to view classes",
   "actionRetry": "Retry",
   "importViewGrid": "View schedule",
   "resyncPartialFailed": "{count} reminder(s) could not be scheduled",
@@ -184,6 +184,7 @@
       "countdown": {"type": "String"}
     }
   },
+  "countdownSoonLabel": "Soon",
   "enableReminders": "Enable class reminders",
   "enableRemindersSubtitle": "Send system notifications before class",
   "leadTimeTitle": "Reminder lead time",
@@ -538,6 +539,14 @@
     }
   },
   "reminderResyncFailedBanner": "Reminders could not be synced. Tap Resync to try again.",
+  "reminderScheduleVerifyFailed": "Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.",
+  "reminderScheduleVerifyFailedBanner": "The system did not queue any reminders. Check exact alarm and battery settings, then resync.",
+  "reminderScheduledCount": "{count} reminder(s) scheduled",
+  "@reminderScheduledCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "androidNotificationsEnabled": "Notifications enabled",
   "androidNotificationsDisabled": "Notifications disabled",
   "androidExactAlarmsEnabled": "Exact alarms allowed",

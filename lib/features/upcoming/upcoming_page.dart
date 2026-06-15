@@ -7,6 +7,7 @@ import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/core/widgets/empty_state.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/core/widgets/skeleton_box.dart';
 import 'package:orbit/features/search/session_search_page.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
@@ -46,18 +47,21 @@ class UpcomingPage extends ConsumerWidget {
           final groups = _groupSessions(sessions);
           return _UpcomingList(groups: groups);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _UpcomingSkeleton(),
         error: (error, _) => ErrorState(
           message: l10n.upcomingLoadFailed('$error'),
           retryLabel: l10n.actionRetry,
           onRetry: () => ref.invalidate(upcomingSessionsProvider),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => SessionEditSheet.showCreate(context),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.addSession),
-      ),
+      // Show FAB only when data is available, matching GridPage behaviour.
+      floatingActionButton: upcomingAsync.hasValue
+          ? FloatingActionButton.extended(
+              onPressed: () => SessionEditSheet.showCreate(context),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.addSession),
+            )
+          : null,
     );
   }
 
@@ -111,6 +115,42 @@ class UpcomingPage extends ConsumerWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Data model
+// ---------------------------------------------------------------------------
+
+class _SessionGroup {
+  const _SessionGroup({
+    required this.kind,
+    required this.sessions,
+    this.laterDate,
+  });
+
+  final SessionGroupKind kind;
+  final DateTime? laterDate;
+  final List<CourseSession> sessions;
+}
+
+// ---------------------------------------------------------------------------
+// Flat list items (header vs. session card)
+// ---------------------------------------------------------------------------
+
+sealed class _FlatItem {}
+
+class _HeaderItem extends _FlatItem {
+  _HeaderItem(this.label);
+  final String label;
+}
+
+class _SessionItem extends _FlatItem {
+  _SessionItem(this.session);
+  final CourseSession session;
+}
+
+// ---------------------------------------------------------------------------
+// List widget — fully flat ListView.builder with a per-minute time refresh
+// ---------------------------------------------------------------------------
+
 class _UpcomingList extends StatefulWidget {
   const _UpcomingList({required this.groups});
 
@@ -129,9 +169,7 @@ class _UpcomingListState extends State<_UpcomingList> {
     super.initState();
     _now = DateTime.now();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) {
-        setState(() => _now = DateTime.now());
-      }
+      if (mounted) setState(() => _now = DateTime.now());
     });
   }
 
@@ -139,23 +177,6 @@ class _UpcomingListState extends State<_UpcomingList> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: widget.groups.length,
-      itemBuilder: (context, index) {
-        final group = widget.groups[index];
-        return _GroupSection(
-          label: _groupLabel(l10n, group),
-          sessions: group.sessions,
-          now: _now,
-        );
-      },
-    );
   }
 
   String _groupLabel(AppLocalizations l10n, _SessionGroup group) {
@@ -168,47 +189,41 @@ class _UpcomingListState extends State<_UpcomingList> {
         return l10n.groupThisWeek;
       case SessionGroupKind.later:
         final date = group.laterDate ?? DateTime.now();
-        final formatted = DateFormat('M/d').format(date);
-        return l10n.groupLater(formatted);
+        return l10n.groupLater(DateFormat('M/d').format(date));
     }
   }
-}
-
-class _SessionGroup {
-  const _SessionGroup({
-    required this.kind,
-    required this.sessions,
-    this.laterDate,
-  });
-
-  final SessionGroupKind kind;
-  final DateTime? laterDate;
-  final List<CourseSession> sessions;
-}
-
-class _GroupSection extends StatelessWidget {
-  const _GroupSection({
-    required this.label,
-    required this.sessions,
-    required this.now,
-  });
-
-  final String label;
-  final List<CourseSession> sessions;
-  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: label),
-        for (final session in sessions)
-          _SessionCard(session: session, now: now),
-      ],
+    final l10n = AppLocalizations.of(context)!;
+
+    // Flatten groups into a single list so ListView.builder is truly lazy.
+    final items = <_FlatItem>[];
+    for (final group in widget.groups) {
+      items.add(_HeaderItem(_groupLabel(l10n, group)));
+      for (final session in group.sessions) {
+        items.add(_SessionItem(session));
+      }
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 16),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return switch (item) {
+          _HeaderItem(:final label) => SectionHeader(title: label),
+          _SessionItem(:final session) =>
+            _SessionCard(session: session, now: _now),
+        };
+      },
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Session card — no IntrinsicHeight; left colour bar has a fixed height
+// ---------------------------------------------------------------------------
 
 class _SessionCard extends ConsumerWidget {
   const _SessionCard({required this.session, required this.now});
@@ -246,74 +261,83 @@ class _SessionCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: () => SessionDetailSheet.show(context, session),
           child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: IntrinsicHeight(
+            padding: const EdgeInsets.all(16),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 4,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: isOngoing
-                          ? colorScheme.primary
-                          : isPast
-                              ? colorScheme.outlineVariant
-                              : colorScheme.secondary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                // Fixed-height colour bar — no IntrinsicHeight needed.
+                Container(
+                  width: 4,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isOngoing
+                        ? colorScheme.primary
+                        : isPast
+                            ? colorScheme.outlineVariant
+                            : colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.courseName,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: isPast ? colorScheme.onSurfaceVariant : null,
-                            decoration:
-                                isPast ? TextDecoration.lineThrough : null,
-                          ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$startLabel – $endLabel  ·  ${session.room}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    if (session.teachers.isNotEmpty)
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Text(
-                        session.teachers.join('、'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                        maxLines: 1,
+                        session.courseName,
+                        style:
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: isPast
+                                      ? colorScheme.onSurfaceVariant
+                                      : null,
+                                  decoration: isPast
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        '$startLabel – $endLabel  ·  ${session.room}',
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                      ),
+                      if (session.teachers.isNotEmpty)
+                        Text(
+                          session.teachers.join('、'),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
                 SizedBox(
-                  width: 88,
-                  child: SessionCountdownLabel(session: session, now: now),
+                  width: 96,
+                  child: Center(
+                    child: SessionCountdownLabel(session: session, now: now),
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        ),
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Empty state
+// ---------------------------------------------------------------------------
 
 class _EmptyState extends ConsumerWidget {
   const _EmptyState();
@@ -329,6 +353,69 @@ class _EmptyState extends ConsumerWidget {
         onPressed: () => navigateToAppTab(ref, AppTab.grid),
         child: Text(l10n.upcomingGoToGrid),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Skeleton loading screen
+// ---------------------------------------------------------------------------
+
+class _UpcomingSkeleton extends StatelessWidget {
+  const _UpcomingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        _SkeletonSection(cardCount: 3),
+        _SkeletonSection(cardCount: 2),
+      ],
+    );
+  }
+}
+
+class _SkeletonSection extends StatelessWidget {
+  const _SkeletonSection({required this.cardCount});
+
+  final int cardCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: SkeletonBox(height: 14, width: 80, radius: 4),
+        ),
+        for (var i = 0; i < cardCount; i++)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  SkeletonBox(width: 4, height: 52, radius: 2),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonBox(height: 14, radius: 4),
+                        const SizedBox(height: 8),
+                        SkeletonBox(height: 12, width: 160, radius: 4),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SkeletonBox(width: 60, height: 32, radius: 8),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

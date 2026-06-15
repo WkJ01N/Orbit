@@ -22,9 +22,25 @@ class ReminderScheduler {
   bool _initialized = false;
   bool _permissionsRequested = false;
   int lastScheduleFailureCount = 0;
+
+  /// Number of notifications we intended to schedule in the last reschedule
+  /// (those that passed the time filters), before any system-level failures.
+  int lastExpectedCount = 0;
+
+  /// Number of notifications actually pending in the system after the last
+  /// reschedule, as reported by the OS. -1 means the platform does not support
+  /// querying (e.g. Windows) so verification is skipped.
+  int lastPendingCount = -1;
+
   NotificationTapCallback? _notificationTapCallback;
   Future<void> _rescheduleChain = Future.value();
   DateTime? _lastSuccessfulRescheduleAt;
+
+  /// True when we expected to schedule reminders but the OS reports none were
+  /// actually queued. This catches OEM (e.g. OriginOS/iQOO) silently dropping
+  /// exact alarms even though the plugin call did not throw.
+  bool get lastScheduleVerificationFailed =>
+      Platform.isAndroid && lastExpectedCount > 0 && lastPendingCount == 0;
 
   static const _foregroundResyncDebounce = Duration(hours: 6);
 
@@ -169,10 +185,13 @@ class ReminderScheduler {
     await initialize(copy: copy);
     await cancelAll();
     lastScheduleFailureCount = 0;
+    lastExpectedCount = 0;
+    lastPendingCount = -1;
 
     final now = DateTime.now();
     var classLeadId = _classLeadBase;
     var checkInId = _checkInBase;
+    var expected = 0;
     final scheduleTasks = <Future<void>>[];
 
     if (settings.enabled) {
@@ -184,6 +203,7 @@ class ReminderScheduler {
         }
 
         final id = classLeadId++;
+        expected++;
         scheduleTasks.add(
           _scheduleClassLead(
             id: id,
@@ -206,6 +226,7 @@ class ReminderScheduler {
         }
 
         final id = checkInId++;
+        expected++;
         scheduleTasks.add(
           _scheduleCheckIn(
             id: id,
@@ -221,6 +242,11 @@ class ReminderScheduler {
     }
 
     if (settings.nextDaySummaryEnabled) {
+      expected += _countNextDaySummaries(
+        allSessions: allSessions,
+        settings: settings,
+        now: now,
+      );
       scheduleTasks.add(
         _scheduleNextDaySummaries(
           allSessions: allSessions,
@@ -232,6 +258,49 @@ class ReminderScheduler {
     }
 
     await Future.wait(scheduleTasks);
+
+    lastExpectedCount = expected;
+    await _verifyPendingCount();
+  }
+
+  /// On Android, query the OS for the number of pending notifications so we can
+  /// detect when alarms were silently dropped (no exception thrown) by the OEM.
+  Future<void> _verifyPendingCount() async {
+    if (!Platform.isAndroid) {
+      lastPendingCount = -1;
+      return;
+    }
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      lastPendingCount = pending.length;
+    } catch (error) {
+      debugPrint('Failed to query pending notifications: $error');
+      lastPendingCount = -1;
+    }
+  }
+
+  int _countNextDaySummaries({
+    required List<CourseSession> allSessions,
+    required ReminderSettings settings,
+    required DateTime now,
+  }) {
+    final today = DateTime(now.year, now.month, now.day);
+    var count = 0;
+    for (var offset = 0; offset < _nextDaySummaryDays; offset++) {
+      final targetDay = today.add(Duration(days: offset + 1));
+      final notifyDay = targetDay.subtract(const Duration(days: 1));
+      final notifyAt = DateTime(
+        notifyDay.year,
+        notifyDay.month,
+        notifyDay.day,
+        settings.nextDaySummaryHour,
+        settings.nextDaySummaryMinute,
+      );
+      if (notifyAt.isAfter(now)) {
+        count++;
+      }
+    }
+    return count;
   }
 
   Future<void> _scheduleNextDaySummaries({
@@ -402,20 +471,38 @@ class ReminderScheduler {
     required NotificationDetails details,
     required String payload,
   }) async {
+    final when = tz.TZDateTime.from(reminderAt, tz.local);
     try {
       await _plugin.zonedSchedule(
         id,
         title,
         body,
-        tz.TZDateTime.from(reminderAt, tz.local),
+        when,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
       );
     } catch (error, stackTrace) {
-      lastScheduleFailureCount++;
-      debugPrint('Failed to schedule notification $id: $error');
+      debugPrint('Exact schedule failed for $id: $error');
       debugPrint('$stackTrace');
+      // Exact alarms can be rejected when the SCHEDULE_EXACT_ALARM permission is
+      // missing or the OEM restricts them. Fall back to an inexact alarm so the
+      // reminder still fires (slightly later) instead of being lost entirely.
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          title,
+          body,
+          when,
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: payload,
+        );
+      } catch (fallbackError, fallbackStack) {
+        lastScheduleFailureCount++;
+        debugPrint('Inexact schedule also failed for $id: $fallbackError');
+        debugPrint('$fallbackStack');
+      }
     }
   }
 

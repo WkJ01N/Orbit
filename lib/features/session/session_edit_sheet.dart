@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -21,6 +22,23 @@ class SessionEditSheet extends ConsumerStatefulWidget {
   }
 
   static Future<bool?> _show(BuildContext context, SessionEditSheet sheet) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width >= kNarrowDialogBreakpoint) {
+      return showDialog<bool>(
+        context: context,
+        builder: (context) => Dialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(child: sheet),
+          ),
+        ),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -82,10 +100,26 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       _classTypeController = TextEditingController();
       _facultyController = TextEditingController();
       _semesterController = TextEditingController();
-      _date = DateTime(now.year, now.month, now.day);
-      _startTime = const TimeOfDay(hour: 9, minute: 0);
-      _endTime = const TimeOfDay(hour: 10, minute: 0);
+      // Default to the next future half-hour so a freshly added class is not
+      // silently skipped by the reminder scheduler (which ignores past times).
+      final start = _nextHalfHour(now);
+      _date = DateTime(start.year, start.month, start.day);
+      _startTime = TimeOfDay(hour: start.hour, minute: start.minute);
+      final end = start.add(const Duration(hours: 1));
+      _endTime = TimeOfDay(hour: end.hour, minute: end.minute);
     }
+  }
+
+  static DateTime _nextHalfHour(DateTime now) {
+    // Round up to the next :00 or :30 boundary, at least a few minutes ahead.
+    final base = now.add(const Duration(minutes: 5));
+    var rounded = DateTime(base.year, base.month, base.day, base.hour);
+    if (base.minute > 30) {
+      rounded = rounded.add(const Duration(hours: 1));
+    } else if (base.minute > 0) {
+      rounded = rounded.add(const Duration(minutes: 30));
+    }
+    return rounded;
   }
 
   @override
@@ -149,6 +183,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final l10n = AppLocalizations.of(context)!;
     final startAt = _combineDateTime(_date, _startTime);
     final endAt = _combineDateTime(_date, _endTime);
+    final name = _nameController.text.trim();
     final courseCode = _courseCodeController.text.trim().isEmpty
         ? 'MANUAL'
         : _courseCodeController.text.trim();
@@ -165,7 +200,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       room: _roomController.text.trim(),
       date: _date,
       weekday: _date.weekday,
-      courseName: _nameController.text.trim(),
+      courseName: name,
       courseCode: courseCode,
       section: section,
       startAt: startAt,
@@ -217,9 +252,18 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
         final baseMessage = overwritten > 0
             ? l10n.sessionSavedWithOverride(overwritten)
             : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
-        final message = failures > 0
-            ? '$baseMessage ${l10n.resyncPartialFailed(failures)}'
-            : baseMessage;
+        final syncError = ref.read(lastRescheduleErrorProvider);
+        final scheduledCount = ref.read(lastScheduledCountProvider);
+        final String message;
+        if (syncError == 'verify') {
+          message = '$baseMessage ${l10n.reminderScheduleVerifyFailed}';
+        } else if (failures > 0) {
+          message = '$baseMessage ${l10n.resyncPartialFailed(failures)}';
+        } else if (scheduledCount > 0) {
+          message = '$baseMessage ${l10n.reminderScheduledCount(scheduledCount)}';
+        } else {
+          message = baseMessage;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );

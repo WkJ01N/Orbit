@@ -53,7 +53,7 @@ class SessionActionMenu {
           position.dx + 1,
           position.dy + 1,
         ),
-        items: _menuItems(l10n),
+        items: _menuItems(l10n, context),
       );
     }
 
@@ -87,7 +87,11 @@ class SessionActionMenu {
     );
   }
 
-  static List<PopupMenuEntry<SessionAction>> _menuItems(AppLocalizations l10n) {
+  static List<PopupMenuEntry<SessionAction>> _menuItems(
+    AppLocalizations l10n,
+    BuildContext context,
+  ) {
+    final errorColor = Theme.of(context).colorScheme.error;
     return [
       PopupMenuItem(
         value: SessionAction.edit,
@@ -113,7 +117,7 @@ class SessionActionMenu {
         value: SessionAction.delete,
         child: Row(
           children: [
-            Icon(Icons.delete_outline, size: 20, color: Colors.red.shade700),
+            Icon(Icons.delete_outline, size: 20, color: errorColor),
             const SizedBox(width: 12),
             Text(l10n.deleteSession),
           ],

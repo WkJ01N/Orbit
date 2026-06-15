@@ -84,18 +84,23 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.titleMedium,
-              ),
-              Icon(
-                Icons.arrow_drop_down,
-                color: theme.colorScheme.onSurface,
-              ),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ],
+            ),
           ),
         ),
       ),

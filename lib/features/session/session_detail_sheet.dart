@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
+import 'package:orbit/core/theme/layout_breakpoints.dart';
+import 'package:orbit/core/widgets/adaptive_bottom_sheet.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/features/session/session_note_sheet.dart';
@@ -13,40 +15,44 @@ class SessionDetailSheet extends ConsumerWidget {
   final CourseSession session;
 
   static Future<void> show(BuildContext context, CourseSession session) {
-    return showModalBottomSheet<void>(
+    return showAdaptiveBottomSheet<void>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      isScrollControlled: true,
       builder: (context) => SessionDetailSheet(session: session),
     );
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
     final startLabel = formatTimeHm(session.startAt);
     final endLabel = formatTimeHm(session.endAt);
     final dateLabel = formatIsoDate(session.date);
 
-    return Padding(
+    // Show drag handle only when rendered as a bottom sheet (narrow screen).
+    final isBottomSheet =
+        MediaQuery.sizeOf(context).width < kNarrowDialogBreakpoint;
+
+    return SingleChildScrollView(
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+          if (isBottomSheet) ...[
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
           Text(session.courseName, style: Theme.of(context).textTheme.titleLarge),
           Text(
             '${session.courseCode} · ${session.section}',
@@ -66,6 +72,7 @@ class SessionDetailSheet extends ConsumerWidget {
           const SizedBox(height: 20),
           _SessionActionButtons(session: session),
         ],
+      ),
       ),
     );
   }
@@ -146,8 +153,12 @@ class _SessionActionButtons extends ConsumerWidget {
             Expanded(
               child: buildButton(
                 onPressed: () async {
+                  // Capture the navigator's own context before popping so the
+                  // follow-up sheet/dialog is shown on a context that stays
+                  // mounted after this bottom sheet is removed.
+                  final navigatorContext = Navigator.of(context).context;
                   Navigator.pop(context);
-                  await SessionEditSheet.showEdit(context, session);
+                  await SessionEditSheet.showEdit(navigatorContext, session);
                 },
                 icon: Icons.edit_outlined,
                 label: editLabel,
@@ -158,8 +169,9 @@ class _SessionActionButtons extends ConsumerWidget {
             Expanded(
               child: buildButton(
                 onPressed: () async {
+                  final navigatorContext = Navigator.of(context).context;
                   Navigator.pop(context);
-                  await SessionNoteSheet.show(context, session);
+                  await SessionNoteSheet.show(navigatorContext, session);
                 },
                 icon: Icons.sticky_note_2_outlined,
                 label: noteLabel,
@@ -170,9 +182,10 @@ class _SessionActionButtons extends ConsumerWidget {
             Expanded(
               child: buildButton(
                 onPressed: () async {
+                  final navigatorContext = Navigator.of(context).context;
                   Navigator.pop(context);
                   await SessionActionMenu.confirmAndDelete(
-                    context: context,
+                    context: navigatorContext,
                     ref: ref,
                     session: session,
                   );

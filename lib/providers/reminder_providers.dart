@@ -70,12 +70,16 @@ final reminderSettingsProvider =
 
 final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
 
+/// Number of reminders the OS reports as actually queued after the last
+/// reschedule (-1 when verification is unavailable, e.g. on Windows).
+final lastScheduledCountProvider = StateProvider<int>((ref) => -1);
+
 class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
   @override
   Future<ReminderSettings> build() async {
     final settings = await ref.read(settingsServiceProvider).load();
     if (Platform.isAndroid || Platform.isWindows) {
-      await _rescheduleReminders();
+      await _rescheduleReminders(settings: settings);
     }
     return settings;
   }
@@ -136,9 +140,10 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     return _rescheduleReminders();
   }
 
-  Future<int> _rescheduleReminders() async {
+  Future<int> _rescheduleReminders({ReminderSettings? settings}) async {
     try {
-      final settings = state.value ?? const ReminderSettings();
+      final effectiveSettings =
+          settings ?? state.value ?? const ReminderSettings();
       final locale = ref.read(localeProvider);
       final copy = notificationCopyFor(locale);
       final repository = ref.read(scheduleRepositoryProvider);
@@ -148,11 +153,17 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       await scheduler.rescheduleAll(
         upcomingSessions: upcoming,
         allSessions: all,
-        settings: settings,
+        settings: effectiveSettings,
         copy: copy,
       );
       final failures = scheduler.lastScheduleFailureCount;
-      if (failures > 0) {
+      ref.read(lastScheduledCountProvider.notifier).state =
+          scheduler.lastPendingCount;
+      if (scheduler.lastScheduleVerificationFailed) {
+        // The plugin reported success but the OS queued nothing: surface a
+        // dedicated message so the user can fix exact-alarm / battery settings.
+        ref.read(lastRescheduleErrorProvider.notifier).state = 'verify';
+      } else if (failures > 0) {
         ref.read(lastRescheduleErrorProvider.notifier).state =
             'partial:$failures';
       } else {

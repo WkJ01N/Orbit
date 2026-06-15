@@ -119,7 +119,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get weekdaySun => '週日';
 
   @override
-  String get gridNoSessionsThisWeekSubtitle => '切換至其他週或匯入課表';
+  String get gridNoSessionsThisWeekSubtitle => '切換至其他週查看課程';
 
   @override
   String get actionRetry => '重試';
@@ -332,6 +332,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String countdownSoon(String countdown) {
     return '即將開始 · $countdown';
   }
+
+  @override
+  String get countdownSoonLabel => '即將開始';
 
   @override
   String get enableReminders => '啟用上課提醒';
@@ -943,6 +946,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get reminderResyncFailedBanner => '提醒未能同步，請點「重新同步提醒」重試。';
 
   @override
+  String get reminderScheduleVerifyFailed =>
+      '提醒已儲存，但系統未能寫入任何鬧鐘。請允許精確鬧鐘並關閉電池最佳化後重新同步。';
+
+  @override
+  String get reminderScheduleVerifyFailedBanner =>
+      '系統未能寫入任何提醒。請檢查精確鬧鐘與電池最佳化設定後重新同步。';
+
+  @override
+  String reminderScheduledCount(int count) {
+    return '已排定 $count 則提醒';
+  }
+
+  @override
   String get androidNotificationsEnabled => '通知已開啟';
 
   @override
@@ -1070,7 +1086,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get weekdaySun => '周日';
 
   @override
-  String get gridNoSessionsThisWeekSubtitle => '切换到其他周或导入课表';
+  String get gridNoSessionsThisWeekSubtitle => '切换到其他周查看课程';
 
   @override
   String get actionRetry => '重试';
@@ -1283,6 +1299,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String countdownSoon(String countdown) {
     return '即将开始 · $countdown';
   }
+
+  @override
+  String get countdownSoonLabel => '即将开始';
 
   @override
   String get enableReminders => '启用上课提醒';
@@ -1894,6 +1913,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get reminderResyncFailedBanner => '提醒未能同步，请点「重新同步提醒」重试。';
 
   @override
+  String get reminderScheduleVerifyFailed =>
+      '提醒已保存，但系统未能写入任何闹钟。请允许精确闹钟并关闭电池优化后重新同步。';
+
+  @override
+  String get reminderScheduleVerifyFailedBanner =>
+      '系统未能写入任何提醒。请检查精确闹钟与电池优化设置后重新同步。';
+
+  @override
+  String reminderScheduledCount(int count) {
+    return '已排定 $count 条提醒';
+  }
+
+  @override
   String get androidNotificationsEnabled => '通知已开启';
 
   @override
@@ -2021,7 +2053,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get weekdaySun => '週日';
 
   @override
-  String get gridNoSessionsThisWeekSubtitle => '切換至其他週或匯入課表';
+  String get gridNoSessionsThisWeekSubtitle => '切換至其他週查看課程';
 
   @override
   String get actionRetry => '重試';
@@ -2234,6 +2266,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String countdownSoon(String countdown) {
     return '即將開始 · $countdown';
   }
+
+  @override
+  String get countdownSoonLabel => '即將開始';
 
   @override
   String get enableReminders => '啟用上課提醒';
@@ -2843,6 +2878,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get reminderResyncFailedBanner => '提醒未能同步，請點「重新同步提醒」重試。';
+
+  @override
+  String get reminderScheduleVerifyFailed =>
+      '提醒已儲存，但系統未能寫入任何鬧鐘。請允許精確鬧鐘並關閉電池最佳化後重新同步。';
+
+  @override
+  String get reminderScheduleVerifyFailedBanner =>
+      '系統未能寫入任何提醒。請檢查精確鬧鐘與電池最佳化設定後重新同步。';
+
+  @override
+  String reminderScheduledCount(int count) {
+    return '已排定 $count 則提醒';
+  }
 
   @override
   String get androidNotificationsEnabled => '通知已開啟';

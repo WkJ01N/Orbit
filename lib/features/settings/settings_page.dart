@@ -169,11 +169,15 @@ class _SettingsBody extends ConsumerWidget {
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
-          enabled: settings.enabled,
+          enabled: settings.enabled ||
+              settings.checkInReminderEnabled ||
+              settings.nextDaySummaryEnabled,
           title: Text(l10n.resyncReminders),
           subtitle: Text(l10n.resyncRemindersSubtitle),
           trailing: const Icon(Icons.refresh),
-          onTap: settings.enabled
+          onTap: (settings.enabled ||
+                  settings.checkInReminderEnabled ||
+                  settings.nextDaySummaryEnabled)
               ? () => _resyncReminders(context, ref)
               : null,
         ),

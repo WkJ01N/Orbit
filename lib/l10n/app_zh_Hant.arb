@@ -34,7 +34,7 @@
   "weekdayFri": "週五",
   "weekdaySat": "週六",
   "weekdaySun": "週日",
-  "gridNoSessionsThisWeekSubtitle": "切換至其他週或匯入課表",
+  "gridNoSessionsThisWeekSubtitle": "切換至其他週查看課程",
   "actionRetry": "重試",
   "importViewGrid": "查看課表",
   "resyncPartialFailed": "{count} 條提醒未能排定",
@@ -107,6 +107,7 @@
   "editSessionEndBeforeStart": "結束時間必須晚於開始時間",
   "countdownStartsIn": "{days}天{hours}時{minutes}分",
   "countdownSoon": "即將開始 · {countdown}",
+  "countdownSoonLabel": "即將開始",
   "enableReminders": "啟用上課提醒",
   "enableRemindersSubtitle": "在上課前發送系統通知",
   "leadTimeTitle": "提前提醒時間",
@@ -320,6 +321,14 @@
   "xlsxErrorInvalidTime": "無法解析時間：{detail}",
   "reminderSyncFailed": "提醒同步失敗：{error}",
   "reminderResyncFailedBanner": "提醒未能同步，請點「重新同步提醒」重試。",
+  "reminderScheduleVerifyFailed": "提醒已儲存，但系統未能寫入任何鬧鐘。請允許精確鬧鐘並關閉電池最佳化後重新同步。",
+  "reminderScheduleVerifyFailedBanner": "系統未能寫入任何提醒。請檢查精確鬧鐘與電池最佳化設定後重新同步。",
+  "reminderScheduledCount": "已排定 {count} 則提醒",
+  "@reminderScheduledCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "androidNotificationsEnabled": "通知已開啟",
   "androidNotificationsDisabled": "通知未開啟",
   "androidExactAlarmsEnabled": "精確鬧鐘已允許",

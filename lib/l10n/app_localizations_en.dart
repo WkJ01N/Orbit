@@ -123,7 +123,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gridNoSessionsThisWeekSubtitle =>
-      'Switch to another week or import a schedule';
+      'Switch to another week to view classes';
 
   @override
   String get actionRetry => 'Retry';
@@ -341,6 +341,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String countdownSoon(String countdown) {
     return 'Soon · $countdown';
   }
+
+  @override
+  String get countdownSoonLabel => 'Soon';
 
   @override
   String get enableReminders => 'Enable class reminders';
@@ -978,6 +981,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reminderResyncFailedBanner =>
       'Reminders could not be synced. Tap Resync to try again.';
+
+  @override
+  String get reminderScheduleVerifyFailed =>
+      'Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.';
+
+  @override
+  String get reminderScheduleVerifyFailedBanner =>
+      'The system did not queue any reminders. Check exact alarm and battery settings, then resync.';
+
+  @override
+  String reminderScheduledCount(int count) {
+    return '$count reminder(s) scheduled';
+  }
 
   @override
   String get androidNotificationsEnabled => 'Notifications enabled';

@@ -67,5 +67,12 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 允许在 Android 11+ 解析系统时钟，用于设置系统闹钟 -->
+        <intent>
+            <action android:name="android.intent.action.SET_ALARM"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SHOW_ALARMS"/>
+        </intent>
     </queries>
 </manifest>

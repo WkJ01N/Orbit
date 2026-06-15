@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -10,6 +11,23 @@ class SessionNoteSheet extends ConsumerStatefulWidget {
   final CourseSession session;
 
   static Future<bool?> show(BuildContext context, CourseSession session) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width >= kNarrowDialogBreakpoint) {
+      return showDialog<bool>(
+        context: context,
+        builder: (context) => Dialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SessionNoteSheet(session: session),
+          ),
+        ),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
