@@ -185,7 +185,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final endAt = _combineDateTime(_date, _endTime);
     final name = _nameController.text.trim();
     final courseCode = _courseCodeController.text.trim().isEmpty
-        ? 'MANUAL'
+        ? 'MANUAL|${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}'
         : _courseCodeController.text.trim();
     final section = _sectionController.text.trim().isEmpty
         ? '1'
@@ -348,6 +348,14 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               controller: _teachersController,
               decoration: InputDecoration(
                 labelText: l10n.fieldTeachers,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _facultyController,
+              decoration: InputDecoration(
+                labelText: l10n.fieldFaculty,
                 border: const OutlineInputBorder(),
               ),
             ),

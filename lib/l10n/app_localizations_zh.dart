@@ -309,6 +309,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fieldTeachers => '授課教師（逗號分隔）';
 
   @override
+  String get fieldFaculty => '學院名稱';
+
+  @override
   String get fieldStartTime => '開始時間';
 
   @override
@@ -947,11 +950,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已儲存，但系統未能寫入任何鬧鐘。請允許精確鬧鐘並關閉電池最佳化後重新同步。';
+      '提醒已儲存，但系統未能寫入任何鬧鐘。OriginOS / iQOO 請同時允許自啟動與背景高耗電。再開啟精確鬧鐘、關閉電池最佳化後重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系統未能寫入任何提醒。請檢查精確鬧鐘與電池最佳化設定後重新同步。';
+      '系統未能寫入任何提醒。請檢查精確鬧鐘、電池最佳化與自啟動（OriginOS / iQOO），然後重新同步。';
 
   @override
   String reminderScheduledCount(int count) {
@@ -1274,6 +1277,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get fieldTeachers => '授课教师（逗号分隔）';
+
+  @override
+  String get fieldFaculty => '学院名称';
 
   @override
   String get fieldStartTime => '开始时间';
@@ -1914,11 +1920,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已保存，但系统未能写入任何闹钟。请允许精确闹钟并关闭电池优化后重新同步。';
+      '提醒已保存，但系统未能写入任何闹钟。OriginOS / iQOO 请同时允许自启动与后台高耗电。再开启精确闹钟、关闭电池优化后重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系统未能写入任何提醒。请检查精确闹钟与电池优化设置后重新同步。';
+      '系统未能写入任何提醒。请检查精确闹钟、电池优化与自启动（OriginOS / iQOO），然后重新同步。';
 
   @override
   String reminderScheduledCount(int count) {
@@ -2241,6 +2247,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get fieldTeachers => '授課教師（逗號分隔）';
+
+  @override
+  String get fieldFaculty => '學院名稱';
 
   @override
   String get fieldStartTime => '開始時間';
@@ -2881,11 +2890,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已儲存，但系統未能寫入任何鬧鐘。請允許精確鬧鐘並關閉電池最佳化後重新同步。';
+      '提醒已儲存，但系統未能寫入任何鬧鐘。OriginOS / iQOO 請同時允許自啟動與背景高耗電。再開啟精確鬧鐘、關閉電池最佳化後重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系統未能寫入任何提醒。請檢查精確鬧鐘與電池最佳化設定後重新同步。';
+      '系統未能寫入任何提醒。請檢查精確鬧鐘、電池最佳化與自啟動（OriginOS / iQOO），然後重新同步。';
 
   @override
   String reminderScheduledCount(int count) {

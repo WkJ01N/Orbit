@@ -327,6 +327,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                 headerHeight: 0,
                 timeColumnWidth: _timeColumnWidth,
                 now: now,
+                visibleWeekdays: [selectedDay],
                 child: _buildDayTableBody(
                   context,
                   grid: grid,
@@ -382,6 +383,11 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                   headerHeight: 0,
                   timeColumnWidth: _timeColumnWidth,
                   now: now,
+                  visibleWeekdays: weekdays,
+                  dayColumnIndex: weekdays.contains(now.weekday)
+                      ? weekdays.indexOf(now.weekday)
+                      : null,
+                  dayColumnWidth: dayWidth,
                   child: _buildWeekTableBody(
                     context,
                     grid: grid,

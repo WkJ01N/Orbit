@@ -66,7 +66,8 @@ class SessionDetailSheet extends ConsumerWidget {
           _DetailRow(icon: Icons.room, text: session.room),
           if (session.teachers.isNotEmpty)
             _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
-          _DetailRow(icon: Icons.school, text: session.faculty),
+          if (session.faculty.trim().isNotEmpty)
+            _DetailRow(icon: Icons.school, text: session.faculty),
           if (session.note != null && session.note!.trim().isNotEmpty)
             _DetailRow(icon: Icons.sticky_note_2_outlined, text: session.note!),
           const SizedBox(height: 20),
@@ -182,11 +183,12 @@ class _SessionActionButtons extends ConsumerWidget {
             Expanded(
               child: buildButton(
                 onPressed: () async {
+                  final container = ProviderScope.containerOf(context);
                   final navigatorContext = Navigator.of(context).context;
                   Navigator.pop(context);
                   await SessionActionMenu.confirmAndDelete(
                     context: navigatorContext,
-                    ref: ref,
+                    container: container,
                     session: session,
                   );
                 },

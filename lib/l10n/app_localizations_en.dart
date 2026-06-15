@@ -318,6 +318,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fieldTeachers => 'Teachers (comma separated)';
 
   @override
+  String get fieldFaculty => 'Faculty';
+
+  @override
   String get fieldStartTime => 'Start time';
 
   @override
@@ -984,11 +987,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      'Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.';
+      'Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      'The system did not queue any reminders. Check exact alarm and battery settings, then resync.';
+      'The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.';
 
   @override
   String reminderScheduledCount(int count) {

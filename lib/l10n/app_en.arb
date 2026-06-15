@@ -165,6 +165,7 @@
   "fieldCourseName": "Course name",
   "fieldRoom": "Room",
   "fieldTeachers": "Teachers (comma separated)",
+  "fieldFaculty": "Faculty",
   "fieldStartTime": "Start time",
   "fieldEndTime": "End time",
   "sessionUpdated": "Class updated",
@@ -539,8 +540,8 @@
     }
   },
   "reminderResyncFailedBanner": "Reminders could not be synced. Tap Resync to try again.",
-  "reminderScheduleVerifyFailed": "Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.",
-  "reminderScheduleVerifyFailedBanner": "The system did not queue any reminders. Check exact alarm and battery settings, then resync.",
+  "reminderScheduleVerifyFailed": "Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.",
+  "reminderScheduleVerifyFailedBanner": "The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.",
   "reminderScheduledCount": "{count} reminder(s) scheduled",
   "@reminderScheduledCount": {
     "placeholders": {

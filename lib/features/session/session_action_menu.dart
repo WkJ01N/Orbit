@@ -8,6 +8,8 @@ import 'package:orbit/features/session/session_note_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/providers/reminder_providers.dart';
+import 'package:orbit/providers/schedule_providers.dart';
 
 enum SessionAction { edit, note, delete }
 
@@ -32,7 +34,8 @@ class SessionActionMenu {
       case SessionAction.note:
         await SessionNoteSheet.show(context, session);
       case SessionAction.delete:
-        final deleted = await _confirmDelete(context, ref, session);
+        final container = ProviderScope.containerOf(context);
+        final deleted = await _confirmDelete(context, container, session);
         if (deleted) {
           onDeleted?.call();
         }
@@ -128,15 +131,15 @@ class SessionActionMenu {
 
   static Future<bool> confirmAndDelete({
     required BuildContext context,
-    required WidgetRef ref,
+    required ProviderContainer container,
     required CourseSession session,
   }) {
-    return _confirmDelete(context, ref, session);
+    return _confirmDelete(context, container, session);
   }
 
   static Future<bool> _confirmDelete(
     BuildContext context,
-    WidgetRef ref,
+    ProviderContainer container,
     CourseSession session,
   ) async {
     final l10n = AppLocalizations.of(context)!;
@@ -174,9 +177,11 @@ class SessionActionMenu {
 
     if (confirmed == true) {
       try {
-        await ref.read(scheduleRepositoryProvider).deleteSession(session.id);
-        final failures = await rescheduleAllReminders(ref);
-        refreshSchedule(ref);
+        await container.read(scheduleRepositoryProvider).deleteSession(session.id);
+        final failures = await container
+            .read(reminderSettingsProvider.notifier)
+            .resyncReminders();
+        refreshScheduleContainer(container);
         if (context.mounted) {
           final message = failures > 0
               ? '${l10n.sessionDeleted} ${l10n.resyncPartialFailed(failures)}'

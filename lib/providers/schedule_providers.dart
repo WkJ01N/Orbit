@@ -36,6 +36,10 @@ void refreshSchedule(WidgetRef ref) {
   ref.read(scheduleRefreshProvider.notifier).state++;
 }
 
+void refreshScheduleContainer(ProviderContainer container) {
+  container.read(scheduleRefreshProvider.notifier).state++;
+}
+
 final selectedWeekStartProvider = StateProvider<DateTime?>((ref) => null);
 
 final gridDefaultWeekModeProvider =

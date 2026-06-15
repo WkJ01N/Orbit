@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -8,7 +9,6 @@ import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
-import 'package:timezone/timezone.dart' as tz;
 
 typedef NotificationTapCallback = void Function(String? payload);
 
@@ -35,6 +35,12 @@ class ReminderScheduler {
   NotificationTapCallback? _notificationTapCallback;
   Future<void> _rescheduleChain = Future.value();
   DateTime? _lastSuccessfulRescheduleAt;
+  final List<Timer> _nearTermTimers = [];
+
+  /// When a reminder fires within this window, also register an in-process
+  /// [Timer] that calls [FlutterLocalNotificationsPlugin.show] as a fallback
+  /// when OEM builds silently drop scheduled alarms.
+  static const _nearTermHorizon = Duration(hours: 2);
 
   /// True when we expected to schedule reminders but the OS reports none were
   /// actually queued. This catches OEM (e.g. OriginOS/iQOO) silently dropping
@@ -55,7 +61,7 @@ class ReminderScheduler {
       return;
     }
 
-    configureReminderTimezone();
+    await configureReminderTimezone();
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const windowsSettings = WindowsInitializationSettings(
@@ -184,6 +190,7 @@ class ReminderScheduler {
   }) async {
     await initialize(copy: copy);
     await cancelAll();
+    _cancelNearTermTimers();
     lastScheduleFailureCount = 0;
     lastExpectedCount = 0;
     lastPendingCount = -1;
@@ -211,6 +218,7 @@ class ReminderScheduler {
             reminderAt: reminderAt,
             leadMinutes: settings.leadMinutes,
             copy: copy,
+            now: now,
           ),
         );
         if (classLeadId >= _checkInBase) {
@@ -233,6 +241,7 @@ class ReminderScheduler {
             session: session,
             reminderAt: session.startAt,
             copy: copy,
+            now: now,
           ),
         );
         if (checkInId >= _nextDaySummaryBase) {
@@ -261,6 +270,43 @@ class ReminderScheduler {
 
     lastExpectedCount = expected;
     await _verifyPendingCount();
+  }
+
+  void _cancelNearTermTimers() {
+    for (final timer in _nearTermTimers) {
+      timer.cancel();
+    }
+    _nearTermTimers.clear();
+  }
+
+  void _registerNearTermReminder({
+    required DateTime reminderAt,
+    required DateTime now,
+    required int id,
+    required String title,
+    required String body,
+    required NotificationDetails details,
+    required String payload,
+  }) {
+    if (!isWithinNearTermHorizon(reminderAt, now, _nearTermHorizon)) {
+      return;
+    }
+    final delay = reminderAt.difference(now);
+    final timer = Timer(delay, () async {
+      try {
+        await _plugin.show(
+          id,
+          title,
+          body,
+          details,
+          payload: payload,
+        );
+      } catch (error, stackTrace) {
+        debugPrint('Near-term show failed for $id: $error');
+        debugPrint('$stackTrace');
+      }
+    });
+    _nearTermTimers.add(timer);
   }
 
   /// On Android, query the OS for the number of pending notifications so we can
@@ -372,6 +418,7 @@ class ReminderScheduler {
     required DateTime reminderAt,
     required int leadMinutes,
     required NotificationCopy copy,
+    required DateTime now,
   }) async {
     final teachers = session.teachers.isEmpty
         ? copy.teachersNotProvided
@@ -404,6 +451,16 @@ class ReminderScheduler {
       reminderAt: reminderAt,
       details: details,
       payload: session.id,
+      preferAlarmClock: true,
+    );
+    _registerNearTermReminder(
+      reminderAt: reminderAt,
+      now: now,
+      id: id,
+      title: copy.titleFor(leadMinutes),
+      body: copy.bodyFor(session.courseName, session.room),
+      details: details,
+      payload: session.id,
     );
   }
 
@@ -412,6 +469,7 @@ class ReminderScheduler {
     required CourseSession session,
     required DateTime reminderAt,
     required NotificationCopy copy,
+    required DateTime now,
   }) async {
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -429,6 +487,16 @@ class ReminderScheduler {
       title: copy.checkInTitle(session.courseName, session.room),
       body: copy.checkInBody(session.courseName),
       reminderAt: reminderAt,
+      details: details,
+      payload: 'checkin_${session.id}',
+      preferAlarmClock: true,
+    );
+    _registerNearTermReminder(
+      reminderAt: reminderAt,
+      now: now,
+      id: id,
+      title: copy.checkInTitle(session.courseName, session.room),
+      body: copy.checkInBody(session.courseName),
       details: details,
       payload: 'checkin_${session.id}',
     );
@@ -470,8 +538,28 @@ class ReminderScheduler {
     required DateTime reminderAt,
     required NotificationDetails details,
     required String payload,
+    bool preferAlarmClock = false,
   }) async {
-    final when = tz.TZDateTime.from(reminderAt, tz.local);
+    final when = reminderAtToTzDateTime(reminderAt);
+
+    if (Platform.isAndroid && preferAlarmClock) {
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          title,
+          body,
+          when,
+          details,
+          androidScheduleMode: AndroidScheduleMode.alarmClock,
+          payload: payload,
+        );
+        return;
+      } catch (error, stackTrace) {
+        debugPrint('AlarmClock schedule failed for $id: $error');
+        debugPrint('$stackTrace');
+      }
+    }
+
     try {
       await _plugin.zonedSchedule(
         id,
@@ -485,9 +573,6 @@ class ReminderScheduler {
     } catch (error, stackTrace) {
       debugPrint('Exact schedule failed for $id: $error');
       debugPrint('$stackTrace');
-      // Exact alarms can be rejected when the SCHEDULE_EXACT_ALARM permission is
-      // missing or the OEM restricts them. Fall back to an inexact alarm so the
-      // reminder still fires (slightly later) instead of being lost entirely.
       try {
         await _plugin.zonedSchedule(
           id,

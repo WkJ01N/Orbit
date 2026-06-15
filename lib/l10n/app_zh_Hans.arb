@@ -100,6 +100,7 @@
   "fieldCourseName": "课程名称",
   "fieldRoom": "教室",
   "fieldTeachers": "授课教师（逗号分隔）",
+  "fieldFaculty": "学院名称",
   "fieldStartTime": "开始时间",
   "fieldEndTime": "结束时间",
   "sessionUpdated": "课程已更新",
@@ -321,8 +322,8 @@
   "xlsxErrorInvalidTime": "无法解析时间：{detail}",
   "reminderSyncFailed": "提醒同步失败：{error}",
   "reminderResyncFailedBanner": "提醒未能同步，请点「重新同步提醒」重试。",
-  "reminderScheduleVerifyFailed": "提醒已保存，但系统未能写入任何闹钟。请允许精确闹钟并关闭电池优化后重新同步。",
-  "reminderScheduleVerifyFailedBanner": "系统未能写入任何提醒。请检查精确闹钟与电池优化设置后重新同步。",
+  "reminderScheduleVerifyFailed": "提醒已保存，但系统未能写入任何闹钟。OriginOS / iQOO 请同时允许自启动与后台高耗电。再开启精确闹钟、关闭电池优化后重新同步。",
+  "reminderScheduleVerifyFailedBanner": "系统未能写入任何提醒。请检查精确闹钟、电池优化与自启动（OriginOS / iQOO），然后重新同步。",
   "reminderScheduledCount": "已排定 {count} 条提醒",
   "@reminderScheduledCount": {
     "placeholders": {

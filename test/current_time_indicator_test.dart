@@ -43,13 +43,18 @@ void main() {
     ],
   );
 
-  double? offsetAt(DateTime now, {bool isCurrentWeek = true}) {
+  double? offsetAt(
+    DateTime now, {
+    bool isCurrentWeek = true,
+    List<int>? visibleWeekdays,
+  }) {
     return currentTimeLineOffset(
       grid: grid,
       isCurrentWeek: isCurrentWeek,
       now: now,
       rowHeight: rowHeight,
       headerHeight: 0,
+      visibleWeekdays: visibleWeekdays,
     );
   }
 
@@ -72,6 +77,27 @@ void main() {
   test('hidden when today is outside the displayed week', () {
     // 2026-06-10 is outside the week starting 2026-06-01.
     expect(offsetAt(DateTime(2026, 6, 10, 9, 30)), isNull);
+  });
+
+  test('hidden when visible weekday does not include today', () {
+    // Grid only has Monday; today is Wednesday.
+    expect(
+      offsetAt(
+        DateTime(2026, 6, 3, 10, 0),
+        visibleWeekdays: const [DateTime.monday],
+      ),
+      isNull,
+    );
+  });
+
+  test('shown when visible weekday includes today', () {
+    expect(
+      offsetAt(
+        DateTime(2026, 6, 1, 10, 0),
+        visibleWeekdays: const [DateTime.monday],
+      ),
+      closeTo(32.0, 0.01),
+    );
   });
 
   test('positions proportionally within the first row', () {

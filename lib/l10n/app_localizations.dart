@@ -640,6 +640,12 @@ abstract class AppLocalizations {
   /// **'Teachers (comma separated)'**
   String get fieldTeachers;
 
+  /// No description provided for @fieldFaculty.
+  ///
+  /// In en, this message translates to:
+  /// **'Faculty'**
+  String get fieldFaculty;
+
   /// No description provided for @fieldStartTime.
   ///
   /// In en, this message translates to:
@@ -1764,13 +1770,13 @@ abstract class AppLocalizations {
   /// No description provided for @reminderScheduleVerifyFailed.
   ///
   /// In en, this message translates to:
-  /// **'Reminders saved, but the system did not queue any alarms. Please allow exact alarms and disable battery optimization, then resync.'**
+  /// **'Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.'**
   String get reminderScheduleVerifyFailed;
 
   /// No description provided for @reminderScheduleVerifyFailedBanner.
   ///
   /// In en, this message translates to:
-  /// **'The system did not queue any reminders. Check exact alarm and battery settings, then resync.'**
+  /// **'The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.'**
   String get reminderScheduleVerifyFailedBanner;
 
   /// No description provided for @reminderScheduledCount.
