@@ -8,8 +8,6 @@ import 'package:orbit/features/session/session_note_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
-import 'package:orbit/providers/reminder_providers.dart';
-import 'package:orbit/providers/schedule_providers.dart';
 
 enum SessionAction { edit, note, delete }
 

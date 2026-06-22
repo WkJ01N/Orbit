@@ -250,6 +250,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       refreshSchedule(ref);
 
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context, true);
         final baseMessage = overwritten > 0
             ? l10n.sessionSavedWithOverride(overwritten)
@@ -270,7 +271,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
         } else {
           message = baseMessage;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(message)),
         );
       }

@@ -18,6 +18,9 @@ Future<void> exportScheduleJson(
   try {
     final repository = ref.read(scheduleRepositoryProvider);
     final sessions = await repository.getAllSessions();
+    if (!context.mounted) {
+      return;
+    }
     if (sessions.isEmpty) {
       _showSnackBar(context, l10n.exportNothingToExport);
       return;
@@ -57,6 +60,9 @@ Future<void> exportScheduleXlsx(
   try {
     final repository = ref.read(scheduleRepositoryProvider);
     final sessions = await repository.getAllSessions();
+    if (!context.mounted) {
+      return;
+    }
     if (sessions.isEmpty) {
       _showSnackBar(context, l10n.exportNothingToExport);
       return;

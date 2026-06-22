@@ -6,6 +6,7 @@ import 'package:orbit/features/settings/settings_page.dart';
 import 'package:orbit/features/upcoming/upcoming_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
+import 'package:orbit/core/widgets/reminder_resync_banner.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class _NavItem {
@@ -80,25 +81,12 @@ class AppShell extends ConsumerWidget {
       }
       return Column(
         children: [
-          MaterialBanner(
-            content: Text(
-              rescheduleError == 'verify'
-                  ? l10n.reminderScheduleVerifyFailedBanner
-                  : l10n.reminderResyncFailedBanner,
-            ),
-            leading: Icon(Icons.warning_amber, color: colorScheme.error),
-            actions: [
-              TextButton(
-                onPressed: () =>
-                    ref.read(lastRescheduleErrorProvider.notifier).state = null,
-                child: Text(l10n.actionCancel),
-              ),
-              TextButton(
-                onPressed: () =>
-                    ref.read(reminderSettingsProvider.notifier).resyncReminders(),
-                child: Text(l10n.resyncReminders),
-              ),
-            ],
+          ReminderResyncBanner(
+            error: rescheduleError,
+            onDismiss: () =>
+                ref.read(lastRescheduleErrorProvider.notifier).state = null,
+            onResync: () =>
+                ref.read(reminderSettingsProvider.notifier).resyncReminders(),
           ),
           Expanded(child: content),
         ],

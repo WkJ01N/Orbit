@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,13 +17,19 @@ class ReminderAlarmRegistry {
     if (raw == null || raw.isEmpty) {
       return {};
     }
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    return decoded.map(
-      (key, value) => MapEntry(
-        int.parse(key),
-        ReminderAlarmSpec.fromJson(value as Map<String, dynamic>),
-      ),
-    );
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map(
+        (key, value) => MapEntry(
+          int.parse(key),
+          ReminderAlarmSpec.fromJson(value as Map<String, dynamic>),
+        ),
+      );
+    } catch (error) {
+      debugPrint('ReminderAlarmRegistry corrupted, clearing: $error');
+      await prefs.remove(reminderAlarmRegistryKey);
+      return {};
+    }
   }
 
   static Future<ReminderAlarmSpec?> loadEntry(int alarmId) async {

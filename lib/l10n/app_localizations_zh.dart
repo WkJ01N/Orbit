@@ -550,6 +550,45 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get nextDayRemindWhenNoClass => '無課時也提醒';
+
+  @override
+  String get nextDayRemindWhenNoClassSubtitle => '明天沒有課程時仍發送確認通知';
+
+  @override
+  String get nextDayCustomizeTemplates => '自訂提醒文案';
+
+  @override
+  String get nextDayCustomizeTemplatesSubtitle => '可編輯標題與正文，留空則使用預設';
+
+  @override
+  String get nextDayTemplateSheetTitle => '次日提醒文案';
+
+  @override
+  String get nextDayWithClassTitleLabel => '有課標題';
+
+  @override
+  String get nextDayWithClassBodyLabel => '有課正文';
+
+  @override
+  String get nextDayNoClassTitleLabel => '無課標題';
+
+  @override
+  String get nextDayNoClassBodyLabel => '無課正文';
+
+  @override
+  String nextDayTemplatePlaceholderHint(
+    String countToken,
+    String timeToken,
+    String dateToken,
+  ) {
+    return '有課正文可用 $countToken、$timeToken、$dateToken；無課正文可用 $dateToken。留空使用預設文案。';
+  }
+
+  @override
+  String get nextDayTemplateReset => '恢復預設';
+
+  @override
   String get enableSystemAlarm => '系統鬧鐘（Android）';
 
   @override
@@ -1543,6 +1582,45 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
+  String get nextDayRemindWhenNoClass => '无课时也提醒';
+
+  @override
+  String get nextDayRemindWhenNoClassSubtitle => '明天没有课程时仍发送确认通知';
+
+  @override
+  String get nextDayCustomizeTemplates => '自定义提醒文案';
+
+  @override
+  String get nextDayCustomizeTemplatesSubtitle => '可编辑标题与正文，留空则使用默认';
+
+  @override
+  String get nextDayTemplateSheetTitle => '次日提醒文案';
+
+  @override
+  String get nextDayWithClassTitleLabel => '有课标题';
+
+  @override
+  String get nextDayWithClassBodyLabel => '有课正文';
+
+  @override
+  String get nextDayNoClassTitleLabel => '无课标题';
+
+  @override
+  String get nextDayNoClassBodyLabel => '无课正文';
+
+  @override
+  String nextDayTemplatePlaceholderHint(
+    String countToken,
+    String timeToken,
+    String dateToken,
+  ) {
+    return '有课正文可用 $countToken、$timeToken、$dateToken；无课正文可用 $dateToken。留空使用默认文案。';
+  }
+
+  @override
+  String get nextDayTemplateReset => '恢复默认';
+
+  @override
   String get enableSystemAlarm => '系统闹钟（Android）';
 
   @override
@@ -2534,6 +2612,45 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String nextDaySummaryTimeSubtitle(String time) {
     return '於前一天 $time 發送';
   }
+
+  @override
+  String get nextDayRemindWhenNoClass => '無課時也提醒';
+
+  @override
+  String get nextDayRemindWhenNoClassSubtitle => '明天沒有課程時仍發送確認通知';
+
+  @override
+  String get nextDayCustomizeTemplates => '自訂提醒文案';
+
+  @override
+  String get nextDayCustomizeTemplatesSubtitle => '可編輯標題與正文，留空則使用預設';
+
+  @override
+  String get nextDayTemplateSheetTitle => '次日提醒文案';
+
+  @override
+  String get nextDayWithClassTitleLabel => '有課標題';
+
+  @override
+  String get nextDayWithClassBodyLabel => '有課正文';
+
+  @override
+  String get nextDayNoClassTitleLabel => '無課標題';
+
+  @override
+  String get nextDayNoClassBodyLabel => '無課正文';
+
+  @override
+  String nextDayTemplatePlaceholderHint(
+    String countToken,
+    String timeToken,
+    String dateToken,
+  ) {
+    return '有課正文可用 $countToken、$timeToken、$dateToken；無課正文可用 $dateToken。留空使用預設文案。';
+  }
+
+  @override
+  String get nextDayTemplateReset => '恢復預設';
 
   @override
   String get enableSystemAlarm => '系統鬧鐘（Android）';

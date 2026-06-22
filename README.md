@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.1.1** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.1.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -10,23 +10,23 @@
 |------|------|
 | 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
 | 导出与备份 | 课表导出为 JSON / xlsx；JSON 备份恢复；导出 / 还原进行中状态 |
-| 课表网格 | 左右滑动 / 按钮切换周次（无动画，即时切换）；宽屏表头列对齐、固定行高、当前时间红线（仅今天列）；标准 AppBar；横滚性能优化与单元格重绘隔离；骨架屏加载；窄屏 AppBar 防重叠；默认周次可设（智能 / 本周 / 最早）；周选择器、批量删除；手动添加 / 编辑课程（含学院）；冲突覆盖保存；课程搜索（简繁互搜）；无课周引导切换（非全局空态不重复显示导入按钮） |
+| 课表网格 | 左右滑动 / 按钮切换周次（无动画，即时切换）；宽屏表头列对齐、吸顶优化、固定行高、当前时间红线（仅今天列）；分钟 tick 局部重建；标准 AppBar；横滚性能优化与单元格重绘隔离；骨架屏加载；窄屏 AppBar 防重叠；默认周次可设（智能 / 本周 / 最早）；周选择器、批量删除；手动添加 / 编辑课程（含学院）；冲突覆盖保存；课程搜索（简繁互搜）；无课周引导切换（非全局空态不重复显示导入按钮） |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；FAB 快速添加课程 |
-| 提醒 | 课前通知、次日摘要、打卡提醒；IANA 时区排程；Android `alarmClock` 优先与精确 / 非精确降级；2 小时内近端 Timer 兜底；排程 pending 校验与失败提示（含 OriginOS 自启动提示）；通知点击跳转课程详情；重排失败全局 Banner / SnackBar；Android 可选系统闹钟（含 OriginOS 回退） |
+| 提醒 | 课前通知、次日摘要（可自定义模板 / 无课开关）、打卡提醒；IANA 时区排程；Android `alarmClock` 优先与精确 / 非精确降级；AlarmManager 主通道（含次日摘要）；2 小时内近端 Timer 兜底；排程 pending 校验与失败提示（含 OriginOS 自启动提示）；全局重同步横幅；通知点击跳转课程详情；Android 可选系统闹钟（含 OriginOS 回退） |
 | 课程管理 | 编辑、备注、单节删除；详情页响应式快捷操作（窄屏自适应）；宽屏居中对话框、窄屏底部 Sheet |
 | Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启 |
-| Android | AlarmManager 后台维护；电池优化双向开关；权限分项引导（含精确闹钟）；重启后自动维护闹钟 |
+| Android | AlarmManager 后台维护（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；重启后自动维护闹钟 |
 | 多语言 | 繁体中文、简体中文、English |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.1.1/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.1.2/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.1.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.1.1-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.1.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.1.2-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -42,7 +42,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 76 项测试
+flutter test          # 86 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -66,15 +66,34 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.1.1/orbit-v1.1.1-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.1.2/orbit-v1.1.2-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.1.1/orbit-v1.1.1-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.1.2/orbit-v1.1.2-release.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.1.2
+
+**提醒**
+- 次日摘要可自定义标题 / 正文（`{count}`、`{time}`、`{date}`）；「无课时也提醒」开关
+- 全局重同步横幅区分 verify / partial / 失败
+
+**Android**
+- 次日摘要纳入 AlarmManager；FLN `alarmClock` + 最高优先级
+- 课前 / 打卡以 AlarmManager 为主通道，避免三重投递
+- 清空数据同步取消闹钟；registry 先 OS 成功再写入
+
+**课表**
+- pinned 表头 delegate 优化；分钟 tick 局部重建；换周清理选中态
+
+**修复与其他**
+- 修复 Android 次日提醒后台 / 杀进程后不触发
+- reschedule 链错误恢复、SnackBar / handler / async context 修补
+- 版本号 1.1.2（build `+7`）；测试 86 项；预编译包见 `release/v1.1.2/`
 
 ### v1.1.1
 

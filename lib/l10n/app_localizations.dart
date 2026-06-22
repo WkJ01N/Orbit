@@ -1060,6 +1060,76 @@ abstract class AppLocalizations {
   /// **'Send at {time} the day before'**
   String nextDaySummaryTimeSubtitle(String time);
 
+  /// No description provided for @nextDayRemindWhenNoClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind when no classes'**
+  String get nextDayRemindWhenNoClass;
+
+  /// No description provided for @nextDayRemindWhenNoClassSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Still send a preview notification when tomorrow has no classes'**
+  String get nextDayRemindWhenNoClassSubtitle;
+
+  /// No description provided for @nextDayCustomizeTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize reminder text'**
+  String get nextDayCustomizeTemplates;
+
+  /// No description provided for @nextDayCustomizeTemplatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit title and body; leave blank for defaults'**
+  String get nextDayCustomizeTemplatesSubtitle;
+
+  /// No description provided for @nextDayTemplateSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Next-day reminder text'**
+  String get nextDayTemplateSheetTitle;
+
+  /// No description provided for @nextDayWithClassTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (with classes)'**
+  String get nextDayWithClassTitleLabel;
+
+  /// No description provided for @nextDayWithClassBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Body (with classes)'**
+  String get nextDayWithClassBodyLabel;
+
+  /// No description provided for @nextDayNoClassTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (no classes)'**
+  String get nextDayNoClassTitleLabel;
+
+  /// No description provided for @nextDayNoClassBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Body (no classes)'**
+  String get nextDayNoClassBodyLabel;
+
+  /// No description provided for @nextDayTemplatePlaceholderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Body with classes: {countToken}, {timeToken}, {dateToken}. No-class body: {dateToken}. Leave blank for defaults.'**
+  String nextDayTemplatePlaceholderHint(
+    String countToken,
+    String timeToken,
+    String dateToken,
+  );
+
+  /// No description provided for @nextDayTemplateReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to defaults'**
+  String get nextDayTemplateReset;
+
   /// No description provided for @enableSystemAlarm.
   ///
   /// In en, this message translates to:

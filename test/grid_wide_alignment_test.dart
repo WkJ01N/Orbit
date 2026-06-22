@@ -7,6 +7,7 @@ import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/services/grid_builder.dart';
+import 'test_providers.dart';
 
 CourseSession _session({
   required DateTime date,
@@ -96,6 +97,7 @@ Future<void> _pumpWideWeekGrid(WidgetTester tester) async {
 
   await tester.pumpWidget(
     ProviderScope(
+      overrides: testProviderOverrides(),
       child: MaterialApp(
         locale: defaultLocale,
         localizationsDelegates: const [

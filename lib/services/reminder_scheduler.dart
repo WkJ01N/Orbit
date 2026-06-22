@@ -6,10 +6,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
+import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
+import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
+import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
 
 typedef NotificationTapCallback = void Function(String? payload);
@@ -56,10 +59,9 @@ class ReminderScheduler {
   static const _foregroundResyncDebounce = Duration(hours: 6);
 
   static const _channelId = 'orbit_course_reminders';
-  static const _classLeadBase = 1;
-  static const _checkInBase = 500000;
-  static const _nextDaySummaryBase = 1000000;
-  static const _nextDaySummaryDays = 30;
+  static const _classLeadBase = classLeadAlarmBase;
+  static const _checkInBase = checkInAlarmBase;
+  static const _nextDaySummaryBase = nextDaySummaryAlarmBase;
 
   Future<void> ensurePluginInitialized() async {
     if (_initialized) {
@@ -101,7 +103,7 @@ class ReminderScheduler {
     }
   }
 
-  void registerNotificationTapHandler(NotificationTapCallback callback) {
+  void registerNotificationTapHandler(NotificationTapCallback? callback) {
     _notificationTapCallback = callback;
   }
 
@@ -176,14 +178,19 @@ class ReminderScheduler {
     required ReminderSettings settings,
     required NotificationCopy copy,
   }) {
-    _rescheduleChain = _rescheduleChain.then(
-      (_) => _rescheduleAllImpl(
-        upcomingSessions: upcomingSessions,
-        allSessions: allSessions,
-        settings: settings,
-        copy: copy,
-      ),
-    );
+    _rescheduleChain = _rescheduleChain
+        .catchError((Object error, StackTrace stackTrace) {
+          debugPrint('Reschedule chain error: $error');
+          debugPrint('$stackTrace');
+        })
+        .then(
+          (_) => _rescheduleAllImpl(
+            upcomingSessions: upcomingSessions,
+            allSessions: allSessions,
+            settings: settings,
+            copy: copy,
+          ),
+        );
     return _rescheduleChain;
   }
 
@@ -260,7 +267,7 @@ class ReminderScheduler {
     }
 
     if (settings.nextDaySummaryEnabled) {
-      expected += _countNextDaySummaries(
+      expected += countNextDaySummarySlots(
         allSessions: allSessions,
         settings: settings,
         now: now,
@@ -279,14 +286,31 @@ class ReminderScheduler {
 
     lastExpectedCount = expected;
     if (Platform.isAndroid) {
-      final alarmSpecs = buildReminderAlarmSpecs(
-        upcomingSessions: upcomingSessions,
-        settings: settings,
-        now: now,
-        copy: copy,
-      );
-      lastRegisteredAlarmCount =
+      final alarmSpecs = [
+        ...buildReminderAlarmSpecs(
+          upcomingSessions: upcomingSessions,
+          settings: settings,
+          now: now,
+          copy: copy,
+        ),
+        ...buildNextDaySummaryAlarmSpecs(
+          allSessions: allSessions,
+          settings: settings,
+          now: now,
+          copy: copy,
+        ),
+      ];
+      final alarmResult =
           await AndroidReminderGuard.instance.scheduleReminderAlarms(alarmSpecs);
+      lastRegisteredAlarmCount = alarmResult.scheduled;
+      lastScheduleFailureCount += alarmResult.failed;
+      for (final spec in alarmResult.failedSpecs) {
+        _registerNearTermReminderFromSpec(
+          spec: spec,
+          now: now,
+          copy: copy,
+        );
+      }
     }
     await _verifyPendingCount();
   }
@@ -296,6 +320,37 @@ class ReminderScheduler {
       timer.cancel();
     }
     _nearTermTimers.clear();
+  }
+
+  void _registerNearTermReminderFromSpec({
+    required ReminderAlarmSpec spec,
+    required DateTime now,
+    required NotificationCopy copy,
+  }) {
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        copy.channelName,
+        channelDescription: copy.channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+        styleInformation: spec.bigText == null
+            ? null
+            : BigTextStyleInformation(spec.bigText!),
+      ),
+      windows: const WindowsNotificationDetails(),
+    );
+    _registerNearTermReminder(
+      reminderAt: spec.fireAt,
+      now: now,
+      id: spec.notificationId,
+      title: spec.title,
+      body: spec.body,
+      details: details,
+      payload: spec.payload,
+    );
   }
 
   void _registerNearTermReminder({
@@ -344,91 +399,75 @@ class ReminderScheduler {
     }
   }
 
-  int _countNextDaySummaries({
-    required List<CourseSession> allSessions,
-    required ReminderSettings settings,
-    required DateTime now,
-  }) {
-    final today = DateTime(now.year, now.month, now.day);
-    var count = 0;
-    for (var offset = 0; offset < _nextDaySummaryDays; offset++) {
-      final targetDay = today.add(Duration(days: offset + 1));
-      final notifyDay = targetDay.subtract(const Duration(days: 1));
-      final notifyAt = DateTime(
-        notifyDay.year,
-        notifyDay.month,
-        notifyDay.day,
-        settings.nextDaySummaryHour,
-        settings.nextDaySummaryMinute,
-      );
-      if (notifyAt.isAfter(now)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
   Future<void> _scheduleNextDaySummaries({
     required List<CourseSession> allSessions,
     required ReminderSettings settings,
     required NotificationCopy copy,
     required DateTime now,
   }) async {
-    final today = DateTime(now.year, now.month, now.day);
-    final sessionsByDate = groupSessionsByDate(allSessions);
-    final summaryTasks = <Future<void>>[];
+    final slots = buildNextDaySummarySlots(
+      allSessions: allSessions,
+      settings: settings,
+      now: now,
+      copy: copy,
+    );
+    await Future.wait(
+      slots.map(
+        (slot) => _scheduleNextDayNotification(
+          id: slot.notificationId,
+          title: slot.title,
+          body: slot.body,
+          reminderAt: slot.fireAt,
+          copy: copy,
+          payload: slot.payload,
+        ),
+      ),
+    );
+  }
 
-    for (var offset = 0; offset < _nextDaySummaryDays; offset++) {
-      final targetDay = today.add(Duration(days: offset + 1));
-      final notifyDay = targetDay.subtract(const Duration(days: 1));
-      final notifyAt = DateTime(
-        notifyDay.year,
-        notifyDay.month,
-        notifyDay.day,
-        settings.nextDaySummaryHour,
-        settings.nextDaySummaryMinute,
-      );
-      if (!notifyAt.isAfter(now)) {
-        continue;
-      }
+  Future<void> _scheduleNextDayNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime reminderAt,
+    required NotificationCopy copy,
+    required String payload,
+  }) async {
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        copy.channelName,
+        channelDescription: copy.channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+      ),
+      windows: const WindowsNotificationDetails(),
+    );
 
-      final summary = summarizeDayFromGrouped(sessionsByDate, targetDay);
-      final notificationId = _nextDaySummaryBase + offset;
-
-      if (summary.hasClasses) {
-        final firstTime = formatTimeOfDay(summary.firstSessionStart!);
-        summaryTasks.add(
-          _schedulePlainNotification(
-            id: notificationId,
-            title: copy.nextDaySummaryTitle,
-            body: copy.nextDaySummaryBody(summary.sessionCount, firstTime),
-            reminderAt: notifyAt,
-            copy: copy,
-            payload: 'next_day_${_dateKey(targetDay)}',
-          ),
-        );
-      } else {
-        summaryTasks.add(
-          _schedulePlainNotification(
-            id: notificationId,
-            title: copy.nextDayNoClassTitle,
-            body: copy.nextDayNoClassBody,
-            reminderAt: notifyAt,
-            copy: copy,
-            payload: 'next_day_empty_${_dateKey(targetDay)}',
-          ),
-        );
-      }
-    }
-
-    await Future.wait(summaryTasks);
+    await _zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      reminderAt: reminderAt,
+      details: details,
+      payload: payload,
+      preferAlarmClock: true,
+    );
   }
 
   Future<void> cancelAll() async {
-    if (!_initialized) {
-      return;
-    }
+    await ensurePluginInitialized();
     await _plugin.cancelAll();
+  }
+
+  Future<void> cancelAllReminders() async {
+    _cancelNearTermTimers();
+    await cancelAll();
+    if (Platform.isAndroid) {
+      await AndroidReminderGuard.instance.cancelAllReminderAlarms();
+    }
   }
 
   Future<void> _scheduleClassLead({
@@ -474,15 +513,17 @@ class ReminderScheduler {
       payload: session.id,
       preferAlarmClock: true,
     );
-    _registerNearTermReminder(
-      reminderAt: reminderAt,
-      now: now,
-      id: id,
-      title: copy.titleFor(leadMinutes),
-      body: copy.bodyFor(session.courseName, session.room),
-      details: details,
-      payload: session.id,
-    );
+    if (!Platform.isAndroid) {
+      _registerNearTermReminder(
+        reminderAt: reminderAt,
+        now: now,
+        id: id,
+        title: copy.titleFor(leadMinutes),
+        body: copy.bodyFor(session.courseName, session.room),
+        details: details,
+        payload: session.id,
+      );
+    }
   }
 
   Future<void> _scheduleCheckIn({
@@ -514,44 +555,17 @@ class ReminderScheduler {
       payload: 'checkin_${session.id}',
       preferAlarmClock: true,
     );
-    _registerNearTermReminder(
-      reminderAt: reminderAt,
-      now: now,
-      id: id,
-      title: copy.checkInTitle(session.courseName, session.room),
-      body: copy.checkInBody(session.courseName),
-      details: details,
-      payload: 'checkin_${session.id}',
-    );
-  }
-
-  Future<void> _schedulePlainNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime reminderAt,
-    required NotificationCopy copy,
-    required String payload,
-  }) async {
-    final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        copy.channelName,
-        channelDescription: copy.channelDescription,
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
-      ),
-      windows: const WindowsNotificationDetails(),
-    );
-
-    await _zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      reminderAt: reminderAt,
-      details: details,
-      payload: payload,
-    );
+    if (!Platform.isAndroid) {
+      _registerNearTermReminder(
+        reminderAt: reminderAt,
+        now: now,
+        id: id,
+        title: copy.checkInTitle(session.courseName, session.room),
+        body: copy.checkInBody(session.courseName),
+        details: details,
+        payload: 'checkin_${session.id}',
+      );
+    }
   }
 
   Future<void> _zonedSchedule({
@@ -612,10 +626,5 @@ class ReminderScheduler {
         debugPrint('$fallbackStack');
       }
     }
-  }
-
-  static String _dateKey(DateTime value) {
-    return '${value.year}-${value.month.toString().padLeft(2, '0')}-'
-        '${value.day.toString().padLeft(2, '0')}';
   }
 }

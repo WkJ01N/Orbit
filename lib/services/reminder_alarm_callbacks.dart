@@ -8,8 +8,6 @@ import 'package:orbit/services/reminder_alarm_registry.dart';
 import 'package:orbit/services/settings_service.dart';
 
 const reminderAlarmChannelId = 'orbit_course_reminders';
-const backgroundTestAlarmId = 999990;
-
 /// Fires when an Android AlarmManager one-shot triggers in a background isolate.
 @pragma('vm:entry-point')
 Future<void> fireReminderAlarm(int alarmId) async {

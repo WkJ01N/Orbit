@@ -13,6 +13,11 @@ class SettingsService {
   static const _nextDaySummaryEnabledKey = 'next_day_summary_enabled';
   static const _nextDaySummaryHourKey = 'next_day_summary_hour';
   static const _nextDaySummaryMinuteKey = 'next_day_summary_minute';
+  static const _nextDayRemindWhenNoClassKey = 'next_day_remind_when_no_class';
+  static const _nextDayWithClassTitleKey = 'next_day_with_class_title_tpl';
+  static const _nextDayWithClassBodyKey = 'next_day_with_class_body_tpl';
+  static const _nextDayNoClassTitleKey = 'next_day_no_class_title_tpl';
+  static const _nextDayNoClassBodyKey = 'next_day_no_class_body_tpl';
   static const _systemAlarmEnabledKey = 'system_alarm_enabled';
   static const _systemAlarmLeadMinutesKey = 'system_alarm_lead_minutes';
   static const _checkInReminderEnabledKey = 'check_in_reminder_enabled';
@@ -33,6 +38,13 @@ class SettingsService {
       nextDaySummaryEnabled: prefs.getBool(_nextDaySummaryEnabledKey) ?? true,
       nextDaySummaryHour: prefs.getInt(_nextDaySummaryHourKey) ?? 23,
       nextDaySummaryMinute: prefs.getInt(_nextDaySummaryMinuteKey) ?? 0,
+      nextDayRemindWhenNoClass:
+          prefs.getBool(_nextDayRemindWhenNoClassKey) ?? true,
+      nextDayWithClassTitleTemplate:
+          prefs.getString(_nextDayWithClassTitleKey),
+      nextDayWithClassBodyTemplate: prefs.getString(_nextDayWithClassBodyKey),
+      nextDayNoClassTitleTemplate: prefs.getString(_nextDayNoClassTitleKey),
+      nextDayNoClassBodyTemplate: prefs.getString(_nextDayNoClassBodyKey),
       systemAlarmEnabled: prefs.getBool(_systemAlarmEnabledKey) ?? false,
       systemAlarmLeadMinutes: prefs.getInt(_systemAlarmLeadMinutesKey) ?? 10,
       checkInReminderEnabled: prefs.getBool(_checkInReminderEnabledKey) ?? true,
@@ -51,6 +63,30 @@ class SettingsService {
     await prefs.setInt(
       _nextDaySummaryMinuteKey,
       settings.nextDaySummaryMinute,
+    );
+    await prefs.setBool(
+      _nextDayRemindWhenNoClassKey,
+      settings.nextDayRemindWhenNoClass,
+    );
+    await _saveOptionalString(
+      prefs,
+      _nextDayWithClassTitleKey,
+      settings.nextDayWithClassTitleTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _nextDayWithClassBodyKey,
+      settings.nextDayWithClassBodyTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _nextDayNoClassTitleKey,
+      settings.nextDayNoClassTitleTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _nextDayNoClassBodyKey,
+      settings.nextDayNoClassBodyTemplate,
     );
     await prefs.setBool(_systemAlarmEnabledKey, settings.systemAlarmEnabled);
     await prefs.setInt(
@@ -109,5 +145,17 @@ class SettingsService {
   Future<void> saveGridDefaultWeekMode(GridDefaultWeekMode mode) async {
     final prefs = await _prefsInstance();
     await prefs.setString(_gridDefaultWeekModeKey, mode.name);
+  }
+
+  Future<void> _saveOptionalString(
+    SharedPreferences prefs,
+    String key,
+    String? value,
+  ) async {
+    if (value == null || value.trim().isEmpty) {
+      await prefs.remove(key);
+    } else {
+      await prefs.setString(key, value);
+    }
   }
 }

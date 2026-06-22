@@ -303,6 +303,24 @@
       "time": {"type": "String"}
     }
   },
+  "nextDayRemindWhenNoClass": "Remind when no classes",
+  "nextDayRemindWhenNoClassSubtitle": "Still send a preview notification when tomorrow has no classes",
+  "nextDayCustomizeTemplates": "Customize reminder text",
+  "nextDayCustomizeTemplatesSubtitle": "Edit title and body; leave blank for defaults",
+  "nextDayTemplateSheetTitle": "Next-day reminder text",
+  "nextDayWithClassTitleLabel": "Title (with classes)",
+  "nextDayWithClassBodyLabel": "Body (with classes)",
+  "nextDayNoClassTitleLabel": "Title (no classes)",
+  "nextDayNoClassBodyLabel": "Body (no classes)",
+  "nextDayTemplatePlaceholderHint": "Body with classes: {countToken}, {timeToken}, {dateToken}. No-class body: {dateToken}. Leave blank for defaults.",
+  "@nextDayTemplatePlaceholderHint": {
+    "placeholders": {
+      "countToken": {"type": "String", "example": "{count}"},
+      "timeToken": {"type": "String", "example": "{time}"},
+      "dateToken": {"type": "String", "example": "{date}"}
+    }
+  },
+  "nextDayTemplateReset": "Reset to defaults",
   "enableSystemAlarm": "System alarm for first class (Android)",
   "enableSystemAlarmSubtitle": "Open the system clock app to set an alarm for tomorrow's first class",
   "systemAlarmLeadTitle": "Alarm lead time",

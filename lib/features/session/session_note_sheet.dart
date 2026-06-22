@@ -83,8 +83,9 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
       refreshSchedule(ref);
 
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(l10n.sessionNoteSaved)),
         );
       }

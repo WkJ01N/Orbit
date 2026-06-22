@@ -48,6 +48,9 @@ final gridDefaultWeekModeProvider =
 );
 
 class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
+  int _loadGeneration = 0;
+  final _settings = SettingsService();
+
   @override
   GridDefaultWeekMode build() {
     _load();
@@ -55,11 +58,16 @@ class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
   }
 
   Future<void> _load() async {
-    state = await SettingsService().loadGridDefaultWeekMode();
+    final generation = ++_loadGeneration;
+    final mode = await _settings.loadGridDefaultWeekMode();
+    if (generation != _loadGeneration) {
+      return;
+    }
+    state = mode;
   }
 
   Future<void> setMode(GridDefaultWeekMode mode) async {
-    await SettingsService().saveGridDefaultWeekMode(mode);
+    await _settings.saveGridDefaultWeekMode(mode);
     state = mode;
   }
 }

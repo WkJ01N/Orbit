@@ -71,4 +71,14 @@ void main() {
     await ReminderAlarmRegistry.clearAll();
     expect(await ReminderAlarmRegistry.count(), 0);
   });
+
+  test('loadAll returns empty map when registry JSON is corrupted', () async {
+    SharedPreferences.setMockInitialValues({
+      reminderAlarmRegistryKey: '{not valid json',
+    });
+
+    final loaded = await ReminderAlarmRegistry.loadAll();
+    expect(loaded, isEmpty);
+    expect(await ReminderAlarmRegistry.count(), 0);
+  });
 }

@@ -573,6 +573,47 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get nextDayRemindWhenNoClass => 'Remind when no classes';
+
+  @override
+  String get nextDayRemindWhenNoClassSubtitle =>
+      'Still send a preview notification when tomorrow has no classes';
+
+  @override
+  String get nextDayCustomizeTemplates => 'Customize reminder text';
+
+  @override
+  String get nextDayCustomizeTemplatesSubtitle =>
+      'Edit title and body; leave blank for defaults';
+
+  @override
+  String get nextDayTemplateSheetTitle => 'Next-day reminder text';
+
+  @override
+  String get nextDayWithClassTitleLabel => 'Title (with classes)';
+
+  @override
+  String get nextDayWithClassBodyLabel => 'Body (with classes)';
+
+  @override
+  String get nextDayNoClassTitleLabel => 'Title (no classes)';
+
+  @override
+  String get nextDayNoClassBodyLabel => 'Body (no classes)';
+
+  @override
+  String nextDayTemplatePlaceholderHint(
+    String countToken,
+    String timeToken,
+    String dateToken,
+  ) {
+    return 'Body with classes: $countToken, $timeToken, $dateToken. No-class body: $dateToken. Leave blank for defaults.';
+  }
+
+  @override
+  String get nextDayTemplateReset => 'Reset to defaults';
+
+  @override
   String get enableSystemAlarm => 'System alarm for first class (Android)';
 
   @override

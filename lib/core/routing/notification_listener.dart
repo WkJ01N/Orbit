@@ -35,6 +35,7 @@ class _OrbitNotificationListenerState
 
   @override
   void dispose() {
+    ReminderScheduler.shared.registerNotificationTapHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

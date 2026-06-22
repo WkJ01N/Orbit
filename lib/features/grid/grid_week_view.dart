@@ -68,6 +68,16 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   @override
   void didUpdateWidget(covariant WeekGridView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.grid.weekStart != widget.grid.weekStart) {
+      _selectedSessionId = null;
+    }
+
+    final weekdays = presentWeekdays(widget.grid);
+    _chipKeys.removeWhere((day, _) => !weekdays.contains(day));
+    if (_selectedWeekday != null && !weekdays.contains(_selectedWeekday)) {
+      _selectedWeekday = weekdays.isNotEmpty ? weekdays.first : null;
+    }
+
     if (oldWidget.grid.weekStart == widget.grid.weekStart) {
       return;
     }
@@ -88,7 +98,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       return;
     }
 
-    setState(() => _selectedWeekday = null);
+    setState(() {
+      _selectedWeekday = null;
+      _selectedSessionId = null;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _updateHorizontalScrollEdges();
@@ -313,6 +326,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       };
       return _buildPinnedGridScroll(
         colorScheme: colorScheme,
+        headerKey: ValueKey('${grid.weekStart}-compact-$selectedDay'),
         header: _buildTableHeader(
           context,
           grid: grid,
@@ -361,6 +375,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         width: contentWidth,
         child: _buildPinnedGridScroll(
           colorScheme: colorScheme,
+          headerKey: ValueKey('${grid.weekStart}-wide-${weekdays.join('-')}'),
           header: _buildTableHeader(
             context,
             grid: grid,
@@ -398,6 +413,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   Widget _buildPinnedGridScroll({
     required ColorScheme colorScheme,
+    required Key headerKey,
     required Widget header,
     required Widget body,
   }) {
@@ -409,6 +425,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           SliverPersistentHeader(
             pinned: true,
             delegate: WeekGridTableHeaderDelegate(
+              headerKey: headerKey,
               header: header,
               extent: _tableHeaderExtent,
               backgroundColor: colorScheme.surfaceContainerHighest,
@@ -450,35 +467,28 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     final l10n = AppLocalizations.of(context)!;
     final weekdays = presentWeekdays(widget.grid);
     final isEmptyWeek = isEmptyWeekGrid(widget.grid);
-
-    // Watch the shared time provider so Chip highlights and the time indicator
-    // stay in sync and update together once per minute.
-    final now = ref.watch(currentTimeProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     var selectedDay = DateTime.monday;
     if (!isEmptyWeek) {
       selectedDay = _selectedWeekday ?? defaultWeekdayForGrid(widget.grid);
-      if (!weekdays.contains(selectedDay)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() => _selectedWeekday = weekdays.first);
-          }
-        });
-      }
     }
-
-    final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < kNarrowDialogBreakpoint;
-        final swipeContent = _buildSwipeWrapper(
-          isCompact: isCompact,
-          l10n: l10n,
-          constraints: constraints,
-          colorScheme: colorScheme,
-          now: now,
-          day: isCompact ? selectedDay : null,
+        final swipeContent = Consumer(
+          builder: (context, ref, _) {
+            final now = ref.watch(currentTimeProvider);
+            return _buildSwipeWrapper(
+              isCompact: isCompact,
+              l10n: l10n,
+              constraints: constraints,
+              colorScheme: colorScheme,
+              now: now,
+              day: isCompact ? selectedDay : null,
+            );
+          },
         );
 
         if (isCompact) {
@@ -644,7 +654,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             context,
             grid.sessionsFor(day, timeLabel),
             colorScheme,
-            now,
             l10n,
           ),
       ],
@@ -655,7 +664,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     BuildContext context,
     List<CourseSession> sessions,
     ColorScheme colorScheme,
-    DateTime now,
     AppLocalizations l10n,
   ) {
     if (sessions.isEmpty) {
@@ -682,7 +690,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               key: ValueKey(session.id),
               session: session,
               colorScheme: colorScheme,
-              now: now,
               l10n: l10n,
               isSelected: _selectedSessionId == session.id,
               onTap: () {
@@ -709,12 +716,11 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   }
 }
 
-class GridSessionChip extends StatelessWidget {
+class GridSessionChip extends ConsumerWidget {
   const GridSessionChip({
     super.key,
     required this.session,
     required this.colorScheme,
-    required this.now,
     required this.l10n,
     required this.isSelected,
     required this.onTap,
@@ -723,14 +729,14 @@ class GridSessionChip extends StatelessWidget {
 
   final CourseSession session;
   final ColorScheme colorScheme;
-  final DateTime now;
   final AppLocalizations l10n;
   final bool isSelected;
   final VoidCallback onTap;
   final void Function(Offset? position) onMenu;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(currentTimeProvider);
     final isPast = isSessionPast(now, session.endAt);
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final highlightSoon =

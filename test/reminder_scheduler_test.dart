@@ -6,6 +6,7 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
+import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 CourseSession _manualSession({required DateTime startAt}) {
@@ -126,6 +127,11 @@ void main() {
     expect(specs.last.payload, startsWith('checkin_'));
     expect(specs.first.fireAt, DateTime(2026, 6, 15, 10, 45));
     expect(specs.last.fireAt, session.startAt);
+  });
+
+  test('system alarm ids stay outside course reminder ranges', () {
+    expect(maintenanceAlarmId, greaterThanOrEqualTo(checkInAlarmLimit));
+    expect(backgroundTestAlarmId, greaterThan(maintenanceAlarmId));
   });
 
   test('manual session in upcoming list yields schedulable reminders', () {

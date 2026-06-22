@@ -9,11 +9,12 @@ import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/services/reminder_alarm_callbacks.dart';
 import 'package:orbit/services/reminder_alarm_registry.dart';
+import 'package:orbit/services/reminder_alarm_schedule_result.dart';
 import 'package:orbit/services/reminder_background.dart';
+import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
 
-const maintenanceAlarmId = 90400;
 const _androidPackageName = 'com.must.orbit.orbit';
 const _batteryChannel = MethodChannel('com.must.orbit.orbit/battery');
 const _maintenanceInterval = Duration(hours: 6);
@@ -52,15 +53,18 @@ class AndroidReminderGuard {
     );
   }
 
-  /// Registers one-shot AlarmManager alarms for each [spec]. Returns the count
-  /// successfully scheduled with the OS.
-  Future<int> scheduleReminderAlarms(List<ReminderAlarmSpec> specs) async {
+  /// Registers one-shot AlarmManager alarms for each [spec]. Only specs that
+  /// the OS accepts are persisted in [ReminderAlarmRegistry].
+  Future<ReminderAlarmScheduleResult> scheduleReminderAlarms(
+    List<ReminderAlarmSpec> specs,
+  ) async {
     if (!Platform.isAndroid || !_initialized) {
-      return 0;
+      return const ReminderAlarmScheduleResult(scheduled: 0, failedSpecs: []);
     }
 
-    await ReminderAlarmRegistry.saveBatch(specs);
+    await ReminderAlarmRegistry.clearAll();
     var scheduled = 0;
+    final failedSpecs = <ReminderAlarmSpec>[];
     for (final spec in specs) {
       final ok = await AndroidAlarmManager.oneShotAt(
         spec.fireAt,
@@ -73,23 +77,27 @@ class AndroidReminderGuard {
         rescheduleOnReboot: true,
       );
       if (ok) {
+        await ReminderAlarmRegistry.upsert(spec);
         scheduled++;
+      } else {
+        failedSpecs.add(spec);
       }
     }
-    return scheduled;
+    return ReminderAlarmScheduleResult(
+      scheduled: scheduled,
+      failedSpecs: failedSpecs,
+    );
   }
 
   Future<void> cancelAllReminderAlarms() async {
-    if (!Platform.isAndroid || !_initialized) {
-      await ReminderAlarmRegistry.clearAll();
-      return;
-    }
-
     final entries = await ReminderAlarmRegistry.loadAll();
-    for (final alarmId in entries.keys) {
-      await AndroidAlarmManager.cancel(alarmId);
+    if (Platform.isAndroid && _initialized) {
+      for (final alarmId in entries.keys) {
+        await AndroidAlarmManager.cancel(alarmId);
+      }
+      await AndroidAlarmManager.cancel(backgroundTestAlarmId);
+      await AndroidAlarmManager.cancel(maintenanceAlarmId);
     }
-    await AndroidAlarmManager.cancel(backgroundTestAlarmId);
     await ReminderAlarmRegistry.clearAll();
   }
 
@@ -112,8 +120,7 @@ class AndroidReminderGuard {
       payload: 'test_background_reminder',
       fireAt: fireAt,
     );
-    await ReminderAlarmRegistry.upsert(spec);
-    return AndroidAlarmManager.oneShotAt(
+    final ok = await AndroidAlarmManager.oneShotAt(
       fireAt,
       backgroundTestAlarmId,
       fireReminderAlarm,
@@ -123,6 +130,10 @@ class AndroidReminderGuard {
       allowWhileIdle: true,
       rescheduleOnReboot: false,
     );
+    if (ok) {
+      await ReminderAlarmRegistry.upsert(spec);
+    }
+    return ok;
   }
 
   Future<void> ensureReminderPermissions() async {

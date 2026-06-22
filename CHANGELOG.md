@@ -1,3 +1,45 @@
+# Orbit v1.1.2
+
+**平台：** Windows · Android
+
+## 新功能与改进
+
+### 提醒
+
+- 次日课表确认支持自定义标题 / 正文模板（占位符 `{count}`、`{time}`、`{date}`）；留空使用默认文案
+- 新增「无课时也提醒」开关；关闭后明日无课时不注册通知
+- 全局提醒重同步横幅：区分 pending 校验失败、部分 AlarmManager 失败与真正异常
+
+### Android
+
+- 次日摘要纳入 `AlarmManager.oneShotAt` 主通道，与课前 / 打卡一致；FLN 同步使用 `alarmClock` + 最高优先级
+- 课前 / 打卡以 AlarmManager 为主通道，避免 FLN + Timer + AlarmManager 三重投递
+- `scheduleReminderAlarms` 先 OS 注册成功再写 registry；维护 / 测试闹钟 ID 迁至独立区间
+- 清空全部数据时同步取消全部 AlarmManager 闹钟
+
+### 课表
+
+- 宽屏 pinned 表头 delegate 按周次与列宽比较，减少无效重建；吸顶时增加底部分割线
+- 分钟级时间 tick 仅重建红线 / Chip 高亮子树，整表不再每分钟 rebuild
+- 换周清理 Chip GlobalKey 与跨周选中态
+
+## 修复
+
+- 修复 Android 次日课表提醒仅走低优先级 FLN、后台 / 杀进程后夜间不触发的问题
+- `_rescheduleChain` 单次失败后不再永久阻断后续排程
+- AlarmManager registry JSON 损坏时降级清空，避免后台 isolate 崩溃
+- Sheet 关闭后 SnackBar 使用 root messenger，保存结果提示不再丢失
+- 通知点击 handler 在 dispose 时注销
+- 导出 / 备份与设置页 async 间隙补充 `context.mounted` 检查
+- Provider 异步加载使用 generation token，减轻首帧闪烁与乱序写 state
+
+## 其他
+
+- 版本号 1.1.2（`pubspec.yaml` build `+7`）
+- 测试增至 86 项（含次日摘要 builder、resync 状态解析、版本号同步）
+
+---
+
 # Orbit v1.1.1
 
 **平台：** Windows · Android

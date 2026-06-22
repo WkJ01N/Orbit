@@ -7,11 +7,13 @@ import 'package:orbit/core/app_info.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/error_state.dart';
+import 'package:orbit/core/widgets/reminder_resync_banner.dart';
 import 'package:orbit/core/widgets/section_header.dart';
 import 'package:orbit/features/settings/battery_disable_dialog.dart';
 import 'package:orbit/features/settings/check_in_disable_dialog.dart';
 import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
 import 'package:orbit/features/settings/export_backup_actions.dart';
+import 'package:orbit/features/settings/next_day_summary_template_sheet.dart';
 import 'package:orbit/features/settings/reminder_setting_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
@@ -117,15 +119,9 @@ class _SettingsBody extends ConsumerWidget {
         if (rescheduleError != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: MaterialBanner(
-              content: Text(l10n.reminderResyncFailedBanner),
-              leading: Icon(Icons.warning_amber, color: colorScheme.error),
-              actions: [
-                TextButton(
-                  onPressed: () => _resyncReminders(context, ref),
-                  child: Text(l10n.resyncReminders),
-                ),
-              ],
+            child: ReminderResyncBanner(
+              error: rescheduleError,
+              onResync: () => _resyncReminders(context, ref),
             ),
           ),
         SwitchListTile(
@@ -206,6 +202,30 @@ class _SettingsBody extends ConsumerWidget {
           trailing: const Icon(Icons.schedule),
           onTap: settings.nextDaySummaryEnabled
               ? () => _pickNextDaySummaryTime(context, ref)
+              : null,
+        ),
+        SwitchListTile(
+          title: Text(l10n.nextDayRemindWhenNoClass),
+          subtitle: Text(l10n.nextDayRemindWhenNoClassSubtitle),
+          value: settings.nextDayRemindWhenNoClass,
+          onChanged: settings.nextDaySummaryEnabled
+              ? (enabled) => applyReminderUpdate(
+                    context,
+                    ref,
+                    () => notifier.setNextDayRemindWhenNoClass(enabled),
+                  )
+              : null,
+        ),
+        ListTile(
+          enabled: settings.nextDaySummaryEnabled,
+          title: Text(l10n.nextDayCustomizeTemplates),
+          subtitle: Text(l10n.nextDayCustomizeTemplatesSubtitle),
+          trailing: const Icon(Icons.edit_outlined),
+          onTap: settings.nextDaySummaryEnabled
+              ? () => NextDaySummaryTemplateSheet.show(
+                    context,
+                    settings: settings,
+                  )
               : null,
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
@@ -337,7 +357,7 @@ class _SettingsBody extends ConsumerWidget {
         minute: current.nextDaySummaryMinute,
       ),
     );
-    if (picked != null) {
+    if (picked != null && context.mounted) {
       await applyReminderUpdate(
         context,
         ref,
@@ -422,7 +442,7 @@ class _SettingsBody extends ConsumerWidget {
     if (confirmed == true) {
       try {
         await ref.read(scheduleRepositoryProvider).clearAll();
-        await ref.read(reminderSchedulerProvider).cancelAll();
+        await ref.read(reminderSchedulerProvider).cancelAllReminders();
         ref.read(selectedWeekStartProvider.notifier).state = null;
         refreshSchedule(ref);
         if (context.mounted) {

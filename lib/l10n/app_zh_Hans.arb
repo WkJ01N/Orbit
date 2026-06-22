@@ -170,6 +170,24 @@
   "enableNextDaySummarySubtitle": "在前一晚通知次日第一节课时间与课程数量",
   "nextDaySummaryTimeTitle": "确认通知时间",
   "nextDaySummaryTimeSubtitle": "于前一天 {time} 发送",
+  "nextDayRemindWhenNoClass": "无课时也提醒",
+  "nextDayRemindWhenNoClassSubtitle": "明天没有课程时仍发送确认通知",
+  "nextDayCustomizeTemplates": "自定义提醒文案",
+  "nextDayCustomizeTemplatesSubtitle": "可编辑标题与正文，留空则使用默认",
+  "nextDayTemplateSheetTitle": "次日提醒文案",
+  "nextDayWithClassTitleLabel": "有课标题",
+  "nextDayWithClassBodyLabel": "有课正文",
+  "nextDayNoClassTitleLabel": "无课标题",
+  "nextDayNoClassBodyLabel": "无课正文",
+  "nextDayTemplatePlaceholderHint": "有课正文可用 {countToken}、{timeToken}、{dateToken}；无课正文可用 {dateToken}。留空使用默认文案。",
+  "@nextDayTemplatePlaceholderHint": {
+    "placeholders": {
+      "countToken": {"type": "String", "example": "{count}"},
+      "timeToken": {"type": "String", "example": "{time}"},
+      "dateToken": {"type": "String", "example": "{date}"}
+    }
+  },
+  "nextDayTemplateReset": "恢复默认",
   "enableSystemAlarm": "系统闹钟（Android）",
   "enableSystemAlarmSubtitle": "一键打开系统时钟，为次日第一节课设置闹钟",
   "systemAlarmLeadTitle": "闹钟提前时间",

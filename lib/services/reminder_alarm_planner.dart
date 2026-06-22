@@ -2,11 +2,9 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/services/next_day_summary_builder.dart';
+import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
-
-const classLeadAlarmBase = 1;
-const checkInAlarmBase = 500000;
-const checkInAlarmLimit = 1000000;
 
 /// Builds Android AlarmManager specs for class-lead and check-in reminders.
 List<ReminderAlarmSpec> buildReminderAlarmSpecs({
@@ -78,4 +76,30 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   }
 
   return specs;
+}
+
+/// Builds Android AlarmManager specs for next-day summary notifications.
+List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
+  required List<CourseSession> allSessions,
+  required ReminderSettings settings,
+  required DateTime now,
+  required NotificationCopy copy,
+}) {
+  return buildNextDaySummarySlots(
+    allSessions: allSessions,
+    settings: settings,
+    now: now,
+    copy: copy,
+  )
+      .map(
+        (slot) => ReminderAlarmSpec(
+          alarmId: slot.notificationId,
+          notificationId: slot.notificationId,
+          title: slot.title,
+          body: slot.body,
+          payload: slot.payload,
+          fireAt: slot.fireAt,
+        ),
+      )
+      .toList();
 }

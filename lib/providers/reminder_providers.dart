@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
@@ -24,6 +23,8 @@ final themeColorProvider =
     NotifierProvider<ThemeColorNotifier, Color>(ThemeColorNotifier.new);
 
 class ThemeColorNotifier extends Notifier<Color> {
+  int _loadGeneration = 0;
+
   @override
   Color build() {
     _loadSavedColor();
@@ -31,7 +32,11 @@ class ThemeColorNotifier extends Notifier<Color> {
   }
 
   Future<void> _loadSavedColor() async {
+    final generation = ++_loadGeneration;
     final saved = await ref.read(settingsServiceProvider).loadThemeColor();
+    if (generation != _loadGeneration) {
+      return;
+    }
     state = saved;
   }
 
@@ -42,6 +47,8 @@ class ThemeColorNotifier extends Notifier<Color> {
 }
 
 class LocaleNotifier extends Notifier<Locale> {
+  int _loadGeneration = 0;
+
   @override
   Locale build() {
     _loadSavedLocale();
@@ -49,7 +56,11 @@ class LocaleNotifier extends Notifier<Locale> {
   }
 
   Future<void> _loadSavedLocale() async {
+    final generation = ++_loadGeneration;
     final saved = await ref.read(settingsServiceProvider).loadLocale();
+    if (generation != _loadGeneration) {
+      return;
+    }
     state = saved;
   }
 
@@ -114,6 +125,38 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       current.copyWith(
         nextDaySummaryHour: time.hour,
         nextDaySummaryMinute: time.minute,
+      ),
+    );
+  }
+
+  Future<int> setNextDayRemindWhenNoClass(bool enabled) async {
+    final current = state.value ?? const ReminderSettings();
+    return _saveAndReschedule(
+      current.copyWith(nextDayRemindWhenNoClass: enabled),
+    );
+  }
+
+  Future<int> updateNextDayTemplates({
+    String? withClassTitle,
+    String? withClassBody,
+    String? noClassTitle,
+    String? noClassBody,
+  }) async {
+    final current = state.value ?? const ReminderSettings();
+    final wt = withClassTitle?.trim() ?? '';
+    final wb = withClassBody?.trim() ?? '';
+    final nt = noClassTitle?.trim() ?? '';
+    final nb = noClassBody?.trim() ?? '';
+    return _saveAndReschedule(
+      current.copyWith(
+        nextDayWithClassTitleTemplate: wt.isEmpty ? null : wt,
+        nextDayWithClassBodyTemplate: wb.isEmpty ? null : wb,
+        nextDayNoClassTitleTemplate: nt.isEmpty ? null : nt,
+        nextDayNoClassBodyTemplate: nb.isEmpty ? null : nb,
+        clearNextDayWithClassTitleTemplate: wt.isEmpty,
+        clearNextDayWithClassBodyTemplate: wb.isEmpty,
+        clearNextDayNoClassTitleTemplate: nt.isEmpty,
+        clearNextDayNoClassBodyTemplate: nb.isEmpty,
       ),
     );
   }

@@ -5,6 +5,11 @@ class ReminderSettings {
     this.nextDaySummaryEnabled = true,
     this.nextDaySummaryHour = 23,
     this.nextDaySummaryMinute = 0,
+    this.nextDayRemindWhenNoClass = true,
+    this.nextDayWithClassTitleTemplate,
+    this.nextDayWithClassBodyTemplate,
+    this.nextDayNoClassTitleTemplate,
+    this.nextDayNoClassBodyTemplate,
     this.systemAlarmEnabled = false,
     this.systemAlarmLeadMinutes = 10,
     this.checkInReminderEnabled = true,
@@ -15,6 +20,11 @@ class ReminderSettings {
   final bool nextDaySummaryEnabled;
   final int nextDaySummaryHour;
   final int nextDaySummaryMinute;
+  final bool nextDayRemindWhenNoClass;
+  final String? nextDayWithClassTitleTemplate;
+  final String? nextDayWithClassBodyTemplate;
+  final String? nextDayNoClassTitleTemplate;
+  final String? nextDayNoClassBodyTemplate;
   final bool systemAlarmEnabled;
   final int systemAlarmLeadMinutes;
   final bool checkInReminderEnabled;
@@ -31,6 +41,15 @@ class ReminderSettings {
     bool? nextDaySummaryEnabled,
     int? nextDaySummaryHour,
     int? nextDaySummaryMinute,
+    bool? nextDayRemindWhenNoClass,
+    String? nextDayWithClassTitleTemplate,
+    String? nextDayWithClassBodyTemplate,
+    String? nextDayNoClassTitleTemplate,
+    String? nextDayNoClassBodyTemplate,
+    bool clearNextDayWithClassTitleTemplate = false,
+    bool clearNextDayWithClassBodyTemplate = false,
+    bool clearNextDayNoClassTitleTemplate = false,
+    bool clearNextDayNoClassBodyTemplate = false,
     bool? systemAlarmEnabled,
     int? systemAlarmLeadMinutes,
     bool? checkInReminderEnabled,
@@ -43,6 +62,21 @@ class ReminderSettings {
       nextDaySummaryHour: nextDaySummaryHour ?? this.nextDaySummaryHour,
       nextDaySummaryMinute:
           nextDaySummaryMinute ?? this.nextDaySummaryMinute,
+      nextDayRemindWhenNoClass:
+          nextDayRemindWhenNoClass ?? this.nextDayRemindWhenNoClass,
+      nextDayWithClassTitleTemplate: clearNextDayWithClassTitleTemplate
+          ? null
+          : (nextDayWithClassTitleTemplate ??
+              this.nextDayWithClassTitleTemplate),
+      nextDayWithClassBodyTemplate: clearNextDayWithClassBodyTemplate
+          ? null
+          : (nextDayWithClassBodyTemplate ?? this.nextDayWithClassBodyTemplate),
+      nextDayNoClassTitleTemplate: clearNextDayNoClassTitleTemplate
+          ? null
+          : (nextDayNoClassTitleTemplate ?? this.nextDayNoClassTitleTemplate),
+      nextDayNoClassBodyTemplate: clearNextDayNoClassBodyTemplate
+          ? null
+          : (nextDayNoClassBodyTemplate ?? this.nextDayNoClassBodyTemplate),
       systemAlarmEnabled: systemAlarmEnabled ?? this.systemAlarmEnabled,
       systemAlarmLeadMinutes:
           systemAlarmLeadMinutes ?? this.systemAlarmLeadMinutes,
