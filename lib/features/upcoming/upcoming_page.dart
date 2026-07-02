@@ -17,6 +17,7 @@ import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/course_color_utils.dart';
 
 enum SessionGroupKind { today, tomorrow, thisWeek, later }
 
@@ -234,6 +235,8 @@ class _SessionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final overrides = ref.watch(courseColorOverridesProvider);
+    final customColor = overrides[courseColorKey(session)];
     final isPast = isSessionPast(now, session.endAt);
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final highlight = shouldHighlightUpcomingCard(now, session);
@@ -271,10 +274,10 @@ class _SessionCard extends ConsumerWidget {
                   height: 52,
                   decoration: BoxDecoration(
                     color: isOngoing
-                        ? colorScheme.primary
+                        ? (customColor ?? colorScheme.primary)
                         : isPast
                             ? colorScheme.outlineVariant
-                            : colorScheme.secondary,
+                            : (customColor ?? colorScheme.secondary),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

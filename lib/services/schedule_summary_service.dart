@@ -91,9 +91,10 @@ List<DayScheduleSummary> summarizeUpcomingDays(
 }) {
   final start = from ?? DateTime.now();
   final base = DateTime(start.year, start.month, start.day);
+  final sessionsByDate = groupSessionsByDate(sessions);
   return [
     for (var i = 0; i < days; i++)
-      summarizeDay(sessions, base.add(Duration(days: i))),
+      summarizeDayFromGrouped(sessionsByDate, base.add(Duration(days: i))),
   ];
 }
 

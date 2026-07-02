@@ -10,10 +10,10 @@ import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
+import 'package:orbit/services/class_notification_builder.dart';
 import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
-import 'package:orbit/services/schedule_summary_service.dart';
 
 typedef NotificationTapCallback = void Function(String? payload);
 
@@ -233,6 +233,7 @@ class ReminderScheduler {
             session: session,
             reminderAt: reminderAt,
             leadMinutes: settings.leadMinutes,
+            settings: settings,
             copy: copy,
             now: now,
           ),
@@ -256,6 +257,7 @@ class ReminderScheduler {
             id: id,
             session: session,
             reminderAt: session.startAt,
+            settings: settings,
             copy: copy,
             now: now,
           ),
@@ -328,17 +330,9 @@ class ReminderScheduler {
     required NotificationCopy copy,
   }) {
     final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        copy.channelName,
-        channelDescription: copy.channelDescription,
-        importance: Importance.max,
-        priority: Priority.max,
-        category: AndroidNotificationCategory.alarm,
-        visibility: NotificationVisibility.public,
-        styleInformation: spec.bigText == null
-            ? null
-            : BigTextStyleInformation(spec.bigText!),
+      android: _androidAlarmDetails(
+        copy: copy,
+        bigText: spec.bigText,
       ),
       windows: const WindowsNotificationDetails(),
     );
@@ -434,15 +428,7 @@ class ReminderScheduler {
     required String payload,
   }) async {
     final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        copy.channelName,
-        channelDescription: copy.channelDescription,
-        importance: Importance.max,
-        priority: Priority.max,
-        category: AndroidNotificationCategory.alarm,
-        visibility: NotificationVisibility.public,
-      ),
+      android: _androidAlarmDetails(copy: copy),
       windows: const WindowsNotificationDetails(),
     );
 
@@ -475,39 +461,29 @@ class ReminderScheduler {
     required CourseSession session,
     required DateTime reminderAt,
     required int leadMinutes,
+    required ReminderSettings settings,
     required NotificationCopy copy,
     required DateTime now,
   }) async {
-    final teachers = session.teachers.isEmpty
-        ? copy.teachersNotProvided
-        : session.teachers.join('、');
-    final timeLabel = formatTimeOfDay(session.startAt);
+    final text = buildClassLeadNotificationText(
+      session: session,
+      settings: settings,
+      copy: copy,
+      leadMinutes: leadMinutes,
+    );
 
     final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        copy.channelName,
-        channelDescription: copy.channelDescription,
-        importance: Importance.max,
-        priority: Priority.max,
-        category: AndroidNotificationCategory.alarm,
-        visibility: NotificationVisibility.public,
-        styleInformation: BigTextStyleInformation(
-          copy.bigTextFor(
-            course: session.courseName,
-            time: timeLabel,
-            room: session.room,
-            teachers: teachers,
-          ),
-        ),
+      android: _androidAlarmDetails(
+        copy: copy,
+        bigText: text.bigText,
       ),
       windows: const WindowsNotificationDetails(),
     );
 
     await _zonedSchedule(
       id: id,
-      title: copy.titleFor(leadMinutes),
-      body: copy.bodyFor(session.courseName, session.room),
+      title: text.title,
+      body: text.body,
       reminderAt: reminderAt,
       details: details,
       payload: session.id,
@@ -518,8 +494,8 @@ class ReminderScheduler {
         reminderAt: reminderAt,
         now: now,
         id: id,
-        title: copy.titleFor(leadMinutes),
-        body: copy.bodyFor(session.courseName, session.room),
+        title: text.title,
+        body: text.body,
         details: details,
         payload: session.id,
       );
@@ -530,26 +506,25 @@ class ReminderScheduler {
     required int id,
     required CourseSession session,
     required DateTime reminderAt,
+    required ReminderSettings settings,
     required NotificationCopy copy,
     required DateTime now,
   }) async {
+    final text = buildCheckInNotificationText(
+      session: session,
+      settings: settings,
+      copy: copy,
+    );
+
     final details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        copy.channelName,
-        channelDescription: copy.channelDescription,
-        importance: Importance.max,
-        priority: Priority.max,
-        category: AndroidNotificationCategory.alarm,
-        visibility: NotificationVisibility.public,
-      ),
+      android: _androidAlarmDetails(copy: copy),
       windows: const WindowsNotificationDetails(),
     );
 
     await _zonedSchedule(
       id: id,
-      title: copy.checkInTitle(session.courseName, session.room),
-      body: copy.checkInBody(session.courseName),
+      title: text.title,
+      body: text.body,
       reminderAt: reminderAt,
       details: details,
       payload: 'checkin_${session.id}',
@@ -560,12 +535,29 @@ class ReminderScheduler {
         reminderAt: reminderAt,
         now: now,
         id: id,
-        title: copy.checkInTitle(session.courseName, session.room),
-        body: copy.checkInBody(session.courseName),
+        title: text.title,
+        body: text.body,
         details: details,
         payload: 'checkin_${session.id}',
       );
     }
+  }
+
+  AndroidNotificationDetails _androidAlarmDetails({
+    required NotificationCopy copy,
+    String? bigText,
+  }) {
+    return AndroidNotificationDetails(
+      _channelId,
+      copy.channelName,
+      channelDescription: copy.channelDescription,
+      importance: Importance.max,
+      priority: Priority.max,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      styleInformation:
+          bigText == null ? null : BigTextStyleInformation(bigText),
+    );
   }
 
   Future<void> _zonedSchedule({

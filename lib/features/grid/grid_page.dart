@@ -195,26 +195,24 @@ class _EmptyState extends StatelessWidget {
 }
 
 /// Skeleton loading placeholder that mirrors the rough shape of the grid.
-class _GridSkeleton extends StatelessWidget {
+class _GridSkeleton extends ConsumerWidget {
   const _GridSkeleton();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    const rowHeight = 64.0;
-    const timeColWidth = 52.0;
+    final metrics = ref.watch(gridDensityMetricsProvider);
     const cols = 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header row
         Container(
-          height: 40,
+          height: metrics.tableHeaderExtent,
           color: colorScheme.surfaceContainerHighest,
           child: Row(
             children: [
-              const SizedBox(width: timeColWidth),
+              SizedBox(width: metrics.timeColumnWidth),
               for (var i = 0; i < cols; i++)
                 Expanded(
                   child: Padding(
@@ -228,7 +226,6 @@ class _GridSkeleton extends StatelessWidget {
             ],
           ),
         ),
-        // Data rows
         Expanded(
           child: SingleChildScrollView(
             physics: const NeverScrollableScrollPhysics(),
@@ -236,11 +233,11 @@ class _GridSkeleton extends StatelessWidget {
               children: [
                 for (var row = 0; row < 8; row++)
                   SizedBox(
-                    height: rowHeight,
+                    height: metrics.rowHeight,
                     child: Row(
                       children: [
                         SizedBox(
-                          width: timeColWidth,
+                          width: metrics.timeColumnWidth,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 4,
@@ -254,10 +251,13 @@ class _GridSkeleton extends StatelessWidget {
                             child: Padding(
                               padding: const EdgeInsets.all(4),
                               child: col == 1 && (row == 1 || row == 3)
-                                  ? SkeletonBox(height: rowHeight - 8, radius: 8)
+                                  ? SkeletonBox(
+                                      height: metrics.rowHeight - 8,
+                                      radius: 8,
+                                    )
                                   : col == 3 && row == 2
                                       ? SkeletonBox(
-                                          height: rowHeight - 8,
+                                          height: metrics.rowHeight - 8,
                                           radius: 8,
                                         )
                                       : const SizedBox.shrink(),

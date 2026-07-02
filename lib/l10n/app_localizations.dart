@@ -556,6 +556,183 @@ abstract class AppLocalizations {
   /// **'Enter a valid 6-digit hex color (e.g. 39C5BB)'**
   String get themeColorInvalidHex;
 
+  /// No description provided for @themeModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme mode'**
+  String get themeModeTitle;
+
+  /// No description provided for @themeModeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose light, dark, or follow system'**
+  String get themeModeSubtitle;
+
+  /// No description provided for @themeModeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeModeSystem;
+
+  /// No description provided for @themeModeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeModeLight;
+
+  /// No description provided for @themeModeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeModeDark;
+
+  /// No description provided for @weekStartDayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Week start day'**
+  String get weekStartDayTitle;
+
+  /// No description provided for @weekStartDaySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which day each week begins on the grid'**
+  String get weekStartDaySubtitle;
+
+  /// No description provided for @weekStartMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get weekStartMonday;
+
+  /// No description provided for @weekStartSunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get weekStartSunday;
+
+  /// No description provided for @gridDensityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid density'**
+  String get gridDensityTitle;
+
+  /// No description provided for @gridDensitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust row height and font size'**
+  String get gridDensitySubtitle;
+
+  /// No description provided for @gridDensityCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get gridDensityCompact;
+
+  /// No description provided for @gridDensityStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get gridDensityStandard;
+
+  /// No description provided for @gridDensityComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get gridDensityComfortable;
+
+  /// No description provided for @classLeadCustomizeTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize class reminders'**
+  String get classLeadCustomizeTemplates;
+
+  /// No description provided for @classLeadCustomizeTemplatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank for default text'**
+  String get classLeadCustomizeTemplatesSubtitle;
+
+  /// No description provided for @classLeadTemplateSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Class reminder text'**
+  String get classLeadTemplateSheetTitle;
+
+  /// No description provided for @classLeadTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get classLeadTitleLabel;
+
+  /// No description provided for @classLeadBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Body'**
+  String get classLeadBodyLabel;
+
+  /// No description provided for @classLeadTemplatePlaceholderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use {courseToken}, {roomToken}, {timeToken}, {minutesToken}. Leave blank for defaults.'**
+  String classLeadTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+    String minutesToken,
+  );
+
+  /// No description provided for @checkInCustomizeTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize check-in reminders'**
+  String get checkInCustomizeTemplates;
+
+  /// No description provided for @checkInCustomizeTemplatesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank for default text'**
+  String get checkInCustomizeTemplatesSubtitle;
+
+  /// No description provided for @checkInTemplateSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in reminder text'**
+  String get checkInTemplateSheetTitle;
+
+  /// No description provided for @checkInTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get checkInTitleLabel;
+
+  /// No description provided for @checkInBodyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Body'**
+  String get checkInBodyLabel;
+
+  /// No description provided for @checkInTemplatePlaceholderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use {courseToken}, {roomToken}, {timeToken}. Leave blank for defaults.'**
+  String checkInTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+  );
+
+  /// No description provided for @sessionColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Course color'**
+  String get sessionColor;
+
+  /// No description provided for @sessionColorShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Color'**
+  String get sessionColorShort;
+
   /// No description provided for @actionApply.
   ///
   /// In en, this message translates to:

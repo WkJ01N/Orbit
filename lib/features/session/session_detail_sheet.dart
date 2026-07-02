@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
+import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/adaptive_bottom_sheet.dart';
+import 'package:orbit/core/widgets/color_picker_dialog.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/features/session/session_note_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/course_color_utils.dart';
 
 class SessionDetailSheet extends ConsumerWidget {
   const SessionDetailSheet({super.key, required this.session});
@@ -109,6 +113,9 @@ class _SessionActionButtons extends ConsumerWidget {
         final deleteLabel = mode == _ActionButtonMode.full
             ? l10n.deleteSession
             : l10n.deleteSessionShort;
+        final colorLabel = mode == _ActionButtonMode.full
+            ? l10n.sessionColor
+            : l10n.sessionColorShort;
 
         Widget buildButton({
           required VoidCallback onPressed,
@@ -164,6 +171,28 @@ class _SessionActionButtons extends ConsumerWidget {
                 icon: Icons.edit_outlined,
                 label: editLabel,
                 tooltip: l10n.editSession,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: buildButton(
+                onPressed: () async {
+                  final key = courseColorKey(session);
+                  final overrides = ref.read(courseColorOverridesProvider);
+                  final current = overrides[key] ?? kDefaultThemeColor;
+                  final picked = await showColorPickerDialog(
+                    context,
+                    initialColor: current,
+                  );
+                  if (picked != null && context.mounted) {
+                    await ref
+                        .read(courseColorOverridesProvider.notifier)
+                        .setColor(key, picked);
+                  }
+                },
+                icon: Icons.palette_outlined,
+                label: colorLabel,
+                tooltip: l10n.sessionColor,
               ),
             ),
             const SizedBox(width: 8),

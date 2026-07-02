@@ -79,9 +79,23 @@ class ScheduleRepository {
           .toList();
     } else {
       final importIds = sessions.map((s) => s.id).toSet();
+      final importsByDate = <String, List<CourseSession>>{};
+      for (final session in sessions) {
+        final key =
+            '${session.date.year}-${session.date.month}-${session.date.day}';
+        importsByDate.putIfAbsent(key, () => []).add(session);
+      }
       deleteIds = existing
           .where((s) => !importIds.contains(s.id))
-          .where((s) => sessions.any((imp) => _timeOverlaps(s, imp)))
+          .where((s) {
+            final key =
+                '${s.date.year}-${s.date.month}-${s.date.day}';
+            final sameDayImports = importsByDate[key];
+            if (sameDayImports == null) {
+              return false;
+            }
+            return sameDayImports.any((imp) => _timeOverlaps(s, imp));
+          })
           .map((s) => s.id)
           .toList();
     }

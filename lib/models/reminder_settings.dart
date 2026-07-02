@@ -10,6 +10,10 @@ class ReminderSettings {
     this.nextDayWithClassBodyTemplate,
     this.nextDayNoClassTitleTemplate,
     this.nextDayNoClassBodyTemplate,
+    this.classLeadTitleTemplate,
+    this.classLeadBodyTemplate,
+    this.checkInTitleTemplate,
+    this.checkInBodyTemplate,
     this.systemAlarmEnabled = false,
     this.systemAlarmLeadMinutes = 10,
     this.checkInReminderEnabled = true,
@@ -25,6 +29,10 @@ class ReminderSettings {
   final String? nextDayWithClassBodyTemplate;
   final String? nextDayNoClassTitleTemplate;
   final String? nextDayNoClassBodyTemplate;
+  final String? classLeadTitleTemplate;
+  final String? classLeadBodyTemplate;
+  final String? checkInTitleTemplate;
+  final String? checkInBodyTemplate;
   final bool systemAlarmEnabled;
   final int systemAlarmLeadMinutes;
   final bool checkInReminderEnabled;
@@ -46,10 +54,18 @@ class ReminderSettings {
     String? nextDayWithClassBodyTemplate,
     String? nextDayNoClassTitleTemplate,
     String? nextDayNoClassBodyTemplate,
+    String? classLeadTitleTemplate,
+    String? classLeadBodyTemplate,
+    String? checkInTitleTemplate,
+    String? checkInBodyTemplate,
     bool clearNextDayWithClassTitleTemplate = false,
     bool clearNextDayWithClassBodyTemplate = false,
     bool clearNextDayNoClassTitleTemplate = false,
     bool clearNextDayNoClassBodyTemplate = false,
+    bool clearClassLeadTitleTemplate = false,
+    bool clearClassLeadBodyTemplate = false,
+    bool clearCheckInTitleTemplate = false,
+    bool clearCheckInBodyTemplate = false,
     bool? systemAlarmEnabled,
     int? systemAlarmLeadMinutes,
     bool? checkInReminderEnabled,
@@ -77,6 +93,18 @@ class ReminderSettings {
       nextDayNoClassBodyTemplate: clearNextDayNoClassBodyTemplate
           ? null
           : (nextDayNoClassBodyTemplate ?? this.nextDayNoClassBodyTemplate),
+      classLeadTitleTemplate: clearClassLeadTitleTemplate
+          ? null
+          : (classLeadTitleTemplate ?? this.classLeadTitleTemplate),
+      classLeadBodyTemplate: clearClassLeadBodyTemplate
+          ? null
+          : (classLeadBodyTemplate ?? this.classLeadBodyTemplate),
+      checkInTitleTemplate: clearCheckInTitleTemplate
+          ? null
+          : (checkInTitleTemplate ?? this.checkInTitleTemplate),
+      checkInBodyTemplate: clearCheckInBodyTemplate
+          ? null
+          : (checkInBodyTemplate ?? this.checkInBodyTemplate),
       systemAlarmEnabled: systemAlarmEnabled ?? this.systemAlarmEnabled,
       systemAlarmLeadMinutes:
           systemAlarmLeadMinutes ?? this.systemAlarmLeadMinutes,

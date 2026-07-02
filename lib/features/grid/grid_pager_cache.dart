@@ -13,29 +13,36 @@ class GridPagerSlot {
   DateTime get weekStart => weekStartFor(grid.weekStart);
 }
 
-List<int> presentWeekdays(WeekGrid grid) {
+List<int> presentWeekdays(
+  WeekGrid grid, {
+  int startWeekday = DateTime.monday,
+}) {
   final presentWeekdays = <int>{};
   for (final key in grid.cells.keys) {
     presentWeekdays.add(int.parse(key.split('|').first));
   }
-  return ([1, 2, 3, 4, 5, 6, 7]
-        ..removeWhere((day) => !presentWeekdays.contains(day)))
+  return orderedWeekdays(startWeekday: startWeekday)
+      .where((day) => presentWeekdays.contains(day))
       .toList();
 }
 
-bool isEmptyWeekGrid(WeekGrid grid) {
-  final weekdays = presentWeekdays(grid);
+bool isEmptyWeekGrid(WeekGrid grid, {int startWeekday = DateTime.monday}) {
+  final weekdays = presentWeekdays(grid, startWeekday: startWeekday);
   return weekdays.isEmpty || grid.timeLabels.isEmpty;
 }
 
-int defaultWeekdayForGrid(WeekGrid grid) {
-  final weekdays = presentWeekdays(grid);
+int defaultWeekdayForGrid(
+  WeekGrid grid, {
+  int startWeekday = DateTime.monday,
+}) {
+  final weekdays = presentWeekdays(grid, startWeekday: startWeekday);
   if (weekdays.isEmpty) {
-    return DateTime.monday;
+    return startWeekday;
   }
   final today = DateTime.now().weekday;
   if (weekdays.contains(today) &&
-      weekStartFor(DateTime.now()) == weekStartFor(grid.weekStart)) {
+      weekStartFor(DateTime.now(), startWeekday: startWeekday) ==
+          weekStartFor(grid.weekStart, startWeekday: startWeekday)) {
     return today;
   }
   return weekdays.first;
@@ -49,23 +56,32 @@ GridPagerSlot slotForWeek(WeekGrid grid) {
   return GridPagerSlot(grid: grid);
 }
 
-GridPagerSlot? computePreviousDaySlot(GridPagerSlot current) {
-  final weekdays = presentWeekdays(current.grid);
+GridPagerSlot? computePreviousDaySlot(
+  GridPagerSlot current, {
+  int startWeekday = DateTime.monday,
+}) {
+  final weekdays = presentWeekdays(current.grid, startWeekday: startWeekday);
   final day = current.day;
   if (day == null) {
     return null;
   }
 
+  final order = orderedWeekdays(startWeekday: startWeekday);
+  final firstDay = order.first;
+  final lastDay = order.last;
+
   if (weekdays.isEmpty) {
-    final previousWeekStart =
-        weekStartFor(current.weekStart.subtract(const Duration(days: 7)));
+    final previousWeekStart = weekStartFor(
+      current.weekStart.subtract(const Duration(days: 7)),
+      startWeekday: startWeekday,
+    );
     return GridPagerSlot(
       grid: WeekGrid(
         weekStart: previousWeekStart,
         timeLabels: const [],
         cells: const {},
       ),
-      day: DateTime.monday,
+      day: firstDay,
     );
   }
 
@@ -77,35 +93,45 @@ GridPagerSlot? computePreviousDaySlot(GridPagerSlot current) {
     return GridPagerSlot(grid: current.grid, day: weekdays[index - 1]);
   }
 
-  final previousWeekStart =
-      weekStartFor(current.weekStart.subtract(const Duration(days: 7)));
+  final previousWeekStart = weekStartFor(
+    current.weekStart.subtract(const Duration(days: 7)),
+    startWeekday: startWeekday,
+  );
   return GridPagerSlot(
     grid: WeekGrid(
       weekStart: previousWeekStart,
       timeLabels: const [],
       cells: const {},
     ),
-    day: DateTime.sunday,
+    day: lastDay,
   );
 }
 
-GridPagerSlot? computeNextDaySlot(GridPagerSlot current) {
-  final weekdays = presentWeekdays(current.grid);
+GridPagerSlot? computeNextDaySlot(
+  GridPagerSlot current, {
+  int startWeekday = DateTime.monday,
+}) {
+  final weekdays = presentWeekdays(current.grid, startWeekday: startWeekday);
   final day = current.day;
   if (day == null) {
     return null;
   }
 
+  final order = orderedWeekdays(startWeekday: startWeekday);
+  final firstDay = order.first;
+
   if (weekdays.isEmpty) {
-    final nextWeekStart =
-        weekStartFor(current.weekStart.add(const Duration(days: 7)));
+    final nextWeekStart = weekStartFor(
+      current.weekStart.add(const Duration(days: 7)),
+      startWeekday: startWeekday,
+    );
     return GridPagerSlot(
       grid: WeekGrid(
         weekStart: nextWeekStart,
         timeLabels: const [],
         cells: const {},
       ),
-      day: DateTime.monday,
+      day: firstDay,
     );
   }
 
@@ -117,15 +143,17 @@ GridPagerSlot? computeNextDaySlot(GridPagerSlot current) {
     return GridPagerSlot(grid: current.grid, day: weekdays[index + 1]);
   }
 
-  final nextWeekStart =
-      weekStartFor(current.weekStart.add(const Duration(days: 7)));
+  final nextWeekStart = weekStartFor(
+    current.weekStart.add(const Duration(days: 7)),
+    startWeekday: startWeekday,
+  );
   return GridPagerSlot(
     grid: WeekGrid(
       weekStart: nextWeekStart,
       timeLabels: const [],
       cells: const {},
     ),
-    day: DateTime.monday,
+    day: firstDay,
   );
 }
 
@@ -156,15 +184,21 @@ GridPagerSlot? computeNextWeekSlot(GridPagerSlot current) {
 int? resolveDayAfterWeekChange({
   required GridPagerSlot targetSlot,
   required int crossWeekDirection,
+  int startWeekday = DateTime.monday,
 }) {
-  final weekdays = presentWeekdays(targetSlot.grid);
+  final weekdays =
+      presentWeekdays(targetSlot.grid, startWeekday: startWeekday);
   if (weekdays.isEmpty) {
     return null;
   }
   return crossWeekDirection > 0 ? weekdays.first : weekdays.last;
 }
 
-bool slotsReferToSamePage(GridPagerSlot a, GridPagerSlot b, {required bool isCompact}) {
+bool slotsReferToSamePage(
+  GridPagerSlot a,
+  GridPagerSlot b, {
+  required bool isCompact,
+}) {
   if (weekStartFor(a.grid.weekStart) != weekStartFor(b.grid.weekStart)) {
     return false;
   }

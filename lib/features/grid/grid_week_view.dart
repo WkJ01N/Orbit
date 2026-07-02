@@ -14,8 +14,10 @@ import 'package:orbit/features/session/session_countdown.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/grid_models.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/course_color_utils.dart';
 
 class WeekGridView extends ConsumerStatefulWidget {
   const WeekGridView({super.key, required this.grid});
@@ -39,10 +41,6 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   // rebuild — the AdjacentPagePager reads them lazily via closures.
   bool _horizontalAtStart = true;
   bool _horizontalAtEnd = true;
-
-  static const _rowHeight = 64.0;
-  static const _timeColumnWidth = 52.0;
-  static const _tableHeaderExtent = 52.0;
 
   @override
   void initState() {
@@ -72,7 +70,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       _selectedSessionId = null;
     }
 
-    final weekdays = presentWeekdays(widget.grid);
+    final weekdays = presentWeekdays(
+      widget.grid,
+      startWeekday: ref.read(weekStartDayProvider),
+    );
     _chipKeys.removeWhere((day, _) => !weekdays.contains(day));
     if (_selectedWeekday != null && !weekdays.contains(_selectedWeekday)) {
       _selectedWeekday = weekdays.isNotEmpty ? weekdays.first : null;
@@ -83,7 +84,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     }
 
     if (_crossWeekDirection != null) {
-      final weekdays = presentWeekdays(widget.grid);
+      final weekdays = presentWeekdays(
+      widget.grid,
+      startWeekday: ref.read(weekStartDayProvider),
+    );
       if (weekdays.isNotEmpty) {
         final targetDay =
             _crossWeekDirection! > 0 ? weekdays.first : weekdays.last;
@@ -122,41 +126,61 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     _horizontalAtEnd = position.pixels >= position.maxScrollExtent - 0.5;
   }
 
-  GridPagerSlot _currentDaySlot() {
-    final day = _selectedWeekday ?? defaultWeekdayForGrid(widget.grid);
+  GridPagerSlot _currentDaySlot(int startWeekday) {
+    final day = _selectedWeekday ??
+        defaultWeekdayForGrid(widget.grid, startWeekday: startWeekday);
     return GridPagerSlot(grid: widget.grid, day: day);
   }
 
-  void _handleSettledToNext({required bool isCompact}) {
+  void _handleSettledToNext({
+    required bool isCompact,
+    required int startWeekday,
+  }) {
     if (isCompact) {
-      final next = computeNextDaySlot(_currentDaySlot());
+      final next = computeNextDaySlot(
+        _currentDaySlot(startWeekday),
+        startWeekday: startWeekday,
+      );
       if (next == null) {
         return;
       }
-      _applyNavigatedSlot(next, forward: true);
+      _applyNavigatedSlot(next, forward: true, startWeekday: startWeekday);
       return;
     }
     ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
       widget.grid.weekStart.add(const Duration(days: 7)),
+      startWeekday: startWeekday,
     );
   }
 
-  void _handleSettledToPrevious({required bool isCompact}) {
+  void _handleSettledToPrevious({
+    required bool isCompact,
+    required int startWeekday,
+  }) {
     if (isCompact) {
-      final previous = computePreviousDaySlot(_currentDaySlot());
+      final previous = computePreviousDaySlot(
+        _currentDaySlot(startWeekday),
+        startWeekday: startWeekday,
+      );
       if (previous == null) {
         return;
       }
-      _applyNavigatedSlot(previous, forward: false);
+      _applyNavigatedSlot(previous, forward: false, startWeekday: startWeekday);
       return;
     }
     ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
       widget.grid.weekStart.subtract(const Duration(days: 7)),
+      startWeekday: startWeekday,
     );
   }
 
-  void _applyNavigatedSlot(GridPagerSlot target, {required bool forward}) {
-    if (target.weekStart != weekStartFor(widget.grid.weekStart)) {
+  void _applyNavigatedSlot(
+    GridPagerSlot target, {
+    required bool forward,
+    required int startWeekday,
+  }) {
+    if (target.weekStart !=
+        weekStartFor(widget.grid.weekStart, startWeekday: startWeekday)) {
       _crossWeekDirection = forward ? 1 : -1;
       ref.read(selectedWeekStartProvider.notifier).state = target.weekStart;
       return;
@@ -188,6 +212,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   Widget _buildKeyboardWrapper({
     required bool isCompact,
+    required int startWeekday,
     required Widget child,
   }) {
     return Focus(
@@ -203,13 +228,19 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           actions: {
             GridSwipePreviousIntent: CallbackAction<GridSwipePreviousIntent>(
               onInvoke: (_) {
-                _handleSettledToPrevious(isCompact: isCompact);
+                _handleSettledToPrevious(
+                  isCompact: isCompact,
+                  startWeekday: startWeekday,
+                );
                 return null;
               },
             ),
             GridSwipeNextIntent: CallbackAction<GridSwipeNextIntent>(
               onInvoke: (_) {
-                _handleSettledToNext(isCompact: isCompact);
+                _handleSettledToNext(
+                  isCompact: isCompact,
+                  startWeekday: startWeekday,
+                );
                 return null;
               },
             ),
@@ -220,8 +251,9 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     );
   }
 
-  bool _isCurrentWeekFor(WeekGrid grid) {
-    return weekStartFor(DateTime.now()) == weekStartFor(grid.weekStart);
+  bool _isCurrentWeekFor(WeekGrid grid, int startWeekday) {
+    return weekStartFor(DateTime.now(), startWeekday: startWeekday) ==
+        weekStartFor(grid.weekStart, startWeekday: startWeekday);
   }
 
   Widget _buildEmptyWeekBody(AppLocalizations l10n) {
@@ -260,13 +292,14 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required AppLocalizations l10n,
     required List<int> weekdays,
     required int selectedDay,
+    required double chipHeight,
   }) {
     if (weekdays.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return SizedBox(
-      height: 48,
+      height: chipHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -311,21 +344,25 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required bool isCompact,
     required ColorScheme colorScheme,
     required DateTime now,
+    required GridDensityMetrics metrics,
+    required int startWeekday,
     int? day,
   }) {
-    if (isEmptyWeekGrid(grid)) {
+    if (isEmptyWeekGrid(grid, startWeekday: startWeekday)) {
       return _buildEmptyWeekBody(l10n);
     }
 
     if (isCompact) {
-      final selectedDay = day ?? defaultWeekdayForGrid(grid);
+      final selectedDay =
+          day ?? defaultWeekdayForGrid(grid, startWeekday: startWeekday);
       final tableWidth = constraints.maxWidth;
       final columnWidths = <int, TableColumnWidth>{
-        0: const FixedColumnWidth(_timeColumnWidth),
-        1: FixedColumnWidth(tableWidth - _timeColumnWidth),
+        0: FixedColumnWidth(metrics.timeColumnWidth),
+        1: FixedColumnWidth(tableWidth - metrics.timeColumnWidth),
       };
       return _buildPinnedGridScroll(
         colorScheme: colorScheme,
+        metrics: metrics,
         headerKey: ValueKey('${grid.weekStart}-compact-$selectedDay'),
         header: _buildTableHeader(
           context,
@@ -334,13 +371,14 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           colorScheme: colorScheme,
           l10n: l10n,
           columnWidths: columnWidths,
+          startWeekday: startWeekday,
         ),
         body: CurrentTimeIndicator(
           grid: grid,
-          isCurrentWeek: _isCurrentWeekFor(grid),
-          rowHeight: _rowHeight,
+          isCurrentWeek: _isCurrentWeekFor(grid, startWeekday),
+          rowHeight: metrics.rowHeight,
           headerHeight: 0,
-          timeColumnWidth: _timeColumnWidth,
+          timeColumnWidth: metrics.timeColumnWidth,
           now: now,
           visibleWeekdays: [selectedDay],
           child: _buildDayTableBody(
@@ -351,23 +389,23 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             now: now,
             l10n: l10n,
             tableWidth: tableWidth,
+            metrics: metrics,
           ),
         ),
       );
     }
 
-    final weekdays = presentWeekdays(grid);
+    final weekdays = presentWeekdays(grid, startWeekday: startWeekday);
     final dayWidth =
-        ((constraints.maxWidth - _timeColumnWidth) / weekdays.length)
+        ((constraints.maxWidth - metrics.timeColumnWidth) / weekdays.length)
             .clamp(72.0, 160.0);
     final columnWidths = <int, TableColumnWidth>{
-      0: const FixedColumnWidth(_timeColumnWidth),
+      0: FixedColumnWidth(metrics.timeColumnWidth),
       for (var i = 1; i <= weekdays.length; i++) i: FixedColumnWidth(dayWidth),
     };
-    // Header and body share one vertical scroll viewport so the scrollbar no
-    // longer shrinks only the body and misaligns day columns with the header.
-    final contentWidth = (_timeColumnWidth + dayWidth * weekdays.length)
-        .clamp(constraints.maxWidth, double.infinity);
+    final contentWidth =
+        (metrics.timeColumnWidth + dayWidth * weekdays.length)
+            .clamp(constraints.maxWidth, double.infinity);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       controller: _horizontalScrollController,
@@ -375,6 +413,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         width: contentWidth,
         child: _buildPinnedGridScroll(
           colorScheme: colorScheme,
+          metrics: metrics,
           headerKey: ValueKey('${grid.weekStart}-wide-${weekdays.join('-')}'),
           header: _buildTableHeader(
             context,
@@ -383,13 +422,14 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             colorScheme: colorScheme,
             l10n: l10n,
             columnWidths: columnWidths,
+            startWeekday: startWeekday,
           ),
           body: CurrentTimeIndicator(
             grid: grid,
-            isCurrentWeek: _isCurrentWeekFor(grid),
-            rowHeight: _rowHeight,
+            isCurrentWeek: _isCurrentWeekFor(grid, startWeekday),
+            rowHeight: metrics.rowHeight,
             headerHeight: 0,
-            timeColumnWidth: _timeColumnWidth,
+            timeColumnWidth: metrics.timeColumnWidth,
             now: now,
             visibleWeekdays: weekdays,
             dayColumnIndex: weekdays.contains(now.weekday)
@@ -404,6 +444,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               now: now,
               l10n: l10n,
               dayWidth: dayWidth,
+              metrics: metrics,
             ),
           ),
         ),
@@ -413,6 +454,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   Widget _buildPinnedGridScroll({
     required ColorScheme colorScheme,
+    required GridDensityMetrics metrics,
     required Key headerKey,
     required Widget header,
     required Widget body,
@@ -427,7 +469,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             delegate: WeekGridTableHeaderDelegate(
               headerKey: headerKey,
               header: header,
-              extent: _tableHeaderExtent,
+              extent: metrics.tableHeaderExtent,
               backgroundColor: colorScheme.surfaceContainerHighest,
             ),
           ),
@@ -443,11 +485,19 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required BoxConstraints constraints,
     required ColorScheme colorScheme,
     required DateTime now,
+    required GridDensityMetrics metrics,
+    required int startWeekday,
     int? day,
   }) {
     return AdjacentPagePager(
-      onSwipeToPrevious: () => _handleSettledToPrevious(isCompact: isCompact),
-      onSwipeToNext: () => _handleSettledToNext(isCompact: isCompact),
+      onSwipeToPrevious: () => _handleSettledToPrevious(
+        isCompact: isCompact,
+        startWeekday: startWeekday,
+      ),
+      onSwipeToNext: () => _handleSettledToNext(
+        isCompact: isCompact,
+        startWeekday: startWeekday,
+      ),
       canSwipePrevious: isCompact ? null : () => _horizontalAtStart,
       canSwipeNext: isCompact ? null : () => _horizontalAtEnd,
       child: _buildPageContent(
@@ -457,6 +507,8 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         isCompact: isCompact,
         colorScheme: colorScheme,
         now: now,
+        metrics: metrics,
+        startWeekday: startWeekday,
         day: day,
       ),
     );
@@ -465,13 +517,20 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final weekdays = presentWeekdays(widget.grid);
-    final isEmptyWeek = isEmptyWeekGrid(widget.grid);
+    final startWeekday = ref.watch(weekStartDayProvider);
+    final metrics = ref.watch(gridDensityMetricsProvider);
+    final weekdays = presentWeekdays(
+      widget.grid,
+      startWeekday: startWeekday,
+    );
+    final isEmptyWeek =
+        isEmptyWeekGrid(widget.grid, startWeekday: startWeekday);
     final colorScheme = Theme.of(context).colorScheme;
 
-    var selectedDay = DateTime.monday;
+    var selectedDay = startWeekday;
     if (!isEmptyWeek) {
-      selectedDay = _selectedWeekday ?? defaultWeekdayForGrid(widget.grid);
+      selectedDay = _selectedWeekday ??
+          defaultWeekdayForGrid(widget.grid, startWeekday: startWeekday);
     }
 
     return LayoutBuilder(
@@ -486,6 +545,8 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               constraints: constraints,
               colorScheme: colorScheme,
               now: now,
+              metrics: metrics,
+              startWeekday: startWeekday,
               day: isCompact ? selectedDay : null,
             );
           },
@@ -494,6 +555,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         if (isCompact) {
           return _buildKeyboardWrapper(
             isCompact: true,
+            startWeekday: startWeekday,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -501,6 +563,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                   l10n: l10n,
                   weekdays: weekdays,
                   selectedDay: selectedDay,
+                  chipHeight: metrics.weekdayChipHeight,
                 ),
                 Expanded(child: swipeContent),
               ],
@@ -510,6 +573,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
         return _buildKeyboardWrapper(
           isCompact: false,
+          startWeekday: startWeekday,
           child: swipeContent,
         );
       },
@@ -523,12 +587,20 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required ColorScheme colorScheme,
     required AppLocalizations l10n,
     required Map<int, TableColumnWidth> columnWidths,
+    required int startWeekday,
   }) {
     return Table(
       border: TableBorder.all(color: colorScheme.outlineVariant, width: 0.5),
       columnWidths: columnWidths,
       children: [
-        _headerRow(context, grid, weekdays, colorScheme, l10n),
+        _headerRow(
+          context,
+          grid,
+          weekdays,
+          colorScheme,
+          l10n,
+          startWeekday,
+        ),
       ],
     );
   }
@@ -541,16 +613,26 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required DateTime now,
     required AppLocalizations l10n,
     required double tableWidth,
+    required GridDensityMetrics metrics,
   }) {
     return Table(
       border: TableBorder.all(color: colorScheme.outlineVariant, width: 0.5),
       columnWidths: {
-        0: const FixedColumnWidth(_timeColumnWidth),
-        1: FixedColumnWidth(tableWidth - _timeColumnWidth),
+        0: FixedColumnWidth(metrics.timeColumnWidth),
+        1: FixedColumnWidth(tableWidth - metrics.timeColumnWidth),
       },
       children: [
         for (final timeLabel in grid.timeLabels)
-          _dataRow(context, grid, timeLabel, [day], colorScheme, now, l10n),
+          _dataRow(
+            context,
+            grid,
+            timeLabel,
+            [day],
+            colorScheme,
+            now,
+            l10n,
+            metrics,
+          ),
       ],
     );
   }
@@ -563,16 +645,26 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     required DateTime now,
     required AppLocalizations l10n,
     required double dayWidth,
+    required GridDensityMetrics metrics,
   }) {
     return Table(
       border: TableBorder.all(color: colorScheme.outlineVariant, width: 0.5),
       columnWidths: {
-        0: const FixedColumnWidth(_timeColumnWidth),
+        0: FixedColumnWidth(metrics.timeColumnWidth),
         for (var i = 1; i <= weekdays.length; i++) i: FixedColumnWidth(dayWidth),
       },
       children: [
         for (final timeLabel in grid.timeLabels)
-          _dataRow(context, grid, timeLabel, weekdays, colorScheme, now, l10n),
+          _dataRow(
+            context,
+            grid,
+            timeLabel,
+            weekdays,
+            colorScheme,
+            now,
+            l10n,
+            metrics,
+          ),
       ],
     );
   }
@@ -583,6 +675,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     List<int> weekdays,
     ColorScheme colorScheme,
     AppLocalizations l10n,
+    int startWeekday,
   ) {
     final textStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
           color: colorScheme.onSurfaceVariant,
@@ -610,7 +703,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                   textAlign: TextAlign.center,
                 ),
                 Text(
-                  _weekdayDate(grid, day),
+                  _weekdayDate(grid, day, startWeekday),
                   style: textStyle?.copyWith(
                     color: colorScheme.onSurfaceVariant.withAlpha(150),
                   ),
@@ -623,8 +716,13 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     );
   }
 
-  String _weekdayDate(WeekGrid grid, int weekday) {
-    final date = grid.weekStart.add(Duration(days: weekday - 1));
+  String _weekdayDate(WeekGrid grid, int weekday, int startWeekday) {
+    final order = orderedWeekdays(startWeekday: startWeekday);
+    final index = order.indexOf(weekday);
+    if (index < 0) {
+      return '';
+    }
+    final date = grid.weekStart.add(Duration(days: index));
     return DateFormat('M/d').format(date);
   }
 
@@ -636,6 +734,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     ColorScheme colorScheme,
     DateTime now,
     AppLocalizations l10n,
+    GridDensityMetrics metrics,
   ) {
     final textStyle = Theme.of(context).textTheme.labelSmall;
     return TableRow(
@@ -655,6 +754,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             grid.sessionsFor(day, timeLabel),
             colorScheme,
             l10n,
+            metrics,
           ),
       ],
     );
@@ -665,21 +765,14 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     List<CourseSession> sessions,
     ColorScheme colorScheme,
     AppLocalizations l10n,
+    GridDensityMetrics metrics,
   ) {
     if (sessions.isEmpty) {
-      return const SizedBox(height: _rowHeight);
+      return SizedBox(height: metrics.rowHeight);
     }
-    // Every data row is pinned to _rowHeight so the left time axis keeps the
-    // same slot heights across weeks regardless of how many classes fall on a
-    // given day. Overflow (rare multi-class slots) is clipped rather than
-    // stretching the whole row.
-    //
-    // RepaintBoundary isolates each cell so that the per-minute time-indicator
-    // rebuild only forces cells whose actual paint output changed (e.g. a
-    // session that just became "ongoing") to be repainted.
     return RepaintBoundary(
       child: SizedBox(
-        height: _rowHeight,
+        height: metrics.rowHeight,
         child: ClipRect(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -687,27 +780,28 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             children: [
               for (final session in sessions)
                 GridSessionChip(
-              key: ValueKey(session.id),
-              session: session,
-              colorScheme: colorScheme,
-              l10n: l10n,
-              isSelected: _selectedSessionId == session.id,
-              onTap: () {
-                setState(() => _selectedSessionId = session.id);
-                SessionDetailSheet.show(context, session);
-              },
-              onMenu: (position) => SessionActionMenu.show(
-                context: context,
-                ref: ref,
-                session: session,
-                position: position,
-                onDeleted: () {
-                  if (_selectedSessionId == session.id) {
-                    setState(() => _selectedSessionId = null);
-                  }
-                },
-              ),
-            ),
+                  key: ValueKey(session.id),
+                  session: session,
+                  colorScheme: colorScheme,
+                  l10n: l10n,
+                  metrics: metrics,
+                  isSelected: _selectedSessionId == session.id,
+                  onTap: () {
+                    setState(() => _selectedSessionId = session.id);
+                    SessionDetailSheet.show(context, session);
+                  },
+                  onMenu: (position) => SessionActionMenu.show(
+                    context: context,
+                    ref: ref,
+                    session: session,
+                    position: position,
+                    onDeleted: () {
+                      if (_selectedSessionId == session.id) {
+                        setState(() => _selectedSessionId = null);
+                      }
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -722,6 +816,7 @@ class GridSessionChip extends ConsumerWidget {
     required this.session,
     required this.colorScheme,
     required this.l10n,
+    required this.metrics,
     required this.isSelected,
     required this.onTap,
     required this.onMenu,
@@ -730,6 +825,7 @@ class GridSessionChip extends ConsumerWidget {
   final CourseSession session;
   final ColorScheme colorScheme;
   final AppLocalizations l10n;
+  final GridDensityMetrics metrics;
   final bool isSelected;
   final VoidCallback onTap;
   final void Function(Offset? position) onMenu;
@@ -737,6 +833,8 @@ class GridSessionChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = ref.watch(currentTimeProvider);
+    final overrides = ref.watch(courseColorOverridesProvider);
+    final customColor = overrides[courseColorKey(session)];
     final isPast = isSessionPast(now, session.endAt);
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final highlightSoon =
@@ -744,21 +842,26 @@ class GridSessionChip extends ConsumerWidget {
     late final Color bg;
     late final Color fg;
     if (isOngoing || highlightSoon) {
-      bg = colorScheme.primaryContainer;
-      fg = colorScheme.onPrimaryContainer;
+      bg = customColor?.withAlpha(220) ?? colorScheme.primaryContainer;
+      fg = customColor == null
+          ? colorScheme.onPrimaryContainer
+          : contrastForegroundFor(customColor);
     } else if (isPast) {
-      bg = colorScheme.surfaceContainerHighest;
-      fg = colorScheme.onSurfaceVariant.withAlpha(140);
+      bg = customColor?.withAlpha(100) ?? colorScheme.surfaceContainerHighest;
+      fg = customColor == null
+          ? colorScheme.onSurfaceVariant.withAlpha(140)
+          : contrastForegroundFor(customColor).withAlpha(140);
     } else {
-      bg = colorScheme.secondaryContainer.withAlpha(220);
-      fg = colorScheme.onSecondaryContainer;
+      bg = customColor?.withAlpha(220) ??
+          colorScheme.secondaryContainer.withAlpha(220);
+      fg = customColor == null
+          ? colorScheme.onSecondaryContainer
+          : contrastForegroundFor(customColor);
     }
 
     final endTime =
         '${session.endAt.hour.toString().padLeft(2, '0')}:${session.endAt.minute.toString().padLeft(2, '0')}';
 
-    // Inherit font family and scaling from the theme while keeping the small
-    // sizes needed to fit within the fixed 64-pixel row height.
     final baseStyle = Theme.of(context).textTheme.labelSmall;
 
     return GestureDetector(
@@ -782,7 +885,7 @@ class GridSessionChip extends ConsumerWidget {
             Text(
               session.courseName,
               style: baseStyle?.copyWith(
-                fontSize: 10,
+                fontSize: metrics.courseNameFontSize,
                 fontWeight: FontWeight.w600,
                 color: fg,
               ),
@@ -792,7 +895,7 @@ class GridSessionChip extends ConsumerWidget {
             Text(
               '${session.room} · ${l10n.gridUntilTime(endTime)}',
               style: baseStyle?.copyWith(
-                fontSize: 9,
+                fontSize: metrics.courseMetaFontSize,
                 color: fg.withAlpha(180),
               ),
               maxLines: 1,

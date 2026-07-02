@@ -275,6 +275,105 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter a valid 6-digit hex color (e.g. 39C5BB)';
 
   @override
+  String get themeModeTitle => 'Theme mode';
+
+  @override
+  String get themeModeSubtitle => 'Choose light, dark, or follow system';
+
+  @override
+  String get themeModeSystem => 'System';
+
+  @override
+  String get themeModeLight => 'Light';
+
+  @override
+  String get themeModeDark => 'Dark';
+
+  @override
+  String get weekStartDayTitle => 'Week start day';
+
+  @override
+  String get weekStartDaySubtitle => 'Which day each week begins on the grid';
+
+  @override
+  String get weekStartMonday => 'Monday';
+
+  @override
+  String get weekStartSunday => 'Sunday';
+
+  @override
+  String get gridDensityTitle => 'Grid density';
+
+  @override
+  String get gridDensitySubtitle => 'Adjust row height and font size';
+
+  @override
+  String get gridDensityCompact => 'Compact';
+
+  @override
+  String get gridDensityStandard => 'Standard';
+
+  @override
+  String get gridDensityComfortable => 'Comfortable';
+
+  @override
+  String get classLeadCustomizeTemplates => 'Customize class reminders';
+
+  @override
+  String get classLeadCustomizeTemplatesSubtitle =>
+      'Leave blank for default text';
+
+  @override
+  String get classLeadTemplateSheetTitle => 'Class reminder text';
+
+  @override
+  String get classLeadTitleLabel => 'Title';
+
+  @override
+  String get classLeadBodyLabel => 'Body';
+
+  @override
+  String classLeadTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+    String minutesToken,
+  ) {
+    return 'Use $courseToken, $roomToken, $timeToken, $minutesToken. Leave blank for defaults.';
+  }
+
+  @override
+  String get checkInCustomizeTemplates => 'Customize check-in reminders';
+
+  @override
+  String get checkInCustomizeTemplatesSubtitle =>
+      'Leave blank for default text';
+
+  @override
+  String get checkInTemplateSheetTitle => 'Check-in reminder text';
+
+  @override
+  String get checkInTitleLabel => 'Title';
+
+  @override
+  String get checkInBodyLabel => 'Body';
+
+  @override
+  String checkInTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+  ) {
+    return 'Use $courseToken, $roomToken, $timeToken. Leave blank for defaults.';
+  }
+
+  @override
+  String get sessionColor => 'Course color';
+
+  @override
+  String get sessionColorShort => 'Color';
+
+  @override
   String get actionApply => 'Apply';
 
   @override

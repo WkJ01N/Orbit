@@ -16,12 +16,14 @@ class OrbitApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final seed = ref.watch(themeColorProvider);
 
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'Orbit',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(seed: seed),
       darkTheme: AppTheme.dark(seed: seed),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,

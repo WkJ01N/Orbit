@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.1.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.2.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -10,10 +10,11 @@
 |------|------|
 | 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
 | 导出与备份 | 课表导出为 JSON / xlsx；JSON 备份恢复；导出 / 还原进行中状态 |
-| 课表网格 | 左右滑动 / 按钮切换周次（无动画，即时切换）；宽屏表头列对齐、吸顶优化、固定行高、当前时间红线（仅今天列）；分钟 tick 局部重建；标准 AppBar；横滚性能优化与单元格重绘隔离；骨架屏加载；窄屏 AppBar 防重叠；默认周次可设（智能 / 本周 / 最早）；周选择器、批量删除；手动添加 / 编辑课程（含学院）；冲突覆盖保存；课程搜索（简繁互搜）；无课周引导切换（非全局空态不重复显示导入按钮） |
+| 课表网格 | 左右滑动 / 按钮切换周次（无动画，即时切换）；宽屏表头列对齐、吸顶优化、固定行高、当前时间红线（仅今天列）；分钟 tick 局部重建；标准 AppBar；横滚性能优化与单元格重绘隔离；骨架屏加载；窄屏 AppBar 防重叠；默认周次可设（智能 / 本周 / 最早）；周起始日可选（周一 / 周日）；显示密度可选（紧凑 / 标准 / 宽松）；周选择器、批量删除；手动添加 / 编辑课程（含学院）；冲突覆盖保存；课程搜索（简繁互搜）；无课周引导切换（非全局空态不重复显示导入按钮） |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；FAB 快速添加课程 |
-| 提醒 | 课前通知、次日摘要（可自定义模板 / 无课开关）、打卡提醒；IANA 时区排程；Android `alarmClock` 优先与精确 / 非精确降级；AlarmManager 主通道（含次日摘要）；2 小时内近端 Timer 兜底；排程 pending 校验与失败提示（含 OriginOS 自启动提示）；全局重同步横幅；通知点击跳转课程详情；Android 可选系统闹钟（含 OriginOS 回退） |
-| 课程管理 | 编辑、备注、单节删除；详情页响应式快捷操作（窄屏自适应）；宽屏居中对话框、窄屏底部 Sheet |
+| 提醒 | 课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；次日摘要「无课开关」；IANA 时区排程；Android `alarmClock` 优先与精确 / 非精确降级；AlarmManager 主通道（含次日摘要）；2 小时内近端 Timer 兜底；排程 pending 校验与失败提示（含 OriginOS 自启动提示）；全局重同步横幅；通知点击跳转课程详情；Android 可选系统闹钟（含 OriginOS 回退） |
+| 课程管理 | 编辑、备注、按科目自定义颜色、单节删除；详情页响应式快捷操作（窄屏自适应）；宽屏居中对话框、窄屏底部 Sheet |
+| 外观 | 主题色（9 预设 + 自定义 HEX）；深浅色模式手动切换（跟随系统 / 浅色 / 深色） |
 | Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启 |
 | Android | AlarmManager 后台维护（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；重启后自动维护闹钟 |
 | 多语言 | 繁体中文、简体中文、English |
@@ -21,12 +22,12 @@
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.1.2/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.2.0/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.1.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.1.2-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.2.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.2.0-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -42,7 +43,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 86 项测试
+flutter test          # 97 项测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -66,15 +67,34 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.1.2/orbit-v1.1.2-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.2.0/orbit-v1.2.0-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.1.2/orbit-v1.1.2-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.2.0/orbit-v1.2.0-release.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.2.0
+
+**设置与外观**
+- 深浅色模式手动切换（跟随系统 / 浅色 / 深色）
+- 课表周起始日可选（周一 / 周日）
+- 课表显示密度可选（紧凑 / 标准 / 宽松）
+- 课程按科目自定义颜色（课程详情页设置，课表与「接下来」同步显示）
+
+**提醒**
+- 课前提醒、打卡提醒支持自定义标题 / 正文模板（`{course}`、`{room}`、`{time}`、`{minutes}` 等）；留空使用默认文案
+
+**优化**
+- 提醒重排复用已缓存课表数据；日程摘要按日分组一次扫描
+- 导入合并冲突检测按日期分组；`replaceSessions` 批量删除
+- 提取重复的 Android 通知详情构造
+
+**其他**
+- 版本号 1.2.0（build `+8`）；测试 97 项；预编译包见 `release/v1.2.0/`
 
 ### v1.1.2
 

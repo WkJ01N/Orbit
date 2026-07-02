@@ -2,9 +2,9 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/services/class_notification_builder.dart';
 import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
-import 'package:orbit/services/schedule_summary_service.dart';
 
 /// Builds Android AlarmManager specs for class-lead and check-in reminders.
 List<ReminderAlarmSpec> buildReminderAlarmSpecs({
@@ -26,24 +26,21 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
       }
 
       final id = classLeadId++;
-      final teachers = session.teachers.isEmpty
-          ? copy.teachersNotProvided
-          : session.teachers.join('、');
-      final timeLabel = formatTimeOfDay(session.startAt);
+      final text = buildClassLeadNotificationText(
+        session: session,
+        settings: settings,
+        copy: copy,
+        leadMinutes: settings.leadMinutes,
+      );
       specs.add(
         ReminderAlarmSpec(
           alarmId: id,
           notificationId: id,
-          title: copy.titleFor(settings.leadMinutes),
-          body: copy.bodyFor(session.courseName, session.room),
+          title: text.title,
+          body: text.body,
           payload: session.id,
           fireAt: reminderAt,
-          bigText: copy.bigTextFor(
-            course: session.courseName,
-            time: timeLabel,
-            room: session.room,
-            teachers: teachers,
-          ),
+          bigText: text.bigText,
         ),
       );
       if (classLeadId >= checkInAlarmBase) {
@@ -59,12 +56,17 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
       }
 
       final id = checkInId++;
+      final text = buildCheckInNotificationText(
+        session: session,
+        settings: settings,
+        copy: copy,
+      );
       specs.add(
         ReminderAlarmSpec(
           alarmId: id,
           notificationId: id,
-          title: copy.checkInTitle(session.courseName, session.room),
-          body: copy.checkInBody(session.courseName),
+          title: text.title,
+          body: text.body,
           payload: 'checkin_${session.id}',
           fireAt: session.startAt,
         ),

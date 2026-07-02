@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/schedule_providers.dart';
@@ -21,6 +22,12 @@ final localeProvider =
 
 final themeColorProvider =
     NotifierProvider<ThemeColorNotifier, Color>(ThemeColorNotifier.new);
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+final courseColorOverridesProvider = NotifierProvider<CourseColorOverridesNotifier,
+    Map<String, Color>>(CourseColorOverridesNotifier.new);
 
 class ThemeColorNotifier extends Notifier<Color> {
   int _loadGeneration = 0;
@@ -43,6 +50,62 @@ class ThemeColorNotifier extends Notifier<Color> {
   Future<void> setColor(Color color) async {
     await ref.read(settingsServiceProvider).saveThemeColor(color);
     state = color;
+  }
+}
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  int _loadGeneration = 0;
+
+  @override
+  ThemeMode build() {
+    _loadSavedMode();
+    return ThemeMode.system;
+  }
+
+  Future<void> _loadSavedMode() async {
+    final generation = ++_loadGeneration;
+    final saved = await ref.read(settingsServiceProvider).loadThemeMode();
+    if (generation != _loadGeneration) {
+      return;
+    }
+    state = saved;
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await ref.read(settingsServiceProvider).saveThemeMode(mode);
+    state = mode;
+  }
+}
+
+class CourseColorOverridesNotifier extends Notifier<Map<String, Color>> {
+  int _loadGeneration = 0;
+
+  @override
+  Map<String, Color> build() {
+    _load();
+    return const {};
+  }
+
+  Future<void> _load() async {
+    final generation = ++_loadGeneration;
+    final saved =
+        await ref.read(settingsServiceProvider).loadCourseColorOverrides();
+    if (generation != _loadGeneration) {
+      return;
+    }
+    state = saved;
+  }
+
+  Future<void> setColor(String key, Color color) async {
+    final updated = Map<String, Color>.from(state)..[key] = color;
+    await ref.read(settingsServiceProvider).saveCourseColorOverrides(updated);
+    state = updated;
+  }
+
+  Future<void> clearColor(String key) async {
+    final updated = Map<String, Color>.from(state)..remove(key);
+    await ref.read(settingsServiceProvider).saveCourseColorOverrides(updated);
+    state = updated;
   }
 }
 
@@ -161,6 +224,40 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     );
   }
 
+  Future<int> updateClassLeadTemplates({
+    String? title,
+    String? body,
+  }) async {
+    final current = state.value ?? const ReminderSettings();
+    final t = title?.trim() ?? '';
+    final b = body?.trim() ?? '';
+    return _saveAndReschedule(
+      current.copyWith(
+        classLeadTitleTemplate: t.isEmpty ? null : t,
+        classLeadBodyTemplate: b.isEmpty ? null : b,
+        clearClassLeadTitleTemplate: t.isEmpty,
+        clearClassLeadBodyTemplate: b.isEmpty,
+      ),
+    );
+  }
+
+  Future<int> updateCheckInTemplates({
+    String? title,
+    String? body,
+  }) async {
+    final current = state.value ?? const ReminderSettings();
+    final t = title?.trim() ?? '';
+    final b = body?.trim() ?? '';
+    return _saveAndReschedule(
+      current.copyWith(
+        checkInTitleTemplate: t.isEmpty ? null : t,
+        checkInBodyTemplate: b.isEmpty ? null : b,
+        clearCheckInTitleTemplate: t.isEmpty,
+        clearCheckInBodyTemplate: b.isEmpty,
+      ),
+    );
+  }
+
   Future<void> setSystemAlarmEnabled(bool enabled) async {
     final current = state.value ?? const ReminderSettings();
     final updated = current.copyWith(systemAlarmEnabled: enabled);
@@ -193,8 +290,18 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       final locale = ref.read(localeProvider);
       final copy = notificationCopyFor(locale);
       final repository = ref.read(scheduleRepositoryProvider);
-      final upcoming = await repository.getUpcomingSessions();
-      final all = await repository.getAllSessions();
+      final List<CourseSession> all;
+      final List<CourseSession> upcoming;
+      final sessionsAsync = ref.read(sessionsProvider);
+      if (sessionsAsync.hasValue) {
+        all = sessionsAsync.value!;
+        upcoming = all
+            .where((session) => session.startAt.isAfter(DateTime.now()))
+            .toList();
+      } else {
+        all = await repository.getAllSessions();
+        upcoming = await repository.getUpcomingSessions();
+      }
       final scheduler = ref.read(reminderSchedulerProvider);
       await scheduler.rescheduleAll(
         upcomingSessions: upcoming,
@@ -208,8 +315,6 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       ref.read(lastRegisteredAlarmCountProvider.notifier).state =
           scheduler.lastRegisteredAlarmCount;
       if (scheduler.lastScheduleVerificationFailed) {
-        // The plugin reported success but the OS queued nothing: surface a
-        // dedicated message so the user can fix exact-alarm / battery settings.
         ref.read(lastRescheduleErrorProvider.notifier).state = 'verify';
       } else if (failures > 0) {
         ref.read(lastRescheduleErrorProvider.notifier).state =

@@ -1,21 +1,24 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/app_info.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/core/widgets/color_picker_dialog.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/reminder_resync_banner.dart';
 import 'package:orbit/core/widgets/section_header.dart';
 import 'package:orbit/features/settings/battery_disable_dialog.dart';
 import 'package:orbit/features/settings/check_in_disable_dialog.dart';
+import 'package:orbit/features/settings/check_in_template_sheet.dart';
+import 'package:orbit/features/settings/class_lead_template_sheet.dart';
 import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
 import 'package:orbit/features/settings/export_backup_actions.dart';
 import 'package:orbit/features/settings/next_day_summary_template_sheet.dart';
 import 'package:orbit/features/settings/reminder_setting_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
+import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -58,6 +61,7 @@ class _SettingsBody extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final currentLocale = ref.watch(localeProvider);
     final themeColor = ref.watch(themeColorProvider);
+    final themeMode = ref.watch(themeModeProvider);
     final rescheduleError = ref.watch(lastRescheduleErrorProvider);
     final notifier = ref.read(reminderSettingsProvider.notifier);
 
@@ -102,8 +106,11 @@ class _SettingsBody extends ConsumerWidget {
         const SizedBox(height: 8),
         SectionHeader(title: l10n.sectionSchedule),
         _GridDefaultWeekTile(),
+        const _WeekStartDayTile(),
+        const _GridDensityTile(),
         const SizedBox(height: 8),
         SectionHeader(title: l10n.sectionAppearance),
+        _ThemeModeTile(currentMode: themeMode),
         _ThemeColorTile(
           currentColor: themeColor,
           onColorSelected: (color) =>
@@ -162,6 +169,18 @@ class _SettingsBody extends ConsumerWidget {
                 )
                 .toList(),
           ),
+        ),
+        ListTile(
+          enabled: settings.enabled,
+          title: Text(l10n.classLeadCustomizeTemplates),
+          subtitle: Text(l10n.classLeadCustomizeTemplatesSubtitle),
+          trailing: const Icon(Icons.edit_outlined),
+          onTap: settings.enabled
+              ? () => ClassLeadTemplateSheet.show(
+                    context,
+                    settings: settings,
+                  )
+              : null,
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
@@ -251,6 +270,18 @@ class _SettingsBody extends ConsumerWidget {
               );
             }
           },
+        ),
+        ListTile(
+          enabled: settings.checkInReminderEnabled,
+          title: Text(l10n.checkInCustomizeTemplates),
+          subtitle: Text(l10n.checkInCustomizeTemplatesSubtitle),
+          trailing: const Icon(Icons.edit_outlined),
+          onTap: settings.checkInReminderEnabled
+              ? () => CheckInTemplateSheet.show(
+                    context,
+                    settings: settings,
+                  )
+              : null,
         ),
         if (Platform.isAndroid) ...[
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -502,6 +533,125 @@ class _GridDefaultWeekTile extends ConsumerWidget {
   }
 }
 
+class _WeekStartDayTile extends ConsumerWidget {
+  const _WeekStartDayTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final startDay = ref.watch(weekStartDayProvider);
+
+    return ListTile(
+      title: Text(l10n.weekStartDayTitle),
+      subtitle: Text(l10n.weekStartDaySubtitle),
+      trailing: DropdownButton<int>(
+        value: startDay,
+        underline: const SizedBox.shrink(),
+        onChanged: (value) {
+          if (value != null) {
+            ref.read(weekStartDayProvider.notifier).setWeekStartDay(value);
+          }
+        },
+        items: [
+          DropdownMenuItem(
+            value: DateTime.monday,
+            child: Text(l10n.weekStartMonday),
+          ),
+          DropdownMenuItem(
+            value: DateTime.sunday,
+            child: Text(l10n.weekStartSunday),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridDensityTile extends ConsumerWidget {
+  const _GridDensityTile();
+
+  String _label(AppLocalizations l10n, GridDensity density) {
+    return switch (density) {
+      GridDensity.compact => l10n.gridDensityCompact,
+      GridDensity.standard => l10n.gridDensityStandard,
+      GridDensity.comfortable => l10n.gridDensityComfortable,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final density = ref.watch(gridDensityProvider);
+
+    return ListTile(
+      title: Text(l10n.gridDensityTitle),
+      subtitle: Text(l10n.gridDensitySubtitle),
+      trailing: DropdownButton<GridDensity>(
+        value: density,
+        underline: const SizedBox.shrink(),
+        onChanged: (value) {
+          if (value != null) {
+            ref.read(gridDensityProvider.notifier).setDensity(value);
+          }
+        },
+        items: GridDensity.values
+            .map(
+              (item) => DropdownMenuItem(
+                value: item,
+                child: Text(_label(l10n, item)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _ThemeModeTile extends ConsumerWidget {
+  const _ThemeModeTile({required this.currentMode});
+
+  final ThemeMode currentMode;
+
+  String _label(AppLocalizations l10n, ThemeMode mode) {
+    return switch (mode) {
+      ThemeMode.system => l10n.themeModeSystem,
+      ThemeMode.light => l10n.themeModeLight,
+      ThemeMode.dark => l10n.themeModeDark,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return ListTile(
+      title: Text(l10n.themeModeTitle),
+      subtitle: Text(l10n.themeModeSubtitle),
+      trailing: DropdownButton<ThemeMode>(
+        value: currentMode,
+        underline: const SizedBox.shrink(),
+        onChanged: (mode) {
+          if (mode != null) {
+            ref.read(themeModeProvider.notifier).setThemeMode(mode);
+          }
+        },
+        items: const [
+          ThemeMode.system,
+          ThemeMode.light,
+          ThemeMode.dark,
+        ]
+            .map(
+              (mode) => DropdownMenuItem(
+                value: mode,
+                child: Text(_label(l10n, mode)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
 class _ExportBackupSection extends ConsumerStatefulWidget {
   const _ExportBackupSection();
 
@@ -642,95 +792,13 @@ class _ThemeColorTile extends StatelessWidget {
   }
 
   Future<void> _showCustomDialog(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController(
-      text: formatThemeHexColor(currentColor).substring(1),
+    final picked = await showColorPickerDialog(
+      context,
+      initialColor: currentColor,
     );
-    var preview = currentColor;
-    var errorText = '';
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            void updatePreview(String value) {
-              final parsed = parseThemeHexColor(value);
-              setDialogState(() {
-                preview = parsed ?? currentColor;
-                errorText = parsed == null && value.trim().isNotEmpty
-                    ? l10n.themeColorInvalidHex
-                    : '';
-              });
-            }
-
-            return AlertDialog(
-              title: Text(l10n.themeColorCustomTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: preview,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: controller,
-                          decoration: InputDecoration(
-                            prefixText: '#',
-                            labelText: 'HEX',
-                            errorText: errorText.isEmpty ? null : errorText,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9A-Fa-f#]'),
-                            ),
-                            LengthLimitingTextInputFormatter(7),
-                          ],
-                          onChanged: updatePreview,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(l10n.actionCancel),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final parsed = parseThemeHexColor(controller.text);
-                    if (parsed == null) {
-                      setDialogState(() {
-                        errorText = l10n.themeColorInvalidHex;
-                      });
-                      return;
-                    }
-                    onColorSelected(parsed);
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text(l10n.actionApply),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    controller.dispose();
+    if (picked != null) {
+      onColorSelected(picked);
+    }
   }
 
   @override

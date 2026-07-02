@@ -83,11 +83,11 @@ class AppDatabase {
     required List<CourseSession> upsert,
   }) async {
     await _db.transaction((txn) async {
-      for (final id in deleteIds) {
-        await txn.delete(
-          _tableName,
-          where: 'id = ?',
-          whereArgs: [id],
+      if (deleteIds.isNotEmpty) {
+        final placeholders = List.filled(deleteIds.length, '?').join(',');
+        await txn.rawDelete(
+          'DELETE FROM $_tableName WHERE id IN ($placeholders)',
+          deleteIds,
         );
       }
       for (final session in upsert) {

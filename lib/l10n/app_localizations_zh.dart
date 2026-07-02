@@ -267,6 +267,103 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeColorInvalidHex => '請輸入有效的 6 位十六進制顏色（如 39C5BB）';
 
   @override
+  String get themeModeTitle => '深淺色模式';
+
+  @override
+  String get themeModeSubtitle => '選擇淺色、深色或跟隨系統';
+
+  @override
+  String get themeModeSystem => '跟隨系統';
+
+  @override
+  String get themeModeLight => '淺色';
+
+  @override
+  String get themeModeDark => '深色';
+
+  @override
+  String get weekStartDayTitle => '週起始日';
+
+  @override
+  String get weekStartDaySubtitle => '課表每週從哪一天開始顯示';
+
+  @override
+  String get weekStartMonday => '週一';
+
+  @override
+  String get weekStartSunday => '週日';
+
+  @override
+  String get gridDensityTitle => '課表顯示密度';
+
+  @override
+  String get gridDensitySubtitle => '調整課表行高與字體大小';
+
+  @override
+  String get gridDensityCompact => '緊湊';
+
+  @override
+  String get gridDensityStandard => '標準';
+
+  @override
+  String get gridDensityComfortable => '寬鬆';
+
+  @override
+  String get classLeadCustomizeTemplates => '自訂課前提醒文案';
+
+  @override
+  String get classLeadCustomizeTemplatesSubtitle => '留空使用預設文案';
+
+  @override
+  String get classLeadTemplateSheetTitle => '課前提醒文案';
+
+  @override
+  String get classLeadTitleLabel => '標題';
+
+  @override
+  String get classLeadBodyLabel => '正文';
+
+  @override
+  String classLeadTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+    String minutesToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken、$minutesToken。留空使用預設文案。';
+  }
+
+  @override
+  String get checkInCustomizeTemplates => '自訂打卡提醒文案';
+
+  @override
+  String get checkInCustomizeTemplatesSubtitle => '留空使用預設文案';
+
+  @override
+  String get checkInTemplateSheetTitle => '打卡提醒文案';
+
+  @override
+  String get checkInTitleLabel => '標題';
+
+  @override
+  String get checkInBodyLabel => '正文';
+
+  @override
+  String checkInTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken。留空使用預設文案。';
+  }
+
+  @override
+  String get sessionColor => '課程顏色';
+
+  @override
+  String get sessionColorShort => '顏色';
+
+  @override
   String get actionApply => '套用';
 
   @override
@@ -1299,6 +1396,103 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get themeColorInvalidHex => '请输入有效的 6 位十六进制颜色（如 39C5BB）';
 
   @override
+  String get themeModeTitle => '深浅色模式';
+
+  @override
+  String get themeModeSubtitle => '选择浅色、深色或跟随系统';
+
+  @override
+  String get themeModeSystem => '跟随系统';
+
+  @override
+  String get themeModeLight => '浅色';
+
+  @override
+  String get themeModeDark => '深色';
+
+  @override
+  String get weekStartDayTitle => '周起始日';
+
+  @override
+  String get weekStartDaySubtitle => '课表每周从哪一天开始显示';
+
+  @override
+  String get weekStartMonday => '周一';
+
+  @override
+  String get weekStartSunday => '周日';
+
+  @override
+  String get gridDensityTitle => '课表显示密度';
+
+  @override
+  String get gridDensitySubtitle => '调整课表行高与字体大小';
+
+  @override
+  String get gridDensityCompact => '紧凑';
+
+  @override
+  String get gridDensityStandard => '标准';
+
+  @override
+  String get gridDensityComfortable => '宽松';
+
+  @override
+  String get classLeadCustomizeTemplates => '自定义课前提醒文案';
+
+  @override
+  String get classLeadCustomizeTemplatesSubtitle => '留空使用默认文案';
+
+  @override
+  String get classLeadTemplateSheetTitle => '课前提醒文案';
+
+  @override
+  String get classLeadTitleLabel => '标题';
+
+  @override
+  String get classLeadBodyLabel => '正文';
+
+  @override
+  String classLeadTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+    String minutesToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken、$minutesToken。留空使用默认文案。';
+  }
+
+  @override
+  String get checkInCustomizeTemplates => '自定义打卡提醒文案';
+
+  @override
+  String get checkInCustomizeTemplatesSubtitle => '留空使用默认文案';
+
+  @override
+  String get checkInTemplateSheetTitle => '打卡提醒文案';
+
+  @override
+  String get checkInTitleLabel => '标题';
+
+  @override
+  String get checkInBodyLabel => '正文';
+
+  @override
+  String checkInTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken。留空使用默认文案。';
+  }
+
+  @override
+  String get sessionColor => '课程颜色';
+
+  @override
+  String get sessionColorShort => '颜色';
+
+  @override
   String get actionApply => '应用';
 
   @override
@@ -2329,6 +2523,103 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get themeColorInvalidHex => '請輸入有效的 6 位十六進制顏色（如 39C5BB）';
+
+  @override
+  String get themeModeTitle => '深淺色模式';
+
+  @override
+  String get themeModeSubtitle => '選擇淺色、深色或跟隨系統';
+
+  @override
+  String get themeModeSystem => '跟隨系統';
+
+  @override
+  String get themeModeLight => '淺色';
+
+  @override
+  String get themeModeDark => '深色';
+
+  @override
+  String get weekStartDayTitle => '週起始日';
+
+  @override
+  String get weekStartDaySubtitle => '課表每週從哪一天開始顯示';
+
+  @override
+  String get weekStartMonday => '週一';
+
+  @override
+  String get weekStartSunday => '週日';
+
+  @override
+  String get gridDensityTitle => '課表顯示密度';
+
+  @override
+  String get gridDensitySubtitle => '調整課表行高與字體大小';
+
+  @override
+  String get gridDensityCompact => '緊湊';
+
+  @override
+  String get gridDensityStandard => '標準';
+
+  @override
+  String get gridDensityComfortable => '寬鬆';
+
+  @override
+  String get classLeadCustomizeTemplates => '自訂課前提醒文案';
+
+  @override
+  String get classLeadCustomizeTemplatesSubtitle => '留空使用預設文案';
+
+  @override
+  String get classLeadTemplateSheetTitle => '課前提醒文案';
+
+  @override
+  String get classLeadTitleLabel => '標題';
+
+  @override
+  String get classLeadBodyLabel => '正文';
+
+  @override
+  String classLeadTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+    String minutesToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken、$minutesToken。留空使用預設文案。';
+  }
+
+  @override
+  String get checkInCustomizeTemplates => '自訂打卡提醒文案';
+
+  @override
+  String get checkInCustomizeTemplatesSubtitle => '留空使用預設文案';
+
+  @override
+  String get checkInTemplateSheetTitle => '打卡提醒文案';
+
+  @override
+  String get checkInTitleLabel => '標題';
+
+  @override
+  String get checkInBodyLabel => '正文';
+
+  @override
+  String checkInTemplatePlaceholderHint(
+    String courseToken,
+    String roomToken,
+    String timeToken,
+  ) {
+    return '可用 $courseToken、$roomToken、$timeToken。留空使用預設文案。';
+  }
+
+  @override
+  String get sessionColor => '課程顏色';
+
+  @override
+  String get sessionColorShort => '顏色';
 
   @override
   String get actionApply => '套用';

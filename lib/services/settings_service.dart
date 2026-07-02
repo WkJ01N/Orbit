@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
+import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsService {
   static const _themeColorKey = 'theme_color';
+  static const _themeModeKey = 'theme_mode';
   static const _leadMinutesKey = 'reminder_lead_minutes';
   static const _enabledKey = 'reminder_enabled';
   static const _localeKey = 'app_locale';
@@ -18,11 +22,18 @@ class SettingsService {
   static const _nextDayWithClassBodyKey = 'next_day_with_class_body_tpl';
   static const _nextDayNoClassTitleKey = 'next_day_no_class_title_tpl';
   static const _nextDayNoClassBodyKey = 'next_day_no_class_body_tpl';
+  static const _classLeadTitleKey = 'class_lead_title_tpl';
+  static const _classLeadBodyKey = 'class_lead_body_tpl';
+  static const _checkInTitleKey = 'check_in_title_tpl';
+  static const _checkInBodyKey = 'check_in_body_tpl';
   static const _systemAlarmEnabledKey = 'system_alarm_enabled';
   static const _systemAlarmLeadMinutesKey = 'system_alarm_lead_minutes';
   static const _checkInReminderEnabledKey = 'check_in_reminder_enabled';
   static const _launchAtStartupKey = 'launch_at_startup';
   static const _gridDefaultWeekModeKey = 'grid_default_week_mode';
+  static const _weekStartDayKey = 'week_start_day';
+  static const _gridDensityKey = 'grid_density';
+  static const _courseColorOverridesKey = 'course_color_overrides';
 
   SharedPreferences? _prefs;
 
@@ -45,6 +56,10 @@ class SettingsService {
       nextDayWithClassBodyTemplate: prefs.getString(_nextDayWithClassBodyKey),
       nextDayNoClassTitleTemplate: prefs.getString(_nextDayNoClassTitleKey),
       nextDayNoClassBodyTemplate: prefs.getString(_nextDayNoClassBodyKey),
+      classLeadTitleTemplate: prefs.getString(_classLeadTitleKey),
+      classLeadBodyTemplate: prefs.getString(_classLeadBodyKey),
+      checkInTitleTemplate: prefs.getString(_checkInTitleKey),
+      checkInBodyTemplate: prefs.getString(_checkInBodyKey),
       systemAlarmEnabled: prefs.getBool(_systemAlarmEnabledKey) ?? false,
       systemAlarmLeadMinutes: prefs.getInt(_systemAlarmLeadMinutesKey) ?? 10,
       checkInReminderEnabled: prefs.getBool(_checkInReminderEnabledKey) ?? true,
@@ -88,6 +103,26 @@ class SettingsService {
       _nextDayNoClassBodyKey,
       settings.nextDayNoClassBodyTemplate,
     );
+    await _saveOptionalString(
+      prefs,
+      _classLeadTitleKey,
+      settings.classLeadTitleTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _classLeadBodyKey,
+      settings.classLeadBodyTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _checkInTitleKey,
+      settings.checkInTitleTemplate,
+    );
+    await _saveOptionalString(
+      prefs,
+      _checkInBodyKey,
+      settings.checkInBodyTemplate,
+    );
     await prefs.setBool(_systemAlarmEnabledKey, settings.systemAlarmEnabled);
     await prefs.setInt(
       _systemAlarmLeadMinutesKey,
@@ -123,6 +158,26 @@ class SettingsService {
     await prefs.setInt(_themeColorKey, color.toARGB32());
   }
 
+  Future<ThemeMode> loadThemeMode() async {
+    final prefs = await _prefsInstance();
+    final saved = prefs.getString(_themeModeKey);
+    return switch (saved) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+  }
+
+  Future<void> saveThemeMode(ThemeMode mode) async {
+    final prefs = await _prefsInstance();
+    final value = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+    };
+    await prefs.setString(_themeModeKey, value);
+  }
+
   Future<bool> loadLaunchAtStartup() async {
     final prefs = await _prefsInstance();
     return prefs.getBool(_launchAtStartupKey) ?? false;
@@ -145,6 +200,62 @@ class SettingsService {
   Future<void> saveGridDefaultWeekMode(GridDefaultWeekMode mode) async {
     final prefs = await _prefsInstance();
     await prefs.setString(_gridDefaultWeekModeKey, mode.name);
+  }
+
+  Future<int> loadWeekStartDay() async {
+    final prefs = await _prefsInstance();
+    final saved = prefs.getInt(_weekStartDayKey);
+    if (saved == DateTime.sunday || saved == DateTime.monday) {
+      return saved!;
+    }
+    return DateTime.monday;
+  }
+
+  Future<void> saveWeekStartDay(int weekday) async {
+    final prefs = await _prefsInstance();
+    await prefs.setInt(_weekStartDayKey, weekday);
+  }
+
+  Future<GridDensity> loadGridDensity() async {
+    final prefs = await _prefsInstance();
+    final saved = prefs.getString(_gridDensityKey);
+    return GridDensity.values.firstWhere(
+      (density) => density.name == saved,
+      orElse: () => GridDensity.standard,
+    );
+  }
+
+  Future<void> saveGridDensity(GridDensity density) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString(_gridDensityKey, density.name);
+  }
+
+  Future<Map<String, Color>> loadCourseColorOverrides() async {
+    final prefs = await _prefsInstance();
+    final raw = prefs.getString(_courseColorOverridesKey);
+    if (raw == null || raw.isEmpty) {
+      return {};
+    }
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map(
+        (key, value) => MapEntry(key, Color(value as int)),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveCourseColorOverrides(Map<String, Color> overrides) async {
+    final prefs = await _prefsInstance();
+    if (overrides.isEmpty) {
+      await prefs.remove(_courseColorOverridesKey);
+      return;
+    }
+    final encoded = jsonEncode(
+      overrides.map((key, value) => MapEntry(key, value.toARGB32())),
+    );
+    await prefs.setString(_courseColorOverridesKey, encoded);
   }
 
   Future<void> _saveOptionalString(

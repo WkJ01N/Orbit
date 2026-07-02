@@ -1,6 +1,7 @@
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/services/notification_template_utils.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/schedule_summary_service.dart';
 
@@ -27,16 +28,8 @@ String applyNextDayTemplate(
   String? template,
   String fallback,
   Map<String, String> variables,
-) {
-  if (template == null || template.trim().isEmpty) {
-    return fallback;
-  }
-  var result = template;
-  for (final entry in variables.entries) {
-    result = result.replaceAll('{${entry.key}}', entry.value);
-  }
-  return result;
-}
+) =>
+    applyNotificationTemplate(template, fallback, variables);
 
 String nextDayDateLabel(DateTime day) {
   return '${day.month}/${day.day}';
