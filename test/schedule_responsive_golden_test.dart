@@ -196,29 +196,21 @@ Future<void> _pumpSchedule(
 }
 
 void main() {
-  testWidgets(
-    '课程卡片使用统一的 8px 圆角',
-    (tester) async {
-      await _pumpSchedule(
-        tester,
-        width: 400,
-        golden: 'goldens/schedule_400.png',
-      );
+  testWidgets('课程卡片使用统一的 8px 圆角', (tester) async {
+    await _pumpSchedule(tester, width: 400, golden: 'goldens/schedule_400.png');
 
-      final material = tester.widget<Material>(
-        find
-            .descendant(
-              of: find.byType(GridSessionChip).first,
-              matching: find.byType(Material),
-            )
-            .first,
-      );
-      final shape = material.shape! as RoundedRectangleBorder;
-      final radius = shape.borderRadius.resolve(TextDirection.ltr).topLeft.x;
-      expect(radius, 8);
-    },
-    skip: !Platform.isWindows,
-  );
+    final material = tester.widget<Material>(
+      find
+          .descendant(
+            of: find.byType(GridSessionChip).first,
+            matching: find.byType(Material),
+          )
+          .first,
+    );
+    final shape = material.shape! as RoundedRectangleBorder;
+    final radius = shape.borderRadius.resolve(TextDirection.ltr).topLeft.x;
+    expect(radius, 8);
+  }, skip: !Platform.isWindows);
 
   testWidgets('320dp 单日课表视觉基线', (tester) async {
     await _pumpSchedule(tester, width: 320, golden: 'goldens/schedule_320.png');
