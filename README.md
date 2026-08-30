@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**版本 1.2.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**版本 1.2.1** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -22,12 +22,12 @@
 
 ## 快速开始（用户）
 
-从源码自行构建，或下载本地 `release/v1.2.0/` 中的预编译包：
+从源码自行构建，或下载本地 `release/v1.2.1/` 中的预编译包：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.2.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.2.0-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
+| Windows | `orbit-v1.2.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.2.1-release.apk` | 直接安装（当前为 debug 签名，适合自用） |
 
 ## 从源码运行
 
@@ -67,15 +67,23 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.2.0/orbit-v1.2.0-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.2.1/orbit-v1.2.1-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.2.0/orbit-v1.2.0-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.2.1/orbit-v1.2.1-release.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.2.1
+
+- 课表升级为按真实起止时间定位的自适应时间轴，支持单日、多日与整周模式
+- 课程冲突自动分栏，课程卡片新增教师并按可用高度自适应显示信息
+- 新增彩色主题、课程默认颜色恢复和仅当天显示的当前时间提示线
+- 「接下来」增加周日期与可配置课程日期；修复语言切换提示和 Windows 中文字体粗细不一致
+- 版本号 1.2.1（build `+9`）；测试 109 项
 
 ### v1.2.0
 

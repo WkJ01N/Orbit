@@ -406,6 +406,12 @@ abstract class AppLocalizations {
   /// **'After {date}'**
   String groupLater(String date);
 
+  /// No description provided for @upcomingWeekMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'{date}'**
+  String upcomingWeekMonday(String date);
+
   /// No description provided for @inClass.
   ///
   /// In en, this message translates to:
@@ -526,6 +532,30 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get sectionAppearance;
 
+  /// No description provided for @themeStyleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme style'**
+  String get themeStyleTitle;
+
+  /// No description provided for @themeStyleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use one accent or automatic colors for each course'**
+  String get themeStyleSubtitle;
+
+  /// No description provided for @themeStyleStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get themeStyleStandard;
+
+  /// No description provided for @themeStyleColorful.
+  ///
+  /// In en, this message translates to:
+  /// **'Colorful'**
+  String get themeStyleColorful;
+
   /// No description provided for @themeColorTitle.
   ///
   /// In en, this message translates to:
@@ -639,6 +669,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Comfortable'**
   String get gridDensityComfortable;
+
+  /// No description provided for @scheduleMultiDayCountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Days in multi-day view'**
+  String get scheduleMultiDayCountTitle;
+
+  /// No description provided for @scheduleMultiDayCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This window can show up to {maxCount} readable days'**
+  String scheduleMultiDayCountSubtitle(int maxCount);
+
+  /// No description provided for @scheduleDayCountOption.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days'**
+  String scheduleDayCountOption(int count);
+
+  /// No description provided for @scheduleShowEmptyDaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show days without classes'**
+  String get scheduleShowEmptyDaysTitle;
+
+  /// No description provided for @scheduleShowEmptyDaysSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off to move directly between class days'**
+  String get scheduleShowEmptyDaysSubtitle;
+
+  /// No description provided for @upcomingShowCourseDateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show date beside countdown'**
+  String get upcomingShowCourseDateTitle;
+
+  /// No description provided for @upcomingShowCourseDateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display the course date in the Upcoming list'**
+  String get upcomingShowCourseDateSubtitle;
+
+  /// No description provided for @upcomingDateDisplayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course date format'**
+  String get upcomingDateDisplayTitle;
+
+  /// No description provided for @upcomingDateDisplaySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which date details to show'**
+  String get upcomingDateDisplaySubtitle;
+
+  /// No description provided for @upcomingDateDisplayDateAndWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Date + weekday'**
+  String get upcomingDateDisplayDateAndWeekday;
+
+  /// No description provided for @upcomingDateDisplayDateOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Date only'**
+  String get upcomingDateDisplayDateOnly;
+
+  /// No description provided for @upcomingDateDisplayWeekdayOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday only'**
+  String get upcomingDateDisplayWeekdayOnly;
+
+  /// No description provided for @scheduleJumpToNearestCourse.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest class day'**
+  String get scheduleJumpToNearestCourse;
+
+  /// No description provided for @scheduleCourseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} courses'**
+  String scheduleCourseCount(int count);
 
   /// No description provided for @classLeadCustomizeTemplates.
   ///
@@ -1424,7 +1538,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteSession.
   ///
   /// In en, this message translates to:
-  /// **'Delete this class'**
+  /// **'Delete class'**
   String get deleteSession;
 
   /// No description provided for @deleteSessionShort.
@@ -1432,6 +1546,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get deleteSessionShort;
+
+  /// No description provided for @courseColorDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get courseColorDefault;
 
   /// No description provided for @deleteSessionConfirmTitle.
   ///

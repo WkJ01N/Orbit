@@ -6,11 +6,13 @@ import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsService {
   static const _themeColorKey = 'theme_color';
   static const _themeModeKey = 'theme_mode';
+  static const _themeStyleKey = 'app_theme_style';
   static const _leadMinutesKey = 'reminder_lead_minutes';
   static const _enabledKey = 'reminder_enabled';
   static const _localeKey = 'app_locale';
@@ -34,6 +36,10 @@ class SettingsService {
   static const _weekStartDayKey = 'week_start_day';
   static const _gridDensityKey = 'grid_density';
   static const _courseColorOverridesKey = 'course_color_overrides';
+  static const _scheduleMultiDayCountKey = 'schedule_multi_day_count';
+  static const _scheduleShowEmptyDaysKey = 'schedule_show_empty_days';
+  static const _upcomingShowCourseDateKey = 'upcoming_show_course_date';
+  static const _upcomingDateDisplayKey = 'upcoming_date_display';
 
   SharedPreferences? _prefs;
 
@@ -51,8 +57,7 @@ class SettingsService {
       nextDaySummaryMinute: prefs.getInt(_nextDaySummaryMinuteKey) ?? 0,
       nextDayRemindWhenNoClass:
           prefs.getBool(_nextDayRemindWhenNoClassKey) ?? true,
-      nextDayWithClassTitleTemplate:
-          prefs.getString(_nextDayWithClassTitleKey),
+      nextDayWithClassTitleTemplate: prefs.getString(_nextDayWithClassTitleKey),
       nextDayWithClassBodyTemplate: prefs.getString(_nextDayWithClassBodyKey),
       nextDayNoClassTitleTemplate: prefs.getString(_nextDayNoClassTitleKey),
       nextDayNoClassBodyTemplate: prefs.getString(_nextDayNoClassBodyKey),
@@ -75,10 +80,7 @@ class SettingsService {
       settings.nextDaySummaryEnabled,
     );
     await prefs.setInt(_nextDaySummaryHourKey, settings.nextDaySummaryHour);
-    await prefs.setInt(
-      _nextDaySummaryMinuteKey,
-      settings.nextDaySummaryMinute,
-    );
+    await prefs.setInt(_nextDaySummaryMinuteKey, settings.nextDaySummaryMinute);
     await prefs.setBool(
       _nextDayRemindWhenNoClassKey,
       settings.nextDayRemindWhenNoClass,
@@ -178,6 +180,20 @@ class SettingsService {
     await prefs.setString(_themeModeKey, value);
   }
 
+  Future<AppThemeStyle> loadThemeStyle() async {
+    final prefs = await _prefsInstance();
+    final saved = prefs.getString(_themeStyleKey);
+    return AppThemeStyle.values.firstWhere(
+      (style) => style.name == saved,
+      orElse: () => AppThemeStyle.standard,
+    );
+  }
+
+  Future<void> saveThemeStyle(AppThemeStyle style) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString(_themeStyleKey, style.name);
+  }
+
   Future<bool> loadLaunchAtStartup() async {
     final prefs = await _prefsInstance();
     return prefs.getBool(_launchAtStartupKey) ?? false;
@@ -230,6 +246,39 @@ class SettingsService {
     await prefs.setString(_gridDensityKey, density.name);
   }
 
+  Future<ScheduleDisplaySettings> loadScheduleDisplaySettings() async {
+    final prefs = await _prefsInstance();
+    return ScheduleDisplaySettings(
+      preferredMultiDayCount: (prefs.getInt(_scheduleMultiDayCountKey) ?? 3)
+          .clamp(1, 6),
+      showEmptyDays: prefs.getBool(_scheduleShowEmptyDaysKey) ?? true,
+      showUpcomingCourseDate: prefs.getBool(_upcomingShowCourseDateKey) ?? true,
+      upcomingDateDisplay: UpcomingDateDisplay.values.firstWhere(
+        (display) => display.name == prefs.getString(_upcomingDateDisplayKey),
+        orElse: () => UpcomingDateDisplay.dateAndWeekday,
+      ),
+    );
+  }
+
+  Future<void> saveScheduleDisplaySettings(
+    ScheduleDisplaySettings settings,
+  ) async {
+    final prefs = await _prefsInstance();
+    await prefs.setInt(
+      _scheduleMultiDayCountKey,
+      settings.preferredMultiDayCount.clamp(1, 6),
+    );
+    await prefs.setBool(_scheduleShowEmptyDaysKey, settings.showEmptyDays);
+    await prefs.setBool(
+      _upcomingShowCourseDateKey,
+      settings.showUpcomingCourseDate,
+    );
+    await prefs.setString(
+      _upcomingDateDisplayKey,
+      settings.upcomingDateDisplay.name,
+    );
+  }
+
   Future<Map<String, Color>> loadCourseColorOverrides() async {
     final prefs = await _prefsInstance();
     final raw = prefs.getString(_courseColorOverridesKey);
@@ -238,9 +287,7 @@ class SettingsService {
     }
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded.map(
-        (key, value) => MapEntry(key, Color(value as int)),
-      );
+      return decoded.map((key, value) => MapEntry(key, Color(value as int)));
     } catch (_) {
       return {};
     }

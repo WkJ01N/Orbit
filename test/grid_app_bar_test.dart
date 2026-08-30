@@ -9,10 +9,7 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
 
-CourseSession _session({
-  required DateTime date,
-  required int weekday,
-}) {
+CourseSession _session({required DateTime date, required int weekday}) {
   final startAt = DateTime(date.year, date.month, date.day, 9);
   final endAt = DateTime(date.year, date.month, date.day, 10);
   return CourseSession(
@@ -70,9 +67,9 @@ void _expectAppBarControlsDoNotOverlap(WidgetTester tester) {
   final searchRect = tester.getRect(find.byIcon(Icons.search));
 
   expect(
-    nextWeekRect.right <= searchRect.left,
-    isTrue,
-    reason: 'Next-week control should not overlap the search button',
+    nextWeekRect.overlaps(searchRect),
+    isFalse,
+    reason: 'Date navigation should not overlap the search button',
   );
 }
 

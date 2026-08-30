@@ -11,23 +11,34 @@ import 'package:orbit/providers/schedule_providers.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
 
-final reminderSchedulerProvider =
-    Provider<ReminderScheduler>((ref) => ReminderScheduler.shared);
+final reminderSchedulerProvider = Provider<ReminderScheduler>(
+  (ref) => ReminderScheduler.shared,
+);
 
-final settingsServiceProvider =
-    Provider<SettingsService>((ref) => SettingsService());
+final settingsServiceProvider = Provider<SettingsService>(
+  (ref) => SettingsService(),
+);
 
-final localeProvider =
-    NotifierProvider<LocaleNotifier, Locale>(LocaleNotifier.new);
+final localeProvider = NotifierProvider<LocaleNotifier, Locale>(
+  LocaleNotifier.new,
+);
 
-final themeColorProvider =
-    NotifierProvider<ThemeColorNotifier, Color>(ThemeColorNotifier.new);
+final themeColorProvider = NotifierProvider<ThemeColorNotifier, Color>(
+  ThemeColorNotifier.new,
+);
 
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
 
-final courseColorOverridesProvider = NotifierProvider<CourseColorOverridesNotifier,
-    Map<String, Color>>(CourseColorOverridesNotifier.new);
+final themeStyleProvider = NotifierProvider<ThemeStyleNotifier, AppThemeStyle>(
+  ThemeStyleNotifier.new,
+);
+
+final courseColorOverridesProvider =
+    NotifierProvider<CourseColorOverridesNotifier, Map<String, Color>>(
+      CourseColorOverridesNotifier.new,
+    );
 
 class ThemeColorNotifier extends Notifier<Color> {
   int _loadGeneration = 0;
@@ -77,6 +88,29 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   }
 }
 
+class ThemeStyleNotifier extends Notifier<AppThemeStyle> {
+  int _loadGeneration = 0;
+
+  @override
+  AppThemeStyle build() {
+    _loadSavedStyle();
+    return AppThemeStyle.standard;
+  }
+
+  Future<void> _loadSavedStyle() async {
+    final generation = ++_loadGeneration;
+    final saved = await ref.read(settingsServiceProvider).loadThemeStyle();
+    if (generation == _loadGeneration) {
+      state = saved;
+    }
+  }
+
+  Future<void> setStyle(AppThemeStyle style) async {
+    await ref.read(settingsServiceProvider).saveThemeStyle(style);
+    state = style;
+  }
+}
+
 class CourseColorOverridesNotifier extends Notifier<Map<String, Color>> {
   int _loadGeneration = 0;
 
@@ -88,8 +122,9 @@ class CourseColorOverridesNotifier extends Notifier<Map<String, Color>> {
 
   Future<void> _load() async {
     final generation = ++_loadGeneration;
-    final saved =
-        await ref.read(settingsServiceProvider).loadCourseColorOverrides();
+    final saved = await ref
+        .read(settingsServiceProvider)
+        .loadCourseColorOverrides();
     if (generation != _loadGeneration) {
       return;
     }
@@ -139,8 +174,8 @@ NotificationCopy notificationCopyFor(Locale locale) {
 
 final reminderSettingsProvider =
     AsyncNotifierProvider<ReminderSettingsNotifier, ReminderSettings>(
-  ReminderSettingsNotifier.new,
-);
+      ReminderSettingsNotifier.new,
+    );
 
 final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
 
@@ -224,10 +259,7 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     );
   }
 
-  Future<int> updateClassLeadTemplates({
-    String? title,
-    String? body,
-  }) async {
+  Future<int> updateClassLeadTemplates({String? title, String? body}) async {
     final current = state.value ?? const ReminderSettings();
     final t = title?.trim() ?? '';
     final b = body?.trim() ?? '';
@@ -241,10 +273,7 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     );
   }
 
-  Future<int> updateCheckInTemplates({
-    String? title,
-    String? body,
-  }) async {
+  Future<int> updateCheckInTemplates({String? title, String? body}) async {
     final current = state.value ?? const ReminderSettings();
     final t = title?.trim() ?? '';
     final b = body?.trim() ?? '';

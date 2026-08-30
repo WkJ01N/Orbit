@@ -19,12 +19,14 @@ import 'package:orbit/features/settings/next_day_summary_template_sheet.dart';
 import 'package:orbit/features/settings/reminder_setting_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/services/alarm_intent_service.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
+import 'package:orbit/services/schedule_layout_engine.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -62,6 +64,7 @@ class _SettingsBody extends ConsumerWidget {
     final currentLocale = ref.watch(localeProvider);
     final themeColor = ref.watch(themeColorProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final themeStyle = ref.watch(themeStyleProvider);
     final rescheduleError = ref.watch(lastRescheduleErrorProvider);
     final notifier = ref.read(reminderSettingsProvider.notifier);
 
@@ -78,6 +81,7 @@ class _SettingsBody extends ConsumerWidget {
               if (locale == null) {
                 return;
               }
+              final targetL10n = lookupL10n(locale);
               await ref.read(localeProvider.notifier).setLocale(locale);
               if (!context.mounted) {
                 return;
@@ -85,11 +89,14 @@ class _SettingsBody extends ConsumerWidget {
               await applyReminderUpdate(
                 context,
                 ref,
-                () => ref.read(reminderSettingsProvider.notifier).resyncReminders(),
+                () => ref
+                    .read(reminderSettingsProvider.notifier)
+                    .resyncReminders(),
+                messages: targetL10n,
               );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l10n.languageChangedResynced)),
+                  SnackBar(content: Text(targetL10n.languageChangedResynced)),
                 );
               }
             },
@@ -108,8 +115,13 @@ class _SettingsBody extends ConsumerWidget {
         _GridDefaultWeekTile(),
         const _WeekStartDayTile(),
         const _GridDensityTile(),
+        const _ScheduleMultiDayCountTile(),
+        const _ScheduleShowEmptyDaysTile(),
+        const _UpcomingCourseDateTile(),
+        const _UpcomingDateDisplayTile(),
         const SizedBox(height: 8),
         SectionHeader(title: l10n.sectionAppearance),
+        _ThemeStyleTile(currentStyle: themeStyle),
         _ThemeModeTile(currentMode: themeMode),
         _ThemeColorTile(
           currentColor: themeColor,
@@ -176,21 +188,20 @@ class _SettingsBody extends ConsumerWidget {
           subtitle: Text(l10n.classLeadCustomizeTemplatesSubtitle),
           trailing: const Icon(Icons.edit_outlined),
           onTap: settings.enabled
-              ? () => ClassLeadTemplateSheet.show(
-                    context,
-                    settings: settings,
-                  )
+              ? () => ClassLeadTemplateSheet.show(context, settings: settings)
               : null,
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
         ListTile(
-          enabled: settings.enabled ||
+          enabled:
+              settings.enabled ||
               settings.checkInReminderEnabled ||
               settings.nextDaySummaryEnabled,
           title: Text(l10n.resyncReminders),
           subtitle: Text(l10n.resyncRemindersSubtitle),
           trailing: const Icon(Icons.refresh),
-          onTap: (settings.enabled ||
+          onTap:
+              (settings.enabled ||
                   settings.checkInReminderEnabled ||
                   settings.nextDaySummaryEnabled)
               ? () => _resyncReminders(context, ref)
@@ -229,10 +240,10 @@ class _SettingsBody extends ConsumerWidget {
           value: settings.nextDayRemindWhenNoClass,
           onChanged: settings.nextDaySummaryEnabled
               ? (enabled) => applyReminderUpdate(
-                    context,
-                    ref,
-                    () => notifier.setNextDayRemindWhenNoClass(enabled),
-                  )
+                  context,
+                  ref,
+                  () => notifier.setNextDayRemindWhenNoClass(enabled),
+                )
               : null,
         ),
         ListTile(
@@ -242,9 +253,9 @@ class _SettingsBody extends ConsumerWidget {
           trailing: const Icon(Icons.edit_outlined),
           onTap: settings.nextDaySummaryEnabled
               ? () => NextDaySummaryTemplateSheet.show(
-                    context,
-                    settings: settings,
-                  )
+                  context,
+                  settings: settings,
+                )
               : null,
         ),
         const Divider(height: 1, indent: 16, endIndent: 16),
@@ -277,10 +288,7 @@ class _SettingsBody extends ConsumerWidget {
           subtitle: Text(l10n.checkInCustomizeTemplatesSubtitle),
           trailing: const Icon(Icons.edit_outlined),
           onTap: settings.checkInReminderEnabled
-              ? () => CheckInTemplateSheet.show(
-                    context,
-                    settings: settings,
-                  )
+              ? () => CheckInTemplateSheet.show(context, settings: settings)
               : null,
         ),
         if (Platform.isAndroid) ...[
@@ -302,7 +310,9 @@ class _SettingsBody extends ConsumerWidget {
               l10n.systemAlarmLeadSubtitle(settings.systemAlarmLeadMinutes),
             ),
             trailing: DropdownButton<int>(
-              value: _effectiveAlarmLeadMinutes(settings.systemAlarmLeadMinutes),
+              value: _effectiveAlarmLeadMinutes(
+                settings.systemAlarmLeadMinutes,
+              ),
               underline: const SizedBox.shrink(),
               onChanged: settings.systemAlarmEnabled
                   ? (value) {
@@ -379,8 +389,8 @@ class _SettingsBody extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
-    final current = ref.read(reminderSettingsProvider).value ??
-        const ReminderSettings();
+    final current =
+        ref.read(reminderSettingsProvider).value ?? const ReminderSettings();
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(
@@ -403,8 +413,12 @@ class _SettingsBody extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final settings =
         ref.read(reminderSettingsProvider).value ?? const ReminderSettings();
-    final sessions = await ref.read(scheduleRepositoryProvider).getAllSessions();
-    final result = await ref.read(alarmIntentServiceProvider).setTomorrowFirstClassAlarm(
+    final sessions = await ref
+        .read(scheduleRepositoryProvider)
+        .getAllSessions();
+    final result = await ref
+        .read(alarmIntentServiceProvider)
+        .setTomorrowFirstClassAlarm(
           allSessions: sessions,
           settings: settings,
           alarmLabel: l10n.notificationNextDayTitle,
@@ -420,9 +434,9 @@ class _SettingsBody extends ConsumerWidget {
       AlarmIntentResult.unsupportedPlatform => l10n.alarmSetFailed,
       AlarmIntentResult.failed => l10n.alarmSetFailed,
     };
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _resyncReminders(BuildContext context, WidgetRef ref) async {
@@ -477,15 +491,15 @@ class _SettingsBody extends ConsumerWidget {
         ref.read(selectedWeekStartProvider.notifier).state = null;
         refreshSchedule(ref);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.dataCleared)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.dataCleared)));
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.clearAllFailed('$e'))),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.clearAllFailed('$e'))));
         }
       }
     }
@@ -607,6 +621,162 @@ class _GridDensityTile extends ConsumerWidget {
   }
 }
 
+class _ScheduleMultiDayCountTile extends ConsumerWidget {
+  const _ScheduleMultiDayCountTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    final maxCount = maxMultiDayCountForWidth(MediaQuery.sizeOf(context).width);
+    final effectiveValue = settings.preferredMultiDayCount.clamp(1, maxCount);
+    return ListTile(
+      title: Text(l10n.scheduleMultiDayCountTitle),
+      subtitle: Text(l10n.scheduleMultiDayCountSubtitle(maxCount)),
+      trailing: DropdownButton<int>(
+        value: effectiveValue,
+        underline: const SizedBox.shrink(),
+        onChanged: maxCount <= 1
+            ? null
+            : (value) {
+                if (value != null) {
+                  ref
+                      .read(scheduleDisplaySettingsProvider.notifier)
+                      .setPreferredMultiDayCount(value);
+                }
+              },
+        items: [
+          for (var count = 1; count <= maxCount; count++)
+            DropdownMenuItem(
+              value: count,
+              child: Text(l10n.scheduleDayCountOption(count)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleShowEmptyDaysTile extends ConsumerWidget {
+  const _ScheduleShowEmptyDaysTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    return SwitchListTile(
+      title: Text(l10n.scheduleShowEmptyDaysTitle),
+      subtitle: Text(l10n.scheduleShowEmptyDaysSubtitle),
+      value: settings.showEmptyDays,
+      onChanged: (value) => ref
+          .read(scheduleDisplaySettingsProvider.notifier)
+          .setShowEmptyDays(value),
+    );
+  }
+}
+
+class _UpcomingCourseDateTile extends ConsumerWidget {
+  const _UpcomingCourseDateTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    return SwitchListTile(
+      title: Text(l10n.upcomingShowCourseDateTitle),
+      subtitle: Text(l10n.upcomingShowCourseDateSubtitle),
+      value: settings.showUpcomingCourseDate,
+      onChanged: (value) => ref
+          .read(scheduleDisplaySettingsProvider.notifier)
+          .setShowUpcomingCourseDate(value),
+    );
+  }
+}
+
+class _UpcomingDateDisplayTile extends ConsumerWidget {
+  const _UpcomingDateDisplayTile();
+
+  String _label(AppLocalizations l10n, UpcomingDateDisplay display) {
+    return switch (display) {
+      UpcomingDateDisplay.dateAndWeekday =>
+        l10n.upcomingDateDisplayDateAndWeekday,
+      UpcomingDateDisplay.dateOnly => l10n.upcomingDateDisplayDateOnly,
+      UpcomingDateDisplay.weekdayOnly => l10n.upcomingDateDisplayWeekdayOnly,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    return ListTile(
+      enabled: settings.showUpcomingCourseDate,
+      title: Text(l10n.upcomingDateDisplayTitle),
+      subtitle: Text(l10n.upcomingDateDisplaySubtitle),
+      trailing: DropdownButton<UpcomingDateDisplay>(
+        value: settings.upcomingDateDisplay,
+        underline: const SizedBox.shrink(),
+        onChanged: settings.showUpcomingCourseDate
+            ? (value) {
+                if (value != null) {
+                  ref
+                      .read(scheduleDisplaySettingsProvider.notifier)
+                      .setUpcomingDateDisplay(value);
+                }
+              }
+            : null,
+        items: UpcomingDateDisplay.values
+            .map(
+              (display) => DropdownMenuItem(
+                value: display,
+                child: Text(_label(l10n, display)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _ThemeStyleTile extends ConsumerWidget {
+  const _ThemeStyleTile({required this.currentStyle});
+
+  final AppThemeStyle currentStyle;
+
+  String _label(AppLocalizations l10n, AppThemeStyle style) {
+    return switch (style) {
+      AppThemeStyle.standard => l10n.themeStyleStandard,
+      AppThemeStyle.colorful => l10n.themeStyleColorful,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    return ListTile(
+      title: Text(l10n.themeStyleTitle),
+      subtitle: Text(l10n.themeStyleSubtitle),
+      trailing: DropdownButton<AppThemeStyle>(
+        value: currentStyle,
+        underline: const SizedBox.shrink(),
+        onChanged: (style) {
+          if (style != null) {
+            ref.read(themeStyleProvider.notifier).setStyle(style);
+          }
+        },
+        items: AppThemeStyle.values
+            .map(
+              (style) => DropdownMenuItem(
+                value: style,
+                child: Text(_label(l10n, style)),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
 class _ThemeModeTile extends ConsumerWidget {
   const _ThemeModeTile({required this.currentMode});
 
@@ -635,11 +805,7 @@ class _ThemeModeTile extends ConsumerWidget {
             ref.read(themeModeProvider.notifier).setThemeMode(mode);
           }
         },
-        items: const [
-          ThemeMode.system,
-          ThemeMode.light,
-          ThemeMode.dark,
-        ]
+        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark]
             .map(
               (mode) => DropdownMenuItem(
                 value: mode,
@@ -811,13 +977,16 @@ class _ThemeColorTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.themeColorTitle, style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            l10n.themeColorTitle,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 2),
           Text(
             l10n.themeColorSubtitle,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -876,16 +1045,14 @@ class _ColorSwatch extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+              color: selected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
               width: selected ? 2.5 : 1,
             ),
           ),
           child: selected
-              ? Icon(
-                  Icons.check,
-                  size: 18,
-                  color: _contrastIconColor(color),
-                )
+              ? Icon(Icons.check, size: 18, color: _contrastIconColor(color))
               : null,
         ),
       ),
@@ -907,7 +1074,8 @@ class _AndroidBackgroundSection extends ConsumerStatefulWidget {
 }
 
 class _AndroidBackgroundSectionState
-    extends ConsumerState<_AndroidBackgroundSection> with WidgetsBindingObserver {
+    extends ConsumerState<_AndroidBackgroundSection>
+    with WidgetsBindingObserver {
   bool _isIgnoringBatteryOptimizations = false;
   ReminderPermissionStatus? _permissionStatus;
 
@@ -934,16 +1102,15 @@ class _AndroidBackgroundSectionState
   }
 
   Future<void> _loadPermissionStatus() async {
-    final status =
-        await AndroidReminderGuard.instance.queryPermissionStatus();
+    final status = await AndroidReminderGuard.instance.queryPermissionStatus();
     if (mounted) {
       setState(() => _permissionStatus = status);
     }
   }
 
   Future<void> _loadBatteryStatus() async {
-    final ignoring =
-        await AndroidReminderGuard.instance.isIgnoringBatteryOptimizations();
+    final ignoring = await AndroidReminderGuard.instance
+        .isIgnoringBatteryOptimizations();
     if (mounted) {
       setState(() => _isIgnoringBatteryOptimizations = ignoring);
     }
@@ -958,9 +1125,9 @@ class _AndroidBackgroundSectionState
     final l10n = AppLocalizations.of(context)!;
     final status = _permissionStatus ?? ReminderPermissionStatus.unknown;
     final message = _permissionStatusMessage(l10n, status);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
     if (!status.allGranted) {
       await AndroidReminderGuard.instance.openNotificationSettings();
     }
@@ -996,10 +1163,11 @@ class _AndroidBackgroundSectionState
   Future<void> _scheduleTestReminder() async {
     final l10n = AppLocalizations.of(context)!;
     await AndroidReminderGuard.instance.ensureReminderPermissions();
-    final ok = await AndroidReminderGuard.instance.scheduleBackgroundTestReminder(
-      title: l10n.androidTestBackgroundReminder,
-      body: l10n.androidTestBackgroundReminderSubtitle,
-    );
+    final ok = await AndroidReminderGuard.instance
+        .scheduleBackgroundTestReminder(
+          title: l10n.androidTestBackgroundReminder,
+          body: l10n.androidTestBackgroundReminderSubtitle,
+        );
     if (!mounted) {
       return;
     }
@@ -1027,8 +1195,8 @@ class _AndroidBackgroundSectionState
           child: Text(
             l10n.androidBackgroundSubtitle,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         ListTile(
@@ -1054,8 +1222,8 @@ class _AndroidBackgroundSectionState
           child: Text(
             l10n.androidKillBackgroundHint,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         ListTile(
@@ -1069,8 +1237,8 @@ class _AndroidBackgroundSectionState
           child: Text(
             l10n.androidAutostartHint,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ],
@@ -1087,18 +1255,18 @@ class _SettingsFooter extends StatelessWidget {
     final uri = Uri.parse(kGithubRepoUrl);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.settingsGithubOpenFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsGithubOpenFailed)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final mutedStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        );
+    final mutedStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -1120,11 +1288,7 @@ class _SettingsFooter extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            l10n.appTagline,
-            style: mutedStyle,
-            textAlign: TextAlign.center,
-          ),
+          Text(l10n.appTagline, style: mutedStyle, textAlign: TextAlign.center),
         ],
       ),
     );
@@ -1132,10 +1296,7 @@ class _SettingsFooter extends StatelessWidget {
 }
 
 class _CustomColorButton extends StatelessWidget {
-  const _CustomColorButton({
-    required this.label,
-    required this.onTap,
-  });
+  const _CustomColorButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;

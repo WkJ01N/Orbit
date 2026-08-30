@@ -7,17 +7,29 @@ import 'package:orbit/l10n/app_localizations.dart';
 Future<Color?> showColorPickerDialog(
   BuildContext context, {
   required Color initialColor,
+  Color? defaultColor,
+  VoidCallback? onUseDefault,
 }) {
   return showDialog<Color>(
     context: context,
-    builder: (dialogContext) => _ColorPickerDialog(initialColor: initialColor),
+    builder: (dialogContext) => _ColorPickerDialog(
+      initialColor: initialColor,
+      defaultColor: defaultColor,
+      onUseDefault: onUseDefault,
+    ),
   );
 }
 
 class _ColorPickerDialog extends StatefulWidget {
-  const _ColorPickerDialog({required this.initialColor});
+  const _ColorPickerDialog({
+    required this.initialColor,
+    this.defaultColor,
+    this.onUseDefault,
+  });
 
   final Color initialColor;
+  final Color? defaultColor;
+  final VoidCallback? onUseDefault;
 
   @override
   State<_ColorPickerDialog> createState() => _ColorPickerDialogState();
@@ -76,7 +88,9 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                   onTap: () {
                     setState(() {
                       _preview = color;
-                      _controller.text = formatThemeHexColor(color).substring(1);
+                      _controller.text = formatThemeHexColor(
+                        color,
+                      ).substring(1);
                     });
                   },
                 ),
@@ -104,9 +118,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                     errorText: errorText.isEmpty ? null : errorText,
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'[0-9A-Fa-f#]'),
-                    ),
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Fa-f#]')),
                     LengthLimitingTextInputFormatter(7),
                   ],
                   onChanged: _updatePreview,
@@ -117,6 +129,23 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
         ],
       ),
       actions: [
+        if (widget.defaultColor != null && widget.onUseDefault != null)
+          TextButton.icon(
+            onPressed: () {
+              widget.onUseDefault!();
+              Navigator.pop(context);
+            },
+            icon: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: widget.defaultColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: colorScheme.outline),
+              ),
+            ),
+            label: Text(l10n.courseColorDefault),
+          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(l10n.actionCancel),

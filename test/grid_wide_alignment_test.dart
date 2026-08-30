@@ -41,11 +41,7 @@ List<CourseSession> _denseWeekSessions() {
   final sessions = <CourseSession>[];
   for (var hour = 8; hour <= 19; hour++) {
     sessions.add(
-      _session(
-        date: DateTime(2026, 6, 2),
-        weekday: 2,
-        startHour: hour,
-      ),
+      _session(date: DateTime(2026, 6, 2), weekday: 2, startHour: hour),
     );
   }
   for (final weekday in [3, 4, 5, 6]) {
@@ -62,27 +58,46 @@ List<CourseSession> _denseWeekSessions() {
 }
 
 void _expectHeaderBodyColumnsAligned(WidgetTester tester) {
-  final tables = find.byType(Table);
-  expect(tables, findsNWidgets(2));
+  final header = find.byKey(const Key('schedule-date-header'));
+  final body = find.byKey(const Key('schedule-timeline-body'));
+  expect(header, findsOneWidget);
+  expect(body, findsOneWidget);
 
-  final headerRect = tester.getRect(tables.first);
-  final bodyRect = tester.getRect(tables.last);
+  final headerRect = tester.getRect(header);
+  final bodyRect = tester.getRect(body);
 
   expect(
     (headerRect.left - bodyRect.left).abs(),
     lessThan(1.0),
-    reason: 'Table left edges differ: header=${headerRect.left} body=${bodyRect.left}',
+    reason:
+        'Table left edges differ: header=${headerRect.left} body=${bodyRect.left}',
   );
   expect(
     (headerRect.width - bodyRect.width).abs(),
     lessThan(1.0),
-    reason: 'Table widths differ: header=${headerRect.width} body=${bodyRect.width}',
+    reason:
+        'Table widths differ: header=${headerRect.width} body=${bodyRect.width}',
   );
   expect(
     (headerRect.right - bodyRect.right).abs(),
     lessThan(1.0),
-    reason: 'Table right edges differ: header=${headerRect.right} body=${bodyRect.right}',
+    reason:
+        'Table right edges differ: header=${headerRect.right} body=${bodyRect.right}',
   );
+}
+
+void _expectTimelineEdgeLabelsVisible(WidgetTester tester) {
+  final bodyRect = tester.getRect(
+    find.byKey(const Key('schedule-timeline-body')),
+  );
+  final firstLabel = tester.getRect(
+    find.byKey(const Key('schedule-time-label-480')),
+  );
+  final lastLabel = tester.getRect(
+    find.byKey(const Key('schedule-time-label-1200')),
+  );
+  expect(firstLabel.top, greaterThanOrEqualTo(bodyRect.top));
+  expect(lastLabel.bottom, lessThanOrEqualTo(bodyRect.bottom));
 }
 
 Future<void> _pumpWideWeekGrid(WidgetTester tester) async {
@@ -119,13 +134,19 @@ void main() {
   testWidgets('宽屏多时段课表表头与课程列水平对齐', (WidgetTester tester) async {
     await _pumpWideWeekGrid(tester);
     _expectHeaderBodyColumnsAligned(tester);
+    _expectTimelineEdgeLabelsVisible(tester);
   });
 
   testWidgets('宽屏纵向滚动后表头与课程列仍对齐', (WidgetTester tester) async {
     await _pumpWideWeekGrid(tester);
     _expectHeaderBodyColumnsAligned(tester);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    final body = find.byKey(const Key('schedule-timeline-body'));
+    final scrollView = find.ancestor(
+      of: body,
+      matching: find.byType(SingleChildScrollView),
+    );
+    await tester.drag(scrollView, const Offset(0, -300));
     await tester.pump();
     _expectHeaderBodyColumnsAligned(tester);
   });

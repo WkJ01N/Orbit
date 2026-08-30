@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 /// Default brand color — #39C5BB
 const kDefaultThemeColor = Color(0xFF39C5BB);
 
+enum AppThemeStyle { standard, colorful }
+
 /// Curated preset swatches for the theme color picker.
 const kThemePresetColors = <Color>[
   Color(0xFF39C5BB), // default teal
@@ -17,26 +19,42 @@ const kThemePresetColors = <Color>[
 ];
 
 class AppTheme {
-  static ThemeData light({Color seed = kDefaultThemeColor}) {
+  static ThemeData light({
+    Color seed = kDefaultThemeColor,
+    AppThemeStyle style = AppThemeStyle.standard,
+    bool useWindowsCjkFont = false,
+  }) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.light,
     );
-    return _baseTheme(colorScheme);
+    return _baseTheme(colorScheme, style, useWindowsCjkFont);
   }
 
-  static ThemeData dark({Color seed = kDefaultThemeColor}) {
+  static ThemeData dark({
+    Color seed = kDefaultThemeColor,
+    AppThemeStyle style = AppThemeStyle.standard,
+    bool useWindowsCjkFont = false,
+  }) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.dark,
     );
-    return _baseTheme(colorScheme);
+    return _baseTheme(colorScheme, style, useWindowsCjkFont);
   }
 
-  static ThemeData _baseTheme(ColorScheme colorScheme) {
+  static ThemeData _baseTheme(
+    ColorScheme colorScheme,
+    AppThemeStyle style,
+    bool useWindowsCjkFont,
+  ) {
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
+      fontFamily: useWindowsCjkFont ? 'Microsoft YaHei UI' : null,
+      fontFamilyFallback: useWindowsCjkFont
+          ? const ['Microsoft YaHei', 'Segoe UI']
+          : null,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         backgroundColor: colorScheme.surface,
@@ -76,8 +94,31 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
+      extensions: [OrbitThemeStyle(style)],
     );
   }
+}
+
+@immutable
+class OrbitThemeStyle extends ThemeExtension<OrbitThemeStyle> {
+  const OrbitThemeStyle(this.style);
+
+  final AppThemeStyle style;
+
+  @override
+  OrbitThemeStyle copyWith({AppThemeStyle? style}) {
+    return OrbitThemeStyle(style ?? this.style);
+  }
+
+  @override
+  OrbitThemeStyle lerp(OrbitThemeStyle? other, double t) {
+    return t < 0.5 ? this : (other ?? this);
+  }
+}
+
+AppThemeStyle appThemeStyleOf(BuildContext context) {
+  return Theme.of(context).extension<OrbitThemeStyle>()?.style ??
+      AppThemeStyle.standard;
 }
 
 /// Parses a 6-digit hex string (optional leading `#`) into a [Color].

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:orbit/core/routing/app_tab.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
+import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/empty_state.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/section_header.dart';
@@ -16,6 +18,7 @@ import 'package:orbit/features/session/session_countdown_label.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/course_color_utils.dart';
 
@@ -104,11 +107,13 @@ class UpcomingPage extends ConsumerWidget {
     for (final kind in order) {
       final list = groups[kind];
       if (list != null) {
-        result.add(_SessionGroup(
-          kind: kind,
-          laterDate: kind == SessionGroupKind.later ? laterLabelDate : null,
-          sessions: list,
-        ));
+        result.add(
+          _SessionGroup(
+            kind: kind,
+            laterDate: kind == SessionGroupKind.later ? laterLabelDate : null,
+            sessions: list,
+          ),
+        );
         groups.remove(kind);
       }
     }
@@ -146,6 +151,11 @@ class _HeaderItem extends _FlatItem {
 class _SessionItem extends _FlatItem {
   _SessionItem(this.session);
   final CourseSession session;
+}
+
+class _WeekHeaderItem extends _FlatItem {
+  _WeekHeaderItem(this.monday);
+  final DateTime monday;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,12 +207,23 @@ class _UpcomingListState extends State<_UpcomingList> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
 
     // Flatten groups into a single list so ListView.builder is truly lazy.
     final items = <_FlatItem>[];
+    final seenWeeks = <DateTime>{};
     for (final group in widget.groups) {
       items.add(_HeaderItem(_groupLabel(l10n, group)));
       for (final session in group.sessions) {
+        final date = DateTime(
+          session.date.year,
+          session.date.month,
+          session.date.day,
+        );
+        final monday = date.subtract(Duration(days: date.weekday - 1));
+        if (seenWeeks.add(monday)) {
+          items.add(_WeekHeaderItem(monday));
+        }
         items.add(_SessionItem(session));
       }
     }
@@ -214,10 +235,53 @@ class _UpcomingListState extends State<_UpcomingList> {
         final item = items[index];
         return switch (item) {
           _HeaderItem(:final label) => SectionHeader(title: label),
-          _SessionItem(:final session) =>
-            _SessionCard(session: session, now: _now),
+          _WeekHeaderItem(:final monday) => _WeekMarker(
+            monday: monday,
+            label: l10n.upcomingWeekMonday(
+              DateFormat.yMd(locale).format(monday),
+            ),
+          ),
+          _SessionItem(:final session) => _SessionCard(
+            session: session,
+            now: _now,
+          ),
         };
       },
+    );
+  }
+}
+
+class _WeekMarker extends StatelessWidget {
+  const _WeekMarker({required this.label, required this.monday});
+
+  final String label;
+  final DateTime monday;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      key: Key(
+        'upcoming-week-marker-${monday.year}-${monday.month}-${monday.day}',
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 8, 16, 2),
+      child: Row(
+        children: [
+          Icon(
+            Icons.calendar_view_week_outlined,
+            size: 16,
+            color: colors.primary,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -236,7 +300,14 @@ class _SessionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final overrides = ref.watch(courseColorOverridesProvider);
-    final customColor = overrides[courseColorKey(session)];
+    final themeStyle = appThemeStyleOf(context);
+    final displaySettings = ref.watch(scheduleDisplaySettingsProvider);
+    final accent = resolvedCourseColor(
+      session: session,
+      colorScheme: colorScheme,
+      themeStyle: themeStyle,
+      override: overrides[courseColorKey(session)],
+    );
     final isPast = isSessionPast(now, session.endAt);
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final highlight = shouldHighlightUpcomingCard(now, session);
@@ -247,7 +318,13 @@ class _SessionCard extends ConsumerWidget {
         '${session.endAt.hour.toString().padLeft(2, '0')}:${session.endAt.minute.toString().padLeft(2, '0')}';
 
     return Card(
-      color: highlight ? colorScheme.primaryContainer.withAlpha(80) : null,
+      color: courseCardSurface(
+        accent: accent,
+        colorScheme: colorScheme,
+        themeStyle: themeStyle,
+        highlighted: highlight,
+        isPast: isPast,
+      ),
       child: GestureDetector(
         onLongPress: () => SessionActionMenu.show(
           context: context,
@@ -274,10 +351,10 @@ class _SessionCard extends ConsumerWidget {
                   height: 52,
                   decoration: BoxDecoration(
                     color: isOngoing
-                        ? (customColor ?? colorScheme.primary)
+                        ? accent
                         : isPast
-                            ? colorScheme.outlineVariant
-                            : (customColor ?? colorScheme.secondary),
+                        ? colorScheme.outlineVariant
+                        : accent,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -289,33 +366,27 @@ class _SessionCard extends ConsumerWidget {
                     children: [
                       Text(
                         session.courseName,
-                        style:
-                            Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  color: isPast
-                                      ? colorScheme.onSurfaceVariant
-                                      : null,
-                                  decoration: isPast
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: isPast ? colorScheme.onSurfaceVariant : null,
+                          decoration: isPast
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '$startLabel – $endLabel  ·  ${session.room}',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       if (session.teachers.isNotEmpty)
                         Text(
                           session.teachers.join('、'),
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -324,9 +395,36 @@ class _SessionCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 96,
-                  child: Center(
-                    child: SessionCountdownLabel(session: session, now: now),
+                  width: 112,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (displaySettings.showUpcomingCourseDate) ...[
+                        Text(
+                          _upcomingDateLabel(
+                            context,
+                            session,
+                            displaySettings.upcomingDateDisplay,
+                          ),
+                          key: Key('upcoming-course-date-${session.id}'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+                      Center(
+                        child: SessionCountdownLabel(
+                          session: session,
+                          now: now,
+                          centered: true,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -336,6 +434,22 @@ class _SessionCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _upcomingDateLabel(
+  BuildContext context,
+  CourseSession session,
+  UpcomingDateDisplay display,
+) {
+  final l10n = AppLocalizations.of(context)!;
+  final locale = Localizations.localeOf(context).toString();
+  final date = DateFormat.Md(locale).format(session.date);
+  final weekday = weekdayLabel(l10n, session.date.weekday);
+  return switch (display) {
+    UpcomingDateDisplay.dateAndWeekday => '$date $weekday',
+    UpcomingDateDisplay.dateOnly => date,
+    UpcomingDateDisplay.weekdayOnly => weekday,
+  };
 }
 
 // ---------------------------------------------------------------------------

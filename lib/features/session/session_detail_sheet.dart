@@ -39,45 +39,54 @@ class SessionDetailSheet extends ConsumerWidget {
 
     return SingleChildScrollView(
       child: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isBottomSheet) ...[
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isBottomSheet) ...[
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text(
+              session.courseName,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            Text(
+              '${session.courseCode} · ${session.section}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
+            _DetailRow(icon: Icons.calendar_today, text: dateLabel),
+            _DetailRow(
+              icon: Icons.access_time,
+              text: '$startLabel – $endLabel',
+            ),
+            _DetailRow(icon: Icons.room, text: session.room),
+            if (session.teachers.isNotEmpty)
+              _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
+            if (session.faculty.trim().isNotEmpty)
+              _DetailRow(icon: Icons.school, text: session.faculty),
+            if (session.note != null && session.note!.trim().isNotEmpty)
+              _DetailRow(
+                icon: Icons.sticky_note_2_outlined,
+                text: session.note!,
+              ),
+            const SizedBox(height: 20),
+            _SessionActionButtons(session: session),
           ],
-          Text(session.courseName, style: Theme.of(context).textTheme.titleLarge),
-          Text(
-            '${session.courseCode} · ${session.section}',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 16),
-          _DetailRow(icon: Icons.calendar_today, text: dateLabel),
-          _DetailRow(icon: Icons.access_time, text: '$startLabel – $endLabel'),
-          _DetailRow(icon: Icons.room, text: session.room),
-          if (session.teachers.isNotEmpty)
-            _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
-          if (session.faculty.trim().isNotEmpty)
-            _DetailRow(icon: Icons.school, text: session.faculty),
-          if (session.note != null && session.note!.trim().isNotEmpty)
-            _DetailRow(icon: Icons.sticky_note_2_outlined, text: session.note!),
-          const SizedBox(height: 20),
-          _SessionActionButtons(session: session),
-        ],
-      ),
+        ),
       ),
     );
   }
@@ -101,8 +110,8 @@ class _SessionActionButtons extends ConsumerWidget {
         final mode = width >= 420
             ? _ActionButtonMode.full
             : width >= 300
-                ? _ActionButtonMode.short
-                : _ActionButtonMode.iconOnly;
+            ? _ActionButtonMode.short
+            : _ActionButtonMode.iconOnly;
 
         final editLabel = mode == _ActionButtonMode.full
             ? l10n.editSession
@@ -129,7 +138,10 @@ class _SessionActionButtons extends ConsumerWidget {
               onPressed: onPressed,
               style: OutlinedButton.styleFrom(
                 foregroundColor: foregroundColor,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
               ),
               child: Tooltip(
                 message: tooltip,
@@ -179,12 +191,26 @@ class _SessionActionButtons extends ConsumerWidget {
                 onPressed: () async {
                   final key = courseColorKey(session);
                   final overrides = ref.read(courseColorOverridesProvider);
-                  final current = overrides[key] ?? kDefaultThemeColor;
+                  final themeStyle = appThemeStyleOf(context);
+                  final colorScheme = Theme.of(context).colorScheme;
+                  final defaultColor = resolvedCourseColor(
+                    session: session,
+                    colorScheme: colorScheme,
+                    themeStyle: themeStyle,
+                  );
+                  final current = overrides[key] ?? defaultColor;
+                  var useDefault = false;
                   final picked = await showColorPickerDialog(
                     context,
                     initialColor: current,
+                    defaultColor: defaultColor,
+                    onUseDefault: () => useDefault = true,
                   );
-                  if (picked != null && context.mounted) {
+                  if (useDefault) {
+                    await ref
+                        .read(courseColorOverridesProvider.notifier)
+                        .clearColor(key);
+                  } else if (picked != null && context.mounted) {
                     await ref
                         .read(courseColorOverridesProvider.notifier)
                         .setColor(key, picked);

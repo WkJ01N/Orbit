@@ -4,6 +4,7 @@ import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/grid_models.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/services/grid_builder.dart';
@@ -25,8 +26,9 @@ final sessionsProvider = FutureProvider<List<CourseSession>>((ref) async {
   return ref.read(scheduleRepositoryProvider).getAllSessions();
 });
 
-final upcomingSessionsProvider =
-    FutureProvider<List<CourseSession>>((ref) async {
+final upcomingSessionsProvider = FutureProvider<List<CourseSession>>((
+  ref,
+) async {
   ref.watch(scheduleRefreshProvider);
   return ref.read(scheduleRepositoryProvider).getUpcomingSessions();
 });
@@ -43,10 +45,62 @@ void refreshScheduleContainer(ProviderContainer container) {
 
 final selectedWeekStartProvider = StateProvider<DateTime?>((ref) => null);
 
+final selectedScheduleDateProvider = StateProvider<DateTime?>((ref) => null);
+
+final scheduleDisplaySettingsProvider =
+    NotifierProvider<ScheduleDisplaySettingsNotifier, ScheduleDisplaySettings>(
+      ScheduleDisplaySettingsNotifier.new,
+    );
+
+class ScheduleDisplaySettingsNotifier
+    extends Notifier<ScheduleDisplaySettings> {
+  int _loadGeneration = 0;
+
+  @override
+  ScheduleDisplaySettings build() {
+    _load();
+    return const ScheduleDisplaySettings();
+  }
+
+  Future<void> _load() async {
+    final generation = ++_loadGeneration;
+    final settings = await ref
+        .read(settingsServiceProvider)
+        .loadScheduleDisplaySettings();
+    if (generation == _loadGeneration) {
+      state = settings;
+    }
+  }
+
+  Future<void> setPreferredMultiDayCount(int count) async {
+    final next = state.copyWith(preferredMultiDayCount: count.clamp(1, 6));
+    state = next;
+    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+  }
+
+  Future<void> setShowEmptyDays(bool value) async {
+    final next = state.copyWith(showEmptyDays: value);
+    state = next;
+    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+  }
+
+  Future<void> setShowUpcomingCourseDate(bool value) async {
+    final next = state.copyWith(showUpcomingCourseDate: value);
+    state = next;
+    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+  }
+
+  Future<void> setUpcomingDateDisplay(UpcomingDateDisplay value) async {
+    final next = state.copyWith(upcomingDateDisplay: value);
+    state = next;
+    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+  }
+}
+
 final gridDefaultWeekModeProvider =
     NotifierProvider<GridDefaultWeekModeNotifier, GridDefaultWeekMode>(
-  GridDefaultWeekModeNotifier.new,
-);
+      GridDefaultWeekModeNotifier.new,
+    );
 
 class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
   int _loadGeneration = 0;
@@ -59,8 +113,9 @@ class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
 
   Future<void> _load() async {
     final generation = ++_loadGeneration;
-    final mode =
-        await ref.read(settingsServiceProvider).loadGridDefaultWeekMode();
+    final mode = await ref
+        .read(settingsServiceProvider)
+        .loadGridDefaultWeekMode();
     if (generation != _loadGeneration) {
       return;
     }
@@ -73,8 +128,9 @@ class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
   }
 }
 
-final weekStartDayProvider =
-    NotifierProvider<WeekStartDayNotifier, int>(WeekStartDayNotifier.new);
+final weekStartDayProvider = NotifierProvider<WeekStartDayNotifier, int>(
+  WeekStartDayNotifier.new,
+);
 
 class WeekStartDayNotifier extends Notifier<int> {
   int _loadGeneration = 0;
@@ -98,11 +154,13 @@ class WeekStartDayNotifier extends Notifier<int> {
     await ref.read(settingsServiceProvider).saveWeekStartDay(weekday);
     state = weekday;
     ref.read(selectedWeekStartProvider.notifier).state = null;
+    ref.read(selectedScheduleDateProvider.notifier).state = null;
   }
 }
 
-final gridDensityProvider =
-    NotifierProvider<GridDensityNotifier, GridDensity>(GridDensityNotifier.new);
+final gridDensityProvider = NotifierProvider<GridDensityNotifier, GridDensity>(
+  GridDensityNotifier.new,
+);
 
 class GridDensityNotifier extends Notifier<GridDensity> {
   int _loadGeneration = 0;
@@ -153,7 +211,9 @@ final weekGridProvider = Provider<WeekGrid?>((ref) {
     return null;
   }
 
-  return ref.read(gridBuilderProvider).buildWeekGrid(
+  return ref
+      .read(gridBuilderProvider)
+      .buildWeekGrid(
         weekStart: weekStartFor(weekStart, startWeekday: startWeekday),
         sessions: sessions,
       );

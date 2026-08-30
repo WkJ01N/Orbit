@@ -180,6 +180,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String upcomingWeekMonday(String date) {
+    return '$date';
+  }
+
+  @override
   String get inClass => '上課中';
 
   @override
@@ -252,6 +257,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sectionAppearance => '外觀';
 
   @override
+  String get themeStyleTitle => '主題風格';
+
+  @override
+  String get themeStyleSubtitle => '使用統一強調色或為不同課程自動配色';
+
+  @override
+  String get themeStyleStandard => '標準';
+
+  @override
+  String get themeStyleColorful => '彩色';
+
+  @override
   String get themeColorTitle => '主題色';
 
   @override
@@ -307,6 +324,54 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gridDensityComfortable => '寬鬆';
+
+  @override
+  String get scheduleMultiDayCountTitle => '多日模式顯示天數';
+
+  @override
+  String scheduleMultiDayCountSubtitle(int maxCount) {
+    return '目前視窗最多可清晰顯示 $maxCount 天';
+  }
+
+  @override
+  String scheduleDayCountOption(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get scheduleShowEmptyDaysTitle => '顯示無課程日期';
+
+  @override
+  String get scheduleShowEmptyDaysSubtitle => '關閉後將直接在有課程的日期之間切換';
+
+  @override
+  String get upcomingShowCourseDateTitle => '在倒數旁顯示日期';
+
+  @override
+  String get upcomingShowCourseDateSubtitle => '在接下來課程列表中顯示課程日期';
+
+  @override
+  String get upcomingDateDisplayTitle => '課程日期格式';
+
+  @override
+  String get upcomingDateDisplaySubtitle => '選擇要顯示的日期資訊';
+
+  @override
+  String get upcomingDateDisplayDateAndWeekday => '日期 + 星期';
+
+  @override
+  String get upcomingDateDisplayDateOnly => '僅日期';
+
+  @override
+  String get upcomingDateDisplayWeekdayOnly => '僅星期';
+
+  @override
+  String get scheduleJumpToNearestCourse => '跳到最近課程';
+
+  @override
+  String scheduleCourseCount(int count) {
+    return '$count 節課';
+  }
 
   @override
   String get classLeadCustomizeTemplates => '自訂課前提醒文案';
@@ -745,10 +810,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionDelete => '刪除';
 
   @override
-  String get deleteSession => '刪除此節課';
+  String get deleteSession => '刪除課程';
 
   @override
   String get deleteSessionShort => '刪除';
+
+  @override
+  String get courseColorDefault => '預設顏色';
 
   @override
   String get deleteSessionConfirmTitle => '確認刪除此節課？';
@@ -1309,6 +1377,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
+  String upcomingWeekMonday(String date) {
+    return '$date';
+  }
+
+  @override
   String get inClass => '上课中';
 
   @override
@@ -1381,6 +1454,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sectionAppearance => '外观';
 
   @override
+  String get themeStyleTitle => '主题风格';
+
+  @override
+  String get themeStyleSubtitle => '使用统一强调色或为不同课程自动配色';
+
+  @override
+  String get themeStyleStandard => '标准';
+
+  @override
+  String get themeStyleColorful => '彩色';
+
+  @override
   String get themeColorTitle => '主题色';
 
   @override
@@ -1436,6 +1521,54 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get gridDensityComfortable => '宽松';
+
+  @override
+  String get scheduleMultiDayCountTitle => '多日模式显示天数';
+
+  @override
+  String scheduleMultiDayCountSubtitle(int maxCount) {
+    return '当前窗口最多可清晰显示 $maxCount 天';
+  }
+
+  @override
+  String scheduleDayCountOption(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get scheduleShowEmptyDaysTitle => '显示无课程日期';
+
+  @override
+  String get scheduleShowEmptyDaysSubtitle => '关闭后将直接在有课程的日期之间切换';
+
+  @override
+  String get upcomingShowCourseDateTitle => '在倒计时旁显示日期';
+
+  @override
+  String get upcomingShowCourseDateSubtitle => '在接下来课程列表中显示课程日期';
+
+  @override
+  String get upcomingDateDisplayTitle => '课程日期格式';
+
+  @override
+  String get upcomingDateDisplaySubtitle => '选择要显示的日期信息';
+
+  @override
+  String get upcomingDateDisplayDateAndWeekday => '日期 + 星期';
+
+  @override
+  String get upcomingDateDisplayDateOnly => '仅日期';
+
+  @override
+  String get upcomingDateDisplayWeekdayOnly => '仅星期';
+
+  @override
+  String get scheduleJumpToNearestCourse => '跳到最近课程';
+
+  @override
+  String scheduleCourseCount(int count) {
+    return '$count 节课';
+  }
 
   @override
   String get classLeadCustomizeTemplates => '自定义课前提醒文案';
@@ -1874,10 +2007,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get actionDelete => '删除';
 
   @override
-  String get deleteSession => '删除此节课';
+  String get deleteSession => '删除课程';
 
   @override
   String get deleteSessionShort => '删除';
+
+  @override
+  String get courseColorDefault => '默认颜色';
 
   @override
   String get deleteSessionConfirmTitle => '确认删除此节课？';
@@ -2438,6 +2574,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String upcomingWeekMonday(String date) {
+    return '$date';
+  }
+
+  @override
   String get inClass => '上課中';
 
   @override
@@ -2510,6 +2651,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sectionAppearance => '外觀';
 
   @override
+  String get themeStyleTitle => '主題風格';
+
+  @override
+  String get themeStyleSubtitle => '使用統一強調色或為不同課程自動配色';
+
+  @override
+  String get themeStyleStandard => '標準';
+
+  @override
+  String get themeStyleColorful => '彩色';
+
+  @override
   String get themeColorTitle => '主題色';
 
   @override
@@ -2565,6 +2718,54 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get gridDensityComfortable => '寬鬆';
+
+  @override
+  String get scheduleMultiDayCountTitle => '多日模式顯示天數';
+
+  @override
+  String scheduleMultiDayCountSubtitle(int maxCount) {
+    return '目前視窗最多可清晰顯示 $maxCount 天';
+  }
+
+  @override
+  String scheduleDayCountOption(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get scheduleShowEmptyDaysTitle => '顯示無課程日期';
+
+  @override
+  String get scheduleShowEmptyDaysSubtitle => '關閉後將直接在有課程的日期之間切換';
+
+  @override
+  String get upcomingShowCourseDateTitle => '在倒數旁顯示日期';
+
+  @override
+  String get upcomingShowCourseDateSubtitle => '在接下來課程列表中顯示課程日期';
+
+  @override
+  String get upcomingDateDisplayTitle => '課程日期格式';
+
+  @override
+  String get upcomingDateDisplaySubtitle => '選擇要顯示的日期資訊';
+
+  @override
+  String get upcomingDateDisplayDateAndWeekday => '日期 + 星期';
+
+  @override
+  String get upcomingDateDisplayDateOnly => '僅日期';
+
+  @override
+  String get upcomingDateDisplayWeekdayOnly => '僅星期';
+
+  @override
+  String get scheduleJumpToNearestCourse => '跳到最近課程';
+
+  @override
+  String scheduleCourseCount(int count) {
+    return '$count 節課';
+  }
 
   @override
   String get classLeadCustomizeTemplates => '自訂課前提醒文案';
@@ -3003,10 +3204,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get actionDelete => '刪除';
 
   @override
-  String get deleteSession => '刪除此節課';
+  String get deleteSession => '刪除課程';
 
   @override
   String get deleteSessionShort => '刪除';
+
+  @override
+  String get courseColorDefault => '預設顏色';
 
   @override
   String get deleteSessionConfirmTitle => '確認刪除此節課？';

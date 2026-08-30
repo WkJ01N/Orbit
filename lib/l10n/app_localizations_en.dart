@@ -185,6 +185,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String upcomingWeekMonday(String date) {
+    return '$date';
+  }
+
+  @override
   String get inClass => 'In class';
 
   @override
@@ -259,6 +264,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionAppearance => 'Appearance';
 
   @override
+  String get themeStyleTitle => 'Theme style';
+
+  @override
+  String get themeStyleSubtitle =>
+      'Use one accent or automatic colors for each course';
+
+  @override
+  String get themeStyleStandard => 'Standard';
+
+  @override
+  String get themeStyleColorful => 'Colorful';
+
+  @override
   String get themeColorTitle => 'Theme color';
 
   @override
@@ -315,6 +333,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gridDensityComfortable => 'Comfortable';
+
+  @override
+  String get scheduleMultiDayCountTitle => 'Days in multi-day view';
+
+  @override
+  String scheduleMultiDayCountSubtitle(int maxCount) {
+    return 'This window can show up to $maxCount readable days';
+  }
+
+  @override
+  String scheduleDayCountOption(int count) {
+    return '$count days';
+  }
+
+  @override
+  String get scheduleShowEmptyDaysTitle => 'Show days without classes';
+
+  @override
+  String get scheduleShowEmptyDaysSubtitle =>
+      'Turn off to move directly between class days';
+
+  @override
+  String get upcomingShowCourseDateTitle => 'Show date beside countdown';
+
+  @override
+  String get upcomingShowCourseDateSubtitle =>
+      'Display the course date in the Upcoming list';
+
+  @override
+  String get upcomingDateDisplayTitle => 'Course date format';
+
+  @override
+  String get upcomingDateDisplaySubtitle => 'Choose which date details to show';
+
+  @override
+  String get upcomingDateDisplayDateAndWeekday => 'Date + weekday';
+
+  @override
+  String get upcomingDateDisplayDateOnly => 'Date only';
+
+  @override
+  String get upcomingDateDisplayWeekdayOnly => 'Weekday only';
+
+  @override
+  String get scheduleJumpToNearestCourse => 'Nearest class day';
+
+  @override
+  String scheduleCourseCount(int count) {
+    return '$count courses';
+  }
 
   @override
   String get classLeadCustomizeTemplates => 'Customize class reminders';
@@ -777,10 +845,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionDelete => 'Delete';
 
   @override
-  String get deleteSession => 'Delete this class';
+  String get deleteSession => 'Delete class';
 
   @override
   String get deleteSessionShort => 'Delete';
+
+  @override
+  String get courseColorDefault => 'Default';
 
   @override
   String get deleteSessionConfirmTitle => 'Delete this class session?';

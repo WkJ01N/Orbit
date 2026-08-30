@@ -14,10 +14,12 @@ class GridWeekPicker extends ConsumerStatefulWidget {
     super.key,
     required this.weekStart,
     required this.onChanged,
+    this.labelOverride,
   });
 
   final DateTime weekStart;
   final ValueChanged<DateTime> onChanged;
+  final String? labelOverride;
 
   @override
   ConsumerState<GridWeekPicker> createState() => _GridWeekPickerState();
@@ -41,8 +43,10 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
     final screenSize = MediaQuery.sizeOf(context);
 
     final anchorCenterX = offset.dx + size.width / 2;
-    final menuLeft = (anchorCenterX - kWeekPickerMenuWidth / 2)
-        .clamp(8.0, screenSize.width - kWeekPickerMenuWidth - 8);
+    final menuLeft = (anchorCenterX - kWeekPickerMenuWidth / 2).clamp(
+      8.0,
+      screenSize.width - kWeekPickerMenuWidth - 8,
+    );
     final menuTop = offset.dy + size.height;
 
     await showMenu<void>(
@@ -75,7 +79,8 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = _gridBuilder.formatWeekRange(widget.weekStart);
+    final label =
+        widget.labelOverride ?? _gridBuilder.formatWeekRange(widget.weekStart);
 
     return Material(
       color: Colors.transparent,
@@ -95,10 +100,7 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Icon(
-                  Icons.arrow_drop_down,
-                  color: theme.colorScheme.onSurface,
-                ),
+                Icon(Icons.arrow_drop_down, color: theme.colorScheme.onSurface),
               ],
             ),
           ),
@@ -162,8 +164,9 @@ class _WeekPickerPanelState extends State<_WeekPickerPanel> {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final weeks = weeksOverlappingMonth(_year, _month);
-    final monthLabel = DateFormat.MMM(Localizations.localeOf(context).toString())
-        .format(DateTime(_year, _month, 1));
+    final monthLabel = DateFormat.MMM(
+      Localizations.localeOf(context).toString(),
+    ).format(DateTime(_year, _month, 1));
 
     return SizedBox(
       width: kWeekPickerMenuWidth,
@@ -226,10 +229,14 @@ class _WeekPickerPanelState extends State<_WeekPickerPanel> {
                 itemCount: weeks.length,
                 itemBuilder: (context, index) {
                   final weekStart = weeks[index];
-                  final hasSessions =
-                      weekHasSessions(weekStart, widget.sessions);
-                  final isSelected =
-                      _isSameWeek(weekStart, widget.selectedWeekStart);
+                  final hasSessions = weekHasSessions(
+                    weekStart,
+                    widget.sessions,
+                  );
+                  final isSelected = _isSameWeek(
+                    weekStart,
+                    widget.selectedWeekStart,
+                  );
                   final label = _gridBuilder.formatWeekRange(weekStart);
 
                   return _WeekPickerItem(
@@ -279,8 +286,7 @@ class _WeekPickerItem extends StatelessWidget {
                 label,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight:
-                      hasSessions ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: hasSessions ? FontWeight.w600 : FontWeight.normal,
                   color: hasSessions
                       ? theme.colorScheme.onSurface
                       : theme.colorScheme.onSurfaceVariant.withAlpha(120),

@@ -10,14 +10,15 @@ export 'navigation_providers.dart';
 export 'reminder_providers.dart';
 export 'schedule_providers.dart';
 
-final alarmIntentServiceProvider =
-    Provider<AlarmIntentService>((ref) => AlarmIntentService());
+final alarmIntentServiceProvider = Provider<AlarmIntentService>(
+  (ref) => AlarmIntentService(),
+);
 
 final startupServiceProvider = Provider<StartupService>(
   (ref) => StartupService(ref.watch(settingsServiceProvider)),
 );
 
-class _CurrentTimeNotifier extends Notifier<DateTime> {
+class CurrentTimeNotifier extends Notifier<DateTime> {
   @override
   DateTime build() {
     final timer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -33,6 +34,6 @@ class _CurrentTimeNotifier extends Notifier<DateTime> {
 /// Prefer this over bare [DateTime.now()] in widgets that show time-sensitive
 /// state (e.g. session Chip highlights, current-time indicator) so that the
 /// entire widget tree stays in sync and only rebuilds once per minute.
-final currentTimeProvider = NotifierProvider<_CurrentTimeNotifier, DateTime>(
-  _CurrentTimeNotifier.new,
+final currentTimeProvider = NotifierProvider<CurrentTimeNotifier, DateTime>(
+  CurrentTimeNotifier.new,
 );

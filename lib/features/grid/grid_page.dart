@@ -7,9 +7,7 @@ import 'package:orbit/core/widgets/skeleton_box.dart';
 import 'package:orbit/features/grid/grid_batch_delete_dialog.dart';
 import 'package:orbit/features/search/session_search_page.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
-import 'package:orbit/features/grid/grid_week_picker.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
-import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 
@@ -27,28 +25,21 @@ class GridPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: _GridAppBar(
-        weekStart: grid?.weekStart,
-        onPrevWeek: () => _navigateWeek(ref, -7),
-        onNextWeek: () => _navigateWeek(ref, 7),
-        onSelectWeek: (weekStart) {
-          ref.read(selectedWeekStartProvider.notifier).state = weekStart;
-        },
-        onGoToCurrentWeek: () => _goToCurrentWeek(ref),
         onBatchDelete: canBatchDelete
             ? () => showGridBatchDeleteDialog(
-                  context,
-                  ref,
-                  displayedWeekStart: grid.weekStart,
-                )
+                context,
+                ref,
+                displayedWeekStart: grid.weekStart,
+              )
             : null,
         onSearch: () => SessionSearchPage.show(context),
       ),
       body: sessionsAsync.when(
-        data: (_) {
+        data: (sessions) {
           if (grid == null) {
             return _EmptyState(onImport: () => _goToImport(ref));
           }
-          return WeekGridView(grid: grid);
+          return WeekGridView(grid: grid, sessions: sessions);
         },
         loading: () => const _GridSkeleton(),
         error: (error, _) => ErrorState(
@@ -67,18 +58,6 @@ class GridPage extends ConsumerWidget {
     );
   }
 
-  void _navigateWeek(WidgetRef ref, int days) {
-    final displayed = ref.read(weekGridProvider)?.weekStart;
-    final base = displayed ?? weekStartFor(DateTime.now());
-    ref.read(selectedWeekStartProvider.notifier).state =
-        weekStartFor(base.add(Duration(days: days)));
-  }
-
-  void _goToCurrentWeek(WidgetRef ref) {
-    ref.read(selectedWeekStartProvider.notifier).state =
-        weekStartFor(DateTime.now());
-  }
-
   void _goToImport(WidgetRef ref) {
     navigateToAppTab(ref, AppTab.import);
   }
@@ -89,21 +68,8 @@ class GridPage extends ConsumerWidget {
 /// Implements [PreferredSizeWidget] so it can be used directly as
 /// [Scaffold.appBar] without a [PreferredSize] wrapper.
 class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _GridAppBar({
-    required this.weekStart,
-    required this.onPrevWeek,
-    required this.onNextWeek,
-    required this.onSelectWeek,
-    required this.onGoToCurrentWeek,
-    this.onBatchDelete,
-    this.onSearch,
-  });
+  const _GridAppBar({this.onBatchDelete, this.onSearch});
 
-  final DateTime? weekStart;
-  final VoidCallback onPrevWeek;
-  final VoidCallback onNextWeek;
-  final ValueChanged<DateTime> onSelectWeek;
-  final VoidCallback onGoToCurrentWeek;
   final VoidCallback? onBatchDelete;
   final VoidCallback? onSearch;
 
@@ -113,49 +79,8 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
-
     return AppBar(
-      titleSpacing: 0,
-      // Batch-delete button lives in the leading slot when available.
-      leading: onBatchDelete != null
-          ? IconButton(
-              icon: Icon(
-                Icons.delete_sweep,
-                color: theme.colorScheme.error,
-              ),
-              tooltip: l10n.gridBatchDelete,
-              onPressed: onBatchDelete,
-            )
-          : null,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: onPrevWeek,
-            tooltip: l10n.gridPrevWeek,
-          ),
-          Flexible(
-            child: weekStart != null
-                ? GridWeekPicker(
-                    weekStart: weekStart!,
-                    onChanged: onSelectWeek,
-                  )
-                : Text(
-                    l10n.gridTitle,
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: onNextWeek,
-            tooltip: l10n.gridNextWeek,
-          ),
-        ],
-      ),
+      title: Text(l10n.gridTitle),
       actions: [
         if (onSearch != null)
           IconButton(
@@ -163,11 +88,29 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
             onPressed: onSearch,
             tooltip: l10n.searchSessions,
           ),
-        IconButton(
-          icon: const Icon(Icons.today),
-          onPressed: onGoToCurrentWeek,
-          tooltip: l10n.gridThisWeek,
-        ),
+        if (onBatchDelete != null)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+            onSelected: (value) {
+              if (value == 'delete') onBatchDelete?.call();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_sweep_outlined,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(l10n.gridBatchDelete),
+                  ],
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -256,11 +199,11 @@ class _GridSkeleton extends ConsumerWidget {
                                       radius: 8,
                                     )
                                   : col == 3 && row == 2
-                                      ? SkeletonBox(
-                                          height: metrics.rowHeight - 8,
-                                          radius: 8,
-                                        )
-                                      : const SizedBox.shrink(),
+                                  ? SkeletonBox(
+                                      height: metrics.rowHeight - 8,
+                                      radius: 8,
+                                    )
+                                  : const SizedBox.shrink(),
                             ),
                           ),
                       ],

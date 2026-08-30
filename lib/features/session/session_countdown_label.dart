@@ -8,10 +8,12 @@ class SessionCountdownLabel extends StatelessWidget {
     super.key,
     required this.session,
     required this.now,
+    this.centered = false,
   });
 
   final CourseSession session;
   final DateTime now;
+  final bool centered;
 
   @override
   Widget build(BuildContext context) {
@@ -46,24 +48,34 @@ class SessionCountdownLabel extends StatelessWidget {
 
     final parts = computeCountdownParts(now, session.startAt);
     final soon = isSessionStartingSoon(now, session.startAt);
-    final label = l10n.countdownStartsIn(parts.days, parts.hours, parts.minutes);
+    final label = l10n.countdownStartsIn(
+      parts.days,
+      parts.hours,
+      parts.minutes,
+    );
 
     if (soon) {
       // Show the "soon" prefix and the countdown on separate lines so a long
       // Chinese countdown does not wrap awkwardly inside the narrow column.
       final style = Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.w700,
-          );
+        color: colorScheme.primary,
+        fontWeight: FontWeight.w700,
+      );
       return Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: centered
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.end,
         children: [
-          Text(l10n.countdownSoonLabel, style: style, textAlign: TextAlign.end),
+          Text(
+            l10n.countdownSoonLabel,
+            style: style,
+            textAlign: centered ? TextAlign.center : TextAlign.end,
+          ),
           Text(
             label,
             style: style,
-            textAlign: TextAlign.end,
+            textAlign: centered ? TextAlign.center : TextAlign.end,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -74,10 +86,10 @@ class SessionCountdownLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
-          ),
-      textAlign: TextAlign.end,
+        color: colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w500,
+      ),
+      textAlign: centered ? TextAlign.center : TextAlign.end,
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/desktop/desktop_shell.dart';
@@ -17,12 +18,24 @@ class OrbitApp extends ConsumerWidget {
     final seed = ref.watch(themeColorProvider);
 
     final themeMode = ref.watch(themeModeProvider);
+    final themeStyle = ref.watch(themeStyleProvider);
+    final useWindowsCjkFont =
+        defaultTargetPlatform == TargetPlatform.windows &&
+        locale.languageCode == 'zh';
 
     return MaterialApp(
       title: 'Orbit',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(seed: seed),
-      darkTheme: AppTheme.dark(seed: seed),
+      theme: AppTheme.light(
+        seed: seed,
+        style: themeStyle,
+        useWindowsCjkFont: useWindowsCjkFont,
+      ),
+      darkTheme: AppTheme.dark(
+        seed: seed,
+        style: themeStyle,
+        useWindowsCjkFont: useWindowsCjkFont,
+      ),
       themeMode: themeMode,
       locale: locale,
       localizationsDelegates: const [

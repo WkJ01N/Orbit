@@ -8,9 +8,10 @@ import 'package:orbit/providers/reminder_providers.dart';
 Future<void> applyReminderUpdate(
   BuildContext context,
   WidgetRef ref,
-  Future<int> Function() action,
-) async {
-  final l10n = AppLocalizations.of(context)!;
+  Future<int> Function() action, {
+  AppLocalizations? messages,
+}) async {
+  final l10n = messages ?? AppLocalizations.of(context)!;
   try {
     final failures = await action();
     if (!context.mounted) {
@@ -35,9 +36,9 @@ Future<void> applyReminderUpdate(
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.reminderSyncFailed('$e'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.reminderSyncFailed('$e'))));
     }
   }
 }
