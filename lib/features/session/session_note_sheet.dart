@@ -16,8 +16,10 @@ class SessionNoteSheet extends ConsumerStatefulWidget {
       return showDialog<bool>(
         context: context,
         builder: (context) => Dialog(
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 40,
+            vertical: 32,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -76,24 +78,21 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(scheduleRepositoryProvider).updateSession(
-            widget.session,
-            updated,
-          );
+      await ref
+          .read(scheduleRepositoryProvider)
+          .updateSession(widget.session, updated);
       refreshSchedule(ref);
 
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context, true);
-        messenger.showSnackBar(
-          SnackBar(content: Text(l10n.sessionNoteSaved)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(l10n.sessionNoteSaved)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.sessionSaveFailed('$e'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.sessionSaveFailed('$e'))));
       }
     } finally {
       if (mounted) {
@@ -112,7 +111,10 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.sessionNoteTitle, style: Theme.of(context).textTheme.titleLarge),
+          Text(
+            l10n.sessionNoteTitle,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _noteController,

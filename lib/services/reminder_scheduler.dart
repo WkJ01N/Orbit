@@ -70,7 +70,9 @@ class ReminderScheduler {
 
     await configureReminderTimezone();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const windowsSettings = WindowsInitializationSettings(
       appName: 'Orbit',
       appUserModelId: 'com.must.orbit',
@@ -92,8 +94,10 @@ class ReminderScheduler {
     await ensurePluginInitialized();
 
     if (Platform.isAndroid) {
-      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (!_permissionsRequested) {
         await androidPlugin?.requestNotificationsPermission();
         await androidPlugin?.requestExactAlarmsPermission();
@@ -137,13 +141,16 @@ class ReminderScheduler {
     }
 
     await ensurePluginInitialized();
-    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (androidPlugin == null) {
       return ReminderPermissionStatus.unknown;
     }
 
-    final notifications = await androidPlugin.areNotificationsEnabled() ?? false;
+    final notifications =
+        await androidPlugin.areNotificationsEnabled() ?? false;
     final exactAlarms =
         await androidPlugin.canScheduleExactNotifications() ?? false;
     return ReminderPermissionStatus(
@@ -160,8 +167,10 @@ class ReminderScheduler {
     if (!Platform.isAndroid) {
       return;
     }
-    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidPlugin?.createNotificationChannel(
       AndroidNotificationChannel(
         _channelId,
@@ -219,8 +228,9 @@ class ReminderScheduler {
 
     if (settings.enabled) {
       for (final session in upcomingSessions) {
-        final reminderAt = session.startAt
-            .subtract(Duration(minutes: settings.leadMinutes));
+        final reminderAt = session.startAt.subtract(
+          Duration(minutes: settings.leadMinutes),
+        );
         if (!reminderAt.isAfter(now)) {
           continue;
         }
@@ -302,16 +312,12 @@ class ReminderScheduler {
           copy: copy,
         ),
       ];
-      final alarmResult =
-          await AndroidReminderGuard.instance.scheduleReminderAlarms(alarmSpecs);
+      final alarmResult = await AndroidReminderGuard.instance
+          .scheduleReminderAlarms(alarmSpecs);
       lastRegisteredAlarmCount = alarmResult.scheduled;
       lastScheduleFailureCount += alarmResult.failed;
       for (final spec in alarmResult.failedSpecs) {
-        _registerNearTermReminderFromSpec(
-          spec: spec,
-          now: now,
-          copy: copy,
-        );
+        _registerNearTermReminderFromSpec(spec: spec, now: now, copy: copy);
       }
     }
     await _verifyPendingCount();
@@ -330,10 +336,7 @@ class ReminderScheduler {
     required NotificationCopy copy,
   }) {
     final details = NotificationDetails(
-      android: _androidAlarmDetails(
-        copy: copy,
-        bigText: spec.bigText,
-      ),
+      android: _androidAlarmDetails(copy: copy, bigText: spec.bigText),
       windows: const WindowsNotificationDetails(),
     );
     _registerNearTermReminder(
@@ -362,13 +365,7 @@ class ReminderScheduler {
     final delay = reminderAt.difference(now);
     final timer = Timer(delay, () async {
       try {
-        await _plugin.show(
-          id,
-          title,
-          body,
-          details,
-          payload: payload,
-        );
+        await _plugin.show(id, title, body, details, payload: payload);
       } catch (error, stackTrace) {
         debugPrint('Near-term show failed for $id: $error');
         debugPrint('$stackTrace');
@@ -473,10 +470,7 @@ class ReminderScheduler {
     );
 
     final details = NotificationDetails(
-      android: _androidAlarmDetails(
-        copy: copy,
-        bigText: text.bigText,
-      ),
+      android: _androidAlarmDetails(copy: copy, bigText: text.bigText),
       windows: const WindowsNotificationDetails(),
     );
 
@@ -555,8 +549,9 @@ class ReminderScheduler {
       priority: Priority.max,
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,
-      styleInformation:
-          bigText == null ? null : BigTextStyleInformation(bigText),
+      styleInformation: bigText == null
+          ? null
+          : BigTextStyleInformation(bigText),
     );
   }
 

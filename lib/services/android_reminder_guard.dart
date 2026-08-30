@@ -141,9 +141,7 @@ class AndroidReminderGuard {
       return;
     }
     final locale = await _settingsService.loadLocale();
-    final copy = NotificationCopy.fromL10n(
-      lookupL10n(locale),
-    );
+    final copy = NotificationCopy.fromL10n(lookupL10n(locale));
     await _scheduler.initialize(copy: copy);
   }
 
@@ -172,9 +170,7 @@ class AndroidReminderGuard {
 
     final intent = AndroidIntent(
       action: 'android.settings.APP_NOTIFICATION_SETTINGS',
-      arguments: {
-        'android.provider.extra.APP_PACKAGE': _androidPackageName,
-      },
+      arguments: {'android.provider.extra.APP_PACKAGE': _androidPackageName},
     );
     try {
       await intent.launch();

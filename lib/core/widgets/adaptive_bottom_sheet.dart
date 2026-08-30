@@ -16,11 +16,8 @@ Future<T?> showAdaptiveBottomSheet<T>({
     return showDialog<T>(
       context: context,
       builder: (dialogContext) => Dialog(
-        insetPadding:
-            const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: builder(dialogContext),

@@ -1,6 +1,1 @@
-enum AppTab {
-  grid,
-  upcoming,
-  import,
-  settings,
-}
+enum AppTab { grid, upcoming, import, settings }

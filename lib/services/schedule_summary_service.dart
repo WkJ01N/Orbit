@@ -56,10 +56,7 @@ DayScheduleSummary summarizeDayFromGrouped(
 }
 
 /// 按日期聚合课表，用于次日确认通知与一键闹钟。
-DayScheduleSummary summarizeDay(
-  List<CourseSession> sessions,
-  DateTime day,
-) {
+DayScheduleSummary summarizeDay(List<CourseSession> sessions, DateTime day) {
   final normalized = DateTime(day.year, day.month, day.day);
   final daySessions = sessions.where((session) {
     final sessionDate = DateTime(
@@ -68,8 +65,7 @@ DayScheduleSummary summarizeDay(
       session.date.day,
     );
     return sessionDate == normalized;
-  }).toList()
-    ..sort((a, b) => a.startAt.compareTo(b.startAt));
+  }).toList()..sort((a, b) => a.startAt.compareTo(b.startAt));
 
   if (daySessions.isEmpty) {
     return DayScheduleSummary(date: normalized, sessionCount: 0);

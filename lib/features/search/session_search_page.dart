@@ -13,9 +13,7 @@ class SessionSearchPage extends ConsumerStatefulWidget {
 
   static Future<void> show(BuildContext context) {
     return Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => const SessionSearchPage(),
-      ),
+      MaterialPageRoute<void>(builder: (context) => const SessionSearchPage()),
     );
   }
 
@@ -49,8 +47,9 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
 
     setState(() => _loading = true);
     try {
-      final results =
-          await ref.read(scheduleRepositoryProvider).searchSessions(query);
+      final results = await ref
+          .read(scheduleRepositoryProvider)
+          .searchSessions(query);
       if (mounted) {
         setState(() {
           _results = results;
@@ -62,16 +61,17 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
       if (mounted) {
         setState(() => _loading = false);
         final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.searchFailed('$e'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.searchFailed('$e'))));
       }
     }
   }
 
   Future<void> _openSession(CourseSession session) async {
-    ref.read(selectedWeekStartProvider.notifier).state =
-        weekStartFor(session.date);
+    ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
+      session.date,
+    );
     navigateToAppTab(ref, AppTab.grid);
     // Capture the navigator's own context before popping so the detail sheet is
     // shown on a context that stays mounted after the search page is removed.
@@ -86,9 +86,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.searchSessions),
-      ),
+      appBar: AppBar(title: Text(l10n.searchSessions)),
       body: Column(
         children: [
           Padding(
@@ -113,43 +111,38 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
               child: Text(
                 l10n.searchResultsTruncated(_resultLimit),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
-                    ? Center(
-                        child: Text(
-                          _searched ? l10n.searchNoResults : l10n.searchHint,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: _results.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final session = _results[index];
-                          return ListTile(
-                            title: Text(session.courseName),
-                            subtitle: Text(
-                              '${formatIsoDate(session.date)} · '
-                              '${formatTimeHm(session.startAt)} · ${session.room}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => _openSession(session),
-                          );
-                        },
+                ? Center(
+                    child: Text(
+                      _searched ? l10n.searchNoResults : l10n.searchHint,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _results.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final session = _results[index];
+                      return ListTile(
+                        title: Text(session.courseName),
+                        subtitle: Text(
+                          '${formatIsoDate(session.date)} · '
+                          '${formatTimeHm(session.startAt)} · ${session.room}',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _openSession(session),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

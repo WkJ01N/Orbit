@@ -26,10 +26,15 @@ void main() {
     });
 
     test('orderedWeekdays 从周日起排序', () {
-      expect(
-        orderedWeekdays(startWeekday: DateTime.sunday),
-        [7, 1, 2, 3, 4, 5, 6],
-      );
+      expect(orderedWeekdays(startWeekday: DateTime.sunday), [
+        7,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+      ]);
     });
 
     test('结果始终是零点（去除时分秒）', () {

@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/app_info.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
-import 'package:orbit/core/theme/app_theme.dart';
-import 'package:orbit/core/widgets/color_picker_dialog.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/reminder_resync_banner.dart';
 import 'package:orbit/core/widgets/section_header.dart';
@@ -13,10 +11,10 @@ import 'package:orbit/features/settings/battery_disable_dialog.dart';
 import 'package:orbit/features/settings/check_in_disable_dialog.dart';
 import 'package:orbit/features/settings/check_in_template_sheet.dart';
 import 'package:orbit/features/settings/class_lead_template_sheet.dart';
-import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
-import 'package:orbit/features/settings/export_backup_actions.dart';
 import 'package:orbit/features/settings/next_day_summary_template_sheet.dart';
 import 'package:orbit/features/settings/reminder_setting_actions.dart';
+import 'package:orbit/features/settings/settings_appearance_section.dart';
+import 'package:orbit/features/settings/settings_data_section.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -52,313 +50,368 @@ class SettingsPage extends ConsumerWidget {
   }
 }
 
-class _SettingsBody extends ConsumerWidget {
+class _SettingsBody extends ConsumerStatefulWidget {
   const _SettingsBody({required this.settings});
 
   final ReminderSettings settings;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SettingsBody> createState() => _SettingsBodyState();
+}
+
+class _SettingsBodyState extends ConsumerState<_SettingsBody> {
+  int _selectedCategory = 0;
+  int _transitionDirection = 1;
+
+  void _selectCategory(int value) {
+    if (value == _selectedCategory) return;
+    setState(() {
+      _transitionDirection = value > _selectedCategory ? 1 : -1;
+      _selectedCategory = value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
+    final settings = widget.settings;
     final currentLocale = ref.watch(localeProvider);
-    final themeColor = ref.watch(themeColorProvider);
-    final themeMode = ref.watch(themeModeProvider);
-    final themeStyle = ref.watch(themeStyleProvider);
     final rescheduleError = ref.watch(lastRescheduleErrorProvider);
     final notifier = ref.read(reminderSettingsProvider.notifier);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
-    return ListView(
+    return Column(
       children: [
-        SectionHeader(title: l10n.sectionLanguage),
-        ListTile(
-          title: Text(l10n.languageTitle),
-          subtitle: Text(l10n.languageSubtitle),
-          trailing: DropdownButton<Locale>(
-            value: _matchingLocale(currentLocale),
-            underline: const SizedBox.shrink(),
-            onChanged: (locale) async {
-              if (locale == null) {
-                return;
-              }
-              final targetL10n = lookupL10n(locale);
-              await ref.read(localeProvider.notifier).setLocale(locale);
-              if (!context.mounted) {
-                return;
-              }
-              await applyReminderUpdate(
-                context,
-                ref,
-                () => ref
-                    .read(reminderSettingsProvider.notifier)
-                    .resyncReminders(),
-                messages: targetL10n,
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(targetL10n.languageChangedResynced)),
-                );
-              }
-            },
-            items: supportedAppLocales
-                .map(
-                  (locale) => DropdownMenuItem(
-                    value: locale,
-                    child: Text(languageOptionLabel(l10n, locale)),
-                  ),
-                )
-                .toList(),
-          ),
+        _SettingsCategoryTabs(
+          selectedIndex: _selectedCategory,
+          onSelected: _selectCategory,
         ),
-        const SizedBox(height: 8),
-        SectionHeader(title: l10n.sectionSchedule),
-        _GridDefaultWeekTile(),
-        const _WeekStartDayTile(),
-        const _GridDensityTile(),
-        const _ScheduleMultiDayCountTile(),
-        const _ScheduleShowEmptyDaysTile(),
-        const _UpcomingCourseDateTile(),
-        const _UpcomingDateDisplayTile(),
-        const SizedBox(height: 8),
-        SectionHeader(title: l10n.sectionAppearance),
-        _ThemeStyleTile(currentStyle: themeStyle),
-        _ThemeModeTile(currentMode: themeMode),
-        _ThemeColorTile(
-          currentColor: themeColor,
-          onColorSelected: (color) =>
-              ref.read(themeColorProvider.notifier).setColor(color),
-        ),
-        const SizedBox(height: 8),
-        if (Platform.isWindows) ...[
-          SectionHeader(title: l10n.sectionSystem),
-          const _LaunchAtStartupTile(),
-          const SizedBox(height: 8),
-        ],
-        SectionHeader(title: l10n.sectionReminders),
-        if (rescheduleError != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: ReminderResyncBanner(
-              error: rescheduleError,
-              onResync: () => _resyncReminders(context, ref),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            reverseDuration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 160),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (currentChild, previousChildren) => Stack(
+              alignment: Alignment.topCenter,
+              children: currentChild == null
+                  ? previousChildren
+                  : [...previousChildren, currentChild],
             ),
-          ),
-        SwitchListTile(
-          title: Text(l10n.enableReminders),
-          subtitle: Text(l10n.enableRemindersSubtitle),
-          value: settings.enabled,
-          onChanged: (enabled) => applyReminderUpdate(
-            context,
-            ref,
-            () => notifier.setEnabled(enabled),
-          ),
-        ),
-        const Divider(height: 1, indent: 16, endIndent: 16),
-        ListTile(
-          enabled: settings.enabled,
-          title: Text(l10n.leadTimeTitle),
-          subtitle: Text(l10n.leadTimeSubtitle(settings.leadMinutes)),
-          trailing: DropdownButton<int>(
-            value: _effectiveLeadMinutes(settings.leadMinutes),
-            underline: const SizedBox.shrink(),
-            onChanged: settings.enabled
-                ? (value) {
-                    if (value != null) {
-                      applyReminderUpdate(
+            transitionBuilder: (child, animation) {
+              final incoming = child.key == ValueKey(_selectedCategory);
+              final direction = incoming
+                  ? _transitionDirection.toDouble()
+                  : -_transitionDirection.toDouble();
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: Offset(direction * 0.035, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: ListView(
+              key: Key('settings-category-content-$_selectedCategory'),
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                if (_selectedCategory == 0) ...[
+                  SectionHeader(title: l10n.sectionLanguage),
+                  ListTile(
+                    title: Text(l10n.languageTitle),
+                    subtitle: Text(l10n.languageSubtitle),
+                    trailing: _SettingsDropdown<Locale>(
+                      value: _matchingLocale(currentLocale),
+                      onChanged: (locale) async {
+                        if (locale == null) {
+                          return;
+                        }
+                        final targetL10n = lookupL10n(locale);
+                        await ref
+                            .read(localeProvider.notifier)
+                            .setLocale(locale);
+                        if (!context.mounted) {
+                          return;
+                        }
+                        await applyReminderUpdate(
+                          context,
+                          ref,
+                          () => ref
+                              .read(reminderSettingsProvider.notifier)
+                              .resyncReminders(),
+                          messages: targetL10n,
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(targetL10n.languageChangedResynced),
+                            ),
+                          );
+                        }
+                      },
+                      items: supportedAppLocales
+                          .map(
+                            (locale) => DropdownMenuItem(
+                              value: locale,
+                              child: Text(languageOptionLabel(l10n, locale)),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (_selectedCategory == 1) ...[
+                  SectionHeader(title: l10n.sectionSchedule),
+                  _GridDefaultWeekTile(),
+                  const _WeekStartDayTile(),
+                  const _GridDensityTile(),
+                  const _ScheduleMultiDayCountTile(),
+                  const _ScheduleShowEmptyDaysTile(),
+                  const _UpcomingCourseDateTile(),
+                  const _UpcomingDateDisplayTile(),
+                  const SizedBox(height: 8),
+                ],
+                if (_selectedCategory == 0) ...[
+                  const SettingsAppearanceSection(),
+                ],
+                if (_selectedCategory == 2) ...[
+                  SectionHeader(title: l10n.sectionReminders),
+                  if (rescheduleError != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: ReminderResyncBanner(
+                        error: rescheduleError,
+                        onResync: () => _resyncReminders(context, ref),
+                      ),
+                    ),
+                  SwitchListTile(
+                    title: Text(l10n.enableReminders),
+                    subtitle: Text(l10n.enableRemindersSubtitle),
+                    value: settings.enabled,
+                    onChanged: (enabled) => applyReminderUpdate(
+                      context,
+                      ref,
+                      () => notifier.setEnabled(enabled),
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    enabled: settings.enabled,
+                    title: Text(l10n.leadTimeTitle),
+                    subtitle: Text(l10n.leadTimeSubtitle(settings.leadMinutes)),
+                    trailing: _SettingsDropdown<int>(
+                      value: _effectiveLeadMinutes(settings.leadMinutes),
+                      onChanged: settings.enabled
+                          ? (value) {
+                              if (value != null) {
+                                applyReminderUpdate(
+                                  context,
+                                  ref,
+                                  () => notifier.updateLeadMinutes(value),
+                                );
+                              }
+                            }
+                          : null,
+                      items: ReminderSettings.leadMinuteOptions
+                          .map(
+                            (min) => DropdownMenuItem(
+                              value: min,
+                              child: Text(l10n.leadTimeOption(min)),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  ListTile(
+                    enabled: settings.enabled,
+                    title: Text(l10n.classLeadCustomizeTemplates),
+                    subtitle: Text(l10n.classLeadCustomizeTemplatesSubtitle),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: settings.enabled
+                        ? () => ClassLeadTemplateSheet.show(
+                            context,
+                            settings: settings,
+                          )
+                        : null,
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  ListTile(
+                    enabled:
+                        settings.enabled ||
+                        settings.checkInReminderEnabled ||
+                        settings.nextDaySummaryEnabled,
+                    title: Text(l10n.resyncReminders),
+                    subtitle: Text(l10n.resyncRemindersSubtitle),
+                    trailing: const Icon(Icons.refresh),
+                    onTap:
+                        (settings.enabled ||
+                            settings.checkInReminderEnabled ||
+                            settings.nextDaySummaryEnabled)
+                        ? () => _resyncReminders(context, ref)
+                        : null,
+                  ),
+                  if (Platform.isAndroid) ...[
+                    const SizedBox(height: 8),
+                    _AndroidBackgroundSection(),
+                  ],
+                  const SizedBox(height: 16),
+                  SectionHeader(title: l10n.sectionAdvancedReminders),
+                  SwitchListTile(
+                    title: Text(l10n.enableNextDaySummary),
+                    subtitle: Text(l10n.enableNextDaySummarySubtitle),
+                    value: settings.nextDaySummaryEnabled,
+                    onChanged: (enabled) => applyReminderUpdate(
+                      context,
+                      ref,
+                      () => notifier.setNextDaySummaryEnabled(enabled),
+                    ),
+                  ),
+                  ListTile(
+                    enabled: settings.nextDaySummaryEnabled,
+                    title: Text(l10n.nextDaySummaryTimeTitle),
+                    subtitle: Text(
+                      l10n.nextDaySummaryTimeSubtitle(
+                        settings.nextDaySummaryTimeLabel,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.schedule),
+                    onTap: settings.nextDaySummaryEnabled
+                        ? () => _pickNextDaySummaryTime(context, ref)
+                        : null,
+                  ),
+                  SwitchListTile(
+                    title: Text(l10n.nextDayRemindWhenNoClass),
+                    subtitle: Text(l10n.nextDayRemindWhenNoClassSubtitle),
+                    value: settings.nextDayRemindWhenNoClass,
+                    onChanged: settings.nextDaySummaryEnabled
+                        ? (enabled) => applyReminderUpdate(
+                            context,
+                            ref,
+                            () => notifier.setNextDayRemindWhenNoClass(enabled),
+                          )
+                        : null,
+                  ),
+                  ListTile(
+                    enabled: settings.nextDaySummaryEnabled,
+                    title: Text(l10n.nextDayCustomizeTemplates),
+                    subtitle: Text(l10n.nextDayCustomizeTemplatesSubtitle),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: settings.nextDaySummaryEnabled
+                        ? () => NextDaySummaryTemplateSheet.show(
+                            context,
+                            settings: settings,
+                          )
+                        : null,
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  SwitchListTile(
+                    title: Text(l10n.enableCheckInReminder),
+                    subtitle: Text(l10n.enableCheckInReminderSubtitle),
+                    value: settings.checkInReminderEnabled,
+                    onChanged: (enabled) async {
+                      if (enabled) {
+                        await applyReminderUpdate(
+                          context,
+                          ref,
+                          () => notifier.setCheckInReminderEnabled(true),
+                        );
+                        return;
+                      }
+                      final confirmed = await confirmDisableCheckInReminder(
                         context,
-                        ref,
-                        () => notifier.updateLeadMinutes(value),
                       );
-                    }
-                  }
-                : null,
-            items: ReminderSettings.leadMinuteOptions
-                .map(
-                  (min) => DropdownMenuItem(
-                    value: min,
-                    child: Text(l10n.leadTimeOption(min)),
+                      if (confirmed && context.mounted) {
+                        await applyReminderUpdate(
+                          context,
+                          ref,
+                          () => notifier.setCheckInReminderEnabled(false),
+                        );
+                      }
+                    },
                   ),
-                )
-                .toList(),
-          ),
-        ),
-        ListTile(
-          enabled: settings.enabled,
-          title: Text(l10n.classLeadCustomizeTemplates),
-          subtitle: Text(l10n.classLeadCustomizeTemplatesSubtitle),
-          trailing: const Icon(Icons.edit_outlined),
-          onTap: settings.enabled
-              ? () => ClassLeadTemplateSheet.show(context, settings: settings)
-              : null,
-        ),
-        const Divider(height: 1, indent: 16, endIndent: 16),
-        ListTile(
-          enabled:
-              settings.enabled ||
-              settings.checkInReminderEnabled ||
-              settings.nextDaySummaryEnabled,
-          title: Text(l10n.resyncReminders),
-          subtitle: Text(l10n.resyncRemindersSubtitle),
-          trailing: const Icon(Icons.refresh),
-          onTap:
-              (settings.enabled ||
-                  settings.checkInReminderEnabled ||
-                  settings.nextDaySummaryEnabled)
-              ? () => _resyncReminders(context, ref)
-              : null,
-        ),
-        if (Platform.isAndroid) ...[
-          const SizedBox(height: 8),
-          _AndroidBackgroundSection(),
-        ],
-        const SizedBox(height: 16),
-        SectionHeader(title: l10n.sectionAdvancedReminders),
-        SwitchListTile(
-          title: Text(l10n.enableNextDaySummary),
-          subtitle: Text(l10n.enableNextDaySummarySubtitle),
-          value: settings.nextDaySummaryEnabled,
-          onChanged: (enabled) => applyReminderUpdate(
-            context,
-            ref,
-            () => notifier.setNextDaySummaryEnabled(enabled),
-          ),
-        ),
-        ListTile(
-          enabled: settings.nextDaySummaryEnabled,
-          title: Text(l10n.nextDaySummaryTimeTitle),
-          subtitle: Text(
-            l10n.nextDaySummaryTimeSubtitle(settings.nextDaySummaryTimeLabel),
-          ),
-          trailing: const Icon(Icons.schedule),
-          onTap: settings.nextDaySummaryEnabled
-              ? () => _pickNextDaySummaryTime(context, ref)
-              : null,
-        ),
-        SwitchListTile(
-          title: Text(l10n.nextDayRemindWhenNoClass),
-          subtitle: Text(l10n.nextDayRemindWhenNoClassSubtitle),
-          value: settings.nextDayRemindWhenNoClass,
-          onChanged: settings.nextDaySummaryEnabled
-              ? (enabled) => applyReminderUpdate(
-                  context,
-                  ref,
-                  () => notifier.setNextDayRemindWhenNoClass(enabled),
-                )
-              : null,
-        ),
-        ListTile(
-          enabled: settings.nextDaySummaryEnabled,
-          title: Text(l10n.nextDayCustomizeTemplates),
-          subtitle: Text(l10n.nextDayCustomizeTemplatesSubtitle),
-          trailing: const Icon(Icons.edit_outlined),
-          onTap: settings.nextDaySummaryEnabled
-              ? () => NextDaySummaryTemplateSheet.show(
-                  context,
-                  settings: settings,
-                )
-              : null,
-        ),
-        const Divider(height: 1, indent: 16, endIndent: 16),
-        SwitchListTile(
-          title: Text(l10n.enableCheckInReminder),
-          subtitle: Text(l10n.enableCheckInReminderSubtitle),
-          value: settings.checkInReminderEnabled,
-          onChanged: (enabled) async {
-            if (enabled) {
-              await applyReminderUpdate(
-                context,
-                ref,
-                () => notifier.setCheckInReminderEnabled(true),
-              );
-              return;
-            }
-            final confirmed = await confirmDisableCheckInReminder(context);
-            if (confirmed && context.mounted) {
-              await applyReminderUpdate(
-                context,
-                ref,
-                () => notifier.setCheckInReminderEnabled(false),
-              );
-            }
-          },
-        ),
-        ListTile(
-          enabled: settings.checkInReminderEnabled,
-          title: Text(l10n.checkInCustomizeTemplates),
-          subtitle: Text(l10n.checkInCustomizeTemplatesSubtitle),
-          trailing: const Icon(Icons.edit_outlined),
-          onTap: settings.checkInReminderEnabled
-              ? () => CheckInTemplateSheet.show(context, settings: settings)
-              : null,
-        ),
-        if (Platform.isAndroid) ...[
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            title: Text(l10n.enableSystemAlarm),
-            subtitle: Text(l10n.enableSystemAlarmSubtitle),
-            value: settings.systemAlarmEnabled,
-            onChanged: (enabled) {
-              ref
-                  .read(reminderSettingsProvider.notifier)
-                  .setSystemAlarmEnabled(enabled);
-            },
-          ),
-          ListTile(
-            enabled: settings.systemAlarmEnabled,
-            title: Text(l10n.systemAlarmLeadTitle),
-            subtitle: Text(
-              l10n.systemAlarmLeadSubtitle(settings.systemAlarmLeadMinutes),
-            ),
-            trailing: DropdownButton<int>(
-              value: _effectiveAlarmLeadMinutes(
-                settings.systemAlarmLeadMinutes,
-              ),
-              underline: const SizedBox.shrink(),
-              onChanged: settings.systemAlarmEnabled
-                  ? (value) {
-                      if (value != null) {
+                  ListTile(
+                    enabled: settings.checkInReminderEnabled,
+                    title: Text(l10n.checkInCustomizeTemplates),
+                    subtitle: Text(l10n.checkInCustomizeTemplatesSubtitle),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: settings.checkInReminderEnabled
+                        ? () => CheckInTemplateSheet.show(
+                            context,
+                            settings: settings,
+                          )
+                        : null,
+                  ),
+                  if (Platform.isAndroid) ...[
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    SwitchListTile(
+                      title: Text(l10n.enableSystemAlarm),
+                      subtitle: Text(l10n.enableSystemAlarmSubtitle),
+                      value: settings.systemAlarmEnabled,
+                      onChanged: (enabled) {
                         ref
                             .read(reminderSettingsProvider.notifier)
-                            .setSystemAlarmLeadMinutes(value);
-                      }
-                    }
-                  : null,
-              items: ReminderSettings.alarmLeadMinuteOptions
-                  .map(
-                    (min) => DropdownMenuItem(
-                      value: min,
-                      child: Text(l10n.leadTimeOption(min)),
+                            .setSystemAlarmEnabled(enabled);
+                      },
                     ),
-                  )
-                  .toList(),
+                    ListTile(
+                      enabled: settings.systemAlarmEnabled,
+                      title: Text(l10n.systemAlarmLeadTitle),
+                      subtitle: Text(
+                        l10n.systemAlarmLeadSubtitle(
+                          settings.systemAlarmLeadMinutes,
+                        ),
+                      ),
+                      trailing: _SettingsDropdown<int>(
+                        value: _effectiveAlarmLeadMinutes(
+                          settings.systemAlarmLeadMinutes,
+                        ),
+                        onChanged: settings.systemAlarmEnabled
+                            ? (value) {
+                                if (value != null) {
+                                  ref
+                                      .read(reminderSettingsProvider.notifier)
+                                      .setSystemAlarmLeadMinutes(value);
+                                }
+                              }
+                            : null,
+                        items: ReminderSettings.alarmLeadMinuteOptions
+                            .map(
+                              (min) => DropdownMenuItem(
+                                value: min,
+                                child: Text(l10n.leadTimeOption(min)),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                    ListTile(
+                      enabled: settings.systemAlarmEnabled,
+                      title: Text(l10n.setTomorrowAlarm),
+                      trailing: const Icon(Icons.alarm_add),
+                      onTap: settings.systemAlarmEnabled
+                          ? () => _setTomorrowAlarm(context, ref)
+                          : null,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                ],
+                if (_selectedCategory == 3) ...[
+                  const SettingsDataSection(),
+                  const SizedBox(height: 32),
+                  _SettingsFooter(l10n: l10n),
+                ],
+              ],
             ),
           ),
-          ListTile(
-            enabled: settings.systemAlarmEnabled,
-            title: Text(l10n.setTomorrowAlarm),
-            trailing: const Icon(Icons.alarm_add),
-            onTap: settings.systemAlarmEnabled
-                ? () => _setTomorrowAlarm(context, ref)
-                : null,
-          ),
-        ],
-        const SizedBox(height: 16),
-        SectionHeader(title: l10n.sectionData),
-        _ExportBackupSection(),
-        ListTile(
-          title: Text(l10n.deleteEndedSessions),
-          subtitle: Text(l10n.deleteEndedSessionsSubtitle),
-          leading: Icon(Icons.event_busy, color: colorScheme.error),
-          onTap: () => deleteEndedSessionsWithFeedback(context, ref),
         ),
-        ListTile(
-          title: Text(l10n.clearAllData),
-          subtitle: Text(l10n.clearAllDataSubtitle),
-          leading: Icon(Icons.delete_outline, color: colorScheme.error),
-          onTap: () => _confirmClearAll(context, ref),
-        ),
-        const SizedBox(height: 32),
-        _SettingsFooter(l10n: l10n),
       ],
     );
   }
@@ -460,49 +513,157 @@ class _SettingsBody extends ConsumerWidget {
       );
     }
   }
+}
 
-  Future<void> _confirmClearAll(BuildContext context, WidgetRef ref) async {
+class _SettingsDropdown<T> extends StatelessWidget {
+  const _SettingsDropdown({
+    required this.value,
+    required this.onChanged,
+    required this.items,
+  });
+
+  final T value;
+  final ValueChanged<T?>? onChanged;
+  final List<DropdownMenuItem<T>> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width < 360 ? 132.0 : 156.0;
+    return SizedBox(
+      width: width,
+      child: DropdownButton<T>(
+        value: value,
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        onChanged: onChanged,
+        items: items,
+      ),
+    );
+  }
+}
+
+class _SettingsCategoryTabs extends StatelessWidget {
+  const _SettingsCategoryTabs({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.confirmClearTitle),
-        content: Text(l10n.confirmClearContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: Text(l10n.actionClear),
-          ),
+    final colors = Theme.of(context).colorScheme;
+    final items = [
+      (
+        icon: Icons.tune_outlined,
+        selectedIcon: Icons.tune,
+        label: l10n.settingsCategoryGeneral,
+      ),
+      (
+        icon: Icons.calendar_view_week_outlined,
+        selectedIcon: Icons.calendar_view_week,
+        label: l10n.sectionSchedule,
+      ),
+      (
+        icon: Icons.notifications_outlined,
+        selectedIcon: Icons.notifications,
+        label: l10n.sectionReminders,
+      ),
+      (
+        icon: Icons.storage_outlined,
+        selectedIcon: Icons.storage,
+        label: l10n.sectionData,
+      ),
+    ];
+
+    return Material(
+      key: const Key('settings-category-tabs'),
+      color: colors.surface,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 520) {
+              return SizedBox(
+                height: 52,
+                child: Row(
+                  children: [
+                    for (var index = 0; index < items.length; index++)
+                      Expanded(
+                        child: Center(
+                          child: Semantics(
+                            selected: selectedIndex == index,
+                            label: items[index].label,
+                            child: IconButton(
+                              key: Key('settings-category-$index'),
+                              tooltip: items[index].label,
+                              isSelected: selectedIndex == index,
+                              icon: Icon(items[index].icon),
+                              selectedIcon: Icon(items[index].selectedIcon),
+                              style: IconButton.styleFrom(
+                                backgroundColor: selectedIndex == index
+                                    ? colors.secondaryContainer
+                                    : Colors.transparent,
+                                foregroundColor: selectedIndex == index
+                                    ? colors.onSecondaryContainer
+                                    : colors.onSurfaceVariant,
+                              ),
+                              onPressed: () => onSelected(index),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }
+
+            return DefaultTabController(
+              length: items.length,
+              initialIndex: selectedIndex,
+              child: TabBar(
+                dividerHeight: 0,
+                onTap: onSelected,
+                tabs: [
+                  for (var index = 0; index < items.length; index++)
+                    _SettingsTab(
+                      key: Key('settings-category-$index'),
+                      icon: items[index].icon,
+                      label: items[index].label,
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsTab extends StatelessWidget {
+  const _SettingsTab({super.key, required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tab(
+      height: 64,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 19),
+          const SizedBox(height: 4),
+          Text(label, maxLines: 1, overflow: TextOverflow.fade),
         ],
       ),
     );
-
-    if (confirmed == true) {
-      try {
-        await ref.read(scheduleRepositoryProvider).clearAll();
-        await ref.read(reminderSchedulerProvider).cancelAllReminders();
-        ref.read(selectedWeekStartProvider.notifier).state = null;
-        refreshSchedule(ref);
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.dataCleared)));
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.clearAllFailed('$e'))));
-        }
-      }
-    }
   }
 }
 
@@ -525,9 +686,8 @@ class _GridDefaultWeekTile extends ConsumerWidget {
     return ListTile(
       title: Text(l10n.gridDefaultWeekTitle),
       subtitle: Text(l10n.gridDefaultWeekSubtitle),
-      trailing: DropdownButton<GridDefaultWeekMode>(
+      trailing: _SettingsDropdown<GridDefaultWeekMode>(
         value: mode,
-        underline: const SizedBox.shrink(),
         onChanged: (value) {
           if (value != null) {
             ref.read(gridDefaultWeekModeProvider.notifier).setMode(value);
@@ -558,9 +718,8 @@ class _WeekStartDayTile extends ConsumerWidget {
     return ListTile(
       title: Text(l10n.weekStartDayTitle),
       subtitle: Text(l10n.weekStartDaySubtitle),
-      trailing: DropdownButton<int>(
+      trailing: _SettingsDropdown<int>(
         value: startDay,
-        underline: const SizedBox.shrink(),
         onChanged: (value) {
           if (value != null) {
             ref.read(weekStartDayProvider.notifier).setWeekStartDay(value);
@@ -600,9 +759,8 @@ class _GridDensityTile extends ConsumerWidget {
     return ListTile(
       title: Text(l10n.gridDensityTitle),
       subtitle: Text(l10n.gridDensitySubtitle),
-      trailing: DropdownButton<GridDensity>(
+      trailing: _SettingsDropdown<GridDensity>(
         value: density,
-        underline: const SizedBox.shrink(),
         onChanged: (value) {
           if (value != null) {
             ref.read(gridDensityProvider.notifier).setDensity(value);
@@ -633,9 +791,8 @@ class _ScheduleMultiDayCountTile extends ConsumerWidget {
     return ListTile(
       title: Text(l10n.scheduleMultiDayCountTitle),
       subtitle: Text(l10n.scheduleMultiDayCountSubtitle(maxCount)),
-      trailing: DropdownButton<int>(
+      trailing: _SettingsDropdown<int>(
         value: effectiveValue,
-        underline: const SizedBox.shrink(),
         onChanged: maxCount <= 1
             ? null
             : (value) {
@@ -713,9 +870,8 @@ class _UpcomingDateDisplayTile extends ConsumerWidget {
       enabled: settings.showUpcomingCourseDate,
       title: Text(l10n.upcomingDateDisplayTitle),
       subtitle: Text(l10n.upcomingDateDisplaySubtitle),
-      trailing: DropdownButton<UpcomingDateDisplay>(
+      trailing: _SettingsDropdown<UpcomingDateDisplay>(
         value: settings.upcomingDateDisplay,
-        underline: const SizedBox.shrink(),
         onChanged: settings.showUpcomingCourseDate
             ? (value) {
                 if (value != null) {
@@ -735,333 +891,6 @@ class _UpcomingDateDisplayTile extends ConsumerWidget {
             .toList(),
       ),
     );
-  }
-}
-
-class _ThemeStyleTile extends ConsumerWidget {
-  const _ThemeStyleTile({required this.currentStyle});
-
-  final AppThemeStyle currentStyle;
-
-  String _label(AppLocalizations l10n, AppThemeStyle style) {
-    return switch (style) {
-      AppThemeStyle.standard => l10n.themeStyleStandard,
-      AppThemeStyle.colorful => l10n.themeStyleColorful,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    return ListTile(
-      title: Text(l10n.themeStyleTitle),
-      subtitle: Text(l10n.themeStyleSubtitle),
-      trailing: DropdownButton<AppThemeStyle>(
-        value: currentStyle,
-        underline: const SizedBox.shrink(),
-        onChanged: (style) {
-          if (style != null) {
-            ref.read(themeStyleProvider.notifier).setStyle(style);
-          }
-        },
-        items: AppThemeStyle.values
-            .map(
-              (style) => DropdownMenuItem(
-                value: style,
-                child: Text(_label(l10n, style)),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _ThemeModeTile extends ConsumerWidget {
-  const _ThemeModeTile({required this.currentMode});
-
-  final ThemeMode currentMode;
-
-  String _label(AppLocalizations l10n, ThemeMode mode) {
-    return switch (mode) {
-      ThemeMode.system => l10n.themeModeSystem,
-      ThemeMode.light => l10n.themeModeLight,
-      ThemeMode.dark => l10n.themeModeDark,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return ListTile(
-      title: Text(l10n.themeModeTitle),
-      subtitle: Text(l10n.themeModeSubtitle),
-      trailing: DropdownButton<ThemeMode>(
-        value: currentMode,
-        underline: const SizedBox.shrink(),
-        onChanged: (mode) {
-          if (mode != null) {
-            ref.read(themeModeProvider.notifier).setThemeMode(mode);
-          }
-        },
-        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark]
-            .map(
-              (mode) => DropdownMenuItem(
-                value: mode,
-                child: Text(_label(l10n, mode)),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _ExportBackupSection extends ConsumerStatefulWidget {
-  const _ExportBackupSection();
-
-  @override
-  ConsumerState<_ExportBackupSection> createState() =>
-      _ExportBackupSectionState();
-}
-
-class _ExportBackupSectionState extends ConsumerState<_ExportBackupSection> {
-  bool _busy = false;
-
-  Future<void> _run(Future<void> Function() action) async {
-    if (_busy) {
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await action();
-    } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    if (_busy) {
-      return ListTile(
-        leading: const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-        title: Text(l10n.exportInProgress),
-      );
-    }
-
-    return Column(
-      children: [
-        ListTile(
-          title: Text(l10n.exportScheduleJson),
-          subtitle: Text(l10n.exportScheduleJsonSubtitle),
-          leading: const Icon(Icons.backup_outlined),
-          onTap: () => _run(() => exportScheduleJson(context, ref)),
-        ),
-        ListTile(
-          title: Text(l10n.exportScheduleXlsx),
-          subtitle: Text(l10n.exportScheduleXlsxSubtitle),
-          leading: const Icon(Icons.table_view_outlined),
-          onTap: () => _run(() => exportScheduleXlsx(context, ref)),
-        ),
-        ListTile(
-          title: Text(l10n.restoreFromBackup),
-          subtitle: Text(l10n.restoreFromBackupSubtitle),
-          leading: const Icon(Icons.restore_outlined),
-          onTap: () => _run(() => restoreFromBackup(context, ref)),
-        ),
-      ],
-    );
-  }
-}
-
-class _LaunchAtStartupTile extends ConsumerStatefulWidget {
-  const _LaunchAtStartupTile();
-
-  @override
-  ConsumerState<_LaunchAtStartupTile> createState() =>
-      _LaunchAtStartupTileState();
-}
-
-class _LaunchAtStartupTileState extends ConsumerState<_LaunchAtStartupTile> {
-  bool? _enabled;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final enabled = await ref.read(startupServiceProvider).loadPreference();
-    if (mounted) {
-      setState(() => _enabled = enabled);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final enabled = _enabled;
-
-    return SwitchListTile(
-      title: Text(l10n.launchAtStartup),
-      subtitle: Text(l10n.launchAtStartupSubtitle),
-      value: enabled ?? false,
-      onChanged: enabled == null
-          ? null
-          : (value) async {
-              try {
-                await ref.read(startupServiceProvider).setEnabled(value);
-                if (mounted) {
-                  setState(() => _enabled = value);
-                }
-              } catch (e) {
-                if (!context.mounted) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      AppLocalizations.of(context)!.launchAtStartupFailed('$e'),
-                    ),
-                  ),
-                );
-              }
-            },
-    );
-  }
-}
-
-class _ThemeColorTile extends StatelessWidget {
-  const _ThemeColorTile({
-    required this.currentColor,
-    required this.onColorSelected,
-  });
-
-  final Color currentColor;
-  final ValueChanged<Color> onColorSelected;
-
-  bool _isPresetSelected(Color preset) =>
-      colorsMatchTheme(preset, currentColor);
-
-  bool get _isCustomSelected {
-    return !kThemePresetColors.any(_isPresetSelected);
-  }
-
-  Future<void> _showCustomDialog(BuildContext context) async {
-    final picked = await showColorPickerDialog(
-      context,
-      initialColor: currentColor,
-    );
-    if (picked != null) {
-      onColorSelected(picked);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.themeColorTitle,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            l10n.themeColorSubtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              for (final color in kThemePresetColors)
-                _ColorSwatch(
-                  color: color,
-                  selected: _isPresetSelected(color),
-                  onTap: () => onColorSelected(color),
-                ),
-              if (_isCustomSelected)
-                _ColorSwatch(
-                  color: currentColor,
-                  selected: true,
-                  onTap: () => _showCustomDialog(context),
-                ),
-              _CustomColorButton(
-                label: l10n.themeColorCustom,
-                onTap: () => _showCustomDialog(context),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ColorSwatch extends StatelessWidget {
-  const _ColorSwatch({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-              width: selected ? 2.5 : 1,
-            ),
-          ),
-          child: selected
-              ? Icon(Icons.check, size: 18, color: _contrastIconColor(color))
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Color _contrastIconColor(Color background) {
-    final luminance = background.computeLuminance();
-    return luminance > 0.5 ? Colors.black87 : Colors.white;
   }
 }
 
@@ -1290,29 +1119,6 @@ class _SettingsFooter extends StatelessWidget {
           const SizedBox(height: 16),
           Text(l10n.appTagline, style: mutedStyle, textAlign: TextAlign.center),
         ],
-      ),
-    );
-  }
-}
-
-class _CustomColorButton extends StatelessWidget {
-  const _CustomColorButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.palette_outlined, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: colorScheme.onSurfaceVariant,
-        side: BorderSide(color: colorScheme.outlineVariant),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        visualDensity: VisualDensity.compact,
       ),
     );
   }

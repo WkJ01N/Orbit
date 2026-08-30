@@ -26,7 +26,8 @@ class ClassLeadTemplateSheet extends ConsumerStatefulWidget {
       _ClassLeadTemplateSheetState();
 }
 
-class _ClassLeadTemplateSheetState extends ConsumerState<ClassLeadTemplateSheet> {
+class _ClassLeadTemplateSheetState
+    extends ConsumerState<ClassLeadTemplateSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _bodyController;
   bool _saving = false;
@@ -55,7 +56,9 @@ class _ClassLeadTemplateSheetState extends ConsumerState<ClassLeadTemplateSheet>
     }
     setState(() => _saving = true);
     try {
-      await ref.read(reminderSettingsProvider.notifier).updateClassLeadTemplates(
+      await ref
+          .read(reminderSettingsProvider.notifier)
+          .updateClassLeadTemplates(
             title: _titleController.text,
             body: _bodyController.text,
           );

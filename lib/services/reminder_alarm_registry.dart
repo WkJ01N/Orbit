@@ -39,9 +39,7 @@ class ReminderAlarmRegistry {
 
   static Future<void> saveBatch(List<ReminderAlarmSpec> specs) async {
     final prefs = await SharedPreferences.getInstance();
-    final map = {
-      for (final spec in specs) '${spec.alarmId}': spec.toJson(),
-    };
+    final map = {for (final spec in specs) '${spec.alarmId}': spec.toJson()};
     await prefs.setString(reminderAlarmRegistryKey, jsonEncode(map));
   }
 

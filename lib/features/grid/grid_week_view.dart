@@ -33,9 +33,13 @@ class WeekGridView extends ConsumerStatefulWidget {
 
 class WeekGridViewState extends ConsumerState<WeekGridView> {
   final _scrollController = ScrollController();
+  final _previousScrollController = ScrollController();
+  final _nextScrollController = ScrollController();
+  final _pagerController = AdjacentPagePagerController();
   final _focusNode = FocusNode();
   String? _lastAutoScrollKey;
   String? _selectedSessionId;
+  int _rangeTransitionDirection = 1;
 
   List<CourseSession> get _sessions {
     if (widget.sessions != null) return widget.sessions!;
@@ -51,6 +55,8 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _previousScrollController.dispose();
+    _nextScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -68,12 +74,42 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   }
 
   void _setAnchor(DateTime value, int weekStartDay) {
+    final scrollOffset = _scrollController.hasClients
+        ? _scrollController.offset
+        : null;
     final normalized = dateOnly(value);
     ref.read(selectedScheduleDateProvider.notifier).state = normalized;
     ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
       normalized,
       startWeekday: weekStartDay,
     );
+    if (scrollOffset != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollController.hasClients) return;
+        final position = _scrollController.position;
+        _scrollController.jumpTo(
+          scrollOffset.clamp(
+            position.minScrollExtent,
+            position.maxScrollExtent,
+          ),
+        );
+      });
+    }
+  }
+
+  void _syncAdjacentScrollPositions() {
+    if (!_scrollController.hasClients) return;
+    final offset = _scrollController.offset;
+    for (final controller in [
+      _previousScrollController,
+      _nextScrollController,
+    ]) {
+      if (!controller.hasClients) continue;
+      final position = controller.position;
+      controller.jumpTo(
+        offset.clamp(position.minScrollExtent, position.maxScrollExtent),
+      );
+    }
   }
 
   @override
@@ -102,18 +138,78 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           mode: mode,
         );
 
-        void navigate(int direction) {
-          final target = navigateScheduleAnchor(
-            anchor: anchor,
-            direction: direction,
+        _SchedulePageData pageData(DateTime pageAnchor) {
+          final dates = visibleScheduleDates(
+            anchor: pageAnchor,
             mode: mode,
-            visibleDayCount: visibleDates.length,
+            preferredMultiDayCount: settings.preferredMultiDayCount,
+            maxMultiDayCount: maxMultiDayCountForWidth(constraints.maxWidth),
             showEmptyDays: settings.showEmptyDays,
             sessions: _sessions,
             weekStartDay: weekStartDay,
           );
+          return _SchedulePageData(
+            anchor: pageAnchor,
+            visibleDates: dates,
+            layout: const ScheduleLayoutEngine().build(
+              dates: dates,
+              sessions: _sessions,
+              mode: mode,
+            ),
+          );
+        }
+
+        final visibleDayCount = math.max(1, visibleDates.length);
+        final previousAnchor = navigateScheduleAnchor(
+          anchor: anchor,
+          direction: -1,
+          mode: mode,
+          visibleDayCount: visibleDayCount,
+          showEmptyDays: settings.showEmptyDays,
+          sessions: _sessions,
+          weekStartDay: weekStartDay,
+        );
+        final nextAnchor = navigateScheduleAnchor(
+          anchor: anchor,
+          direction: 1,
+          mode: mode,
+          visibleDayCount: visibleDayCount,
+          showEmptyDays: settings.showEmptyDays,
+          sessions: _sessions,
+          weekStartDay: weekStartDay,
+        );
+        final canGoPrevious = !isSameScheduleDate(previousAnchor, anchor);
+        final canGoNext = !isSameScheduleDate(nextAnchor, anchor);
+        final previousPage = canGoPrevious ? pageData(previousAnchor) : null;
+        final nextPage = canGoNext ? pageData(nextAnchor) : null;
+
+        void commitNavigation(int direction) {
+          final target = direction < 0 ? previousAnchor : nextAnchor;
+          if (isSameScheduleDate(target, anchor)) return;
+          setState(() => _rangeTransitionDirection = direction);
+          _focusNode.requestFocus();
           _setAnchor(target, weekStartDay);
         }
+
+        void selectAnchor(DateTime target) {
+          _pagerController.cancelInteraction();
+          final normalized = dateOnly(target);
+          if (!isSameScheduleDate(normalized, anchor)) {
+            setState(
+              () => _rangeTransitionDirection = normalized.isAfter(anchor)
+                  ? 1
+                  : -1,
+            );
+          }
+          _setAnchor(normalized, weekStartDay);
+        }
+
+        final currentPage = _SchedulePageData(
+          anchor: anchor,
+          visibleDates: visibleDates,
+          layout: layout,
+        );
+        final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,59 +217,72 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             _ScheduleToolbar(
               anchor: anchor,
               visibleDates: visibleDates,
-              onPrevious: () => navigate(-1),
-              onNext: () => navigate(1),
-              onToday: () => _setAnchor(DateTime.now(), weekStartDay),
-              onSelectWeek: (date) => _setAnchor(date, weekStartDay),
+              transitionDirection: _rangeTransitionDirection,
+              reduceMotion: reduceMotion,
+              onPrevious: _pagerController.animateToPrevious,
+              onNext: _pagerController.animateToNext,
+              onToday: () => selectAnchor(DateTime.now()),
+              onSelectWeek: selectAnchor,
             ),
             Expanded(
-              child: visibleDates.isEmpty
-                  ? _NoVisibleCourses(
-                      onJump: () => _setAnchor(
-                        nearestCourseDate(anchor, _sessions),
-                        weekStartDay,
+              child: AdjacentPagePager(
+                pageKey:
+                    '${mode.name}|${dateOnly(anchor)}|${visibleDates.length}',
+                controller: _pagerController,
+                reduceMotion: reduceMotion,
+                onInteractionStart: _syncAdjacentScrollPositions,
+                canSwipePrevious: () => canGoPrevious,
+                canSwipeNext: () => canGoNext,
+                onSwipeToPrevious: () => commitNavigation(-1),
+                onSwipeToNext: () => commitNavigation(1),
+                previousChild: previousPage == null
+                    ? null
+                    : _SchedulePage(
+                        data: previousPage,
+                        density: density,
+                        scrollController: _previousScrollController,
                       ),
-                    )
-                  : AdjacentPagePager(
-                      onSwipeToPrevious: () => navigate(-1),
-                      onSwipeToNext: () => navigate(1),
-                      child: layout.days.every((day) => day.events.isEmpty)
-                          ? _NoVisibleCourses(
-                              onJump: () => _setAnchor(
-                                nearestCourseDate(anchor, _sessions),
-                                weekStartDay,
-                              ),
-                            )
-                          : _ScheduleTimeline(
-                              layout: layout,
-                              density: density,
-                              scrollController: _scrollController,
-                              shouldAutoScroll:
-                                  _lastAutoScrollKey !=
-                                  '${mode.name}|${visibleDates.first}',
-                              onAutoScrolled: () => _lastAutoScrollKey =
-                                  '${mode.name}|${visibleDates.first}',
-                              selectedSessionId: _selectedSessionId,
-                              onSelectSession: (session) {
-                                setState(() => _selectedSessionId = session.id);
-                                SessionDetailSheet.show(context, session);
-                              },
-                              onMenu: (session, position) =>
-                                  SessionActionMenu.show(
-                                    context: context,
-                                    ref: ref,
-                                    session: session,
-                                    position: position,
-                                    onDeleted: () {
-                                      if (_selectedSessionId == session.id) {
-                                        setState(
-                                          () => _selectedSessionId = null,
-                                        );
-                                      }
-                                    },
-                                  ),
-                            ),
-                    ),
+                nextChild: nextPage == null
+                    ? null
+                    : _SchedulePage(
+                        data: nextPage,
+                        density: density,
+                        scrollController: _nextScrollController,
+                      ),
+                child: _SchedulePage(
+                  data: currentPage,
+                  density: density,
+                  scrollController: _scrollController,
+                  shouldAutoScroll:
+                      visibleDates.isNotEmpty &&
+                      _lastAutoScrollKey == null &&
+                      visibleDates.any(
+                        (date) => isSameScheduleDate(date, DateTime.now()),
+                      ),
+                  onAutoScrolled: visibleDates.isEmpty
+                      ? null
+                      : () => _lastAutoScrollKey =
+                            '${mode.name}|${visibleDates.first}',
+                  selectedSessionId: _selectedSessionId,
+                  onJump: () =>
+                      selectAnchor(nearestCourseDate(anchor, _sessions)),
+                  onSelectSession: (session) {
+                    setState(() => _selectedSessionId = session.id);
+                    SessionDetailSheet.show(context, session);
+                  },
+                  onMenu: (session, position) => SessionActionMenu.show(
+                    context: context,
+                    ref: ref,
+                    session: session,
+                    position: position,
+                    onDeleted: () {
+                      if (_selectedSessionId == session.id) {
+                        setState(() => _selectedSessionId = null);
+                      }
+                    },
+                  ),
+                ),
+              ),
             ),
           ],
         );
@@ -181,32 +290,21 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         return Focus(
           focusNode: _focusNode,
           autofocus: true,
-          child: Shortcuts(
-            shortcuts: const {
-              SingleActivator(LogicalKeyboardKey.arrowLeft):
-                  GridSwipePreviousIntent(),
-              SingleActivator(LogicalKeyboardKey.arrowRight):
-                  GridSwipeNextIntent(),
-            },
-            child: Actions(
-              actions: {
-                GridSwipePreviousIntent:
-                    CallbackAction<GridSwipePreviousIntent>(
-                      onInvoke: (_) {
-                        navigate(-1);
-                        return null;
-                      },
-                    ),
-                GridSwipeNextIntent: CallbackAction<GridSwipeNextIntent>(
-                  onInvoke: (_) {
-                    navigate(1);
-                    return null;
-                  },
-                ),
-              },
-              child: content,
-            ),
-          ),
+          onKeyEvent: (_, event) {
+            if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+              return KeyEventResult.ignored;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+              _pagerController.animateToPrevious();
+              return KeyEventResult.handled;
+            }
+            if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+              _pagerController.animateToNext();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: content,
         );
       },
     );
@@ -217,6 +315,8 @@ class _ScheduleToolbar extends StatelessWidget {
   const _ScheduleToolbar({
     required this.anchor,
     required this.visibleDates,
+    required this.transitionDirection,
+    required this.reduceMotion,
     required this.onPrevious,
     required this.onNext,
     required this.onToday,
@@ -225,6 +325,8 @@ class _ScheduleToolbar extends StatelessWidget {
 
   final DateTime anchor;
   final List<DateTime> visibleDates;
+  final int transitionDirection;
+  final bool reduceMotion;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onToday;
@@ -240,6 +342,7 @@ class _ScheduleToolbar extends StatelessWidget {
     final range = isSameScheduleDate(first, last)
         ? DateFormat.MMMd(locale).format(first)
         : '${DateFormat.MMMd(locale).format(first)} - ${DateFormat.MMMd(locale).format(last)}';
+    final rangeKey = '${dateOnly(first)}|${dateOnly(last)}';
     return Container(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -257,11 +360,42 @@ class _ScheduleToolbar extends StatelessWidget {
             onPressed: onPrevious,
           ),
           Expanded(
-            child: Center(
-              child: GridWeekPicker(
-                weekStart: weekStartFor(anchor),
-                onChanged: onSelectWeek,
-                labelOverride: range,
+            child: AnimatedSwitcher(
+              duration: reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (currentChild, previousChildren) => Stack(
+                alignment: Alignment.center,
+                children: [...previousChildren, ?currentChild],
+              ),
+              transitionBuilder: (child, animation) {
+                final incoming = child.key == ValueKey(rangeKey);
+                final direction = transitionDirection == 0
+                    ? 0.0
+                    : transitionDirection.toDouble();
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(
+                        (incoming ? direction : -direction) * 0.08,
+                        0,
+                      ),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: Center(
+                key: ValueKey(rangeKey),
+                child: GridWeekPicker(
+                  weekStart: weekStartFor(anchor),
+                  onChanged: onSelectWeek,
+                  labelOverride: range,
+                ),
               ),
             ),
           ),
@@ -277,6 +411,63 @@ class _ScheduleToolbar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SchedulePageData {
+  const _SchedulePageData({
+    required this.anchor,
+    required this.visibleDates,
+    required this.layout,
+  });
+
+  final DateTime anchor;
+  final List<DateTime> visibleDates;
+  final ScheduleTimelineLayout layout;
+}
+
+class _SchedulePage extends StatelessWidget {
+  const _SchedulePage({
+    required this.data,
+    required this.density,
+    required this.scrollController,
+    this.shouldAutoScroll = false,
+    this.onAutoScrolled,
+    this.selectedSessionId,
+    this.onJump,
+    this.onSelectSession,
+    this.onMenu,
+  });
+
+  final _SchedulePageData data;
+  final GridDensity density;
+  final ScrollController scrollController;
+  final bool shouldAutoScroll;
+  final VoidCallback? onAutoScrolled;
+  final String? selectedSessionId;
+  final VoidCallback? onJump;
+  final ValueChanged<CourseSession>? onSelectSession;
+  final void Function(CourseSession, Offset?)? onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.visibleDates.isEmpty ||
+        data.layout.days.every((day) => day.events.isEmpty)) {
+      return ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: _NoVisibleCourses(onJump: onJump ?? () {}),
+      );
+    }
+    return _ScheduleTimeline(
+      layout: data.layout,
+      density: density,
+      scrollController: scrollController,
+      shouldAutoScroll: shouldAutoScroll,
+      onAutoScrolled: onAutoScrolled ?? () {},
+      selectedSessionId: selectedSessionId,
+      onSelectSession: onSelectSession ?? (_) {},
+      onMenu: onMenu ?? (_, _) {},
     );
   }
 }
@@ -752,7 +943,7 @@ class GridSessionChip extends ConsumerWidget {
             isPast: isPast,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
             side: BorderSide(
               color: isSelected || isOngoing
                   ? colorScheme.primary

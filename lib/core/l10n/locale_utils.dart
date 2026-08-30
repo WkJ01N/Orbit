@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 
-const defaultLocale = Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant');
+const defaultLocale = Locale.fromSubtags(
+  languageCode: 'zh',
+  scriptCode: 'Hant',
+);
 
 const supportedAppLocales = [
   Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),

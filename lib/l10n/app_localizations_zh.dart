@@ -72,7 +72,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gridBatchDeleteConfirm2Title => '確認刪除';
 
   @override
-  String get gridBatchDeleteConfirm2Content => '刪除後無法復原，確定繼續？';
+  String get gridBatchDeleteConfirm2Content => '所選課程將移入回收站並保留 7 天，確定繼續？';
 
   @override
   String get gridBatchDeleteNone => '所選區間內沒有完全包含的課程';
@@ -238,6 +238,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsTitle => '設置';
+
+  @override
+  String get settingsCategoryGeneral => '一般';
 
   @override
   String settingsLoadFailed(String error) {
@@ -594,7 +597,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get deleteEndedConfirm2Title => '確認刪除';
 
   @override
-  String get deleteEndedConfirm2Content => '刪除後無法復原，確定繼續？';
+  String get deleteEndedConfirm2Content => '已結束課程將移入回收站並保留 7 天，確定繼續？';
 
   @override
   String get deleteEndedNone => '沒有已結束的課程';
@@ -631,7 +634,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get confirmClearTitle => '確認清除';
 
   @override
-  String get confirmClearContent => '此操作將刪除所有已匯入的課表資料，且無法復原。';
+  String get confirmClearContent => '所有已匯入的課表資料將移入回收站並保留 7 天。';
 
   @override
   String get actionCancel => '取消';
@@ -1199,6 +1202,112 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidExactAlarmsDisabled => '精確鬧鐘未允許';
+
+  @override
+  String get actionUndo => '復原';
+
+  @override
+  String get trashTitle => '最近刪除';
+
+  @override
+  String get trashSubtitle => '刪除的課程將保留 7 天';
+
+  @override
+  String get trashEmpty => '沒有最近刪除的課程';
+
+  @override
+  String trashDeletedAt(Object time) {
+    return '刪除於 $time';
+  }
+
+  @override
+  String get trashRestoreSelected => '還原所選';
+
+  @override
+  String get trashRestoreAll => '全部還原';
+
+  @override
+  String get trashEmptyAction => '清空回收站';
+
+  @override
+  String get trashEmptyConfirm1Title => '清空回收站？';
+
+  @override
+  String get trashEmptyConfirm1Content => '所有最近刪除的課程都將被永久移除。';
+
+  @override
+  String get trashEmptyConfirm2Title => '確認永久刪除？';
+
+  @override
+  String get trashEmptyConfirm2Content => '此操作無法復原。';
+
+  @override
+  String trashRestoreResult(Object restored, Object skipped) {
+    return '已還原 $restored 節，略過 $skipped 節衝突課程';
+  }
+
+  @override
+  String get courseScopeTitle => '套用範圍';
+
+  @override
+  String get courseScopeSingle => '僅本節';
+
+  @override
+  String get courseScopeFromSelected => '本節及以後';
+
+  @override
+  String get courseScopeAll => '全部同課程';
+
+  @override
+  String courseOperationSummary(
+    Object conflicts,
+    Object count,
+    Object end,
+    Object start,
+  ) {
+    return '共 $count 節，日期為 $start 至 $end，將覆蓋 $conflicts 節衝突課程。';
+  }
+
+  @override
+  String courseBatchUpdated(Object count) {
+    return '已更新 $count 節課程';
+  }
+
+  @override
+  String courseBatchDeleted(Object count) {
+    return '已刪除 $count 節課程';
+  }
+
+  @override
+  String get backupIncludesSettings => '包含外觀、課表、提醒和課程顏色設置';
+
+  @override
+  String restorePreviewSummary(
+    Object count,
+    Object end,
+    Object start,
+    Object version,
+  ) {
+    return '備份 v$version · $count 節課程 · $start 至 $end';
+  }
+
+  @override
+  String get restoreCoursesOption => '還原課程';
+
+  @override
+  String get restoreSettingsOption => '還原應用設置';
+
+  @override
+  String get restoreModeMerge => '合併並覆蓋衝突';
+
+  @override
+  String get restoreModeReplace => '取代目前課表';
+
+  @override
+  String get restoreNothingSelected => '請選擇要還原的課程或應用設置';
+
+  @override
+  String get restoreSettingsDone => '應用設置已還原';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -1269,7 +1378,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get gridBatchDeleteConfirm2Title => '确认删除';
 
   @override
-  String get gridBatchDeleteConfirm2Content => '删除后无法恢复，确定继续？';
+  String get gridBatchDeleteConfirm2Content => '所选课程将移入回收站并保留 7 天，确定继续？';
 
   @override
   String get gridBatchDeleteNone => '所选区间内没有完全包含的课程';
@@ -1435,6 +1544,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get settingsTitle => '设置';
+
+  @override
+  String get settingsCategoryGeneral => '常规';
 
   @override
   String settingsLoadFailed(String error) {
@@ -1791,7 +1903,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get deleteEndedConfirm2Title => '确认删除';
 
   @override
-  String get deleteEndedConfirm2Content => '删除后无法恢复，确定继续？';
+  String get deleteEndedConfirm2Content => '已结束课程将移入回收站并保留 7 天，确定继续？';
 
   @override
   String get deleteEndedNone => '没有已结束的课程';
@@ -1828,7 +1940,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get confirmClearTitle => '确认清除';
 
   @override
-  String get confirmClearContent => '此操作将删除所有已导入的课表数据，且无法恢复。';
+  String get confirmClearContent => '所有已导入的课表数据将移入回收站并保留 7 天。';
 
   @override
   String get actionCancel => '取消';
@@ -2396,6 +2508,112 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get androidExactAlarmsDisabled => '精确闹钟未允许';
+
+  @override
+  String get actionUndo => '撤销';
+
+  @override
+  String get trashTitle => '最近删除';
+
+  @override
+  String get trashSubtitle => '删除的课程将保留 7 天';
+
+  @override
+  String get trashEmpty => '没有最近删除的课程';
+
+  @override
+  String trashDeletedAt(Object time) {
+    return '删除于 $time';
+  }
+
+  @override
+  String get trashRestoreSelected => '恢复所选';
+
+  @override
+  String get trashRestoreAll => '全部恢复';
+
+  @override
+  String get trashEmptyAction => '清空回收站';
+
+  @override
+  String get trashEmptyConfirm1Title => '清空回收站？';
+
+  @override
+  String get trashEmptyConfirm1Content => '所有最近删除的课程都将被永久移除。';
+
+  @override
+  String get trashEmptyConfirm2Title => '确认永久删除？';
+
+  @override
+  String get trashEmptyConfirm2Content => '此操作无法撤销。';
+
+  @override
+  String trashRestoreResult(Object restored, Object skipped) {
+    return '已恢复 $restored 节，跳过 $skipped 节冲突课程';
+  }
+
+  @override
+  String get courseScopeTitle => '应用范围';
+
+  @override
+  String get courseScopeSingle => '仅本节';
+
+  @override
+  String get courseScopeFromSelected => '本节及以后';
+
+  @override
+  String get courseScopeAll => '全部同课程';
+
+  @override
+  String courseOperationSummary(
+    Object conflicts,
+    Object count,
+    Object end,
+    Object start,
+  ) {
+    return '共 $count 节，日期为 $start 至 $end，将覆盖 $conflicts 节冲突课程。';
+  }
+
+  @override
+  String courseBatchUpdated(Object count) {
+    return '已更新 $count 节课程';
+  }
+
+  @override
+  String courseBatchDeleted(Object count) {
+    return '已删除 $count 节课程';
+  }
+
+  @override
+  String get backupIncludesSettings => '包含外观、课表、提醒和课程颜色设置';
+
+  @override
+  String restorePreviewSummary(
+    Object count,
+    Object end,
+    Object start,
+    Object version,
+  ) {
+    return '备份 v$version · $count 节课程 · $start 至 $end';
+  }
+
+  @override
+  String get restoreCoursesOption => '恢复课程';
+
+  @override
+  String get restoreSettingsOption => '恢复应用设置';
+
+  @override
+  String get restoreModeMerge => '合并并覆盖冲突';
+
+  @override
+  String get restoreModeReplace => '替换当前课表';
+
+  @override
+  String get restoreNothingSelected => '请选择要恢复的课程或应用设置';
+
+  @override
+  String get restoreSettingsDone => '应用设置已恢复';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2466,7 +2684,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get gridBatchDeleteConfirm2Title => '確認刪除';
 
   @override
-  String get gridBatchDeleteConfirm2Content => '刪除後無法復原，確定繼續？';
+  String get gridBatchDeleteConfirm2Content => '所選課程將移入回收站並保留 7 天，確定繼續？';
 
   @override
   String get gridBatchDeleteNone => '所選區間內沒有完全包含的課程';
@@ -2632,6 +2850,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get settingsTitle => '設置';
+
+  @override
+  String get settingsCategoryGeneral => '一般';
 
   @override
   String settingsLoadFailed(String error) {
@@ -2988,7 +3209,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get deleteEndedConfirm2Title => '確認刪除';
 
   @override
-  String get deleteEndedConfirm2Content => '刪除後無法復原，確定繼續？';
+  String get deleteEndedConfirm2Content => '已結束課程將移入回收站並保留 7 天，確定繼續？';
 
   @override
   String get deleteEndedNone => '沒有已結束的課程';
@@ -3025,7 +3246,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get confirmClearTitle => '確認清除';
 
   @override
-  String get confirmClearContent => '此操作將刪除所有已匯入的課表資料，且無法復原。';
+  String get confirmClearContent => '所有已匯入的課表資料將移入回收站並保留 7 天。';
 
   @override
   String get actionCancel => '取消';
@@ -3593,4 +3814,110 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get androidExactAlarmsDisabled => '精確鬧鐘未允許';
+
+  @override
+  String get actionUndo => '復原';
+
+  @override
+  String get trashTitle => '最近刪除';
+
+  @override
+  String get trashSubtitle => '刪除的課程將保留 7 天';
+
+  @override
+  String get trashEmpty => '沒有最近刪除的課程';
+
+  @override
+  String trashDeletedAt(Object time) {
+    return '刪除於 $time';
+  }
+
+  @override
+  String get trashRestoreSelected => '還原所選';
+
+  @override
+  String get trashRestoreAll => '全部還原';
+
+  @override
+  String get trashEmptyAction => '清空回收站';
+
+  @override
+  String get trashEmptyConfirm1Title => '清空回收站？';
+
+  @override
+  String get trashEmptyConfirm1Content => '所有最近刪除的課程都將被永久移除。';
+
+  @override
+  String get trashEmptyConfirm2Title => '確認永久刪除？';
+
+  @override
+  String get trashEmptyConfirm2Content => '此操作無法復原。';
+
+  @override
+  String trashRestoreResult(Object restored, Object skipped) {
+    return '已還原 $restored 節，略過 $skipped 節衝突課程';
+  }
+
+  @override
+  String get courseScopeTitle => '套用範圍';
+
+  @override
+  String get courseScopeSingle => '僅本節';
+
+  @override
+  String get courseScopeFromSelected => '本節及以後';
+
+  @override
+  String get courseScopeAll => '全部同課程';
+
+  @override
+  String courseOperationSummary(
+    Object conflicts,
+    Object count,
+    Object end,
+    Object start,
+  ) {
+    return '共 $count 節，日期為 $start 至 $end，將覆蓋 $conflicts 節衝突課程。';
+  }
+
+  @override
+  String courseBatchUpdated(Object count) {
+    return '已更新 $count 節課程';
+  }
+
+  @override
+  String courseBatchDeleted(Object count) {
+    return '已刪除 $count 節課程';
+  }
+
+  @override
+  String get backupIncludesSettings => '包含外觀、課表、提醒和課程顏色設置';
+
+  @override
+  String restorePreviewSummary(
+    Object count,
+    Object end,
+    Object start,
+    Object version,
+  ) {
+    return '備份 v$version · $count 節課程 · $start 至 $end';
+  }
+
+  @override
+  String get restoreCoursesOption => '還原課程';
+
+  @override
+  String get restoreSettingsOption => '還原應用設置';
+
+  @override
+  String get restoreModeMerge => '合併並覆蓋衝突';
+
+  @override
+  String get restoreModeReplace => '取代目前課表';
+
+  @override
+  String get restoreNothingSelected => '請選擇要還原的課程或應用設置';
+
+  @override
+  String get restoreSettingsDone => '應用設置已還原';
 }

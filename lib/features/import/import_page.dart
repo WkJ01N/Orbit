@@ -55,10 +55,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         children: [
           const ImportFormatHelp(),
           const SizedBox(height: 12),
-          _PickCard(
-            onPick: _pickFiles,
-            isPicking: _isPicking,
-          ),
+          _PickCard(onPick: _pickFiles, isPicking: _isPicking),
           if (_errorMessage != null) ...[
             const SizedBox(height: 12),
             _ErrorBanner(message: _errorMessage!),
@@ -110,26 +107,27 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       final parseResults = await Future.wait(
         result.files.map((file) async {
           try {
-            final bytes = file.bytes ??
+            final bytes =
+                file.bytes ??
                 (file.path != null
                     ? await File(file.path!).readAsBytes()
                     : null);
             if (bytes == null) {
-              return (error: l10n.importPickMissingPath(file.name), preview: null);
+              return (
+                error: l10n.importPickMissingPath(file.name),
+                preview: null,
+              );
             }
-            final sessions = parser.parseBytes(
-              bytes,
-              sourceFile: file.name,
-            );
+            final sessions = parser.parseBytes(bytes, sourceFile: file.name);
             return (
               error: null as String?,
-              preview: _PreviewFile(
-                name: file.name,
-                sessions: sessions,
-              ),
+              preview: _PreviewFile(name: file.name, sessions: sessions),
             );
           } on XlsxParseException catch (e) {
-            return (error: '${file.name}: ${e.localizedMessage(l10n)}', preview: null);
+            return (
+              error: '${file.name}: ${e.localizedMessage(l10n)}',
+              preview: null,
+            );
           } catch (e) {
             return (
               error: '${file.name}: ${l10n.importParseFailed('$e')}',
@@ -188,8 +186,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
     try {
       await repository.importParsedSessionsWithStrategy(allSessions, strategy);
-      final failures =
-          await ref.read(reminderSettingsProvider.notifier).resyncReminders();
+      final failures = await ref
+          .read(reminderSettingsProvider.notifier)
+          .resyncReminders();
       refreshSchedule(ref);
 
       if (mounted) {
@@ -237,20 +236,16 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                 icon: Icons.delete_sweep_outlined,
                 title: l10n.importStrategyReplaceWeek,
                 description: l10n.importStrategyReplaceWeekDesc,
-                onTap: () => Navigator.pop(
-                  context,
-                  ImportMergeStrategy.replaceWeek,
-                ),
+                onTap: () =>
+                    Navigator.pop(context, ImportMergeStrategy.replaceWeek),
               ),
               const SizedBox(height: 8),
               _ImportStrategyOption(
                 icon: Icons.merge_outlined,
                 title: l10n.importStrategyMerge,
                 description: l10n.importStrategyMergeDesc,
-                onTap: () => Navigator.pop(
-                  context,
-                  ImportMergeStrategy.mergeOverwrite,
-                ),
+                onTap: () =>
+                    Navigator.pop(context, ImportMergeStrategy.mergeOverwrite),
               ),
             ],
           ),
@@ -300,16 +295,13 @@ class _ImportStrategyOption extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+                  Text(title, style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 2),
                   Text(
                     description,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -322,10 +314,7 @@ class _ImportStrategyOption extends StatelessWidget {
 }
 
 class _PreviewFile {
-  const _PreviewFile({
-    required this.name,
-    required this.sessions,
-  });
+  const _PreviewFile({required this.name, required this.sessions});
 
   final String name;
   final List<CourseSession> sessions;
@@ -357,24 +346,20 @@ class _PickCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(
-              Icons.upload_file,
-              size: 48,
-              color: colorScheme.primary,
-            ),
+            Icon(Icons.upload_file, size: 48, color: colorScheme.primary),
             const SizedBox(height: 12),
             Text(
               l10n.importPickTitle,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.primary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: colorScheme.primary),
             ),
             const SizedBox(height: 4),
             Text(
               l10n.importPickSubtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
             if (isPicking) ...[
               const SizedBox(height: 16),
@@ -404,8 +389,8 @@ class _FilePreviewCard extends StatelessWidget {
     final dateRange = dates.isEmpty
         ? ''
         : dates.length == 1
-            ? formatShortDate(dates.first)
-            : '${formatShortDate(dates.first)} – ${formatShortDate(dates.last)}';
+        ? formatShortDate(dates.first)
+        : '${formatShortDate(dates.first)} – ${formatShortDate(dates.last)}';
 
     return Card(
       child: Padding(
@@ -421,16 +406,16 @@ class _FilePreviewCard extends StatelessWidget {
                   Text(
                     file.name,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${l10n.sessionCount(file.sessions.length)}　$dateRange',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -460,7 +445,11 @@ class _ErrorBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, color: colorScheme.onErrorContainer, size: 18),
+          Icon(
+            Icons.error_outline,
+            color: colorScheme.onErrorContainer,
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

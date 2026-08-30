@@ -7,10 +7,7 @@ import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 
-CourseSession _session({
-  required DateTime date,
-  required int startHour,
-}) {
+CourseSession _session({required DateTime date, required int startHour}) {
   final startAt = DateTime(date.year, date.month, date.day, startHour);
   return CourseSession(
     id: '${date.toIso8601String()}|TEST|1|$startHour:00',
@@ -33,17 +30,16 @@ NotificationCopy _copy() =>
     NotificationCopy.fromL10n(lookupL10n(defaultLocale));
 
 void main() {
-  test('applyNextDayTemplate replaces placeholders and falls back when empty',
-      () {
-    expect(
-      applyNextDayTemplate(null, 'default', {'count': '3'}),
-      'default',
-    );
-    expect(
-      applyNextDayTemplate('共 {count} 节', 'default', {'count': '3'}),
-      '共 3 节',
-    );
-  });
+  test(
+    'applyNextDayTemplate replaces placeholders and falls back when empty',
+    () {
+      expect(applyNextDayTemplate(null, 'default', {'count': '3'}), 'default');
+      expect(
+        applyNextDayTemplate('共 {count} 节', 'default', {'count': '3'}),
+        '共 3 节',
+      );
+    },
+  );
 
   test('buildNextDaySummarySlots schedules tonight at configured hour', () {
     final now = DateTime(2026, 6, 15, 20, 0);

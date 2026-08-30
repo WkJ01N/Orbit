@@ -17,6 +17,7 @@ class CourseSession {
     required this.semester,
     this.sourceFile,
     this.note,
+    this.deletedAt,
   });
 
   final String id;
@@ -34,6 +35,7 @@ class CourseSession {
   final String semester;
   final String? sourceFile;
   final String? note;
+  final DateTime? deletedAt;
 
   static String buildId({
     required DateTime date,
@@ -76,6 +78,9 @@ class CourseSession {
       semester: map['semester'] as String,
       sourceFile: map['source_file'] as String?,
       note: map['note'] as String?,
+      deletedAt: map['deleted_at'] == null
+          ? null
+          : DateTime.parse(map['deleted_at'] as String),
     );
   }
 
@@ -96,6 +101,7 @@ class CourseSession {
       'semester': semester,
       'source_file': sourceFile,
       'note': note,
+      'deleted_at': deletedAt?.toIso8601String(),
     };
   }
 
@@ -116,6 +122,8 @@ class CourseSession {
     String? sourceFile,
     String? note,
     bool clearNote = false,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) {
     return CourseSession(
       id: id ?? this.id,
@@ -133,6 +141,7 @@ class CourseSession {
       semester: semester ?? this.semester,
       sourceFile: sourceFile ?? this.sourceFile,
       note: clearNote ? null : (note ?? this.note),
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 

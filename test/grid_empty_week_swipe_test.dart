@@ -13,11 +13,7 @@ import 'package:orbit/providers/app_providers.dart';
 
 WeekGrid _emptyWeekGrid() {
   final weekStart = weekStartFor(DateTime(2026, 7, 27));
-  return WeekGrid(
-    weekStart: weekStart,
-    timeLabels: const [],
-    cells: const {},
-  );
+  return WeekGrid(weekStart: weekStart, timeLabels: const [], cells: const {});
 }
 
 CourseSession _sessionOnOtherWeek() {
@@ -104,7 +100,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(AdjacentPagePager), findsOneWidget);
-    expect(find.text('本週無課程'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('adjacent-page-current')),
+        matching: find.text('本週無課程'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('立即匯入'), findsNothing);
   });
 
@@ -117,9 +119,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sessionsProvider.overrideWith(
-            (ref) async => [_sessionOnOtherWeek()],
-          ),
+          sessionsProvider.overrideWith((ref) async => [_sessionOnOtherWeek()]),
           selectedWeekStartProvider.overrideWith((ref) => emptyWeekStart),
         ],
         child: MaterialApp(
@@ -138,8 +138,15 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('本週無課程'), findsOneWidget);
-    expect(find.text('切換至其他週查看課程'), findsOneWidget);
+    final currentPage = find.byKey(const Key('adjacent-page-current'));
+    expect(
+      find.descendant(of: currentPage, matching: find.text('本週無課程')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: currentPage, matching: find.text('切換至其他週查看課程')),
+      findsOneWidget,
+    );
     expect(find.text('立即匯入'), findsNothing);
   });
 }

@@ -24,7 +24,11 @@ class GridBuilder {
     );
     final weekEnd = normalizedStart.add(const Duration(days: 6));
     final weekSessions = sessions.where((session) {
-      final date = DateTime(session.date.year, session.date.month, session.date.day);
+      final date = DateTime(
+        session.date.year,
+        session.date.month,
+        session.date.day,
+      );
       return !date.isBefore(normalizedStart) && !date.isAfter(weekEnd);
     }).toList();
 

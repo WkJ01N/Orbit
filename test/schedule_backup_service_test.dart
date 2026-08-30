@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/portable_settings.dart';
+import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 
 void main() {
@@ -39,5 +44,52 @@ void main() {
       () => service.decodeFromJson('not json'),
       throwsA(isA<ScheduleBackupException>()),
     );
+  });
+
+  test('v2 backup preserves portable settings', () {
+    const settings = PortableSettings(
+      locale: 'en',
+      themeColor: 0xFF123456,
+      themeMode: 'dark',
+      themeStyle: 'colorful',
+      gridDefaultWeekMode: 'current',
+      weekStartDay: DateTime.sunday,
+      gridDensity: 'comfortable',
+      reminders: ReminderSettings(
+        leadMinutes: 30,
+        checkInReminderEnabled: false,
+      ),
+      scheduleDisplay: ScheduleDisplaySettings(
+        preferredMultiDayCount: 4,
+        showEmptyDays: false,
+      ),
+      courseColorOverrides: {'P0721': 0xFFABCDEF},
+    );
+    final service = ScheduleBackupService();
+
+    final backup = service.decodeBackup(
+      service.encodeToJson(const [], settings: settings),
+    );
+
+    expect(backup.version, 2);
+    expect(backup.settings?.locale, 'en');
+    expect(backup.settings?.reminders.leadMinutes, 30);
+    expect(backup.settings?.scheduleDisplay.showEmptyDays, isFalse);
+    expect(backup.settings?.courseColorOverrides['P0721'], 0xFFABCDEF);
+  });
+
+  test('v1 session-only backup remains supported', () {
+    final service = ScheduleBackupService();
+    final raw = jsonEncode({
+      'version': 1,
+      'exportedAt': '2026-08-30T12:00:00.000',
+      'sessions': <Object?>[],
+    });
+
+    final backup = service.decodeBackup(raw);
+
+    expect(backup.version, 1);
+    expect(backup.sessions, isEmpty);
+    expect(backup.settings, isNull);
   });
 }

@@ -25,7 +25,8 @@ class NotificationCopy {
     required String time,
     required String room,
     required String teachers,
-  }) bigTextFor;
+  })
+  bigTextFor;
   final String teachersNotProvided;
   final String Function(String course, String room) checkInTitle;
   final String Function(String course) checkInBody;
@@ -40,17 +41,18 @@ class NotificationCopy {
       channelDescription: l10n.notificationChannelDesc,
       titleFor: l10n.notificationTitle,
       bodyFor: l10n.notificationBody,
-      bigTextFor: ({
-        required String course,
-        required String time,
-        required String room,
-        required String teachers,
-      }) {
-        return '$course\n'
-            '${l10n.notificationTime(time)}\n'
-            '${l10n.notificationRoom(room)}\n'
-            '${l10n.notificationTeachers(teachers)}';
-      },
+      bigTextFor:
+          ({
+            required String course,
+            required String time,
+            required String room,
+            required String teachers,
+          }) {
+            return '$course\n'
+                '${l10n.notificationTime(time)}\n'
+                '${l10n.notificationRoom(room)}\n'
+                '${l10n.notificationTeachers(teachers)}';
+          },
       teachersNotProvided: l10n.teachersNotProvided,
       checkInTitle: l10n.notificationCheckInTitle,
       checkInBody: l10n.notificationCheckInBody,

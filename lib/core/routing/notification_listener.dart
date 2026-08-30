@@ -21,7 +21,8 @@ class OrbitNotificationListener extends ConsumerStatefulWidget {
 }
 
 class _OrbitNotificationListenerState
-    extends ConsumerState<OrbitNotificationListener> with WidgetsBindingObserver {
+    extends ConsumerState<OrbitNotificationListener>
+    with WidgetsBindingObserver {
   bool _launchPayloadLoaded = false;
 
   @override
@@ -70,8 +71,8 @@ class _OrbitNotificationListenerState
       if (!mounted) {
         return;
       }
-      final payload =
-          await ReminderScheduler.shared.getLaunchNotificationPayload();
+      final payload = await ReminderScheduler.shared
+          .getLaunchNotificationPayload();
       if (payload != null && mounted) {
         ref.read(pendingNotificationPayloadProvider.notifier).state = payload;
       }
@@ -120,15 +121,17 @@ class _OrbitNotificationListenerState
         ? payload.substring('checkin_'.length)
         : payload;
 
-    final session =
-        await ref.read(scheduleRepositoryProvider).getSessionById(sessionId);
+    final session = await ref
+        .read(scheduleRepositoryProvider)
+        .getSessionById(sessionId);
     if (!context.mounted || session == null) {
       navigateToAppTab(ref, AppTab.upcoming);
       return;
     }
 
-    ref.read(selectedWeekStartProvider.notifier).state =
-        weekStartFor(session.date);
+    ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
+      session.date,
+    );
     navigateToAppTab(ref, AppTab.grid);
 
     if (!context.mounted) {

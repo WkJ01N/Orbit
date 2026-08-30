@@ -11,7 +11,13 @@ CourseSession _session({
   int startMinute = 0,
   int endMinute = 0,
 }) {
-  final startAt = DateTime(date.year, date.month, date.day, startHour, startMinute);
+  final startAt = DateTime(
+    date.year,
+    date.month,
+    date.day,
+    startHour,
+    startMinute,
+  );
   final endAt = DateTime(date.year, date.month, date.day, endHour, endMinute);
   return CourseSession(
     id: '${date.toIso8601String()}|C|1|$startHour:$startMinute',
@@ -38,7 +44,13 @@ void main() {
     weekStart: weekStart,
     sessions: [
       // Slots at 09:00 (ends 10:30) and 11:00 (ends 12:00) on Monday.
-      _session(date: weekStart, weekday: 1, startHour: 9, endHour: 10, endMinute: 30),
+      _session(
+        date: weekStart,
+        weekday: 1,
+        startHour: 9,
+        endHour: 10,
+        endMinute: 30,
+      ),
       _session(date: weekStart, weekday: 1, startHour: 11, endHour: 12),
     ],
   );
@@ -68,10 +80,7 @@ void main() {
   });
 
   test('hidden when not the current week', () {
-    expect(
-      offsetAt(DateTime(2026, 6, 1, 9, 30), isCurrentWeek: false),
-      isNull,
-    );
+    expect(offsetAt(DateTime(2026, 6, 1, 9, 30), isCurrentWeek: false), isNull);
   });
 
   test('hidden when today is outside the displayed week', () {

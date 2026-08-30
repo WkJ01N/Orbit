@@ -217,7 +217,7 @@ abstract class AppLocalizations {
   /// No description provided for @gridBatchDeleteConfirm2Content.
   ///
   /// In en, this message translates to:
-  /// **'Deleted sessions cannot be recovered. Continue?'**
+  /// **'The selected sessions will stay in Recently Deleted for 7 days. Continue?'**
   String get gridBatchDeleteConfirm2Content;
 
   /// No description provided for @gridBatchDeleteNone.
@@ -501,6 +501,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settingsTitle;
+
+  /// No description provided for @settingsCategoryGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsCategoryGeneral;
 
   /// No description provided for @settingsLoadFailed.
   ///
@@ -1150,7 +1156,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteEndedConfirm2Content.
   ///
   /// In en, this message translates to:
-  /// **'Deleted sessions cannot be recovered. Continue?'**
+  /// **'Ended sessions will stay in Recently Deleted for 7 days. Continue?'**
   String get deleteEndedConfirm2Content;
 
   /// No description provided for @deleteEndedNone.
@@ -1216,7 +1222,7 @@ abstract class AppLocalizations {
   /// No description provided for @confirmClearContent.
   ///
   /// In en, this message translates to:
-  /// **'This will delete all imported schedule data and cannot be undone.'**
+  /// **'All imported schedule data will be moved to Recently Deleted and kept for 7 days.'**
   String get confirmClearContent;
 
   /// No description provided for @actionCancel.
@@ -2211,6 +2217,184 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Exact alarms not allowed'**
   String get androidExactAlarmsDisabled;
+
+  /// No description provided for @actionUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get actionUndo;
+
+  /// No description provided for @trashTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently deleted'**
+  String get trashTitle;
+
+  /// No description provided for @trashSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted classes are kept for 7 days'**
+  String get trashSubtitle;
+
+  /// No description provided for @trashEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recently deleted classes'**
+  String get trashEmpty;
+
+  /// No description provided for @trashDeletedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {time}'**
+  String trashDeletedAt(Object time);
+
+  /// No description provided for @trashRestoreSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore selected'**
+  String get trashRestoreSelected;
+
+  /// No description provided for @trashRestoreAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore all'**
+  String get trashRestoreAll;
+
+  /// No description provided for @trashEmptyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty trash'**
+  String get trashEmptyAction;
+
+  /// No description provided for @trashEmptyConfirm1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty trash?'**
+  String get trashEmptyConfirm1Title;
+
+  /// No description provided for @trashEmptyConfirm1Content.
+  ///
+  /// In en, this message translates to:
+  /// **'All recently deleted classes will be permanently removed.'**
+  String get trashEmptyConfirm1Content;
+
+  /// No description provided for @trashEmptyConfirm2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete?'**
+  String get trashEmptyConfirm2Title;
+
+  /// No description provided for @trashEmptyConfirm2Content.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone.'**
+  String get trashEmptyConfirm2Content;
+
+  /// No description provided for @trashRestoreResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {restored}; skipped {skipped} conflicting class(es)'**
+  String trashRestoreResult(Object restored, Object skipped);
+
+  /// No description provided for @courseScopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply changes to'**
+  String get courseScopeTitle;
+
+  /// No description provided for @courseScopeSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'This class only'**
+  String get courseScopeSingle;
+
+  /// No description provided for @courseScopeFromSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'This and future classes'**
+  String get courseScopeFromSelected;
+
+  /// No description provided for @courseScopeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All matching classes'**
+  String get courseScopeAll;
+
+  /// No description provided for @courseOperationSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} class(es), {start} to {end}. {conflicts} conflict(s) will be replaced.'**
+  String courseOperationSummary(
+    Object conflicts,
+    Object count,
+    Object end,
+    Object start,
+  );
+
+  /// No description provided for @courseBatchUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {count} class(es)'**
+  String courseBatchUpdated(Object count);
+
+  /// No description provided for @courseBatchDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {count} class(es)'**
+  String courseBatchDeleted(Object count);
+
+  /// No description provided for @backupIncludesSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes appearance, schedule, reminder and course color settings'**
+  String get backupIncludesSettings;
+
+  /// No description provided for @restorePreviewSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup v{version} · {count} class(es) · {start} to {end}'**
+  String restorePreviewSummary(
+    Object count,
+    Object end,
+    Object start,
+    Object version,
+  );
+
+  /// No description provided for @restoreCoursesOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore classes'**
+  String get restoreCoursesOption;
+
+  /// No description provided for @restoreSettingsOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore app settings'**
+  String get restoreSettingsOption;
+
+  /// No description provided for @restoreModeMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge and replace conflicts'**
+  String get restoreModeMerge;
+
+  /// No description provided for @restoreModeReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace current schedule'**
+  String get restoreModeReplace;
+
+  /// No description provided for @restoreNothingSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Select classes or app settings to restore'**
+  String get restoreNothingSelected;
+
+  /// No description provided for @restoreSettingsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'App settings restored'**
+  String get restoreSettingsDone;
 }
 
 class _AppLocalizationsDelegate

@@ -66,7 +66,9 @@ class _NextDaySummaryTemplateSheetState
     }
     setState(() => _saving = true);
     try {
-      await ref.read(reminderSettingsProvider.notifier).updateNextDayTemplates(
+      await ref
+          .read(reminderSettingsProvider.notifier)
+          .updateNextDayTemplates(
             withClassTitle: _withClassTitleController.text,
             withClassBody: _withClassBodyController.text,
             noClassTitle: _noClassTitleController.text,
@@ -120,7 +122,10 @@ class _NextDaySummaryTemplateSheetState
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
-              _field(l10n.nextDayWithClassTitleLabel, _withClassTitleController),
+              _field(
+                l10n.nextDayWithClassTitleLabel,
+                _withClassTitleController,
+              ),
               _field(l10n.nextDayWithClassBodyLabel, _withClassBodyController),
               _field(l10n.nextDayNoClassTitleLabel, _noClassTitleController),
               _field(l10n.nextDayNoClassBodyLabel, _noClassBodyController),

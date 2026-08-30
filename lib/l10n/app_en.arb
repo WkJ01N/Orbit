@@ -34,7 +34,7 @@
     }
   },
   "gridBatchDeleteConfirm2Title": "Confirm deletion",
-  "gridBatchDeleteConfirm2Content": "Deleted sessions cannot be recovered. Continue?",
+  "gridBatchDeleteConfirm2Content": "The selected sessions will stay in Recently Deleted for 7 days. Continue?",
   "gridBatchDeleteNone": "No classes fully within the selected range",
   "gridBatchDeleteDone": "Deleted {count} class sessions",
   "@gridBatchDeleteDone": {
@@ -138,6 +138,7 @@
     }
   },
   "settingsTitle": "Settings",
+  "settingsCategoryGeneral": "General",
   "settingsLoadFailed": "Failed to load settings: {error}",
   "@settingsLoadFailed": {
     "placeholders": {
@@ -294,7 +295,7 @@
     }
   },
   "deleteEndedConfirm2Title": "Confirm deletion",
-  "deleteEndedConfirm2Content": "Deleted sessions cannot be recovered. Continue?",
+  "deleteEndedConfirm2Content": "Ended sessions will stay in Recently Deleted for 7 days. Continue?",
   "deleteEndedNone": "No ended classes to delete",
   "deleteEndedDone": "Deleted {count} ended class sessions",
   "@deleteEndedDone": {
@@ -315,7 +316,7 @@
   "appTagline": "Orbit — class reminder app",
   "resyncDone": "Reminders rescheduled",
   "confirmClearTitle": "Confirm clear",
-  "confirmClearContent": "This will delete all imported schedule data and cannot be undone.",
+  "confirmClearContent": "All imported schedule data will be moved to Recently Deleted and kept for 7 days.",
   "actionCancel": "Cancel",
   "actionClear": "Clear",
   "dataCleared": "Schedule data cleared",
@@ -647,5 +648,33 @@
   "androidNotificationsEnabled": "Notifications enabled",
   "androidNotificationsDisabled": "Notifications disabled",
   "androidExactAlarmsEnabled": "Exact alarms allowed",
-  "androidExactAlarmsDisabled": "Exact alarms not allowed"
+  "androidExactAlarmsDisabled": "Exact alarms not allowed",
+  "actionUndo": "Undo",
+  "trashTitle": "Recently deleted",
+  "trashSubtitle": "Deleted classes are kept for 7 days",
+  "trashEmpty": "No recently deleted classes",
+  "trashDeletedAt": "Deleted {time}",
+  "trashRestoreSelected": "Restore selected",
+  "trashRestoreAll": "Restore all",
+  "trashEmptyAction": "Empty trash",
+  "trashEmptyConfirm1Title": "Empty trash?",
+  "trashEmptyConfirm1Content": "All recently deleted classes will be permanently removed.",
+  "trashEmptyConfirm2Title": "Permanently delete?",
+  "trashEmptyConfirm2Content": "This action cannot be undone.",
+  "trashRestoreResult": "Restored {restored}; skipped {skipped} conflicting class(es)",
+  "courseScopeTitle": "Apply changes to",
+  "courseScopeSingle": "This class only",
+  "courseScopeFromSelected": "This and future classes",
+  "courseScopeAll": "All matching classes",
+  "courseOperationSummary": "{count} class(es), {start} to {end}. {conflicts} conflict(s) will be replaced.",
+  "courseBatchUpdated": "Updated {count} class(es)",
+  "courseBatchDeleted": "Deleted {count} class(es)",
+  "backupIncludesSettings": "Includes appearance, schedule, reminder and course color settings",
+  "restorePreviewSummary": "Backup v{version} · {count} class(es) · {start} to {end}",
+  "restoreCoursesOption": "Restore classes",
+  "restoreSettingsOption": "Restore app settings",
+  "restoreModeMerge": "Merge and replace conflicts",
+  "restoreModeReplace": "Replace current schedule",
+  "restoreNothingSelected": "Select classes or app settings to restore",
+  "restoreSettingsDone": "App settings restored"
 }

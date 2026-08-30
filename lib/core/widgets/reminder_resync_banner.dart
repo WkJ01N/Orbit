@@ -43,14 +43,8 @@ class ReminderResyncBanner extends StatelessWidget {
       leading: Icon(Icons.warning_amber, color: iconColor),
       actions: [
         if (onDismiss != null)
-          TextButton(
-            onPressed: onDismiss,
-            child: Text(l10n.actionCancel),
-          ),
-        TextButton(
-          onPressed: onResync,
-          child: Text(l10n.resyncReminders),
-        ),
+          TextButton(onPressed: onDismiss, child: Text(l10n.actionCancel)),
+        TextButton(onPressed: onResync, child: Text(l10n.resyncReminders)),
       ],
     );
   }

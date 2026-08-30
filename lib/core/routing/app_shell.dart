@@ -133,7 +133,7 @@ class AppShell extends ConsumerWidget {
                 ),
                 Expanded(
                   child: wrapWithBanner(
-                    _FadeIndexedStack(
+                    _AnimatedIndexedStack(
                       index: selectedIndex,
                       children: _pages,
                     ),
@@ -146,10 +146,7 @@ class AppShell extends ConsumerWidget {
 
         return Scaffold(
           body: wrapWithBanner(
-            _FadeIndexedStack(
-              index: selectedIndex,
-              children: _pages,
-            ),
+            _AnimatedIndexedStack(index: selectedIndex, children: _pages),
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: selectedIndex,
@@ -169,55 +166,122 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// An [IndexedStack] that fades in the newly selected child whenever the
-/// [index] changes, while keeping all children alive in memory.
-class _FadeIndexedStack extends StatefulWidget {
-  const _FadeIndexedStack({
-    required this.index,
-    required this.children,
-  });
+/// Keeps every destination alive while the previous and next pages share a
+/// short transition. This avoids an abrupt content swap without losing state.
+class _AnimatedIndexedStack extends StatefulWidget {
+  const _AnimatedIndexedStack({required this.index, required this.children});
 
   final int index;
   final List<Widget> children;
 
   @override
-  State<_FadeIndexedStack> createState() => _FadeIndexedStackState();
+  State<_AnimatedIndexedStack> createState() => _AnimatedIndexedStackState();
 }
 
-class _FadeIndexedStackState extends State<_FadeIndexedStack>
+class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 180),
+    duration: const Duration(milliseconds: 260),
     value: 1.0,
-  );
-  late final CurvedAnimation _fade = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOut,
-  );
+  )..addStatusListener(_handleAnimationStatus);
+  late int _activeIndex = widget.index;
+  int? _previousIndex;
+  int _direction = 1;
 
   @override
-  void didUpdateWidget(_FadeIndexedStack old) {
+  void didUpdateWidget(_AnimatedIndexedStack old) {
     super.didUpdateWidget(old);
-    if (old.index != widget.index) {
+    if (widget.index != _activeIndex) {
+      _previousIndex = _activeIndex;
+      _direction = widget.index > _activeIndex ? 1 : -1;
+      _activeIndex = widget.index;
       _controller.forward(from: 0.0);
+    }
+  }
+
+  void _handleAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && _previousIndex != null) {
+      setState(() => _previousIndex = null);
     }
   }
 
   @override
   void dispose() {
+    _controller.removeStatusListener(_handleAnimationStatus);
     _controller.dispose();
-    _fade.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: IndexedStack(
-        index: widget.index,
-        children: widget.children,
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final progress = reduceMotion
+            ? 1.0
+            : Curves.easeOutCubic.transform(_controller.value);
+        final hiddenIndexes = <int>[
+          for (var index = 0; index < widget.children.length; index++)
+            if (index != _activeIndex && index != _previousIndex) index,
+        ];
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            for (final index in hiddenIndexes)
+              _destinationLayer(index: index, offstage: true),
+            _destinationLayer(
+              index: _activeIndex,
+              offset: Offset(_direction * (1 - progress) * 14, 0),
+              scale: 0.996 + progress * 0.004,
+              interactive: true,
+            ),
+            if (!reduceMotion && _previousIndex != null)
+              _destinationLayer(
+                index: _previousIndex!,
+                opacity: 1 - progress,
+                offset: Offset(-_direction * progress * 6, 0),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _destinationLayer({
+    required int index,
+    bool offstage = false,
+    bool interactive = false,
+    double opacity = 1,
+    double scale = 1,
+    Offset offset = Offset.zero,
+  }) {
+    return KeyedSubtree(
+      key: ValueKey('app-destination-$index'),
+      child: Offstage(
+        offstage: offstage,
+        child: TickerMode(
+          enabled: interactive,
+          child: IgnorePointer(
+            ignoring: !interactive,
+            child: ExcludeSemantics(
+              excluding: !interactive,
+              child: Opacity(
+                opacity: opacity.clamp(0.0, 1.0),
+                child: Transform.translate(
+                  offset: offset,
+                  child: Transform.scale(
+                    scale: scale,
+                    alignment: Alignment.center,
+                    child: widget.children[index],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

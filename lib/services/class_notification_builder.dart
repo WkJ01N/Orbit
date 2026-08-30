@@ -54,10 +54,7 @@ ClassLeadNotificationText buildClassLeadNotificationText({
 }
 
 class CheckInNotificationText {
-  const CheckInNotificationText({
-    required this.title,
-    required this.body,
-  });
+  const CheckInNotificationText({required this.title, required this.body});
 
   final String title;
   final String body;

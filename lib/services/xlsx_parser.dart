@@ -24,10 +24,8 @@ class XlsxParseException implements Exception {
       XlsxParseErrorCode.noSessions => l10n.xlsxErrorNoSessions,
       XlsxParseErrorCode.insufficientColumns =>
         l10n.xlsxErrorInsufficientColumns(detail ?? ''),
-      XlsxParseErrorCode.invalidDate =>
-        l10n.xlsxErrorInvalidDate(detail ?? ''),
-      XlsxParseErrorCode.invalidTime =>
-        l10n.xlsxErrorInvalidTime(detail ?? ''),
+      XlsxParseErrorCode.invalidDate => l10n.xlsxErrorInvalidDate(detail ?? ''),
+      XlsxParseErrorCode.invalidTime => l10n.xlsxErrorInvalidTime(detail ?? ''),
     };
   }
 
@@ -36,10 +34,7 @@ class XlsxParseException implements Exception {
 }
 
 class XlsxParser {
-  List<CourseSession> parseBytes(
-    List<int> bytes, {
-    String? sourceFile,
-  }) {
+  List<CourseSession> parseBytes(List<int> bytes, {String? sourceFile}) {
     final excel = Excel.decodeBytes(bytes);
     if (excel.tables.isEmpty) {
       throw XlsxParseException(XlsxParseErrorCode.noSheet);
@@ -71,17 +66,12 @@ class XlsxParser {
   ) {
     final sessions = <CourseSession>[];
     for (final file in files) {
-      sessions.addAll(
-        parseBytes(file.bytes, sourceFile: file.sourceFile),
-      );
+      sessions.addAll(parseBytes(file.bytes, sourceFile: file.sourceFile));
     }
     return sessions;
   }
 
-  CourseSession _parseRow(
-    List<String> row, {
-    String? sourceFile,
-  }) {
+  CourseSession _parseRow(List<String> row, {String? sourceFile}) {
     if (row.length < 13) {
       throw XlsxParseException(
         XlsxParseErrorCode.insufficientColumns,

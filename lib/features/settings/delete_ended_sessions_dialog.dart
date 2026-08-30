@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/widgets/step_confirm_dialog.dart';
+import 'package:orbit/features/session/deletion_feedback.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 
@@ -16,9 +17,9 @@ Future<bool> confirmDeleteEndedSessions(
   }
 
   if (count == 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.deleteEndedNone)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.deleteEndedNone)));
     return false;
   }
 
@@ -42,21 +43,31 @@ Future<void> deleteEndedSessionsWithFeedback(
   }
 
   try {
-    final deleted =
-        await ref.read(scheduleRepositoryProvider).deleteEndedSessions();
+    final now = DateTime.now();
+    final deletedIds =
+        (await ref.read(scheduleRepositoryProvider).getAllSessions())
+            .where((session) => !session.endAt.isAfter(now))
+            .map((session) => session.id)
+            .toList();
+    final deleted = await ref
+        .read(scheduleRepositoryProvider)
+        .deleteEndedSessions(before: now);
     await rescheduleAllReminders(ref);
     refreshSchedule(ref);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.deleteEndedDone(deleted))),
+      showDeletionUndo(
+        context: context,
+        container: ProviderScope.containerOf(context),
+        ids: deletedIds,
+        message: l10n.deleteEndedDone(deleted),
       );
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.deleteFailed('$e'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.deleteFailed('$e'))));
     }
   }
 }

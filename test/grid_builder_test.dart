@@ -10,7 +10,13 @@ CourseSession _session({
   int endHour = 10,
   String courseCode = 'PHYS102',
 }) {
-  final startAt = DateTime(date.year, date.month, date.day, startHour, startMinute);
+  final startAt = DateTime(
+    date.year,
+    date.month,
+    date.day,
+    startHour,
+    startMinute,
+  );
   final endAt = DateTime(date.year, date.month, date.day, endHour, startMinute);
   return CourseSession(
     id: '${date.toIso8601String()}|$courseCode|EX1|$startHour:$startMinute',
@@ -44,7 +50,10 @@ void main() {
       _session(date: DateTime(2026, 6, 3), weekday: 3, startHour: 9),
     ];
 
-    final grid = builder.buildWeekGrid(weekStart: weekStart, sessions: sessions);
+    final grid = builder.buildWeekGrid(
+      weekStart: weekStart,
+      sessions: sessions,
+    );
 
     expect(grid.weekStart, DateTime(2026, 6, 1));
     expect(grid.timeLabels, ['09:00', '14:00']);

@@ -28,8 +28,7 @@ String applyNextDayTemplate(
   String? template,
   String fallback,
   Map<String, String> variables,
-) =>
-    applyNotificationTemplate(template, fallback, variables);
+) => applyNotificationTemplate(template, fallback, variables);
 
 String nextDayDateLabel(DateTime day) {
   return '${day.month}/${day.day}';

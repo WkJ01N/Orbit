@@ -67,9 +67,7 @@ class CurrentTimeIndicator extends StatelessWidget {
         left: timeColumnWidth + columnIndex * columnWidth,
         width: columnWidth,
         top: top,
-        child: IgnorePointer(
-          child: Container(height: 2, color: lineColor),
-        ),
+        child: IgnorePointer(child: Container(height: 2, color: lineColor)),
       );
     } else {
       line = Positioned(
@@ -80,22 +78,14 @@ class CurrentTimeIndicator extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(width: timeColumnWidth),
-              Expanded(
-                child: Container(height: 2, color: lineColor),
-              ),
+              Expanded(child: Container(height: 2, color: lineColor)),
             ],
           ),
         ),
       );
     }
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        child,
-        line,
-      ],
-    );
+    return Stack(clipBehavior: Clip.none, children: [child, line]);
   }
 }
 

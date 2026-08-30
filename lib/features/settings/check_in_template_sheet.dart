@@ -55,7 +55,9 @@ class _CheckInTemplateSheetState extends ConsumerState<CheckInTemplateSheet> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(reminderSettingsProvider.notifier).updateCheckInTemplates(
+      await ref
+          .read(reminderSettingsProvider.notifier)
+          .updateCheckInTemplates(
             title: _titleController.text,
             body: _bodyController.text,
           );

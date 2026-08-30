@@ -17,7 +17,9 @@ void main() {
       const traditional = '計算機概論';
       const simplifiedQuery = '计算机';
       expect(
-        foldToSimplified(traditional).contains(foldToSimplified(simplifiedQuery)),
+        foldToSimplified(
+          traditional,
+        ).contains(foldToSimplified(simplifiedQuery)),
         isTrue,
       );
     });

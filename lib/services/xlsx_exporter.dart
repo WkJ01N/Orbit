@@ -27,7 +27,9 @@ class XlsxExporter {
     for (var column = 0; column < headers.length; column++) {
       sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 0))
-          .value = TextCellValue(headers[column]);
+          .value = TextCellValue(
+        headers[column],
+      );
     }
 
     for (var row = 0; row < sessions.length; row++) {
@@ -65,12 +67,11 @@ class XlsxExporter {
     for (var column = 0; column < values.length; column++) {
       sheet
           .cell(
-            CellIndex.indexByColumnRow(
-              columnIndex: column,
-              rowIndex: rowIndex,
-            ),
+            CellIndex.indexByColumnRow(columnIndex: column, rowIndex: rowIndex),
           )
-          .value = TextCellValue(values[column]);
+          .value = TextCellValue(
+        values[column],
+      );
     }
   }
 

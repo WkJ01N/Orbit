@@ -74,7 +74,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gridBatchDeleteConfirm2Content =>
-      'Deleted sessions cannot be recovered. Continue?';
+      'The selected sessions will stay in Recently Deleted for 7 days. Continue?';
 
   @override
   String get gridBatchDeleteNone =>
@@ -245,6 +245,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsCategoryGeneral => 'General';
 
   @override
   String settingsLoadFailed(String error) {
@@ -619,7 +622,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteEndedConfirm2Content =>
-      'Deleted sessions cannot be recovered. Continue?';
+      'Ended sessions will stay in Recently Deleted for 7 days. Continue?';
 
   @override
   String get deleteEndedNone => 'No ended classes to delete';
@@ -657,7 +660,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmClearContent =>
-      'This will delete all imported schedule data and cannot be undone.';
+      'All imported schedule data will be moved to Recently Deleted and kept for 7 days.';
 
   @override
   String get actionCancel => 'Cancel';
@@ -1245,4 +1248,113 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidExactAlarmsDisabled => 'Exact alarms not allowed';
+
+  @override
+  String get actionUndo => 'Undo';
+
+  @override
+  String get trashTitle => 'Recently deleted';
+
+  @override
+  String get trashSubtitle => 'Deleted classes are kept for 7 days';
+
+  @override
+  String get trashEmpty => 'No recently deleted classes';
+
+  @override
+  String trashDeletedAt(Object time) {
+    return 'Deleted $time';
+  }
+
+  @override
+  String get trashRestoreSelected => 'Restore selected';
+
+  @override
+  String get trashRestoreAll => 'Restore all';
+
+  @override
+  String get trashEmptyAction => 'Empty trash';
+
+  @override
+  String get trashEmptyConfirm1Title => 'Empty trash?';
+
+  @override
+  String get trashEmptyConfirm1Content =>
+      'All recently deleted classes will be permanently removed.';
+
+  @override
+  String get trashEmptyConfirm2Title => 'Permanently delete?';
+
+  @override
+  String get trashEmptyConfirm2Content => 'This action cannot be undone.';
+
+  @override
+  String trashRestoreResult(Object restored, Object skipped) {
+    return 'Restored $restored; skipped $skipped conflicting class(es)';
+  }
+
+  @override
+  String get courseScopeTitle => 'Apply changes to';
+
+  @override
+  String get courseScopeSingle => 'This class only';
+
+  @override
+  String get courseScopeFromSelected => 'This and future classes';
+
+  @override
+  String get courseScopeAll => 'All matching classes';
+
+  @override
+  String courseOperationSummary(
+    Object conflicts,
+    Object count,
+    Object end,
+    Object start,
+  ) {
+    return '$count class(es), $start to $end. $conflicts conflict(s) will be replaced.';
+  }
+
+  @override
+  String courseBatchUpdated(Object count) {
+    return 'Updated $count class(es)';
+  }
+
+  @override
+  String courseBatchDeleted(Object count) {
+    return 'Deleted $count class(es)';
+  }
+
+  @override
+  String get backupIncludesSettings =>
+      'Includes appearance, schedule, reminder and course color settings';
+
+  @override
+  String restorePreviewSummary(
+    Object count,
+    Object end,
+    Object start,
+    Object version,
+  ) {
+    return 'Backup v$version · $count class(es) · $start to $end';
+  }
+
+  @override
+  String get restoreCoursesOption => 'Restore classes';
+
+  @override
+  String get restoreSettingsOption => 'Restore app settings';
+
+  @override
+  String get restoreModeMerge => 'Merge and replace conflicts';
+
+  @override
+  String get restoreModeReplace => 'Replace current schedule';
+
+  @override
+  String get restoreNothingSelected =>
+      'Select classes or app settings to restore';
+
+  @override
+  String get restoreSettingsDone => 'App settings restored';
 }

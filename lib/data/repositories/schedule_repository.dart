@@ -2,6 +2,8 @@ import 'package:orbit/core/l10n/zh_variant.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/course_operation.dart';
+import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 import 'package:orbit/services/xlsx_exporter.dart';
 import 'package:orbit/services/xlsx_parser.dart';
@@ -28,10 +30,7 @@ class ScheduleRepository {
   ) async {
     final sessions = <CourseSession>[];
     for (final file in files) {
-      final parsed = _parser.parseBytes(
-        file.bytes,
-        sourceFile: file.fileName,
-      );
+      final parsed = _parser.parseBytes(file.bytes, sourceFile: file.fileName);
       sessions.addAll(parsed);
     }
     return importParsedSessions(sessions);
@@ -88,8 +87,7 @@ class ScheduleRepository {
       deleteIds = existing
           .where((s) => !importIds.contains(s.id))
           .where((s) {
-            final key =
-                '${s.date.year}-${s.date.month}-${s.date.day}';
+            final key = '${s.date.year}-${s.date.month}-${s.date.day}';
             final sameDayImports = importsByDate[key];
             if (sameDayImports == null) {
               return false;
@@ -113,6 +111,105 @@ class ScheduleRepository {
   Future<List<CourseSession>> getAllSessions() {
     return _database.getAllSessions();
   }
+
+  Future<List<CourseSession>> getDeletedSessions() {
+    return _database.getDeletedSessions();
+  }
+
+  Future<List<CourseSession>> getCourseSeries(
+    CourseSession selected,
+    CourseOperationScope scope,
+  ) async {
+    if (scope == CourseOperationScope.single) return [selected];
+    final key = CourseSeriesKey.fromSession(selected);
+    final sessions = await getAllSessions();
+    return sessions.where((session) {
+      if (CourseSeriesKey.fromSession(session) != key) return false;
+      return scope != CourseOperationScope.fromSelected ||
+          !session.startAt.isBefore(selected.startAt);
+    }).toList();
+  }
+
+  Future<CourseOperationPreview> previewCourseSeriesUpdate({
+    required CourseSession selected,
+    required CourseSession changes,
+    required CourseOperationScope scope,
+  }) async {
+    final prepared = await _prepareCourseSeriesUpdate(
+      selected: selected,
+      changes: changes,
+      scope: scope,
+    );
+    return CourseOperationPreview(
+      targetCount: prepared.targets.length,
+      conflictCount: prepared.conflictIds.length,
+      firstDate: prepared.targets.first.date,
+      lastDate: prepared.targets.last.date,
+    );
+  }
+
+  Future<CourseOperationResult> updateCourseSeries({
+    required CourseSession selected,
+    required CourseSession changes,
+    required CourseOperationScope scope,
+  }) async {
+    final prepared = await _prepareCourseSeriesUpdate(
+      selected: selected,
+      changes: changes,
+      scope: scope,
+    );
+    await _database.replaceSessions(
+      deleteIds: [
+        ...prepared.targets.map((session) => session.id),
+        ...prepared.conflictIds,
+      ],
+      upsert: prepared.updated,
+    );
+    return CourseOperationResult(
+      affectedCount: prepared.targets.length,
+      conflictCount: prepared.conflictIds.length,
+    );
+  }
+
+  Future<CourseOperationResult> deleteCourseSeries({
+    required CourseSession selected,
+    required CourseOperationScope scope,
+  }) async {
+    final targets = await getCourseSeries(selected, scope);
+    final deleted = await _database.softDeleteSessionIds(
+      targets.map((session) => session.id).toList(),
+    );
+    return CourseOperationResult(affectedCount: deleted);
+  }
+
+  Future<RestoreDeletedResult> restoreDeletedSessions(List<String> ids) async {
+    final requested = ids.toSet();
+    final deleted = (await _database.getDeletedSessions())
+        .where((session) => requested.contains(session.id))
+        .toList();
+    final active = await getAllSessions();
+    final restorable = <CourseSession>[];
+    var skipped = 0;
+    for (final session in deleted) {
+      final conflicts = active.any((other) => _timeOverlaps(other, session));
+      if (conflicts) {
+        skipped++;
+      } else {
+        restorable.add(session);
+      }
+    }
+    final restored = await _database.restoreDeletedSessionIds(
+      restorable.map((session) => session.id).toList(),
+    );
+    return RestoreDeletedResult(restored: restored, skipped: skipped);
+  }
+
+  Future<int> purgeExpiredDeletedSessions({DateTime? now}) {
+    final cutoff = (now ?? DateTime.now()).subtract(const Duration(days: 7));
+    return _database.purgeDeletedBefore(cutoff);
+  }
+
+  Future<int> purgeAllDeletedSessions() => _database.purgeAllDeleted();
 
   Future<CourseSession?> getSessionById(String id) {
     return _database.getSessionById(id);
@@ -155,9 +252,9 @@ class ScheduleRepository {
     return XlsxExporter().exportBytes(sessions);
   }
 
-  Future<String> exportToJsonBackup() async {
+  Future<String> exportToJsonBackup({PortableSettings? settings}) async {
     final sessions = await getAllSessions();
-    return ScheduleBackupService().encodeToJson(sessions);
+    return ScheduleBackupService().encodeToJson(sessions, settings: settings);
   }
 
   Future<List<CourseSession>> importFromJsonBackup(String raw) async {
@@ -205,7 +302,10 @@ class ScheduleRepository {
     return conflicts.length;
   }
 
-  Future<bool> hasTimeConflict(CourseSession candidate, {String? excludeId}) async {
+  Future<bool> hasTimeConflict(
+    CourseSession candidate, {
+    String? excludeId,
+  }) async {
     final sessions = await getAllSessions();
     for (final existing in sessions) {
       if (excludeId != null && existing.id == excludeId) {
@@ -236,11 +336,11 @@ class ScheduleRepository {
     return _database.getSessionsBetween(start, end);
   }
 
-  Future<void> clearAll() {
+  Future<int> clearAll() {
     return _database.clearAllSessions();
   }
 
-  Future<void> deleteSession(String id) {
+  Future<int> deleteSession(String id) {
     return _database.deleteSessionById(id);
   }
 
@@ -285,5 +385,73 @@ class ScheduleRepository {
       return null;
     }
     return weekStartFor(earliest);
+  }
+
+  Future<List<CourseSession>> restoreBackupSessions(
+    List<CourseSession> sessions, {
+    required ImportMergeStrategy strategy,
+  }) async {
+    if (strategy == ImportMergeStrategy.replaceWeek) {
+      await _database.replaceAllActiveSessions(sessions);
+      return sessions;
+    }
+    return importParsedSessionsWithStrategy(
+      sessions,
+      ImportMergeStrategy.mergeOverwrite,
+    );
+  }
+
+  Future<
+    ({
+      List<CourseSession> targets,
+      List<CourseSession> updated,
+      List<String> conflictIds,
+    })
+  >
+  _prepareCourseSeriesUpdate({
+    required CourseSession selected,
+    required CourseSession changes,
+    required CourseOperationScope scope,
+  }) async {
+    final targets = await getCourseSeries(selected, scope);
+    targets.sort((a, b) => a.startAt.compareTo(b.startAt));
+    final updated = targets.map((target) {
+      final startAt = DateTime(
+        target.date.year,
+        target.date.month,
+        target.date.day,
+        changes.startAt.hour,
+        changes.startAt.minute,
+      );
+      final endAt = DateTime(
+        target.date.year,
+        target.date.month,
+        target.date.day,
+        changes.endAt.hour,
+        changes.endAt.minute,
+      );
+      final next = target.copyWith(
+        courseName: changes.courseName,
+        room: changes.room,
+        teachers: changes.teachers,
+        faculty: changes.faculty,
+        startAt: startAt,
+        endAt: endAt,
+        clearDeletedAt: true,
+      );
+      return next.copyWith(id: next.computeId());
+    }).toList();
+    final targetIds = targets.map((session) => session.id).toSet();
+    final active = await getAllSessions();
+    final conflictIds = active
+        .where((session) => !targetIds.contains(session.id))
+        .where(
+          (session) =>
+              updated.any((candidate) => _timeOverlaps(session, candidate)),
+        )
+        .map((session) => session.id)
+        .toSet()
+        .toList();
+    return (targets: targets, updated: updated, conflictIds: conflictIds);
   }
 }

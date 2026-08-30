@@ -1,9 +1,5 @@
 /// Visual density presets for the schedule grid.
-enum GridDensity {
-  compact,
-  standard,
-  comfortable,
-}
+enum GridDensity { compact, standard, comfortable }
 
 class GridDensityMetrics {
   const GridDensityMetrics({
@@ -25,29 +21,29 @@ class GridDensityMetrics {
   static GridDensityMetrics forDensity(GridDensity density) {
     return switch (density) {
       GridDensity.compact => const GridDensityMetrics(
-          rowHeight: 52,
-          timeColumnWidth: 44,
-          tableHeaderExtent: 44,
-          weekdayChipHeight: 40,
-          courseNameFontSize: 9,
-          courseMetaFontSize: 8,
-        ),
+        rowHeight: 52,
+        timeColumnWidth: 44,
+        tableHeaderExtent: 44,
+        weekdayChipHeight: 40,
+        courseNameFontSize: 9,
+        courseMetaFontSize: 8,
+      ),
       GridDensity.standard => const GridDensityMetrics(
-          rowHeight: 64,
-          timeColumnWidth: 52,
-          tableHeaderExtent: 52,
-          weekdayChipHeight: 48,
-          courseNameFontSize: 10,
-          courseMetaFontSize: 9,
-        ),
+        rowHeight: 64,
+        timeColumnWidth: 52,
+        tableHeaderExtent: 52,
+        weekdayChipHeight: 48,
+        courseNameFontSize: 10,
+        courseMetaFontSize: 9,
+      ),
       GridDensity.comfortable => const GridDensityMetrics(
-          rowHeight: 76,
-          timeColumnWidth: 60,
-          tableHeaderExtent: 56,
-          weekdayChipHeight: 52,
-          courseNameFontSize: 11,
-          courseMetaFontSize: 10,
-        ),
+        rowHeight: 76,
+        timeColumnWidth: 60,
+        tableHeaderExtent: 56,
+        weekdayChipHeight: 52,
+        courseNameFontSize: 11,
+        courseMetaFontSize: 10,
+      ),
     };
   }
 }

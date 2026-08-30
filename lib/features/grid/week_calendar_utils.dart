@@ -1,9 +1,6 @@
 import 'package:orbit/models/course_session.dart';
 
-DateTime weekStartFor(
-  DateTime date, {
-  int startWeekday = DateTime.monday,
-}) {
+DateTime weekStartFor(DateTime date, {int startWeekday = DateTime.monday}) {
   final normalized = DateTime(date.year, date.month, date.day);
   final delta = (normalized.weekday - startWeekday + 7) % 7;
   return normalized.subtract(Duration(days: delta));
@@ -11,25 +8,17 @@ DateTime weekStartFor(
 
 /// Returns weekdays 1–7 ordered from [startWeekday].
 List<int> orderedWeekdays({int startWeekday = DateTime.monday}) {
-  return [
-    for (var i = 0; i < 7; i++) ((startWeekday - 1 + i) % 7) + 1,
-  ];
+  return [for (var i = 0; i < 7; i++) ((startWeekday - 1 + i) % 7) + 1];
 }
 
 class BatchDeleteRange {
-  const BatchDeleteRange({
-    required this.start,
-    required this.end,
-  });
+  const BatchDeleteRange({required this.start, required this.end});
 
   final DateTime start;
   final DateTime end;
 }
 
-DateTime weekEndDate(
-  DateTime weekStart, {
-  int startWeekday = DateTime.monday,
-}) {
+DateTime weekEndDate(DateTime weekStart, {int startWeekday = DateTime.monday}) {
   final normalized = DateTime(weekStart.year, weekStart.month, weekStart.day);
   return normalized.add(const Duration(days: 6));
 }
@@ -59,8 +48,10 @@ List<DateTime> weeksOverlappingMonth(
 
   final weeks = <DateTime>[];
   while (!weekStart.isAfter(monthEnd)) {
-    if (!weekEndDate(weekStart, startWeekday: startWeekday)
-        .isBefore(monthStart)) {
+    if (!weekEndDate(
+      weekStart,
+      startWeekday: startWeekday,
+    ).isBefore(monthStart)) {
       weeks.add(weekStart);
     }
     weekStart = weekStart.add(const Duration(days: 7));
@@ -76,7 +67,11 @@ bool weekHasSessions(
   final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
   final end = weekEndDate(weekStart, startWeekday: startWeekday);
   for (final session in sessions) {
-    final date = DateTime(session.date.year, session.date.month, session.date.day);
+    final date = DateTime(
+      session.date.year,
+      session.date.month,
+      session.date.day,
+    );
     if (!date.isBefore(start) && !date.isAfter(end)) {
       return true;
     }
@@ -124,10 +119,7 @@ DateTime? resolveDefaultWeekStart(
         return thisWeek;
       }
       return _nearestWeekWithSessions(sessions, thisWeek, startWeekday) ??
-          earliestWeekStartFromSessions(
-            sessions,
-            startWeekday: startWeekday,
-          );
+          earliestWeekStartFromSessions(sessions, startWeekday: startWeekday);
   }
 }
 

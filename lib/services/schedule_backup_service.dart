@@ -1,6 +1,21 @@
 import 'dart:convert';
 
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/portable_settings.dart';
+
+class OrbitBackup {
+  const OrbitBackup({
+    required this.version,
+    required this.exportedAt,
+    required this.sessions,
+    this.settings,
+  });
+
+  final int version;
+  final DateTime exportedAt;
+  final List<CourseSession> sessions;
+  final PortableSettings? settings;
+}
 
 class ScheduleBackupException implements Exception {
   ScheduleBackupException(this.message);
@@ -12,18 +27,26 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 1;
+  static const backupVersion = 2;
 
-  String encodeToJson(List<CourseSession> sessions) {
+  String encodeToJson(
+    List<CourseSession> sessions, {
+    PortableSettings? settings,
+  }) {
     final payload = {
       'version': backupVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'sessions': sessions.map(_sessionToJson).toList(),
+      if (settings != null) 'settings': settings.toJson(),
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
 
   List<CourseSession> decodeFromJson(String raw) {
+    return decodeBackup(raw).sessions;
+  }
+
+  OrbitBackup decodeBackup(String raw) {
     final dynamic decoded;
     try {
       decoded = jsonDecode(raw);
@@ -44,14 +67,29 @@ class ScheduleBackupService {
       throw ScheduleBackupException('invalid_format');
     }
 
-    return sessionsRaw
-        .map((item) {
-          if (item is! Map<String, dynamic>) {
-            throw ScheduleBackupException('invalid_format');
-          }
-          return _sessionFromJson(item);
-        })
-        .toList();
+    final sessions = sessionsRaw.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw ScheduleBackupException('invalid_format');
+      }
+      return _sessionFromJson(item);
+    }).toList();
+    final settingsRaw = decoded['settings'];
+    final PortableSettings? settings;
+    try {
+      settings = settingsRaw is Map<String, dynamic>
+          ? PortableSettings.fromJson(settingsRaw)
+          : null;
+    } on FormatException {
+      throw ScheduleBackupException('invalid_format');
+    }
+    return OrbitBackup(
+      version: version,
+      exportedAt:
+          DateTime.tryParse(decoded['exportedAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      sessions: sessions,
+      settings: settings,
+    );
   }
 
   Map<String, dynamic> _sessionToJson(CourseSession session) {

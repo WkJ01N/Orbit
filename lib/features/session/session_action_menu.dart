@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
+import 'package:orbit/features/session/deletion_feedback.dart';
+import 'package:orbit/features/session/course_scope_dialog.dart';
 import 'package:orbit/features/session/session_note_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 enum SessionAction { edit, note, delete }
@@ -141,6 +144,20 @@ class SessionActionMenu {
     CourseSession session,
   ) async {
     final l10n = AppLocalizations.of(context)!;
+    final repository = container.read(scheduleRepositoryProvider);
+    var scope = CourseOperationScope.single;
+    final allMatching = await repository.getCourseSeries(
+      session,
+      CourseOperationScope.all,
+    );
+    if (!context.mounted) return false;
+    if (allMatching.length > 1) {
+      final selectedScope = await showCourseScopeDialog(context);
+      if (selectedScope == null || !context.mounted) return false;
+      scope = selectedScope;
+    }
+    final targets = await repository.getCourseSeries(session, scope);
+    if (!context.mounted) return false;
     final dateLabel = DateFormat('yyyy-MM-dd').format(session.date);
     final timeLabel =
         '${session.startAt.hour.toString().padLeft(2, '0')}:${session.startAt.minute.toString().padLeft(2, '0')}';
@@ -150,12 +167,19 @@ class SessionActionMenu {
       builder: (context) => AlertDialog(
         title: Text(l10n.deleteSessionConfirmTitle),
         content: Text(
-          l10n.deleteSessionConfirmContent(
-            session.courseName,
-            dateLabel,
-            timeLabel,
-            session.room,
-          ),
+          targets.length > 1
+              ? l10n.courseOperationSummary(
+                  targets.length,
+                  DateFormat('yyyy-MM-dd').format(targets.first.date),
+                  DateFormat('yyyy-MM-dd').format(targets.last.date),
+                  0,
+                )
+              : l10n.deleteSessionConfirmContent(
+                  session.courseName,
+                  dateLabel,
+                  timeLabel,
+                  session.room,
+                ),
         ),
         actions: [
           TextButton(
@@ -175,25 +199,34 @@ class SessionActionMenu {
 
     if (confirmed == true) {
       try {
-        await container.read(scheduleRepositoryProvider).deleteSession(session.id);
+        final result = await repository.deleteCourseSeries(
+          selected: session,
+          scope: scope,
+        );
         final failures = await container
             .read(reminderSettingsProvider.notifier)
             .resyncReminders();
         refreshScheduleContainer(container);
         if (context.mounted) {
-          final message = failures > 0
-              ? '${l10n.sessionDeleted} ${l10n.resyncPartialFailed(failures)}'
+          final baseMessage = result.affectedCount > 1
+              ? l10n.courseBatchDeleted(result.affectedCount)
               : l10n.sessionDeleted;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message)),
+          final message = failures > 0
+              ? '$baseMessage ${l10n.resyncPartialFailed(failures)}'
+              : baseMessage;
+          showDeletionUndo(
+            context: context,
+            container: container,
+            ids: targets.map((target) => target.id).toList(),
+            message: message,
           );
         }
         return true;
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.deleteFailed('$e'))),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(l10n.deleteFailed('$e'))));
         }
         return false;
       }

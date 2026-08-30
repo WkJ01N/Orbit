@@ -2,10 +2,7 @@ import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/grid_models.dart';
 
 class GridPagerSlot {
-  const GridPagerSlot({
-    required this.grid,
-    this.day,
-  });
+  const GridPagerSlot({required this.grid, this.day});
 
   final WeekGrid grid;
   final int? day;
@@ -13,17 +10,14 @@ class GridPagerSlot {
   DateTime get weekStart => weekStartFor(grid.weekStart);
 }
 
-List<int> presentWeekdays(
-  WeekGrid grid, {
-  int startWeekday = DateTime.monday,
-}) {
+List<int> presentWeekdays(WeekGrid grid, {int startWeekday = DateTime.monday}) {
   final presentWeekdays = <int>{};
   for (final key in grid.cells.keys) {
     presentWeekdays.add(int.parse(key.split('|').first));
   }
-  return orderedWeekdays(startWeekday: startWeekday)
-      .where((day) => presentWeekdays.contains(day))
-      .toList();
+  return orderedWeekdays(
+    startWeekday: startWeekday,
+  ).where((day) => presentWeekdays.contains(day)).toList();
 }
 
 bool isEmptyWeekGrid(WeekGrid grid, {int startWeekday = DateTime.monday}) {
@@ -31,10 +25,7 @@ bool isEmptyWeekGrid(WeekGrid grid, {int startWeekday = DateTime.monday}) {
   return weekdays.isEmpty || grid.timeLabels.isEmpty;
 }
 
-int defaultWeekdayForGrid(
-  WeekGrid grid, {
-  int startWeekday = DateTime.monday,
-}) {
+int defaultWeekdayForGrid(WeekGrid grid, {int startWeekday = DateTime.monday}) {
   final weekdays = presentWeekdays(grid, startWeekday: startWeekday);
   if (weekdays.isEmpty) {
     return startWeekday;
@@ -158,8 +149,9 @@ GridPagerSlot? computeNextDaySlot(
 }
 
 GridPagerSlot? computePreviousWeekSlot(GridPagerSlot current) {
-  final previousWeekStart =
-      weekStartFor(current.weekStart.subtract(const Duration(days: 7)));
+  final previousWeekStart = weekStartFor(
+    current.weekStart.subtract(const Duration(days: 7)),
+  );
   return GridPagerSlot(
     grid: WeekGrid(
       weekStart: previousWeekStart,
@@ -170,8 +162,9 @@ GridPagerSlot? computePreviousWeekSlot(GridPagerSlot current) {
 }
 
 GridPagerSlot? computeNextWeekSlot(GridPagerSlot current) {
-  final nextWeekStart =
-      weekStartFor(current.weekStart.add(const Duration(days: 7)));
+  final nextWeekStart = weekStartFor(
+    current.weekStart.add(const Duration(days: 7)),
+  );
   return GridPagerSlot(
     grid: WeekGrid(
       weekStart: nextWeekStart,
@@ -186,8 +179,7 @@ int? resolveDayAfterWeekChange({
   required int crossWeekDirection,
   int startWeekday = DateTime.monday,
 }) {
-  final weekdays =
-      presentWeekdays(targetSlot.grid, startWeekday: startWeekday);
+  final weekdays = presentWeekdays(targetSlot.grid, startWeekday: startWeekday);
   if (weekdays.isEmpty) {
     return null;
   }

@@ -52,23 +52,26 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
-  test('countEndedSessions counts only sessions with end_at <= before', () async {
-    final now = DateTime(2026, 6, 5, 12, 0);
-    await database.upsertSessions([
-      _session(
-        id: 'past',
-        startAt: DateTime(2026, 6, 5, 8, 0),
-        endAt: DateTime(2026, 6, 5, 9, 0),
-      ),
-      _session(
-        id: 'future',
-        startAt: DateTime(2026, 6, 5, 14, 0),
-        endAt: DateTime(2026, 6, 5, 15, 0),
-      ),
-    ]);
+  test(
+    'countEndedSessions counts only sessions with end_at <= before',
+    () async {
+      final now = DateTime(2026, 6, 5, 12, 0);
+      await database.upsertSessions([
+        _session(
+          id: 'past',
+          startAt: DateTime(2026, 6, 5, 8, 0),
+          endAt: DateTime(2026, 6, 5, 9, 0),
+        ),
+        _session(
+          id: 'future',
+          startAt: DateTime(2026, 6, 5, 14, 0),
+          endAt: DateTime(2026, 6, 5, 15, 0),
+        ),
+      ]);
 
-    expect(await repository.countEndedSessions(before: now), 1);
-  });
+      expect(await repository.countEndedSessions(before: now), 1);
+    },
+  );
 
   test('deleteEndedSessions removes only ended sessions', () async {
     final now = DateTime(2026, 6, 5, 12, 0);

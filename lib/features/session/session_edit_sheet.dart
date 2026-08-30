@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
+import 'package:orbit/features/session/course_scope_dialog.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class SessionEditSheet extends ConsumerStatefulWidget {
@@ -29,8 +31,10 @@ class SessionEditSheet extends ConsumerStatefulWidget {
       return showDialog<bool>(
         context: context,
         builder: (context) => Dialog(
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 40,
+            vertical: 32,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -224,17 +228,17 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final name = _nameController.text.trim();
     final room = _roomController.text.trim();
     if (name.isEmpty || room.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.sessionCreateRequiredFields)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.sessionCreateRequiredFields)));
       return;
     }
 
     final finalSession = _buildSession();
     if (!finalSession.endAt.isAfter(finalSession.startAt)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.editSessionEndBeforeStart)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.editSessionEndBeforeStart)));
       return;
     }
 
@@ -242,17 +246,79 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
 
     setState(() => _saving = true);
     try {
-      final overwritten = await repository.saveSessionWithConflictResolution(
-        finalSession,
-        original: widget.session,
-      );
+      var scope = CourseOperationScope.single;
+      CourseOperationResult? operationResult;
+      int overwritten;
+      final original = widget.session;
+      if (original != null) {
+        final matching = await repository.getCourseSeries(
+          original,
+          CourseOperationScope.all,
+        );
+        if (matching.length > 1 && mounted) {
+          final selectedScope = await showCourseScopeDialog(context);
+          if (selectedScope == null || !mounted) {
+            setState(() => _saving = false);
+            return;
+          }
+          scope = selectedScope;
+        }
+        final preview = await repository.previewCourseSeriesUpdate(
+          selected: original,
+          changes: finalSession,
+          scope: scope,
+        );
+        if ((preview.targetCount > 1 || preview.conflictCount > 0) && mounted) {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(l10n.courseScopeTitle),
+              content: Text(
+                l10n.courseOperationSummary(
+                  preview.targetCount,
+                  DateFormat('yyyy-MM-dd').format(preview.firstDate),
+                  DateFormat('yyyy-MM-dd').format(preview.lastDate),
+                  preview.conflictCount,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l10n.actionCancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(l10n.actionApply),
+                ),
+              ],
+            ),
+          );
+          if (confirmed != true || !mounted) {
+            setState(() => _saving = false);
+            return;
+          }
+        }
+        operationResult = await repository.updateCourseSeries(
+          selected: original,
+          changes: finalSession,
+          scope: scope,
+        );
+        overwritten = operationResult.conflictCount;
+      } else {
+        overwritten = await repository.saveSessionWithConflictResolution(
+          finalSession,
+        );
+      }
       final failures = await rescheduleAllReminders(ref);
       refreshSchedule(ref);
 
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context, true);
-        final baseMessage = overwritten > 0
+        final baseMessage =
+            operationResult != null && operationResult.affectedCount > 1
+            ? l10n.courseBatchUpdated(operationResult.affectedCount)
+            : overwritten > 0
             ? l10n.sessionSavedWithOverride(overwritten)
             : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
         final syncError = ref.read(lastRescheduleErrorProvider);
@@ -267,19 +333,18 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           message =
               '$baseMessage ${l10n.reminderRegisteredAlarmCount(alarmCount)}';
         } else if (scheduledCount > 0) {
-          message = '$baseMessage ${l10n.reminderScheduledCount(scheduledCount)}';
+          message =
+              '$baseMessage ${l10n.reminderScheduledCount(scheduledCount)}';
         } else {
           message = baseMessage;
         }
-        messenger.showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.sessionSaveFailed('$e'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.sessionSaveFailed('$e'))));
       }
     } finally {
       if (mounted) {
@@ -293,8 +358,9 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final l10n = AppLocalizations.of(context)!;
     final startLabel = _startTime.format(context);
     final endLabel = _endTime.format(context);
-    final dateLabel = DateFormat.yMMMd(Localizations.localeOf(context).toString())
-        .format(_date);
+    final dateLabel = DateFormat.yMMMd(
+      Localizations.localeOf(context).toString(),
+    ).format(_date);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -304,7 +370,9 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.isCreateMode ? l10n.addSessionTitle : l10n.editSessionTitle,
+              widget.isCreateMode
+                  ? l10n.addSessionTitle
+                  : l10n.editSessionTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
@@ -392,7 +460,11 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(widget.isCreateMode ? l10n.actionCreate : l10n.actionApply),
+                  : Text(
+                      widget.isCreateMode
+                          ? l10n.actionCreate
+                          : l10n.actionApply,
+                    ),
             ),
           ],
         ),

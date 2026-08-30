@@ -46,9 +46,9 @@ class _DesktopShellState extends State<DesktopShell>
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.trayInitFailed)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.trayInitFailed)));
       }
     }
   }

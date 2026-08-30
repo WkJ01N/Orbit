@@ -59,16 +59,8 @@ void main() {
   group('importParsedSessions', () {
     test('寫入並可查詢課程', () async {
       final sessions = [
-        _session(
-          id: 'a',
-          date: DateTime(2026, 6, 2),
-          weekday: 2,
-        ),
-        _session(
-          id: 'b',
-          date: DateTime(2026, 6, 3),
-          weekday: 3,
-        ),
+        _session(id: 'a', date: DateTime(2026, 6, 2), weekday: 2),
+        _session(id: 'b', date: DateTime(2026, 6, 3), weekday: 3),
       ];
 
       await repository.importParsedSessions(sessions);
@@ -97,16 +89,8 @@ void main() {
   group('getEarliestWeekStart', () {
     test('返回最早課程所在週的週一', () async {
       await repository.importParsedSessions([
-        _session(
-          id: 'late',
-          date: DateTime(2026, 6, 5),
-          weekday: 5,
-        ),
-        _session(
-          id: 'early',
-          date: DateTime(2026, 5, 28),
-          weekday: 4,
-        ),
+        _session(id: 'late', date: DateTime(2026, 6, 5), weekday: 5),
+        _session(id: 'early', date: DateTime(2026, 5, 28), weekday: 4),
       ]);
 
       final earliest = await repository.getEarliestWeekStart();

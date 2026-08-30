@@ -19,8 +19,9 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
 
   if (settings.enabled) {
     for (final session in upcomingSessions) {
-      final reminderAt =
-          session.startAt.subtract(Duration(minutes: settings.leadMinutes));
+      final reminderAt = session.startAt.subtract(
+        Duration(minutes: settings.leadMinutes),
+      );
       if (!reminderAt.isAfter(now)) {
         continue;
       }
@@ -88,11 +89,11 @@ List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
   required NotificationCopy copy,
 }) {
   return buildNextDaySummarySlots(
-    allSessions: allSessions,
-    settings: settings,
-    now: now,
-    copy: copy,
-  )
+        allSessions: allSessions,
+        settings: settings,
+        now: now,
+        copy: copy,
+      )
       .map(
         (slot) => ReminderAlarmSpec(
           alarmId: slot.notificationId,

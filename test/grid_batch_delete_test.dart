@@ -64,10 +64,7 @@ void main() {
     );
 
     test('returns true when session is fully inside range', () {
-      expect(
-        isSessionFullyInRange(session, rangeStart, rangeEnd),
-        isTrue,
-      );
+      expect(isSessionFullyInRange(session, rangeStart, rangeEnd), isTrue);
     });
 
     test('returns false when session partially overlaps start', () {
@@ -76,10 +73,7 @@ void main() {
         startAt: DateTime(2026, 6, 1, 9, 0),
         endAt: DateTime(2026, 6, 3, 10, 0),
       );
-      expect(
-        isSessionFullyInRange(partial, rangeStart, rangeEnd),
-        isFalse,
-      );
+      expect(isSessionFullyInRange(partial, rangeStart, rangeEnd), isFalse);
     });
 
     test('returns false when session partially overlaps end', () {
@@ -88,10 +82,7 @@ void main() {
         startAt: DateTime(2026, 6, 8, 17, 0),
         endAt: DateTime(2026, 6, 9, 10, 0),
       );
-      expect(
-        isSessionFullyInRange(partial, rangeStart, rangeEnd),
-        isFalse,
-      );
+      expect(isSessionFullyInRange(partial, rangeStart, rangeEnd), isFalse);
     });
 
     test('returns false when session is completely outside', () {
@@ -100,10 +91,7 @@ void main() {
         startAt: DateTime(2026, 6, 10, 9, 0),
         endAt: DateTime(2026, 6, 10, 10, 0),
       );
-      expect(
-        isSessionFullyInRange(outside, rangeStart, rangeEnd),
-        isFalse,
-      );
+      expect(isSessionFullyInRange(outside, rangeStart, rangeEnd), isFalse);
     });
   });
 
@@ -113,10 +101,7 @@ void main() {
       expect(weeks, isNotEmpty);
       expect(weeks.first, weekStartFor(DateTime(2026, 6, 1)));
       expect(weeks.last.weekday, DateTime.monday);
-      expect(
-        !weekEndDate(weeks.last).isBefore(DateTime(2026, 6, 1)),
-        isTrue,
-      );
+      expect(!weekEndDate(weeks.last).isBefore(DateTime(2026, 6, 1)), isTrue);
     });
 
     test('handles January with prior-year overlap week', () {
@@ -160,34 +145,42 @@ void main() {
     });
   });
 
-  test('deleteSessionsFullyInRange removes only fully contained sessions', () async {
-    final rangeStart = DateTime(2026, 6, 2, 8, 0);
-    final rangeEnd = DateTime(2026, 6, 8, 18, 0);
-    await database.upsertSessions([
-      _session(
-        id: 'inside',
-        startAt: DateTime(2026, 6, 3, 9, 0),
-        endAt: DateTime(2026, 6, 3, 10, 0),
-      ),
-      _session(
-        id: 'partial',
-        startAt: DateTime(2026, 6, 1, 9, 0),
-        endAt: DateTime(2026, 6, 3, 10, 0),
-      ),
-      _session(
-        id: 'outside',
-        startAt: DateTime(2026, 6, 10, 9, 0),
-        endAt: DateTime(2026, 6, 10, 10, 0),
-      ),
-    ]);
+  test(
+    'deleteSessionsFullyInRange removes only fully contained sessions',
+    () async {
+      final rangeStart = DateTime(2026, 6, 2, 8, 0);
+      final rangeEnd = DateTime(2026, 6, 8, 18, 0);
+      await database.upsertSessions([
+        _session(
+          id: 'inside',
+          startAt: DateTime(2026, 6, 3, 9, 0),
+          endAt: DateTime(2026, 6, 3, 10, 0),
+        ),
+        _session(
+          id: 'partial',
+          startAt: DateTime(2026, 6, 1, 9, 0),
+          endAt: DateTime(2026, 6, 3, 10, 0),
+        ),
+        _session(
+          id: 'outside',
+          startAt: DateTime(2026, 6, 10, 9, 0),
+          endAt: DateTime(2026, 6, 10, 10, 0),
+        ),
+      ]);
 
-    expect(await repository.countSessionsFullyInRange(rangeStart, rangeEnd), 1);
+      expect(
+        await repository.countSessionsFullyInRange(rangeStart, rangeEnd),
+        1,
+      );
 
-    final deleted =
-        await repository.deleteSessionsFullyInRange(rangeStart, rangeEnd);
-    expect(deleted, 1);
+      final deleted = await repository.deleteSessionsFullyInRange(
+        rangeStart,
+        rangeEnd,
+      );
+      expect(deleted, 1);
 
-    final remaining = await repository.getAllSessions();
-    expect(remaining.map((s) => s.id).toSet(), {'partial', 'outside'});
-  });
+      final remaining = await repository.getAllSessions();
+      expect(remaining.map((s) => s.id).toSet(), {'partial', 'outside'});
+    },
+  );
 }

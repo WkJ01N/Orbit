@@ -45,11 +45,10 @@ void main() {
 
     test('替换占位符', () {
       expect(
-        applyNotificationTemplate(
-          '{course} @ {room}',
-          'fallback',
-          {'course': '物理', 'room': 'A001'},
-        ),
+        applyNotificationTemplate('{course} @ {room}', 'fallback', {
+          'course': '物理',
+          'room': 'A001',
+        }),
         '物理 @ A001',
       );
     });

@@ -4,6 +4,7 @@ import 'package:orbit/core/formatters/date_time_formatters.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/step_confirm_dialog.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
+import 'package:orbit/features/session/deletion_feedback.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 
@@ -84,9 +85,9 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         setState(() => _loadingCount = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.gridLoadFailed('$e'))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.gridLoadFailed('$e'))));
       }
     }
   }
@@ -126,7 +127,10 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
           l10n.gridBatchDeleteConfirm1Title,
           l10n.gridBatchDeleteConfirm1Content(count),
         ),
-        (l10n.gridBatchDeleteConfirm2Title, l10n.gridBatchDeleteConfirm2Content),
+        (
+          l10n.gridBatchDeleteConfirm2Title,
+          l10n.gridBatchDeleteConfirm2Content,
+        ),
       ],
     );
   }
@@ -134,17 +138,17 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context)!;
     if (!_isValidRange()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.gridBatchDeleteInvalidRange)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.gridBatchDeleteInvalidRange)));
       return;
     }
 
     final count = _previewCount ?? 0;
     if (count == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.gridBatchDeleteNone)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.gridBatchDeleteNone)));
       return;
     }
 
@@ -154,6 +158,16 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
     }
 
     try {
+      final container = ProviderScope.containerOf(context);
+      final deletedIds =
+          (await ref.read(scheduleRepositoryProvider).getAllSessions())
+              .where(
+                (session) =>
+                    !session.startAt.isBefore(_rangeStart) &&
+                    !session.endAt.isAfter(_rangeEnd),
+              )
+              .map((session) => session.id)
+              .toList();
       final deleted = await ref
           .read(scheduleRepositoryProvider)
           .deleteSessionsFullyInRange(_rangeStart, _rangeEnd);
@@ -161,13 +175,16 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
       refreshSchedule(ref);
 
       if (mounted) {
-        Navigator.pop(context);
         final message = failures > 0
             ? '${l10n.gridBatchDeleteDone(deleted)} ${l10n.resyncPartialFailed(failures)}'
             : l10n.gridBatchDeleteDone(deleted);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+        showDeletionUndo(
+          context: context,
+          container: container,
+          ids: deletedIds,
+          message: message,
         );
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -189,10 +206,7 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.gridBatchDeleteTitle,
-            style: theme.textTheme.titleLarge,
-          ),
+          Text(l10n.gridBatchDeleteTitle, style: theme.textTheme.titleLarge),
           const SizedBox(height: 20),
           _RangeField(
             label: l10n.gridBatchDeleteStart,

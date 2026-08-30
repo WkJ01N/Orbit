@@ -4,10 +4,7 @@ import 'package:orbit/services/reminder_resync_status.dart';
 void main() {
   test('reminderResyncBannerKind parses verify, partial, and error', () {
     expect(reminderResyncBannerKind(null), isNull);
-    expect(
-      reminderResyncBannerKind('verify'),
-      ReminderResyncBannerKind.verify,
-    );
+    expect(reminderResyncBannerKind('verify'), ReminderResyncBannerKind.verify);
     expect(
       reminderResyncBannerKind('partial:3'),
       ReminderResyncBannerKind.partial,

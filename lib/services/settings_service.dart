@@ -6,6 +6,7 @@ import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -303,6 +304,68 @@ class SettingsService {
       overrides.map((key, value) => MapEntry(key, value.toARGB32())),
     );
     await prefs.setString(_courseColorOverridesKey, encoded);
+  }
+
+  Future<PortableSettings> exportPortableSettings() async {
+    final locale = await loadLocale();
+    final themeColor = await loadThemeColor();
+    final themeMode = await loadThemeMode();
+    final themeStyle = await loadThemeStyle();
+    final gridMode = await loadGridDefaultWeekMode();
+    final weekStart = await loadWeekStartDay();
+    final density = await loadGridDensity();
+    final colors = await loadCourseColorOverrides();
+    return PortableSettings(
+      locale: localeStorageKey(locale),
+      themeColor: themeColor.toARGB32(),
+      themeMode: themeMode.name,
+      themeStyle: themeStyle.name,
+      gridDefaultWeekMode: gridMode.name,
+      weekStartDay: weekStart,
+      gridDensity: density.name,
+      reminders: await load(),
+      scheduleDisplay: await loadScheduleDisplaySettings(),
+      courseColorOverrides: colors.map(
+        (key, value) => MapEntry(key, value.toARGB32()),
+      ),
+    );
+  }
+
+  Future<void> importPortableSettings(PortableSettings snapshot) async {
+    await saveLocale(localeFromStorage(snapshot.locale));
+    await saveThemeColor(Color(snapshot.themeColor));
+    await saveThemeMode(
+      ThemeMode.values.firstWhere(
+        (value) => value.name == snapshot.themeMode,
+        orElse: () => ThemeMode.system,
+      ),
+    );
+    await saveThemeStyle(
+      AppThemeStyle.values.firstWhere(
+        (value) => value.name == snapshot.themeStyle,
+        orElse: () => AppThemeStyle.standard,
+      ),
+    );
+    await saveGridDefaultWeekMode(
+      GridDefaultWeekMode.values.firstWhere(
+        (value) => value.name == snapshot.gridDefaultWeekMode,
+        orElse: () => GridDefaultWeekMode.smart,
+      ),
+    );
+    await saveWeekStartDay(snapshot.weekStartDay);
+    await saveGridDensity(
+      GridDensity.values.firstWhere(
+        (value) => value.name == snapshot.gridDensity,
+        orElse: () => GridDensity.standard,
+      ),
+    );
+    await save(snapshot.reminders);
+    await saveScheduleDisplaySettings(snapshot.scheduleDisplay);
+    await saveCourseColorOverrides(
+      snapshot.courseColorOverrides.map(
+        (key, value) => MapEntry(key, Color(value)),
+      ),
+    );
   }
 
   Future<void> _saveOptionalString(

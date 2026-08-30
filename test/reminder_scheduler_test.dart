@@ -37,8 +37,9 @@ int countSchedulableClassReminders({
   var count = 0;
   if (settings.enabled) {
     for (final session in upcoming) {
-      final reminderAt =
-          session.startAt.subtract(Duration(minutes: settings.leadMinutes));
+      final reminderAt = session.startAt.subtract(
+        Duration(minutes: settings.leadMinutes),
+      );
       if (reminderAt.isAfter(now)) {
         count++;
       }
@@ -103,9 +104,7 @@ void main() {
 
   test('buildReminderAlarmSpecs produces class-lead and check-in alarms', () {
     final now = DateTime(2026, 6, 15, 10, 0);
-    final session = _manualSession(
-      startAt: DateTime(2026, 6, 15, 11, 0),
-    );
+    final session = _manualSession(startAt: DateTime(2026, 6, 15, 11, 0));
     final copy = NotificationCopy.fromL10n(lookupL10n(const Locale('zh')));
     final settings = const ReminderSettings(
       enabled: true,
@@ -136,9 +135,7 @@ void main() {
 
   test('manual session in upcoming list yields schedulable reminders', () {
     final now = DateTime(2026, 6, 15, 10, 0);
-    final session = _manualSession(
-      startAt: DateTime(2026, 6, 15, 11, 0),
-    );
+    final session = _manualSession(startAt: DateTime(2026, 6, 15, 11, 0));
     final upcoming = [session];
     final settings = const ReminderSettings(
       enabled: true,

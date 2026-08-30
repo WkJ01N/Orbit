@@ -10,12 +10,12 @@ import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 List<Override> _testOverrides() => [
-      localeProvider.overrideWith(() => _FixedLocaleNotifier()),
-      reminderSettingsProvider.overrideWith(() => _FixedReminderSettingsNotifier()),
-      sessionsProvider.overrideWith((ref) async => []),
-      weekGridProvider.overrideWith((ref) => null),
-      upcomingSessionsProvider.overrideWith((ref) async => []),
-    ];
+  localeProvider.overrideWith(() => _FixedLocaleNotifier()),
+  reminderSettingsProvider.overrideWith(() => _FixedReminderSettingsNotifier()),
+  sessionsProvider.overrideWith((ref) async => []),
+  weekGridProvider.overrideWith((ref) => null),
+  upcomingSessionsProvider.overrideWith((ref) async => []),
+];
 
 void main() {
   testWidgets('AppShell 顯示四個導航分頁', (WidgetTester tester) async {
@@ -75,6 +75,41 @@ void main() {
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
       AppTab.import.index,
     );
+  });
+
+  testWidgets('主導航快速切換時平滑落在最後選擇的頁面', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _testOverrides(),
+        child: MaterialApp(
+          locale: defaultLocale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const AppShell(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('設置').last);
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.tap(find.text('接下來').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      AppTab.upcoming.index,
+    );
+    expect(find.text('接下來的課程'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

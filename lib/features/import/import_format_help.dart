@@ -74,10 +74,7 @@ class ImportFormatHelp extends StatelessWidget {
   Widget _headerCell(BuildContext context, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelLarge,
-      ),
+      child: Text(text, style: Theme.of(context).textTheme.labelLarge),
     );
   }
 }

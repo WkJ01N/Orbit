@@ -30,13 +30,14 @@ Future<void> main(List<String> args) async {
   }
 
   final database = await openAppDatabase();
+  await database.purgeDeletedBefore(
+    DateTime.now().subtract(const Duration(days: 7)),
+  );
   registerAppDatabase(database);
 
   runApp(
     ProviderScope(
-      overrides: [
-        appDatabaseProvider.overrideWithValue(database),
-      ],
+      overrides: [appDatabaseProvider.overrideWithValue(database)],
       child: const OrbitApp(),
     ),
   );

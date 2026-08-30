@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
+
 void main() {
   test('三種語言關鍵字串非空', () {
     for (final locale in supportedAppLocales) {

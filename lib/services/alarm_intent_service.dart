@@ -21,8 +21,9 @@ class AlarmIntentService {
       return AlarmIntentResult.noClassTomorrow;
     }
 
-    final alarmAt = summary.firstSessionStart!
-        .subtract(Duration(minutes: settings.systemAlarmLeadMinutes));
+    final alarmAt = summary.firstSessionStart!.subtract(
+      Duration(minutes: settings.systemAlarmLeadMinutes),
+    );
 
     final arguments = <String, dynamic>{
       'android.intent.extra.alarm.HOUR': alarmAt.hour,
@@ -60,8 +61,10 @@ class AlarmIntentService {
     // Last resort: attempt the generic intent even if resolution was reported
     // as unavailable, since some OEMs answer the launch but not the query.
     try {
-      await AndroidIntent(action: _setAlarmAction, arguments: arguments)
-          .launch();
+      await AndroidIntent(
+        action: _setAlarmAction,
+        arguments: arguments,
+      ).launch();
       return AlarmIntentResult.success;
     } catch (_) {
       return AlarmIntentResult.failed;
@@ -78,9 +81,4 @@ class AlarmIntentService {
   ];
 }
 
-enum AlarmIntentResult {
-  success,
-  failed,
-  unsupportedPlatform,
-  noClassTomorrow,
-}
+enum AlarmIntentResult { success, failed, unsupportedPlatform, noClassTomorrow }

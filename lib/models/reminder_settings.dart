@@ -37,9 +37,7 @@ class ReminderSettings {
   final int systemAlarmLeadMinutes;
   final bool checkInReminderEnabled;
 
-  static const List<int> leadMinuteOptions = [
-    5, 10, 15, 30, 45, 60, 90, 120,
-  ];
+  static const List<int> leadMinuteOptions = [5, 10, 15, 30, 45, 60, 90, 120];
 
   static const List<int> alarmLeadMinuteOptions = [5, 10, 15, 20, 30, 45, 60];
 
@@ -76,14 +74,13 @@ class ReminderSettings {
       nextDaySummaryEnabled:
           nextDaySummaryEnabled ?? this.nextDaySummaryEnabled,
       nextDaySummaryHour: nextDaySummaryHour ?? this.nextDaySummaryHour,
-      nextDaySummaryMinute:
-          nextDaySummaryMinute ?? this.nextDaySummaryMinute,
+      nextDaySummaryMinute: nextDaySummaryMinute ?? this.nextDaySummaryMinute,
       nextDayRemindWhenNoClass:
           nextDayRemindWhenNoClass ?? this.nextDayRemindWhenNoClass,
       nextDayWithClassTitleTemplate: clearNextDayWithClassTitleTemplate
           ? null
           : (nextDayWithClassTitleTemplate ??
-              this.nextDayWithClassTitleTemplate),
+                this.nextDayWithClassTitleTemplate),
       nextDayWithClassBodyTemplate: clearNextDayWithClassBodyTemplate
           ? null
           : (nextDayWithClassBodyTemplate ?? this.nextDayWithClassBodyTemplate),

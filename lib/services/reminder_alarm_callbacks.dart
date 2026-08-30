@@ -8,6 +8,7 @@ import 'package:orbit/services/reminder_alarm_registry.dart';
 import 'package:orbit/services/settings_service.dart';
 
 const reminderAlarmChannelId = 'orbit_course_reminders';
+
 /// Fires when an Android AlarmManager one-shot triggers in a background isolate.
 @pragma('vm:entry-point')
 Future<void> fireReminderAlarm(int alarmId) async {
@@ -39,8 +40,10 @@ Future<void> showReminderAlarmNotification(ReminderAlarmSpec spec) async {
     const InitializationSettings(android: androidSettings),
   );
 
-  final androidPlugin = plugin.resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>();
+  final androidPlugin = plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
   await androidPlugin?.createNotificationChannel(
     AndroidNotificationChannel(
       reminderAlarmChannelId,

@@ -23,17 +23,19 @@ List<int> buildScheduleXlsx(List<List<String>> dataRows) {
   for (var col = 0; col < header.length; col++) {
     sheet
         .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0))
-        .value = TextCellValue(header[col]);
+        .value = TextCellValue(
+      header[col],
+    );
   }
 
   for (var row = 0; row < dataRows.length; row++) {
     final values = dataRows[row];
     for (var col = 0; col < values.length; col++) {
       sheet
-          .cell(
-            CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row + 1),
-          )
-          .value = TextCellValue(values[col]);
+          .cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row + 1))
+          .value = TextCellValue(
+        values[col],
+      );
     }
   }
 
