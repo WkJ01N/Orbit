@@ -189,10 +189,25 @@ void main() {
       final secondRect = tester.getRect(secondTab);
       expect(secondRect.height, greaterThanOrEqualTo(48));
       expect(secondRect.width, closeTo(width / 4, 0.1));
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('settings-category-tabs')),
+          matching: find.byType(Text),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('settings-category-indicator-0')),
+        findsOneWidget,
+      );
       await tester.tapAt(Offset(secondRect.left + 2, secondRect.center.dy));
       await tester.pumpAndSettle();
       expect(
         find.byKey(const Key('settings-category-content-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('settings-category-indicator-1')),
         findsOneWidget,
       );
 

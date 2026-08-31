@@ -590,8 +590,9 @@ class _SettingsCategoryTabs extends StatelessWidget {
           builder: (context, constraints) {
             if (constraints.maxWidth < 520) {
               return SizedBox(
-                height: 52,
+                height: 56,
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (var index = 0; index < items.length; index++)
                       Expanded(
@@ -604,27 +605,48 @@ class _SettingsCategoryTabs extends StatelessWidget {
                             child: InkWell(
                               key: Key('settings-category-$index'),
                               onTap: () => onSelected(index),
-                              child: Center(
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 160),
-                                  curve: Curves.easeOutCubic,
-                                  width: 42,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: selectedIndex == index
-                                        ? colors.secondaryContainer
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 160),
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    child: Icon(
+                                      selectedIndex == index
+                                          ? items[index].selectedIcon
+                                          : items[index].icon,
+                                      key: ValueKey(selectedIndex == index),
+                                      size: 21,
+                                      color: selectedIndex == index
+                                          ? colors.primary
+                                          : colors.onSurfaceVariant,
+                                    ),
                                   ),
-                                  child: Icon(
-                                    selectedIndex == index
-                                        ? items[index].selectedIcon
-                                        : items[index].icon,
-                                    color: selectedIndex == index
-                                        ? colors.onSecondaryContainer
-                                        : colors.onSurfaceVariant,
+                                  Positioned(
+                                    bottom: 0,
+                                    child: AnimatedContainer(
+                                      key: selectedIndex == index
+                                          ? Key(
+                                              'settings-category-indicator-$index',
+                                            )
+                                          : null,
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      width: selectedIndex == index ? 32 : 0,
+                                      height: 3,
+                                      decoration: BoxDecoration(
+                                        color: colors.primary,
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(3),
+                                            ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
                           ),
