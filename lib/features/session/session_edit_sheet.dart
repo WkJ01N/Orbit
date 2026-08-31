@@ -307,7 +307,6 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           finalSession,
         );
       }
-      final failures = await rescheduleAllReminders(ref);
       refreshSchedule(ref);
 
       if (mounted) {
@@ -319,21 +318,14 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             : overwritten > 0
             ? l10n.sessionSavedWithOverride(overwritten)
             : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
-        final syncError = ref.read(lastRescheduleErrorProvider);
-        final scheduledCount = ref.read(lastScheduledCountProvider);
-        final String message;
-        if (syncError == 'verify') {
-          message = '$baseMessage ${l10n.reminderScheduleVerifyFailed}';
-        } else if (failures > 0) {
-          message = '$baseMessage ${l10n.resyncPartialFailed(failures)}';
-        } else if (scheduledCount > 0) {
-          message =
-              '$baseMessage ${l10n.reminderScheduledCount(scheduledCount)}';
-        } else {
-          message = baseMessage;
-        }
-        messenger.showSnackBar(SnackBar(content: Text(message)));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(baseMessage),
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
+      ref.read(reminderSettingsProvider.notifier).scheduleResync();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

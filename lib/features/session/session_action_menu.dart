@@ -203,24 +203,19 @@ class SessionActionMenu {
           selected: session,
           scope: scope,
         );
-        final failures = await container
-            .read(reminderSettingsProvider.notifier)
-            .resyncReminders();
         refreshScheduleContainer(container);
         if (context.mounted) {
           final baseMessage = result.affectedCount > 1
               ? l10n.courseBatchDeleted(result.affectedCount)
               : l10n.sessionDeleted;
-          final message = failures > 0
-              ? '$baseMessage ${l10n.resyncPartialFailed(failures)}'
-              : baseMessage;
           showDeletionUndo(
             context: context,
             container: container,
             ids: targets.map((target) => target.id).toList(),
-            message: message,
+            message: baseMessage,
           );
         }
+        container.read(reminderSettingsProvider.notifier).scheduleResync();
         return true;
       } catch (e) {
         if (context.mounted) {

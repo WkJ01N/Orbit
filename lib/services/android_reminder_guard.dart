@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
+import 'package:orbit/services/android_alarm_delivery_service.dart';
 import 'package:orbit/services/reminder_background.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
@@ -28,7 +29,7 @@ class AndroidReminderGuard {
     if (!Platform.isAndroid || _initialized) {
       return;
     }
-    await AndroidAlarmManager.initialize();
+    await AndroidAlarmDeliveryService.instance.initialize();
     _initialized = true;
   }
 

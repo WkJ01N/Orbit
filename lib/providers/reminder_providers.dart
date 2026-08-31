@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -190,8 +191,11 @@ final lastReminderScheduleReportProvider =
     );
 
 class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
+  Timer? _deferredResync;
+
   @override
   Future<ReminderSettings> build() async {
+    ref.onDispose(() => _deferredResync?.cancel());
     final settings = await ref.read(settingsServiceProvider).load();
     if (Platform.isAndroid || Platform.isWindows) {
       await _rescheduleReminders(settings: settings);
@@ -313,6 +317,14 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
 
   Future<int> resyncReminders() {
     return _rescheduleReminders();
+  }
+
+  void scheduleResync() {
+    _deferredResync?.cancel();
+    _deferredResync = Timer(const Duration(milliseconds: 250), () {
+      _deferredResync = null;
+      unawaited(_rescheduleReminders());
+    });
   }
 
   Future<int> _rescheduleReminders({ReminderSettings? settings}) async {

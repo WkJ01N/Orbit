@@ -4,9 +4,12 @@ import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
+import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
+import 'package:orbit/services/reminder_alarm_registry.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 CourseSession _manualSession({required DateTime startAt}) {
@@ -57,6 +60,10 @@ int countSchedulableClassReminders({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   setUpAll(() async {
     await configureReminderTimezone();
@@ -133,6 +140,45 @@ void main() {
     expect(backgroundTestNotificationId, greaterThan(maintenanceAlarmId));
     expect(immediateTestNotificationId, greaterThan(maintenanceAlarmId));
   });
+
+  test(
+    'alarm registry reloads payload and clears only course reminders',
+    () async {
+      final course = ReminderAlarmSpec(
+        alarmId: classLeadAlarmBase,
+        notificationId: classLeadAlarmBase,
+        title: 'Course',
+        body: 'Starts soon',
+        payload: 'course-id',
+        fireAt: DateTime(2026, 6, 15, 10, 45),
+      );
+      final testReminder = ReminderAlarmSpec(
+        alarmId: backgroundTestNotificationId,
+        notificationId: backgroundTestNotificationId,
+        title: 'Test',
+        body: 'Background delivery',
+        payload: 'test_background_reminder',
+        fireAt: DateTime(2026, 6, 15, 10, 1),
+      );
+
+      await ReminderAlarmRegistry.upsert(course);
+      await ReminderAlarmRegistry.upsert(testReminder);
+
+      expect(
+        (await ReminderAlarmRegistry.loadEntry(course.alarmId))?.payload,
+        course.payload,
+      );
+      expect(await ReminderAlarmRegistry.courseReminderCount(), 1);
+
+      await ReminderAlarmRegistry.removeCourseReminders();
+
+      expect(await ReminderAlarmRegistry.contains(course.alarmId), isFalse);
+      expect(
+        await ReminderAlarmRegistry.contains(backgroundTestNotificationId),
+        isTrue,
+      );
+    },
+  );
 
   test('manual session in upcoming list yields schedulable reminders', () {
     final now = DateTime(2026, 6, 15, 10, 0);
