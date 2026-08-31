@@ -127,7 +127,8 @@ double? currentTimeLineOffset({
   }
 
   final slotMinutes = grid.timeLabels.map(_minutesFromLabel).toList();
-  final nowMinutes = now.hour * 60 + now.minute;
+  final nowMinutes =
+      now.hour * 60 + now.minute + now.second / 60 + now.millisecond / 60000;
 
   final lastSlotEnd = _lastSlotEndMinutes(grid, slotMinutes.last);
   if (nowMinutes < slotMinutes.first || nowMinutes >= lastSlotEnd) {
@@ -146,7 +147,7 @@ double? currentTimeLineOffset({
   return null;
 }
 
-int _lastSlotEndMinutes(WeekGrid grid, int lastSlotStart) {
+double _lastSlotEndMinutes(WeekGrid grid, int lastSlotStart) {
   var maxEnd = lastSlotStart;
   for (final sessions in grid.cells.values) {
     for (final session in sessions) {
@@ -156,7 +157,7 @@ int _lastSlotEndMinutes(WeekGrid grid, int lastSlotStart) {
       }
     }
   }
-  return maxEnd > lastSlotStart ? maxEnd : lastSlotStart + 60;
+  return (maxEnd > lastSlotStart ? maxEnd : lastSlotStart + 60).toDouble();
 }
 
 int _minutesFromLabel(String label) {

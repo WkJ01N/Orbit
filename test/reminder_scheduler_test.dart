@@ -130,7 +130,8 @@ void main() {
 
   test('system alarm ids stay outside course reminder ranges', () {
     expect(maintenanceAlarmId, greaterThanOrEqualTo(checkInAlarmLimit));
-    expect(backgroundTestAlarmId, greaterThan(maintenanceAlarmId));
+    expect(backgroundTestNotificationId, greaterThan(maintenanceAlarmId));
+    expect(immediateTestNotificationId, greaterThan(maintenanceAlarmId));
   });
 
   test('manual session in upcoming list yields schedulable reminders', () {

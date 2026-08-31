@@ -18,14 +18,54 @@ final startupServiceProvider = Provider<StartupService>(
   (ref) => StartupService(ref.watch(settingsServiceProvider)),
 );
 
+typedef CurrentTimeTimerFactory =
+    Timer Function(Duration delay, void Function() callback);
+
+final currentTimeClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
+final currentTimeTimerFactoryProvider = Provider<CurrentTimeTimerFactory>(
+  (ref) =>
+      (delay, callback) => Timer(delay, callback),
+);
+
+Duration durationUntilNextMinute(DateTime now) {
+  final minuteStart = DateTime(
+    now.year,
+    now.month,
+    now.day,
+    now.hour,
+    now.minute,
+  );
+  return minuteStart.add(const Duration(minutes: 1)).difference(now);
+}
+
 class CurrentTimeNotifier extends Notifier<DateTime> {
+  Timer? _timer;
+
   @override
   DateTime build() {
-    final timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      state = DateTime.now();
+    final now = ref.watch(currentTimeClockProvider)();
+    ref.onDispose(() => _timer?.cancel());
+    _scheduleNextTick(now);
+    return now;
+  }
+
+  void syncNow() {
+    final now = ref.read(currentTimeClockProvider)();
+    state = now;
+    _scheduleNextTick(now);
+  }
+
+  void _scheduleNextTick(DateTime from) {
+    _timer?.cancel();
+    final createTimer = ref.read(currentTimeTimerFactoryProvider);
+    _timer = createTimer(durationUntilNextMinute(from), () {
+      final now = ref.read(currentTimeClockProvider)();
+      state = now;
+      _scheduleNextTick(now);
     });
-    ref.onDispose(timer.cancel);
-    return DateTime.now();
   }
 }
 

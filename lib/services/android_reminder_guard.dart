@@ -5,11 +5,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/models/notification_copy.dart';
-import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
-import 'package:orbit/services/reminder_alarm_callbacks.dart';
-import 'package:orbit/services/reminder_alarm_registry.dart';
-import 'package:orbit/services/reminder_alarm_schedule_result.dart';
 import 'package:orbit/services/reminder_background.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
@@ -42,98 +38,30 @@ class AndroidReminderGuard {
     }
 
     await AndroidAlarmManager.cancel(maintenanceAlarmId);
+    try {
+      final scheduled = await AndroidAlarmManager.periodic(
+        _maintenanceInterval,
+        maintenanceAlarmId,
+        reminderMaintenanceCallback,
+        exact: true,
+        wakeup: true,
+        rescheduleOnReboot: true,
+        allowWhileIdle: true,
+      );
+      if (scheduled) return;
+    } catch (_) {
+      // Exact alarms may not have been granted yet; periodic maintenance can
+      // still run inexactly until the user enables the permission.
+    }
     await AndroidAlarmManager.periodic(
       _maintenanceInterval,
       maintenanceAlarmId,
       reminderMaintenanceCallback,
-      exact: true,
+      exact: false,
       wakeup: true,
       rescheduleOnReboot: true,
       allowWhileIdle: true,
     );
-  }
-
-  /// Registers one-shot AlarmManager alarms for each [spec]. Only specs that
-  /// the OS accepts are persisted in [ReminderAlarmRegistry].
-  Future<ReminderAlarmScheduleResult> scheduleReminderAlarms(
-    List<ReminderAlarmSpec> specs,
-  ) async {
-    if (!Platform.isAndroid || !_initialized) {
-      return const ReminderAlarmScheduleResult(scheduled: 0, failedSpecs: []);
-    }
-
-    await ReminderAlarmRegistry.clearAll();
-    var scheduled = 0;
-    final failedSpecs = <ReminderAlarmSpec>[];
-    for (final spec in specs) {
-      final ok = await AndroidAlarmManager.oneShotAt(
-        spec.fireAt,
-        spec.alarmId,
-        fireReminderAlarm,
-        alarmClock: true,
-        exact: true,
-        wakeup: true,
-        allowWhileIdle: true,
-        rescheduleOnReboot: true,
-      );
-      if (ok) {
-        await ReminderAlarmRegistry.upsert(spec);
-        scheduled++;
-      } else {
-        failedSpecs.add(spec);
-      }
-    }
-    return ReminderAlarmScheduleResult(
-      scheduled: scheduled,
-      failedSpecs: failedSpecs,
-    );
-  }
-
-  Future<void> cancelAllReminderAlarms() async {
-    final entries = await ReminderAlarmRegistry.loadAll();
-    if (Platform.isAndroid && _initialized) {
-      for (final alarmId in entries.keys) {
-        await AndroidAlarmManager.cancel(alarmId);
-      }
-      await AndroidAlarmManager.cancel(backgroundTestAlarmId);
-      await AndroidAlarmManager.cancel(maintenanceAlarmId);
-    }
-    await ReminderAlarmRegistry.clearAll();
-  }
-
-  /// Schedules a test notification one minute from now via AlarmManager.
-  Future<bool> scheduleBackgroundTestReminder({
-    required String title,
-    required String body,
-  }) async {
-    if (!Platform.isAndroid || !_initialized) {
-      return false;
-    }
-
-    await AndroidAlarmManager.cancel(backgroundTestAlarmId);
-    final fireAt = DateTime.now().add(const Duration(minutes: 1));
-    final spec = ReminderAlarmSpec(
-      alarmId: backgroundTestAlarmId,
-      notificationId: backgroundTestAlarmId,
-      title: title,
-      body: body,
-      payload: 'test_background_reminder',
-      fireAt: fireAt,
-    );
-    final ok = await AndroidAlarmManager.oneShotAt(
-      fireAt,
-      backgroundTestAlarmId,
-      fireReminderAlarm,
-      alarmClock: true,
-      exact: true,
-      wakeup: true,
-      allowWhileIdle: true,
-      rescheduleOnReboot: false,
-    );
-    if (ok) {
-      await ReminderAlarmRegistry.upsert(spec);
-    }
-    return ok;
   }
 
   Future<void> ensureReminderPermissions() async {
@@ -143,6 +71,7 @@ class AndroidReminderGuard {
     final locale = await _settingsService.loadLocale();
     final copy = NotificationCopy.fromL10n(lookupL10n(locale));
     await _scheduler.initialize(copy: copy);
+    await scheduleMaintenanceAlarm();
   }
 
   Future<ReminderPermissionStatus> queryPermissionStatus() {

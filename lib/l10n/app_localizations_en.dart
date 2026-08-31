@@ -580,11 +580,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidAutostartHint =>
-      'On OriginOS / iQOO and similar devices, also enable autostart and unrestricted background activity in system settings.';
+      'Some Android systems may also require autostart and unrestricted background activity in system settings.';
 
   @override
   String get androidKillBackgroundHint =>
-      'After swiping the app away from recents, reminders rely on system alarms registered below. Complete all settings on this page for best reliability.';
+      'After swiping the app away from recents, reminders rely on Android\'s scheduled notification service. Complete the permission settings above for best reliability.';
+
+  @override
+  String get androidTestImmediateReminder => 'Test notification now';
+
+  @override
+  String get androidTestImmediateReminderSubtitle =>
+      'Immediately verifies notification permission and display.';
+
+  @override
+  String get androidTestImmediateReminderShown => 'Test notification sent.';
 
   @override
   String get androidTestBackgroundReminder =>
@@ -592,15 +602,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      'Schedules a test alarm. Swipe the app away from recents and wait one minute.';
+      'Schedules through the same path as class reminders. Swipe the app away and wait one minute.';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
       'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.';
 
   @override
+  String androidTestBackgroundReminderScheduledAt(String time) {
+    return 'Background test scheduled for $time. Swipe the app away and wait.';
+  }
+
+  @override
   String get androidTestBackgroundReminderFailed =>
       'Could not schedule the test reminder. Check exact alarm permission.';
+
+  @override
+  String get androidTestReminderNotificationsDenied =>
+      'Notifications are disabled. Allow notifications and try again.';
+
+  @override
+  String get androidTestReminderExactAlarmsDenied =>
+      'Exact alarms are disabled. Allow exact alarms and try again.';
 
   @override
   String get deleteEndedSessions => 'Delete ended classes';
@@ -1221,11 +1244,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      'Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.';
+      'Reminders were saved, but Android did not queue them. Check notification, exact alarm, and battery settings, then resync.';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      'The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.';
+      'Android did not queue any reminders. Check notification, exact alarm, and battery settings, then resync.';
 
   @override
   String reminderScheduledCount(int count) {

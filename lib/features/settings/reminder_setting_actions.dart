@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
@@ -47,13 +45,6 @@ String reminderResyncSuccessMessage(AppLocalizations l10n, WidgetRef ref) {
   final failures = ref.read(reminderSchedulerProvider).lastScheduleFailureCount;
   if (failures > 0) {
     return l10n.resyncPartialFailed(failures);
-  }
-
-  if (Platform.isAndroid) {
-    final alarmCount = ref.read(lastRegisteredAlarmCountProvider);
-    if (alarmCount > 0) {
-      return '${l10n.resyncDone} ${l10n.reminderRegisteredAlarmCount(alarmCount)}';
-    }
   }
 
   final pending = ref.read(lastScheduledCountProvider);

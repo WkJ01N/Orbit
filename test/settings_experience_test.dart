@@ -155,4 +155,56 @@ void main() {
       expect(tester.getTopLeft(dataHeader).dx, closeTo(16, 0.1));
     }
   });
+
+  testWidgets('窄屏设置分类的整个分栏都可以点击', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    for (final width in [320.0, 360.0, 400.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 720));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            localeProvider.overrideWith(_FixedLocaleNotifier.new),
+            reminderSettingsProvider.overrideWith(
+              _FixedReminderSettingsNotifier.new,
+            ),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsPage(key: ValueKey('tap-$width')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final secondTab = find.byKey(const Key('settings-category-1'));
+      final secondRect = tester.getRect(secondTab);
+      expect(secondRect.height, greaterThanOrEqualTo(48));
+      expect(secondRect.width, closeTo(width / 4, 0.1));
+      await tester.tapAt(Offset(secondRect.left + 2, secondRect.center.dy));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('settings-category-content-1')),
+        findsOneWidget,
+      );
+
+      final fourthRect = tester.getRect(
+        find.byKey(const Key('settings-category-3')),
+      );
+      await tester.tapAt(Offset(fourthRect.right - 2, fourthRect.center.dy));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('settings-category-content-3')),
+        findsOneWidget,
+      );
+    }
+  });
 }

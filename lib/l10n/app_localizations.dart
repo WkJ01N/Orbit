@@ -1090,14 +1090,32 @@ abstract class AppLocalizations {
   /// No description provided for @androidAutostartHint.
   ///
   /// In en, this message translates to:
-  /// **'On OriginOS / iQOO and similar devices, also enable autostart and unrestricted background activity in system settings.'**
+  /// **'Some Android systems may also require autostart and unrestricted background activity in system settings.'**
   String get androidAutostartHint;
 
   /// No description provided for @androidKillBackgroundHint.
   ///
   /// In en, this message translates to:
-  /// **'After swiping the app away from recents, reminders rely on system alarms registered below. Complete all settings on this page for best reliability.'**
+  /// **'After swiping the app away from recents, reminders rely on Android\'s scheduled notification service. Complete the permission settings above for best reliability.'**
   String get androidKillBackgroundHint;
+
+  /// No description provided for @androidTestImmediateReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification now'**
+  String get androidTestImmediateReminder;
+
+  /// No description provided for @androidTestImmediateReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately verifies notification permission and display.'**
+  String get androidTestImmediateReminderSubtitle;
+
+  /// No description provided for @androidTestImmediateReminderShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification sent.'**
+  String get androidTestImmediateReminderShown;
 
   /// No description provided for @androidTestBackgroundReminder.
   ///
@@ -1108,7 +1126,7 @@ abstract class AppLocalizations {
   /// No description provided for @androidTestBackgroundReminderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Schedules a test alarm. Swipe the app away from recents and wait one minute.'**
+  /// **'Schedules through the same path as class reminders. Swipe the app away and wait one minute.'**
   String get androidTestBackgroundReminderSubtitle;
 
   /// No description provided for @androidTestBackgroundReminderScheduled.
@@ -1117,11 +1135,29 @@ abstract class AppLocalizations {
   /// **'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.'**
   String get androidTestBackgroundReminderScheduled;
 
+  /// No description provided for @androidTestBackgroundReminderScheduledAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Background test scheduled for {time}. Swipe the app away and wait.'**
+  String androidTestBackgroundReminderScheduledAt(String time);
+
   /// No description provided for @androidTestBackgroundReminderFailed.
   ///
   /// In en, this message translates to:
   /// **'Could not schedule the test reminder. Check exact alarm permission.'**
   String get androidTestBackgroundReminderFailed;
+
+  /// No description provided for @androidTestReminderNotificationsDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are disabled. Allow notifications and try again.'**
+  String get androidTestReminderNotificationsDenied;
+
+  /// No description provided for @androidTestReminderExactAlarmsDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms are disabled. Allow exact alarms and try again.'**
+  String get androidTestReminderExactAlarmsDenied;
 
   /// No description provided for @deleteEndedSessions.
   ///
@@ -2173,13 +2209,13 @@ abstract class AppLocalizations {
   /// No description provided for @reminderScheduleVerifyFailed.
   ///
   /// In en, this message translates to:
-  /// **'Reminders saved, but the system did not queue any alarms. On OriginOS / iQOO, also allow autostart and unrestricted background activity. Then allow exact alarms, disable battery optimization, and resync.'**
+  /// **'Reminders were saved, but Android did not queue them. Check notification, exact alarm, and battery settings, then resync.'**
   String get reminderScheduleVerifyFailed;
 
   /// No description provided for @reminderScheduleVerifyFailedBanner.
   ///
   /// In en, this message translates to:
-  /// **'The system did not queue any reminders. Check exact alarm, battery, and autostart settings (OriginOS / iQOO), then resync.'**
+  /// **'Android did not queue any reminders. Check notification, exact alarm, and battery settings, then resync.'**
   String get reminderScheduleVerifyFailedBanner;
 
   /// No description provided for @reminderScheduledCount.

@@ -19,6 +19,7 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
+import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
@@ -594,25 +595,37 @@ class _SettingsCategoryTabs extends StatelessWidget {
                   children: [
                     for (var index = 0; index < items.length; index++)
                       Expanded(
-                        child: Center(
+                        child: Tooltip(
+                          message: items[index].label,
                           child: Semantics(
                             selected: selectedIndex == index,
                             label: items[index].label,
-                            child: IconButton(
+                            button: true,
+                            child: InkWell(
                               key: Key('settings-category-$index'),
-                              tooltip: items[index].label,
-                              isSelected: selectedIndex == index,
-                              icon: Icon(items[index].icon),
-                              selectedIcon: Icon(items[index].selectedIcon),
-                              style: IconButton.styleFrom(
-                                backgroundColor: selectedIndex == index
-                                    ? colors.secondaryContainer
-                                    : Colors.transparent,
-                                foregroundColor: selectedIndex == index
-                                    ? colors.onSecondaryContainer
-                                    : colors.onSurfaceVariant,
+                              onTap: () => onSelected(index),
+                              child: Center(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  curve: Curves.easeOutCubic,
+                                  width: 42,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: selectedIndex == index
+                                        ? colors.secondaryContainer
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    selectedIndex == index
+                                        ? items[index].selectedIcon
+                                        : items[index].icon,
+                                    color: selectedIndex == index
+                                        ? colors.onSecondaryContainer
+                                        : colors.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
-                              onPressed: () => onSelected(index),
                             ),
                           ),
                         ),
@@ -989,13 +1002,28 @@ class _AndroidBackgroundSectionState
     }
   }
 
-  Future<void> _scheduleTestReminder() async {
+  String _testFailureMessage(
+    AppLocalizations l10n,
+    ReminderTestFailure? failure,
+  ) {
+    return switch (failure) {
+      ReminderTestFailure.notificationsDenied =>
+        l10n.androidTestReminderNotificationsDenied,
+      ReminderTestFailure.exactAlarmsDenied =>
+        l10n.androidTestReminderExactAlarmsDenied,
+      _ => l10n.androidTestBackgroundReminderFailed,
+    };
+  }
+
+  Future<void> _showImmediateTestReminder() async {
     final l10n = AppLocalizations.of(context)!;
-    await AndroidReminderGuard.instance.ensureReminderPermissions();
-    final ok = await AndroidReminderGuard.instance
-        .scheduleBackgroundTestReminder(
-          title: l10n.androidTestBackgroundReminder,
-          body: l10n.androidTestBackgroundReminderSubtitle,
+    final copy = notificationCopyFor(ref.read(localeProvider));
+    final result = await ref
+        .read(reminderSchedulerProvider)
+        .showImmediateTest(
+          title: l10n.androidTestImmediateReminder,
+          body: l10n.androidTestImmediateReminderSubtitle,
+          copy: copy,
         );
     if (!mounted) {
       return;
@@ -1003,12 +1031,33 @@ class _AndroidBackgroundSectionState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok
-              ? l10n.androidTestBackgroundReminderScheduled
-              : l10n.androidTestBackgroundReminderFailed,
+          result.succeeded
+              ? l10n.androidTestImmediateReminderShown
+              : _testFailureMessage(l10n, result.failure),
         ),
       ),
     );
+  }
+
+  Future<void> _scheduleTestReminder() async {
+    final l10n = AppLocalizations.of(context)!;
+    final copy = notificationCopyFor(ref.read(localeProvider));
+    final result = await ref
+        .read(reminderSchedulerProvider)
+        .scheduleBackgroundTest(
+          title: l10n.androidTestBackgroundReminder,
+          body: l10n.androidTestBackgroundReminderSubtitle,
+          copy: copy,
+        );
+    if (!mounted) return;
+    final message = result.succeeded
+        ? l10n.androidTestBackgroundReminderScheduledAt(
+            TimeOfDay.fromDateTime(result.fireAt!).format(context),
+          )
+        : _testFailureMessage(l10n, result.failure);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -1027,6 +1076,12 @@ class _AndroidBackgroundSectionState
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+        ),
+        ListTile(
+          title: Text(l10n.androidTestImmediateReminder),
+          subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
+          trailing: const Icon(Icons.notifications_active_outlined),
+          onTap: _showImmediateTestReminder,
         ),
         ListTile(
           title: Text(l10n.androidCheckReminderPermissions),
@@ -1060,15 +1115,6 @@ class _AndroidBackgroundSectionState
           subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
           trailing: const Icon(Icons.alarm_on_outlined),
           onTap: _scheduleTestReminder,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(
-            l10n.androidAutostartHint,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
         ),
       ],
     );

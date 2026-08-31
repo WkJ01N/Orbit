@@ -8,10 +8,8 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
+import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/models/reminder_settings.dart';
-import 'package:orbit/services/android_reminder_guard.dart';
-import 'package:orbit/services/class_notification_builder.dart';
-import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 
@@ -26,85 +24,58 @@ class ReminderScheduler {
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   bool _permissionsRequested = false;
-  int lastScheduleFailureCount = 0;
-
-  /// Number of notifications we intended to schedule in the last reschedule
-  /// (those that passed the time filters), before any system-level failures.
-  int lastExpectedCount = 0;
-
-  /// Number of notifications actually pending in the system after the last
-  /// reschedule, as reported by the OS. -1 means the platform does not support
-  /// querying (e.g. Windows) so verification is skipped.
-  int lastPendingCount = -1;
-
-  /// Number of Android AlarmManager one-shots registered in the last reschedule.
-  int lastRegisteredAlarmCount = 0;
-
   NotificationTapCallback? _notificationTapCallback;
   Future<void> _rescheduleChain = Future.value();
   DateTime? _lastSuccessfulRescheduleAt;
-  final List<Timer> _nearTermTimers = [];
-
-  /// When a reminder fires within this window, also register an in-process
-  /// [Timer] that calls [FlutterLocalNotificationsPlugin.show] as a fallback
-  /// when OEM builds silently drop scheduled alarms.
-  static const _nearTermHorizon = Duration(hours: 2);
-
-  /// True when we expected to schedule reminders but the OS reports none were
-  /// actually queued. This catches OEM (e.g. OriginOS/iQOO) silently dropping
-  /// exact alarms even though the plugin call did not throw.
-  bool get lastScheduleVerificationFailed =>
-      Platform.isAndroid && lastExpectedCount > 0 && lastPendingCount == 0;
+  DateTime? _lastScheduleDay;
+  Duration? _lastTimezoneOffset;
 
   static const _foregroundResyncDebounce = Duration(hours: 6);
-
   static const _channelId = 'orbit_course_reminders';
-  static const _classLeadBase = classLeadAlarmBase;
-  static const _checkInBase = checkInAlarmBase;
-  static const _nextDaySummaryBase = nextDaySummaryAlarmBase;
+
+  ReminderScheduleReport lastScheduleReport = ReminderScheduleReport.empty;
+
+  int get lastScheduleFailureCount => lastScheduleReport.failed;
+  int get lastExpectedCount => lastScheduleReport.expected;
+  int get lastPendingCount => lastScheduleReport.pending;
+  bool get lastScheduleVerificationFailed =>
+      lastScheduleReport.verificationFailed;
 
   Future<void> ensurePluginInitialized() async {
-    if (_initialized) {
-      return;
-    }
-
+    if (_initialized) return;
     await configureReminderTimezone();
-
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+    const settings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      windows: WindowsInitializationSettings(
+        appName: 'Orbit',
+        appUserModelId: 'com.must.orbit',
+        guid: '7f8d9c2a-4b1e-4f6a-9c3d-2e1f0a9b8c7d',
+      ),
     );
-    const windowsSettings = WindowsInitializationSettings(
-      appName: 'Orbit',
-      appUserModelId: 'com.must.orbit',
-      guid: '7f8d9c2a-4b1e-4f6a-9c3d-2e1f0a9b8c7d',
-    );
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      windows: windowsSettings,
-    );
-
     await _plugin.initialize(
-      initSettings,
+      settings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
     _initialized = true;
   }
 
   Future<void> initialize({required NotificationCopy copy}) async {
-    await ensurePluginInitialized();
-
-    if (Platform.isAndroid) {
-      final androidPlugin = _plugin
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >();
-      if (!_permissionsRequested) {
-        await androidPlugin?.requestNotificationsPermission();
-        await androidPlugin?.requestExactAlarmsPermission();
-        _permissionsRequested = true;
-      }
-      await _ensureAndroidChannel(copy);
+    await _prepare(copy);
+    if (!Platform.isAndroid) return;
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (!_permissionsRequested) {
+      await android?.requestNotificationsPermission();
+      await android?.requestExactAlarmsPermission();
+      _permissionsRequested = true;
     }
+  }
+
+  Future<void> _prepare(NotificationCopy copy) async {
+    await ensurePluginInitialized();
+    if (Platform.isAndroid) await _ensureAndroidChannel(copy);
   }
 
   void registerNotificationTapHandler(NotificationTapCallback? callback) {
@@ -114,22 +85,37 @@ class ReminderScheduler {
   Future<String?> getLaunchNotificationPayload() async {
     await ensurePluginInitialized();
     final details = await _plugin.getNotificationAppLaunchDetails();
-    if (details?.didNotificationLaunchApp != true) {
-      return null;
-    }
+    if (details?.didNotificationLaunchApp != true) return null;
     return details?.notificationResponse?.payload;
   }
 
   void markRescheduleSuccess() {
     _lastSuccessfulRescheduleAt = DateTime.now();
+    _lastScheduleDay = DateTime.now();
+    _lastTimezoneOffset = DateTime.now().timeZoneOffset;
   }
 
-  bool shouldResyncOnForeground() {
+  Future<bool> shouldResyncOnForeground() async {
     final last = _lastSuccessfulRescheduleAt;
-    if (last == null) {
+    final now = DateTime.now();
+    if (last == null || now.difference(last) >= _foregroundResyncDebounce) {
       return true;
     }
-    return DateTime.now().difference(last) >= _foregroundResyncDebounce;
+    final scheduleDay = _lastScheduleDay;
+    if (scheduleDay == null ||
+        scheduleDay.year != now.year ||
+        scheduleDay.month != now.month ||
+        scheduleDay.day != now.day ||
+        _lastTimezoneOffset != now.timeZoneOffset) {
+      return true;
+    }
+    if (Platform.isAndroid) {
+      final permission = await queryPermissionStatus();
+      if (!permission.notificationsEnabled) return true;
+      final pending = await _pendingCourseReminderCount();
+      return pending >= 0 && pending != lastScheduleReport.pending;
+    }
+    return false;
   }
 
   Future<ReminderPermissionStatus> queryPermissionStatus() async {
@@ -139,45 +125,16 @@ class ReminderScheduler {
         exactAlarmsEnabled: true,
       );
     }
-
     await ensurePluginInitialized();
-    final androidPlugin = _plugin
+    final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    if (androidPlugin == null) {
-      return ReminderPermissionStatus.unknown;
-    }
-
-    final notifications =
-        await androidPlugin.areNotificationsEnabled() ?? false;
-    final exactAlarms =
-        await androidPlugin.canScheduleExactNotifications() ?? false;
+    if (android == null) return ReminderPermissionStatus.unknown;
     return ReminderPermissionStatus(
-      notificationsEnabled: notifications,
-      exactAlarmsEnabled: exactAlarms,
-    );
-  }
-
-  void _onNotificationResponse(NotificationResponse response) {
-    _notificationTapCallback?.call(response.payload);
-  }
-
-  Future<void> _ensureAndroidChannel(NotificationCopy copy) async {
-    if (!Platform.isAndroid) {
-      return;
-    }
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidPlugin?.createNotificationChannel(
-      AndroidNotificationChannel(
-        _channelId,
-        copy.channelName,
-        description: copy.channelDescription,
-        importance: Importance.max,
-      ),
+      notificationsEnabled: await android.areNotificationsEnabled() ?? false,
+      exactAlarmsEnabled:
+          await android.canScheduleExactNotifications() ?? false,
     );
   }
 
@@ -186,6 +143,7 @@ class ReminderScheduler {
     required List<CourseSession> allSessions,
     required ReminderSettings settings,
     required NotificationCopy copy,
+    bool requestPermissions = true,
   }) {
     _rescheduleChain = _rescheduleChain
         .catchError((Object error, StackTrace stackTrace) {
@@ -198,6 +156,7 @@ class ReminderScheduler {
             allSessions: allSessions,
             settings: settings,
             copy: copy,
+            requestPermissions: requestPermissions,
           ),
         );
     return _rescheduleChain;
@@ -208,410 +167,297 @@ class ReminderScheduler {
     required List<CourseSession> allSessions,
     required ReminderSettings settings,
     required NotificationCopy copy,
+    required bool requestPermissions,
   }) async {
-    await initialize(copy: copy);
-    await cancelAll();
-    if (Platform.isAndroid) {
-      await AndroidReminderGuard.instance.cancelAllReminderAlarms();
+    if (requestPermissions) {
+      await initialize(copy: copy);
+    } else {
+      await _prepare(copy);
     }
-    _cancelNearTermTimers();
-    lastScheduleFailureCount = 0;
-    lastExpectedCount = 0;
-    lastPendingCount = -1;
-    lastRegisteredAlarmCount = 0;
+    await cancelScheduledCourseReminders();
 
     final now = DateTime.now();
-    var classLeadId = _classLeadBase;
-    var checkInId = _checkInBase;
-    var expected = 0;
-    final scheduleTasks = <Future<void>>[];
-
-    if (settings.enabled) {
-      for (final session in upcomingSessions) {
-        final reminderAt = session.startAt.subtract(
-          Duration(minutes: settings.leadMinutes),
-        );
-        if (!reminderAt.isAfter(now)) {
-          continue;
-        }
-
-        final id = classLeadId++;
-        expected++;
-        scheduleTasks.add(
-          _scheduleClassLead(
-            id: id,
-            session: session,
-            reminderAt: reminderAt,
-            leadMinutes: settings.leadMinutes,
-            settings: settings,
-            copy: copy,
-            now: now,
-          ),
-        );
-        if (classLeadId >= _checkInBase) {
-          break;
-        }
-      }
-    }
-
-    if (settings.checkInReminderEnabled) {
-      for (final session in upcomingSessions) {
-        if (!session.startAt.isAfter(now)) {
-          continue;
-        }
-
-        final id = checkInId++;
-        expected++;
-        scheduleTasks.add(
-          _scheduleCheckIn(
-            id: id,
-            session: session,
-            reminderAt: session.startAt,
-            settings: settings,
-            copy: copy,
-            now: now,
-          ),
-        );
-        if (checkInId >= _nextDaySummaryBase) {
-          break;
-        }
-      }
-    }
-
-    if (settings.nextDaySummaryEnabled) {
-      expected += countNextDaySummarySlots(
+    final specs = <ReminderAlarmSpec>[
+      ...buildReminderAlarmSpecs(
+        upcomingSessions: upcomingSessions,
+        settings: settings,
+        now: now,
+        copy: copy,
+      ),
+      ...buildNextDaySummaryAlarmSpecs(
         allSessions: allSessions,
         settings: settings,
         now: now,
-      );
-      scheduleTasks.add(
-        _scheduleNextDaySummaries(
-          allSessions: allSessions,
-          settings: settings,
-          copy: copy,
-          now: now,
-        ),
-      );
-    }
+        copy: copy,
+      ),
+    ];
 
-    await Future.wait(scheduleTasks);
-
-    lastExpectedCount = expected;
     if (Platform.isAndroid) {
-      final alarmSpecs = [
-        ...buildReminderAlarmSpecs(
-          upcomingSessions: upcomingSessions,
-          settings: settings,
-          now: now,
-          copy: copy,
-        ),
-        ...buildNextDaySummaryAlarmSpecs(
-          allSessions: allSessions,
-          settings: settings,
-          now: now,
-          copy: copy,
-        ),
-      ];
-      final alarmResult = await AndroidReminderGuard.instance
-          .scheduleReminderAlarms(alarmSpecs);
-      lastRegisteredAlarmCount = alarmResult.scheduled;
-      lastScheduleFailureCount += alarmResult.failed;
-      for (final spec in alarmResult.failedSpecs) {
-        _registerNearTermReminderFromSpec(spec: spec, now: now, copy: copy);
+      final permission = await queryPermissionStatus();
+      if (!permission.notificationsEnabled) {
+        lastScheduleReport = ReminderScheduleReport(
+          expected: specs.length,
+          scheduled: 0,
+          pending: 0,
+          failed: specs.length,
+          blockReason: ReminderScheduleBlockReason.notificationsDenied,
+        );
+        return;
       }
     }
-    await _verifyPendingCount();
-  }
 
-  void _cancelNearTermTimers() {
-    for (final timer in _nearTermTimers) {
-      timer.cancel();
+    var accepted = 0;
+    var failed = 0;
+    var usedFallback = false;
+    for (final spec in specs) {
+      final attempt = await _scheduleSpec(spec, copy);
+      if (attempt.scheduled) {
+        accepted++;
+      } else {
+        failed++;
+      }
+      usedFallback = usedFallback || attempt.usedInexactFallback;
     }
-    _nearTermTimers.clear();
-  }
 
-  void _registerNearTermReminderFromSpec({
-    required ReminderAlarmSpec spec,
-    required DateTime now,
-    required NotificationCopy copy,
-  }) {
-    final details = NotificationDetails(
-      android: _androidAlarmDetails(copy: copy, bigText: spec.bigText),
-      windows: const WindowsNotificationDetails(),
-    );
-    _registerNearTermReminder(
-      reminderAt: spec.fireAt,
-      now: now,
-      id: spec.notificationId,
-      title: spec.title,
-      body: spec.body,
-      details: details,
-      payload: spec.payload,
+    final pending = await _pendingCourseReminderCount();
+    final verifiedScheduled = pending >= 0 ? pending : accepted;
+    final missing = specs.length - verifiedScheduled;
+    final verifiedFailed = pending >= 0 && missing > failed ? missing : failed;
+    lastScheduleReport = ReminderScheduleReport(
+      expected: specs.length,
+      scheduled: verifiedScheduled,
+      pending: pending,
+      failed: verifiedFailed,
+      usedInexactFallback: usedFallback,
     );
   }
 
-  void _registerNearTermReminder({
-    required DateTime reminderAt,
-    required DateTime now,
-    required int id,
+  Future<ReminderTestResult> showImmediateTest({
     required String title,
     required String body,
-    required NotificationDetails details,
-    required String payload,
-  }) {
-    if (!isWithinNearTermHorizon(reminderAt, now, _nearTermHorizon)) {
-      return;
-    }
-    final delay = reminderAt.difference(now);
-    final timer = Timer(delay, () async {
-      try {
-        await _plugin.show(id, title, body, details, payload: payload);
-      } catch (error, stackTrace) {
-        debugPrint('Near-term show failed for $id: $error');
-        debugPrint('$stackTrace');
-      }
-    });
-    _nearTermTimers.add(timer);
-  }
-
-  /// On Android, query the OS for the number of pending notifications so we can
-  /// detect when alarms were silently dropped (no exception thrown) by the OEM.
-  Future<void> _verifyPendingCount() async {
-    if (!Platform.isAndroid) {
-      lastPendingCount = -1;
-      return;
+    required NotificationCopy copy,
+  }) async {
+    await _prepare(copy);
+    final permission = await queryPermissionStatus();
+    if (!permission.notificationsEnabled) {
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.notificationsDenied,
+      );
     }
     try {
-      final pending = await _plugin.pendingNotificationRequests();
-      lastPendingCount = pending.length;
-    } catch (error) {
-      debugPrint('Failed to query pending notifications: $error');
-      lastPendingCount = -1;
+      await _plugin.cancel(immediateTestNotificationId);
+      await _plugin.show(
+        immediateTestNotificationId,
+        title,
+        body,
+        _notificationDetails(copy),
+        payload: 'test_immediate_reminder',
+      );
+      return const ReminderTestResult.success();
+    } catch (error, stackTrace) {
+      debugPrint('Immediate reminder test failed: $error');
+      debugPrint('$stackTrace');
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.schedulingFailed,
+      );
     }
   }
 
-  Future<void> _scheduleNextDaySummaries({
-    required List<CourseSession> allSessions,
-    required ReminderSettings settings,
+  Future<ReminderTestResult> scheduleBackgroundTest({
+    required String title,
+    required String body,
     required NotificationCopy copy,
-    required DateTime now,
   }) async {
-    final slots = buildNextDaySummarySlots(
-      allSessions: allSessions,
-      settings: settings,
-      now: now,
-      copy: copy,
-    );
-    await Future.wait(
-      slots.map(
-        (slot) => _scheduleNextDayNotification(
-          id: slot.notificationId,
-          title: slot.title,
-          body: slot.body,
-          reminderAt: slot.fireAt,
-          copy: copy,
-          payload: slot.payload,
-        ),
+    await _prepare(copy);
+    final permission = await queryPermissionStatus();
+    if (!permission.notificationsEnabled) {
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.notificationsDenied,
+      );
+    }
+    if (!permission.exactAlarmsEnabled) {
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.exactAlarmsDenied,
+      );
+    }
+
+    final fireAt = DateTime.now().add(const Duration(minutes: 1));
+    await _plugin.cancel(backgroundTestNotificationId);
+    final attempt = await _scheduleSpec(
+      ReminderAlarmSpec(
+        alarmId: backgroundTestNotificationId,
+        notificationId: backgroundTestNotificationId,
+        title: title,
+        body: body,
+        payload: 'test_background_reminder',
+        fireAt: fireAt,
       ),
+      copy,
+      allowInexactFallback: false,
     );
+    if (!attempt.scheduled) {
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.schedulingFailed,
+      );
+    }
+    final pending = await _plugin.pendingNotificationRequests();
+    final queued = pending.any(
+      (item) => item.id == backgroundTestNotificationId,
+    );
+    return queued
+        ? ReminderTestResult.success(fireAt: fireAt)
+        : const ReminderTestResult.failure(
+            ReminderTestFailure.schedulingFailed,
+          );
   }
 
-  Future<void> _scheduleNextDayNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime reminderAt,
-    required NotificationCopy copy,
-    required String payload,
-  }) async {
-    final details = NotificationDetails(
-      android: _androidAlarmDetails(copy: copy),
-      windows: const WindowsNotificationDetails(),
-    );
-
-    await _zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      reminderAt: reminderAt,
-      details: details,
-      payload: payload,
-      preferAlarmClock: true,
-    );
-  }
-
-  Future<void> cancelAll() async {
+  Future<void> cancelScheduledCourseReminders() async {
     await ensurePluginInitialized();
-    await _plugin.cancelAll();
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      for (final request in pending) {
+        if (isCourseReminderNotificationId(request.id)) {
+          await _plugin.cancel(request.id);
+        }
+      }
+    } catch (error) {
+      debugPrint('Failed to cancel scheduled course reminders: $error');
+      for (
+        var id = nextDaySummaryAlarmBase;
+        id < nextDaySummaryAlarmLimit;
+        id++
+      ) {
+        await _plugin.cancel(id);
+      }
+    }
   }
 
-  Future<void> cancelAllReminders() async {
-    _cancelNearTermTimers();
-    await cancelAll();
+  Future<void> cancelAllReminders() => cancelScheduledCourseReminders();
+
+  Future<_ScheduleAttempt> _scheduleSpec(
+    ReminderAlarmSpec spec,
+    NotificationCopy copy, {
+    bool allowInexactFallback = true,
+  }) async {
+    final when = reminderAtToTzDateTime(spec.fireAt);
+    final details = _notificationDetails(copy, bigText: spec.bigText);
     if (Platform.isAndroid) {
-      await AndroidReminderGuard.instance.cancelAllReminderAlarms();
-    }
-  }
-
-  Future<void> _scheduleClassLead({
-    required int id,
-    required CourseSession session,
-    required DateTime reminderAt,
-    required int leadMinutes,
-    required ReminderSettings settings,
-    required NotificationCopy copy,
-    required DateTime now,
-  }) async {
-    final text = buildClassLeadNotificationText(
-      session: session,
-      settings: settings,
-      copy: copy,
-      leadMinutes: leadMinutes,
-    );
-
-    final details = NotificationDetails(
-      android: _androidAlarmDetails(copy: copy, bigText: text.bigText),
-      windows: const WindowsNotificationDetails(),
-    );
-
-    await _zonedSchedule(
-      id: id,
-      title: text.title,
-      body: text.body,
-      reminderAt: reminderAt,
-      details: details,
-      payload: session.id,
-      preferAlarmClock: true,
-    );
-    if (!Platform.isAndroid) {
-      _registerNearTermReminder(
-        reminderAt: reminderAt,
-        now: now,
-        id: id,
-        title: text.title,
-        body: text.body,
-        details: details,
-        payload: session.id,
-      );
-    }
-  }
-
-  Future<void> _scheduleCheckIn({
-    required int id,
-    required CourseSession session,
-    required DateTime reminderAt,
-    required ReminderSettings settings,
-    required NotificationCopy copy,
-    required DateTime now,
-  }) async {
-    final text = buildCheckInNotificationText(
-      session: session,
-      settings: settings,
-      copy: copy,
-    );
-
-    final details = NotificationDetails(
-      android: _androidAlarmDetails(copy: copy),
-      windows: const WindowsNotificationDetails(),
-    );
-
-    await _zonedSchedule(
-      id: id,
-      title: text.title,
-      body: text.body,
-      reminderAt: reminderAt,
-      details: details,
-      payload: 'checkin_${session.id}',
-      preferAlarmClock: true,
-    );
-    if (!Platform.isAndroid) {
-      _registerNearTermReminder(
-        reminderAt: reminderAt,
-        now: now,
-        id: id,
-        title: text.title,
-        body: text.body,
-        details: details,
-        payload: 'checkin_${session.id}',
-      );
-    }
-  }
-
-  AndroidNotificationDetails _androidAlarmDetails({
-    required NotificationCopy copy,
-    String? bigText,
-  }) {
-    return AndroidNotificationDetails(
-      _channelId,
-      copy.channelName,
-      channelDescription: copy.channelDescription,
-      importance: Importance.max,
-      priority: Priority.max,
-      category: AndroidNotificationCategory.alarm,
-      visibility: NotificationVisibility.public,
-      styleInformation: bigText == null
-          ? null
-          : BigTextStyleInformation(bigText),
-    );
-  }
-
-  Future<void> _zonedSchedule({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime reminderAt,
-    required NotificationDetails details,
-    required String payload,
-    bool preferAlarmClock = false,
-  }) async {
-    final when = reminderAtToTzDateTime(reminderAt);
-
-    if (Platform.isAndroid && preferAlarmClock) {
       try {
         await _plugin.zonedSchedule(
-          id,
-          title,
-          body,
+          spec.notificationId,
+          spec.title,
+          spec.body,
           when,
           details,
           androidScheduleMode: AndroidScheduleMode.alarmClock,
-          payload: payload,
+          payload: spec.payload,
         );
-        return;
+        return const _ScheduleAttempt(scheduled: true);
       } catch (error, stackTrace) {
-        debugPrint('AlarmClock schedule failed for $id: $error');
+        debugPrint('Exact schedule failed for ${spec.notificationId}: $error');
         debugPrint('$stackTrace');
+        if (!allowInexactFallback) {
+          return const _ScheduleAttempt(scheduled: false);
+        }
+        try {
+          await _plugin.zonedSchedule(
+            spec.notificationId,
+            spec.title,
+            spec.body,
+            when,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: spec.payload,
+          );
+          return const _ScheduleAttempt(
+            scheduled: true,
+            usedInexactFallback: true,
+          );
+        } catch (fallbackError, fallbackStack) {
+          debugPrint('Inexact schedule failed: $fallbackError');
+          debugPrint('$fallbackStack');
+          return const _ScheduleAttempt(scheduled: false);
+        }
       }
     }
 
     try {
       await _plugin.zonedSchedule(
-        id,
-        title,
-        body,
+        spec.notificationId,
+        spec.title,
+        spec.body,
         when,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: payload,
+        payload: spec.payload,
       );
+      return const _ScheduleAttempt(scheduled: true);
     } catch (error, stackTrace) {
-      debugPrint('Exact schedule failed for $id: $error');
+      debugPrint('Reminder schedule failed: $error');
       debugPrint('$stackTrace');
-      try {
-        await _plugin.zonedSchedule(
-          id,
-          title,
-          body,
-          when,
-          details,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          payload: payload,
-        );
-      } catch (fallbackError, fallbackStack) {
-        lastScheduleFailureCount++;
-        debugPrint('Inexact schedule also failed for $id: $fallbackError');
-        debugPrint('$fallbackStack');
-      }
+      return const _ScheduleAttempt(scheduled: false);
     }
   }
+
+  Future<int> _pendingCourseReminderCount() async {
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      return pending
+          .where((item) => isCourseReminderNotificationId(item.id))
+          .length;
+    } catch (error) {
+      debugPrint('Failed to query pending notifications: $error');
+      return -1;
+    }
+  }
+
+  NotificationDetails _notificationDetails(
+    NotificationCopy copy, {
+    String? bigText,
+  }) {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        copy.channelName,
+        channelDescription: copy.channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        category: AndroidNotificationCategory.alarm,
+        visibility: NotificationVisibility.public,
+        styleInformation: bigText == null
+            ? null
+            : BigTextStyleInformation(bigText),
+      ),
+      windows: const WindowsNotificationDetails(),
+    );
+  }
+
+  Future<void> _ensureAndroidChannel(NotificationCopy copy) async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.createNotificationChannel(
+      AndroidNotificationChannel(
+        _channelId,
+        copy.channelName,
+        description: copy.channelDescription,
+        importance: Importance.max,
+      ),
+    );
+  }
+
+  void _onNotificationResponse(NotificationResponse response) {
+    _notificationTapCallback?.call(response.payload);
+  }
+}
+
+class _ScheduleAttempt {
+  const _ScheduleAttempt({
+    required this.scheduled,
+    this.usedInexactFallback = false,
+  });
+
+  final bool scheduled;
+  final bool usedInexactFallback;
 }

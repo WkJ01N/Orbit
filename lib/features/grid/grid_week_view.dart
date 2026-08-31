@@ -559,7 +559,7 @@ class _ScheduleTimeline extends ConsumerWidget {
         _scheduleInitialScroll(now, pixelsPerMinute, constraints.maxHeight);
         return Column(
           children: [
-            _DateHeader(layout: layout),
+            _DateHeader(layout: layout, now: now),
             Expanded(
               child: Scrollbar(
                 controller: scrollController,
@@ -594,6 +594,9 @@ class _ScheduleTimeline extends ConsumerWidget {
                                 l10n,
                               ),
                           _CurrentTimeLine(
+                            key: ValueKey(
+                              '${now.year}-${now.month}-${now.day}',
+                            ),
                             layout: layout,
                             now: now,
                             dayWidth: dayWidth,
@@ -676,15 +679,15 @@ class _ScheduleTimeline extends ConsumerWidget {
 }
 
 class _DateHeader extends StatelessWidget {
-  const _DateHeader({required this.layout});
+  const _DateHeader({required this.layout, required this.now});
   final ScheduleTimelineLayout layout;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colors = Theme.of(context).colorScheme;
     final locale = Localizations.localeOf(context).toString();
-    final now = DateTime.now();
     return Container(
       key: const Key('schedule-date-header'),
       height: 58,
@@ -817,6 +820,7 @@ class _TimeGrid extends StatelessWidget {
 
 class _CurrentTimeLine extends StatelessWidget {
   const _CurrentTimeLine({
+    super.key,
     required this.layout,
     required this.now,
     required this.dayWidth,
@@ -832,7 +836,8 @@ class _CurrentTimeLine extends StatelessWidget {
     final index = layout.days.indexWhere(
       (day) => isSameScheduleDate(day.date, now),
     );
-    final minute = now.hour * 60 + now.minute;
+    final minute =
+        now.hour * 60 + now.minute + now.second / 60 + now.millisecond / 60000;
     if (index < 0 || minute < layout.startMinute || minute > layout.endMinute) {
       return const SizedBox.shrink();
     }
@@ -842,8 +847,13 @@ class _CurrentTimeLine extends StatelessWidget {
               ? const Color(0xFFFF6B6B)
               : const Color(0xFFD32F2F))
         : theme.colorScheme.tertiary;
-    return Positioned(
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedPositioned(
       key: const Key('schedule-current-time-line'),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 650),
+      curve: Curves.easeOutCubic,
       left: kScheduleTimeRailWidth + index * dayWidth,
       top:
           kScheduleTimelineTopInset +
@@ -863,7 +873,7 @@ class _CurrentTimeLine extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                _formatMinute(minute),
+                _formatMinute(now.hour * 60 + now.minute),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w700,

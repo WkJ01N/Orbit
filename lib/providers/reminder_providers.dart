@@ -7,6 +7,7 @@ import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/providers/schedule_providers.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
@@ -183,8 +184,10 @@ final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
 /// reschedule (-1 when verification is unavailable, e.g. on Windows).
 final lastScheduledCountProvider = StateProvider<int>((ref) => -1);
 
-/// Android AlarmManager one-shots registered after the last reschedule.
-final lastRegisteredAlarmCountProvider = StateProvider<int>((ref) => 0);
+final lastReminderScheduleReportProvider =
+    StateProvider<ReminderScheduleReport>(
+      (ref) => ReminderScheduleReport.empty,
+    );
 
 class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
   @override
@@ -324,9 +327,8 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       final sessionsAsync = ref.read(sessionsProvider);
       if (sessionsAsync.hasValue) {
         all = sessionsAsync.value!;
-        upcoming = all
-            .where((session) => session.startAt.isAfter(DateTime.now()))
-            .toList();
+        final now = DateTime.now();
+        upcoming = all.where((session) => session.endAt.isAfter(now)).toList();
       } else {
         all = await repository.getAllSessions();
         upcoming = await repository.getUpcomingSessions();
@@ -341,8 +343,8 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       final failures = scheduler.lastScheduleFailureCount;
       ref.read(lastScheduledCountProvider.notifier).state =
           scheduler.lastPendingCount;
-      ref.read(lastRegisteredAlarmCountProvider.notifier).state =
-          scheduler.lastRegisteredAlarmCount;
+      ref.read(lastReminderScheduleReportProvider.notifier).state =
+          scheduler.lastScheduleReport;
       if (scheduler.lastScheduleVerificationFailed) {
         ref.read(lastRescheduleErrorProvider.notifier).state = 'verify';
       } else if (failures > 0) {
@@ -351,7 +353,10 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       } else {
         ref.read(lastRescheduleErrorProvider.notifier).state = null;
       }
-      scheduler.markRescheduleSuccess();
+      if (!scheduler.lastScheduleReport.isBlocked &&
+          !scheduler.lastScheduleReport.verificationFailed) {
+        scheduler.markRescheduleSuccess();
+      }
       return failures;
     } catch (error, stackTrace) {
       debugPrint('Reminder reschedule failed: $error');

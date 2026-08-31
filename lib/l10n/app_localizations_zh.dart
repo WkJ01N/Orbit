@@ -559,25 +559,45 @@ class AppLocalizationsZh extends AppLocalizations {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint =>
-      'OriginOS / iQOO 等機型還需在系統設定中開啟自啟動並允許背景高耗電。';
+  String get androidAutostartHint => '部分 Android 系統可能還需要在系統設定中允許自啟動和背景執行。';
 
   @override
   String get androidKillBackgroundHint =>
-      '從最近任務划掉應用後，提醒依賴下方註冊的系統鬧鐘。請完成本頁全部設定以獲得最佳可靠性。';
+      '從最近任務划掉應用後，提醒由 Android 的排程通知服務觸發。請完成上方權限設定以提高可靠性。';
+
+  @override
+  String get androidTestImmediateReminder => '立即測試通知';
+
+  @override
+  String get androidTestImmediateReminderSubtitle => '立即驗證通知權限和訊息顯示。';
+
+  @override
+  String get androidTestImmediateReminderShown => '測試通知已傳送。';
 
   @override
   String get androidTestBackgroundReminder => '測試背景提醒（1 分鐘）';
 
   @override
-  String get androidTestBackgroundReminderSubtitle => '註冊一條測試鬧鐘。請划掉應用後等待 1 分鐘。';
+  String get androidTestBackgroundReminderSubtitle =>
+      '使用與課程提醒相同的方式安排。請划掉應用後等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
       '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
 
   @override
+  String androidTestBackgroundReminderScheduledAt(String time) {
+    return '背景測試已安排在 $time。請划掉應用後等待。';
+  }
+
+  @override
   String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';
+
+  @override
+  String get androidTestReminderNotificationsDenied => '通知權限未開啟，請允許通知後重試。';
+
+  @override
+  String get androidTestReminderExactAlarmsDenied => '精確鬧鐘權限未開啟，請允許後重試。';
 
   @override
   String get deleteEndedSessions => '刪除已結束的課程';
@@ -1175,11 +1195,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已儲存，但系統未能寫入任何鬧鐘。OriginOS / iQOO 請同時允許自啟動與背景高耗電。再開啟精確鬧鐘、關閉電池最佳化後重新同步。';
+      '提醒已儲存，但 Android 未能將其加入待處理佇列。請檢查通知、精確鬧鐘和電池設定後重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系統未能寫入任何提醒。請檢查精確鬧鐘、電池最佳化與自啟動（OriginOS / iQOO），然後重新同步。';
+      'Android 未能將提醒加入待處理佇列。請檢查通知、精確鬧鐘和電池設定後重新同步。';
 
   @override
   String reminderScheduledCount(int count) {
@@ -1865,25 +1885,45 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。';
 
   @override
-  String get androidAutostartHint =>
-      'OriginOS / iQOO 等机型还需在系统设置中开启自启动并允许后台高耗电。';
+  String get androidAutostartHint => '部分 Android 系统可能还需要在系统设置中允许自启动和后台运行。';
 
   @override
   String get androidKillBackgroundHint =>
-      '从最近任务划掉应用后，提醒依赖下方注册的系统闹钟。请完成本页全部设置以获得最佳可靠性。';
+      '从最近任务划掉应用后，提醒由 Android 的定时通知服务触发。请完成上方权限设置以提高可靠性。';
+
+  @override
+  String get androidTestImmediateReminder => '立即测试通知';
+
+  @override
+  String get androidTestImmediateReminderSubtitle => '立即验证通知权限和消息显示。';
+
+  @override
+  String get androidTestImmediateReminderShown => '测试通知已发送。';
 
   @override
   String get androidTestBackgroundReminder => '测试后台提醒（1 分钟）';
 
   @override
-  String get androidTestBackgroundReminderSubtitle => '注册一条测试闹钟。请划掉应用后等待 1 分钟。';
+  String get androidTestBackgroundReminderSubtitle =>
+      '使用与课程提醒相同的方式安排。请划掉应用后等待 1 分钟。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
       '已注册 1 分钟后的测试提醒。请从最近任务划掉应用并等待。';
 
   @override
+  String androidTestBackgroundReminderScheduledAt(String time) {
+    return '后台测试已安排在 $time。请划掉应用后等待。';
+  }
+
+  @override
   String get androidTestBackgroundReminderFailed => '无法注册测试提醒，请检查精确闹钟权限。';
+
+  @override
+  String get androidTestReminderNotificationsDenied => '通知权限未开启，请允许通知后重试。';
+
+  @override
+  String get androidTestReminderExactAlarmsDenied => '精确闹钟权限未开启，请允许后重试。';
 
   @override
   String get deleteEndedSessions => '删除已结束的课程';
@@ -2481,11 +2521,11 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已保存，但系统未能写入任何闹钟。OriginOS / iQOO 请同时允许自启动与后台高耗电。再开启精确闹钟、关闭电池优化后重新同步。';
+      '提醒已保存，但 Android 未能将其加入待处理队列。请检查通知、精确闹钟和电池设置后重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系统未能写入任何提醒。请检查精确闹钟、电池优化与自启动（OriginOS / iQOO），然后重新同步。';
+      'Android 未能将提醒加入待处理队列。请检查通知、精确闹钟和电池设置后重新同步。';
 
   @override
   String reminderScheduledCount(int count) {
@@ -3171,25 +3211,45 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint =>
-      'OriginOS / iQOO 等機型還需在系統設定中開啟自啟動並允許背景高耗電。';
+  String get androidAutostartHint => '部分 Android 系統可能還需要在系統設定中允許自啟動和背景執行。';
 
   @override
   String get androidKillBackgroundHint =>
-      '從最近任務划掉應用後，提醒依賴下方註冊的系統鬧鐘。請完成本頁全部設定以獲得最佳可靠性。';
+      '從最近任務划掉應用後，提醒由 Android 的排程通知服務觸發。請完成上方權限設定以提高可靠性。';
+
+  @override
+  String get androidTestImmediateReminder => '立即測試通知';
+
+  @override
+  String get androidTestImmediateReminderSubtitle => '立即驗證通知權限和訊息顯示。';
+
+  @override
+  String get androidTestImmediateReminderShown => '測試通知已傳送。';
 
   @override
   String get androidTestBackgroundReminder => '測試背景提醒（1 分鐘）';
 
   @override
-  String get androidTestBackgroundReminderSubtitle => '註冊一條測試鬧鐘。請划掉應用後等待 1 分鐘。';
+  String get androidTestBackgroundReminderSubtitle =>
+      '使用與課程提醒相同的方式安排。請划掉應用後等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
       '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
 
   @override
+  String androidTestBackgroundReminderScheduledAt(String time) {
+    return '背景測試已安排在 $time。請划掉應用後等待。';
+  }
+
+  @override
   String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';
+
+  @override
+  String get androidTestReminderNotificationsDenied => '通知權限未開啟，請允許通知後重試。';
+
+  @override
+  String get androidTestReminderExactAlarmsDenied => '精確鬧鐘權限未開啟，請允許後重試。';
 
   @override
   String get deleteEndedSessions => '刪除已結束的課程';
@@ -3787,11 +3847,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get reminderScheduleVerifyFailed =>
-      '提醒已儲存，但系統未能寫入任何鬧鐘。OriginOS / iQOO 請同時允許自啟動與背景高耗電。再開啟精確鬧鐘、關閉電池最佳化後重新同步。';
+      '提醒已儲存，但 Android 未能將其加入待處理佇列。請檢查通知、精確鬧鐘和電池設定後重新同步。';
 
   @override
   String get reminderScheduleVerifyFailedBanner =>
-      '系統未能寫入任何提醒。請檢查精確鬧鐘、電池最佳化與自啟動（OriginOS / iQOO），然後重新同步。';
+      'Android 未能將提醒加入待處理佇列。請檢查通知、精確鬧鐘和電池設定後重新同步。';
 
   @override
   String reminderScheduledCount(int count) {

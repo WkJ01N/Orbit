@@ -32,8 +32,7 @@ class AlarmIntentService {
       'android.intent.extra.alarm.SKIP_UI': false,
     };
 
-    // Try the standard SET_ALARM intent first, then fall back to known OEM
-    // clock packages (e.g. OriginOS / Vivo on iQOO) whose clock app may not
+    // Try the standard intent first, then vendor clock packages that do not
     // advertise the generic action.
     final candidates = <AndroidIntent>[
       AndroidIntent(action: _setAlarmAction, arguments: arguments),

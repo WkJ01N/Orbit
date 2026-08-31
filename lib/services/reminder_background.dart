@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/widgets.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
@@ -9,6 +11,7 @@ import 'package:orbit/services/xlsx_parser.dart';
 @pragma('vm:entry-point')
 Future<void> reminderMaintenanceCallback() async {
   WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
 
   AppDatabase? database;
   try {
@@ -25,6 +28,7 @@ Future<void> reminderMaintenanceCallback() async {
       allSessions: all,
       settings: settings,
       copy: copy,
+      requestPermissions: false,
     );
     ReminderScheduler.shared.markRescheduleSuccess();
   } catch (error, stackTrace) {

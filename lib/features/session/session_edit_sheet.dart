@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -323,15 +321,11 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
         final syncError = ref.read(lastRescheduleErrorProvider);
         final scheduledCount = ref.read(lastScheduledCountProvider);
-        final alarmCount = ref.read(lastRegisteredAlarmCountProvider);
         final String message;
         if (syncError == 'verify') {
           message = '$baseMessage ${l10n.reminderScheduleVerifyFailed}';
         } else if (failures > 0) {
           message = '$baseMessage ${l10n.resyncPartialFailed(failures)}';
-        } else if (Platform.isAndroid && alarmCount > 0) {
-          message =
-              '$baseMessage ${l10n.reminderRegisteredAlarmCount(alarmCount)}';
         } else if (scheduledCount > 0) {
           message =
               '$baseMessage ${l10n.reminderScheduledCount(scheduledCount)}';

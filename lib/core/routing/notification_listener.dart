@@ -44,6 +44,7 @@ class _OrbitNotificationListenerState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.read(currentTimeProvider.notifier).syncNow();
       _maybeResyncOnForeground();
     }
   }
@@ -52,7 +53,7 @@ class _OrbitNotificationListenerState
     if (!Platform.isAndroid && !Platform.isWindows) {
       return;
     }
-    if (!ReminderScheduler.shared.shouldResyncOnForeground()) {
+    if (!await ReminderScheduler.shared.shouldResyncOnForeground()) {
       return;
     }
     if (!ref.read(reminderSettingsProvider).hasValue) {

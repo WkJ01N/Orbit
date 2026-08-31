@@ -1,4 +1,4 @@
-/// Payload persisted for an Android [AndroidAlarmManager] one-shot reminder.
+/// Platform-neutral payload used to schedule a local notification.
 class ReminderAlarmSpec {
   const ReminderAlarmSpec({
     required this.alarmId,
@@ -10,7 +10,7 @@ class ReminderAlarmSpec {
     this.bigText,
   });
 
-  /// Same as [notificationId]; used as AlarmManager alarm id.
+  /// Kept aligned with [notificationId] for stable persisted identifiers.
   final int alarmId;
   final int notificationId;
   final String title;
