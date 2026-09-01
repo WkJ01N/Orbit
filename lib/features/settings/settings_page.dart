@@ -19,7 +19,6 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
-import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
@@ -1024,64 +1023,6 @@ class _AndroidBackgroundSectionState
     }
   }
 
-  String _testFailureMessage(
-    AppLocalizations l10n,
-    ReminderTestFailure? failure,
-  ) {
-    return switch (failure) {
-      ReminderTestFailure.notificationsDenied =>
-        l10n.androidTestReminderNotificationsDenied,
-      ReminderTestFailure.exactAlarmsDenied =>
-        l10n.androidTestReminderExactAlarmsDenied,
-      _ => l10n.androidTestBackgroundReminderFailed,
-    };
-  }
-
-  Future<void> _showImmediateTestReminder() async {
-    final l10n = AppLocalizations.of(context)!;
-    final copy = notificationCopyFor(ref.read(localeProvider));
-    final result = await ref
-        .read(reminderSchedulerProvider)
-        .showImmediateTest(
-          title: l10n.androidTestImmediateReminder,
-          body: l10n.androidTestImmediateReminderSubtitle,
-          copy: copy,
-        );
-    if (!mounted) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.succeeded
-              ? l10n.androidTestImmediateReminderShown
-              : _testFailureMessage(l10n, result.failure),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _scheduleTestReminder() async {
-    final l10n = AppLocalizations.of(context)!;
-    final copy = notificationCopyFor(ref.read(localeProvider));
-    final result = await ref
-        .read(reminderSchedulerProvider)
-        .scheduleBackgroundTest(
-          title: l10n.androidTestBackgroundReminder,
-          body: l10n.androidTestBackgroundReminderSubtitle,
-          copy: copy,
-        );
-    if (!mounted) return;
-    final message = result.succeeded
-        ? l10n.androidTestBackgroundReminderScheduledAt(
-            TimeOfDay.fromDateTime(result.fireAt!).format(context),
-          )
-        : _testFailureMessage(l10n, result.failure);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -1098,12 +1039,6 @@ class _AndroidBackgroundSectionState
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-        ),
-        ListTile(
-          title: Text(l10n.androidTestImmediateReminder),
-          subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
-          trailing: const Icon(Icons.notifications_active_outlined),
-          onTap: _showImmediateTestReminder,
         ),
         ListTile(
           title: Text(l10n.androidCheckReminderPermissions),
@@ -1131,12 +1066,6 @@ class _AndroidBackgroundSectionState
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-        ),
-        ListTile(
-          title: Text(l10n.androidTestBackgroundReminder),
-          subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
-          trailing: const Icon(Icons.alarm_on_outlined),
-          onTap: _scheduleTestReminder,
         ),
       ],
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/widgets/section_header.dart';
 import 'package:orbit/features/session/deletion_feedback.dart';
 import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
+import 'package:orbit/features/settings/debug_page.dart';
 import 'package:orbit/features/settings/deleted_sessions_page.dart';
 import 'package:orbit/features/settings/export_backup_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
@@ -30,6 +31,15 @@ class SettingsDataSection extends ConsumerWidget {
               builder: (_) => const DeletedSessionsPage(),
             ),
           ),
+        ),
+        ListTile(
+          title: Text(l10n.debugTitle),
+          subtitle: Text(l10n.debugSubtitle),
+          leading: const Icon(Icons.bug_report_outlined),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const DebugPage())),
         ),
         ListTile(
           title: Text(l10n.deleteEndedSessions),

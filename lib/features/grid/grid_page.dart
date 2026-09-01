@@ -25,6 +25,9 @@ class GridPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: _GridAppBar(
+        onAdd: sessionsAsync.hasValue
+            ? () => SessionEditSheet.showCreate(context)
+            : null,
         onBatchDelete: canBatchDelete
             ? () => showGridBatchDeleteDialog(
                 context,
@@ -48,13 +51,6 @@ class GridPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(sessionsProvider),
         ),
       ),
-      floatingActionButton: sessionsAsync.hasValue
-          ? FloatingActionButton.extended(
-              onPressed: () => SessionEditSheet.showCreate(context),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addSession),
-            )
-          : null,
     );
   }
 
@@ -68,8 +64,9 @@ class GridPage extends ConsumerWidget {
 /// Implements [PreferredSizeWidget] so it can be used directly as
 /// [Scaffold.appBar] without a [PreferredSize] wrapper.
 class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _GridAppBar({this.onBatchDelete, this.onSearch});
+  const _GridAppBar({this.onAdd, this.onBatchDelete, this.onSearch});
 
+  final VoidCallback? onAdd;
   final VoidCallback? onBatchDelete;
   final VoidCallback? onSearch;
 
@@ -80,6 +77,14 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return AppBar(
+      leading: onAdd == null
+          ? null
+          : IconButton(
+              key: const Key('grid-add-session'),
+              icon: const Icon(Icons.add, size: 21),
+              tooltip: l10n.addSession,
+              onPressed: onAdd,
+            ),
       title: Text(l10n.gridTitle),
       actions: [
         if (onSearch != null)

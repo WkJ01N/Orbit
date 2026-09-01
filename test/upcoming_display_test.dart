@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/features/upcoming/upcoming_page.dart';
+import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -81,5 +84,45 @@ void main() {
       find.byKey(Key('upcoming-course-date-${second.id}')),
       findsOneWidget,
     );
+    final add = find.byKey(const Key('upcoming-add-session'));
+    expect(add, findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(tester.getRect(add).width, greaterThanOrEqualTo(48));
+    final addIcon = tester.widget<Icon>(
+      find.descendant(of: add, matching: find.byIcon(Icons.add)),
+    );
+    expect(addIcon.size, 21);
+
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    expect(find.byType(SessionEditSheet), findsOneWidget);
+  });
+
+  testWidgets('接下来加载完成前不显示添加课程入口', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final pending = Completer<List<CourseSession>>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          upcomingSessionsProvider.overrideWith((ref) => pending.future),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh', 'Hans'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const UpcomingPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('upcoming-add-session')), findsNothing);
+    expect(find.byType(FloatingActionButton), findsNothing);
   });
 }

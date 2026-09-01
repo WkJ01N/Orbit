@@ -1090,14 +1090,26 @@ abstract class AppLocalizations {
   /// No description provided for @androidAutostartHint.
   ///
   /// In en, this message translates to:
-  /// **'Some Android systems may also require autostart and unrestricted background activity in system settings.'**
+  /// **'On OriginOS / iQOO, allow autostart and unrestricted background activity, then lock Orbit in recents.'**
   String get androidAutostartHint;
 
   /// No description provided for @androidKillBackgroundHint.
   ///
   /// In en, this message translates to:
-  /// **'After swiping the app away from recents, reminders rely on Android\'s scheduled notification service. Complete the permission settings above for best reliability.'**
+  /// **'Verified on iQOO V2408A after returning home, locking the screen, and swiping Orbit from recents. Behavior may vary on other OriginOS versions; a true Force Stop from system settings still cancels app alarms. Use System alarm above as a manual fallback when needed.'**
   String get androidKillBackgroundHint;
+
+  /// No description provided for @debugTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get debugTitle;
+
+  /// No description provided for @debugSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification and background reminder diagnostics'**
+  String get debugSubtitle;
 
   /// No description provided for @androidTestImmediateReminder.
   ///
@@ -1126,20 +1138,32 @@ abstract class AppLocalizations {
   /// No description provided for @androidTestBackgroundReminderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Schedules through the same path as class reminders. Swipe the app away and wait one minute.'**
+  /// **'Uses the same native system alarm as class reminders. Return home or lock the screen and wait one minute.'**
   String get androidTestBackgroundReminderSubtitle;
 
   /// No description provided for @androidTestBackgroundReminderScheduled.
   ///
   /// In en, this message translates to:
-  /// **'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.'**
+  /// **'Test reminder scheduled in 1 minute. Return home or lock the screen and wait.'**
   String get androidTestBackgroundReminderScheduled;
 
   /// No description provided for @androidTestBackgroundReminderScheduledAt.
   ///
   /// In en, this message translates to:
-  /// **'Background test scheduled for {time}. Swipe the app away and wait.'**
+  /// **'Background test scheduled for {time}. Return home or lock the screen and wait.'**
   String androidTestBackgroundReminderScheduledAt(String time);
+
+  /// No description provided for @androidTestBackgroundNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit background reminder test'**
+  String get androidTestBackgroundNotificationTitle;
+
+  /// No description provided for @androidTestBackgroundNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The background reminder fired successfully. Orbit can notify you while it is not in the foreground.'**
+  String get androidTestBackgroundNotificationBody;
 
   /// No description provided for @androidTestBackgroundReminderFailed.
   ///

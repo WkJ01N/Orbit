@@ -67,6 +67,11 @@ class ReminderAlarmRegistry {
     return all.containsKey(alarmId);
   }
 
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(reminderAlarmRegistryKey);
+  }
+
   static Future<void> _write(Map<int, ReminderAlarmSpec> all) async {
     final prefs = await SharedPreferences.getInstance();
     if (all.isEmpty) {

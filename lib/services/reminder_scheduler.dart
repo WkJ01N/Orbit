@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -11,7 +10,7 @@ import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/models/reminder_settings.dart';
-import 'package:orbit/services/android_alarm_delivery_service.dart';
+import 'package:orbit/services/android_native_reminder_service.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 
@@ -82,10 +81,18 @@ class ReminderScheduler {
 
   void registerNotificationTapHandler(NotificationTapCallback? callback) {
     _notificationTapCallback = callback;
+    AndroidNativeReminderService.instance.registerNotificationTapHandler(
+      callback == null ? null : (payload) => callback(payload),
+    );
   }
 
   Future<String?> getLaunchNotificationPayload() async {
     await ensurePluginInitialized();
+    if (Platform.isAndroid) {
+      final nativePayload = await AndroidNativeReminderService.instance
+          .consumeLaunchPayload();
+      if (nativePayload != null) return nativePayload;
+    }
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details?.didNotificationLaunchApp != true) return null;
     return details?.notificationResponse?.payload;
@@ -247,7 +254,7 @@ class ReminderScheduler {
   }) async {
     await _prepare(copy);
     await _plugin.cancel(backgroundTestNotificationId);
-    await AndroidAlarmDeliveryService.instance.cancel(
+    await AndroidNativeReminderService.instance.cancel(
       backgroundTestNotificationId,
     );
     final permission = await queryPermissionStatus();
@@ -313,12 +320,9 @@ class ReminderScheduler {
         ReminderTestFailure.schedulingFailed,
       );
     }
-    final pending = await _plugin.pendingNotificationRequests();
-    final queued =
-        pending.any((item) => item.id == backgroundTestNotificationId) ||
-        await AndroidAlarmDeliveryService.instance.contains(
-          backgroundTestNotificationId,
-        );
+    final queued = await AndroidNativeReminderService.instance.contains(
+      backgroundTestNotificationId,
+    );
     return queued
         ? ReminderTestResult.success(fireAt: fireAt)
         : const ReminderTestResult.failure(
@@ -329,7 +333,7 @@ class ReminderScheduler {
   Future<void> cancelScheduledCourseReminders() async {
     await ensurePluginInitialized();
     if (Platform.isAndroid) {
-      await AndroidAlarmDeliveryService.instance.cancelCourseReminders();
+      await AndroidNativeReminderService.instance.cancelCourseReminders();
     }
     try {
       final pending = await _plugin.pendingNotificationRequests();
@@ -362,51 +366,16 @@ class ReminderScheduler {
     final when = reminderAtToTzDateTime(spec.fireAt);
     final details = _notificationDetails(copy, bigText: spec.bigText);
     if (Platform.isAndroid) {
-      var pluginScheduled = false;
-      var usedInexactFallback = false;
-      try {
-        await _plugin.zonedSchedule(
-          spec.notificationId,
-          spec.title,
-          spec.body,
-          when,
-          details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: spec.payload,
-        );
-        pluginScheduled = true;
-      } catch (error, stackTrace) {
-        debugPrint('Exact schedule failed for ${spec.notificationId}: $error');
-        debugPrint('$stackTrace');
-        if (allowInexactFallback) {
-          try {
-            await _plugin.zonedSchedule(
-              spec.notificationId,
-              spec.title,
-              spec.body,
-              when,
-              details,
-              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-              payload: spec.payload,
-            );
-            pluginScheduled = true;
-            usedInexactFallback = true;
-          } catch (fallbackError, fallbackStack) {
-            debugPrint('Inexact schedule failed: $fallbackError');
-            debugPrint('$fallbackStack');
-          }
-        }
-      }
-
-      final alarmScheduled = await AndroidAlarmDeliveryService.instance
-          .schedule(
-            spec,
-            exact: exactAlarmsEnabled,
-            rescheduleOnReboot: rescheduleOnReboot,
-          );
+      final result = await AndroidNativeReminderService.instance.schedule(
+        spec,
+        copy: copy,
+        exactPreferred: exactAlarmsEnabled,
+        allowInexactFallback: allowInexactFallback,
+        restoreOnReboot: rescheduleOnReboot,
+      );
       return _ScheduleAttempt(
-        scheduled: pluginScheduled || alarmScheduled,
-        usedInexactFallback: usedInexactFallback || !exactAlarmsEnabled,
+        scheduled: result.scheduled,
+        usedInexactFallback: result.usedInexactFallback,
       );
     }
 
@@ -435,9 +404,7 @@ class ReminderScheduler {
           .where((item) => isCourseReminderNotificationId(item.id))
           .length;
       if (!Platform.isAndroid) return pluginCount;
-      final alarmCount = await AndroidAlarmDeliveryService.instance
-          .pendingCourseReminderCount();
-      return math.max(pluginCount, alarmCount);
+      return AndroidNativeReminderService.instance.pendingCourseReminderCount();
     } catch (error) {
       debugPrint('Failed to query pending notifications: $error');
       return -1;

@@ -559,11 +559,18 @@ class AppLocalizationsZh extends AppLocalizations {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint => '部分 Android 系統可能還需要在系統設定中允許自啟動和背景執行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 請允許自啟動和背景高耗電，並在最近任務中鎖定 Orbit。';
 
   @override
   String get androidKillBackgroundHint =>
-      '從最近任務划掉應用後，提醒由 Android 的排程通知服務觸發。請完成上方權限設定以提高可靠性。';
+      '已在 iQOO V2408A 驗證回到桌面、鎖定螢幕及從最近任務上划後仍可提醒。其他 OriginOS 版本的行為可能不同；在系統設定中真正「強制停止」仍會取消應用鬧鐘。需要時可使用上方「系統鬧鐘」手動備援。';
+
+  @override
+  String get debugTitle => '偵錯';
+
+  @override
+  String get debugSubtitle => '通知與背景提醒診斷工具';
 
   @override
   String get androidTestImmediateReminder => '立即測試通知';
@@ -579,16 +586,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的方式安排。請划掉應用後等待 1 分鐘。';
+      '使用與課程提醒相同的原生系統鬧鐘。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
+      '已註冊 1 分鐘後的測試提醒。請回到桌面或鎖定螢幕等待。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '背景測試已安排在 $time。請划掉應用後等待。';
+    return '背景測試已安排在 $time。請回到桌面或鎖定螢幕等待。';
   }
+
+  @override
+  String get androidTestBackgroundNotificationTitle => 'Orbit 背景提醒測試';
+
+  @override
+  String get androidTestBackgroundNotificationBody =>
+      '背景提醒已成功觸發，Orbit 不在前台時也可以正常傳送提醒。';
 
   @override
   String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';
@@ -1885,11 +1899,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       '将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。';
 
   @override
-  String get androidAutostartHint => '部分 Android 系统可能还需要在系统设置中允许自启动和后台运行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 请允许自启动和后台高耗电，并在最近任务中锁定 Orbit。';
 
   @override
   String get androidKillBackgroundHint =>
-      '从最近任务划掉应用后，提醒由 Android 的定时通知服务触发。请完成上方权限设置以提高可靠性。';
+      '已在 iQOO V2408A 验证回到桌面、锁屏及从最近任务上划后仍可提醒。其他 OriginOS 版本的行为可能不同；在系统设置中真正“强行停止”仍会取消应用闹钟。需要时可使用上方“系统闹钟”手动兜底。';
+
+  @override
+  String get debugTitle => '调试';
+
+  @override
+  String get debugSubtitle => '通知与后台提醒诊断工具';
 
   @override
   String get androidTestImmediateReminder => '立即测试通知';
@@ -1905,16 +1926,23 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用与课程提醒相同的方式安排。请划掉应用后等待 1 分钟。';
+      '使用与课程提醒相同的原生系统闹钟。安排后请回到桌面或锁屏等待 1 分钟。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已注册 1 分钟后的测试提醒。请从最近任务划掉应用并等待。';
+      '已注册 1 分钟后的测试提醒。请回到桌面或锁屏等待。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '后台测试已安排在 $time。请划掉应用后等待。';
+    return '后台测试已安排在 $time。请回到桌面或锁屏等待。';
   }
+
+  @override
+  String get androidTestBackgroundNotificationTitle => 'Orbit 后台提醒测试';
+
+  @override
+  String get androidTestBackgroundNotificationBody =>
+      '后台提醒已成功触发，Orbit 不在前台时也可以正常发送提醒。';
 
   @override
   String get androidTestBackgroundReminderFailed => '无法注册测试提醒，请检查精确闹钟权限。';
@@ -3211,11 +3239,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '將跳轉到系統設定以恢復電池最佳化，背景提醒可能變得不穩定。';
 
   @override
-  String get androidAutostartHint => '部分 Android 系統可能還需要在系統設定中允許自啟動和背景執行。';
+  String get androidAutostartHint =>
+      'OriginOS / iQOO 請允許自啟動和背景高耗電，並在最近任務中鎖定 Orbit。';
 
   @override
   String get androidKillBackgroundHint =>
-      '從最近任務划掉應用後，提醒由 Android 的排程通知服務觸發。請完成上方權限設定以提高可靠性。';
+      '已在 iQOO V2408A 驗證回到桌面、鎖定螢幕及從最近任務上划後仍可提醒。其他 OriginOS 版本的行為可能不同；在系統設定中真正「強制停止」仍會取消應用鬧鐘。需要時可使用上方「系統鬧鐘」手動備援。';
+
+  @override
+  String get debugTitle => '偵錯';
+
+  @override
+  String get debugSubtitle => '通知與背景提醒診斷工具';
 
   @override
   String get androidTestImmediateReminder => '立即測試通知';
@@ -3231,16 +3266,23 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的方式安排。請划掉應用後等待 1 分鐘。';
+      '使用與課程提醒相同的原生系統鬧鐘。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已註冊 1 分鐘後的測試提醒。請從最近任務划掉應用並等待。';
+      '已註冊 1 分鐘後的測試提醒。請回到桌面或鎖定螢幕等待。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '背景測試已安排在 $time。請划掉應用後等待。';
+    return '背景測試已安排在 $time。請回到桌面或鎖定螢幕等待。';
   }
+
+  @override
+  String get androidTestBackgroundNotificationTitle => 'Orbit 背景提醒測試';
+
+  @override
+  String get androidTestBackgroundNotificationBody =>
+      '背景提醒已成功觸發，Orbit 不在前台時也可以正常傳送提醒。';
 
   @override
   String get androidTestBackgroundReminderFailed => '無法註冊測試提醒，請檢查精確鬧鐘權限。';

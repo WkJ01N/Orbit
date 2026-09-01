@@ -1,20 +1,16 @@
 import 'dart:io';
 
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/services.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
-import 'package:orbit/services/android_alarm_delivery_service.dart';
-import 'package:orbit/services/reminder_background.dart';
-import 'package:orbit/services/reminder_id_ranges.dart';
+import 'package:orbit/services/android_native_reminder_service.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
 
 const _androidPackageName = 'com.must.orbit.orbit';
 const _batteryChannel = MethodChannel('com.must.orbit.orbit/battery');
-const _maintenanceInterval = Duration(hours: 6);
 
 class AndroidReminderGuard {
   AndroidReminderGuard._();
@@ -29,7 +25,7 @@ class AndroidReminderGuard {
     if (!Platform.isAndroid || _initialized) {
       return;
     }
-    await AndroidAlarmDeliveryService.instance.initialize();
+    await AndroidNativeReminderService.instance.initialize();
     _initialized = true;
   }
 
@@ -38,31 +34,7 @@ class AndroidReminderGuard {
       return;
     }
 
-    await AndroidAlarmManager.cancel(maintenanceAlarmId);
-    try {
-      final scheduled = await AndroidAlarmManager.periodic(
-        _maintenanceInterval,
-        maintenanceAlarmId,
-        reminderMaintenanceCallback,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-        allowWhileIdle: true,
-      );
-      if (scheduled) return;
-    } catch (_) {
-      // Exact alarms may not have been granted yet; periodic maintenance can
-      // still run inexactly until the user enables the permission.
-    }
-    await AndroidAlarmManager.periodic(
-      _maintenanceInterval,
-      maintenanceAlarmId,
-      reminderMaintenanceCallback,
-      exact: false,
-      wakeup: true,
-      rescheduleOnReboot: true,
-      allowWhileIdle: true,
-    );
+    await AndroidNativeReminderService.instance.ensureMaintenanceAlarm();
   }
 
   Future<void> ensureReminderPermissions() async {

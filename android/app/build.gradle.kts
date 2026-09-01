@@ -76,6 +76,10 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 kotlin {
@@ -88,6 +92,15 @@ flutter {
     source = "../.."
 }
 
+// Flutter's debug assets are packaged into Robolectric's host-test APK.
+// Gradle 9 requires this producer/consumer relationship to be explicit.
+tasks.matching { it.name == "packageDebugUnitTestForUnitTest" }.configureEach {
+    dependsOn("copyFlutterAssetsDebug")
+}
+
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.robolectric:robolectric:4.16.1")
 }

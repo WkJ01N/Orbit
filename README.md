@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.3.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.3.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -11,23 +11,23 @@
 | 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
 | 导出与备份 | JSON v2 完整备份课程、主题、提醒与显示设置，并兼容 v1；支持课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出 |
 | 课表网格 | 按真实时间定位的单日 / 多日 / 整周时间轴；跟手左右滑动、回弹、箭头与方向键过渡；翻页保留滚动位置；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度和批量删除 |
-| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；FAB 快速添加课程 |
-| 提醒 | 课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；次日摘要「无课开关」；IANA 时区排程；Android `alarmClock` 优先与精确 / 非精确降级；AlarmManager 主通道（含次日摘要）；2 小时内近端 Timer 兜底；排程 pending 校验与失败提示（含 OriginOS 自启动提示）；全局重同步横幅；通知点击跳转课程详情；Android 可选系统闹钟（含 OriginOS 回退） |
+| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程 |
+| 提醒 | 课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；Android 原生 `AlarmManager` 接收器在不启动 Flutter 的情况下直接通知；IANA 时区排程；精确 / 非精确降级；开机与更新时间恢复；通知点击跳转课程详情；Android 可选系统闹钟 |
 | 课程管理 | 单节、本节及以后或全部同课程的批量编辑与删除；7 天回收站、即时撤销和冲突安全恢复；课程备注及按科目自定义颜色 |
 | 外观 | 标准与彩色主题；主题色（9 预设 + 自定义 HEX）；深浅色模式手动切换（跟随系统 / 浅色 / 深色） |
 | Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启 |
-| Android | AlarmManager 后台维护（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；重启后自动维护闹钟 |
+| Android | 原生 AlarmManager 后台提醒（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；OriginOS 任务锁定说明；重启后自动恢复提醒 |
 | 多语言 | 繁体中文、简体中文、English |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.3.0：
+可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.3.2：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.3.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.3.0-android.apk` | 使用全新正式证书；从 v1.2.1 或更早版本升级时需先卸载旧版 |
+| Windows | `orbit-v1.3.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.3.2-android.apk` | 修复 Android 后台提醒；从 v1.3.0 / v1.3.1 可直接覆盖安装 |
 
 ## 从源码运行
 
@@ -67,15 +67,23 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath orbit-v1.3.0-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath orbit-v1.3.2-windows-x64.zip
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.2.1/orbit-v1.2.1-release.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.3.2/orbit-v1.3.2-android.apk
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v1.3.2
+
+- Android 课程提醒改由原生系统闹钟接收器直接发布，不依赖后台启动 Flutter
+- 修复 iQOO / OriginOS 回到桌面、锁屏、进程冻结或最近任务上划后不提醒
+- 通知诊断工具移至“数据管理 → 调试”，课表新增入口移至标题栏左侧
+- 系统设置中的真正强行停止仍会取消应用闹钟，可使用系统时钟手动兜底
+- 版本号 1.3.2（build `+13`）
 
 ### v1.2.1
 

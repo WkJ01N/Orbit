@@ -580,11 +580,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidAutostartHint =>
-      'Some Android systems may also require autostart and unrestricted background activity in system settings.';
+      'On OriginOS / iQOO, allow autostart and unrestricted background activity, then lock Orbit in recents.';
 
   @override
   String get androidKillBackgroundHint =>
-      'After swiping the app away from recents, reminders rely on Android\'s scheduled notification service. Complete the permission settings above for best reliability.';
+      'Verified on iQOO V2408A after returning home, locking the screen, and swiping Orbit from recents. Behavior may vary on other OriginOS versions; a true Force Stop from system settings still cancels app alarms. Use System alarm above as a manual fallback when needed.';
+
+  @override
+  String get debugTitle => 'Debug';
+
+  @override
+  String get debugSubtitle =>
+      'Notification and background reminder diagnostics';
 
   @override
   String get androidTestImmediateReminder => 'Test notification now';
@@ -602,16 +609,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      'Schedules through the same path as class reminders. Swipe the app away and wait one minute.';
+      'Uses the same native system alarm as class reminders. Return home or lock the screen and wait one minute.';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      'Test reminder scheduled in 1 minute. Swipe the app from recents and wait.';
+      'Test reminder scheduled in 1 minute. Return home or lock the screen and wait.';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return 'Background test scheduled for $time. Swipe the app away and wait.';
+    return 'Background test scheduled for $time. Return home or lock the screen and wait.';
   }
+
+  @override
+  String get androidTestBackgroundNotificationTitle =>
+      'Orbit background reminder test';
+
+  @override
+  String get androidTestBackgroundNotificationBody =>
+      'The background reminder fired successfully. Orbit can notify you while it is not in the foreground.';
 
   @override
   String get androidTestBackgroundReminderFailed =>

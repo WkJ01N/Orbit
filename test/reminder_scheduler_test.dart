@@ -9,6 +9,7 @@ import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
 import 'package:orbit/services/reminder_alarm_registry.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
+import 'package:orbit/services/android_native_reminder_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -139,6 +140,55 @@ void main() {
     expect(maintenanceAlarmId, greaterThanOrEqualTo(checkInAlarmLimit));
     expect(backgroundTestNotificationId, greaterThan(maintenanceAlarmId));
     expect(immediateTestNotificationId, greaterThan(maintenanceAlarmId));
+  });
+
+  test('native reminder bridge preserves notification payload and policy', () {
+    final spec = ReminderAlarmSpec(
+      alarmId: backgroundTestNotificationId,
+      notificationId: backgroundTestNotificationId,
+      title: 'Orbit 后台提醒测试',
+      body: '后台提醒已成功触发',
+      bigText: '完整测试正文',
+      payload: 'test_background_reminder',
+      fireAt: DateTime(2026, 9, 1, 9, 30),
+    );
+    final copy = NotificationCopy.fromL10n(
+      lookupL10n(
+        const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+      ),
+    );
+
+    final arguments = AndroidNativeReminderService.instance
+        .buildScheduleArguments(
+          spec,
+          copy: copy,
+          exactPreferred: true,
+          allowInexactFallback: false,
+          restoreOnReboot: false,
+        );
+
+    expect(arguments['alarmId'], backgroundTestNotificationId);
+    expect(arguments['notificationId'], backgroundTestNotificationId);
+    expect(arguments['title'], 'Orbit 后台提醒测试');
+    expect(arguments['body'], '后台提醒已成功触发');
+    expect(arguments['bigText'], '完整测试正文');
+    expect(arguments['payload'], 'test_background_reminder');
+    expect(arguments['exactPreferred'], isTrue);
+    expect(arguments['allowInexactFallback'], isFalse);
+    expect(arguments['restoreOnReboot'], isFalse);
+  });
+
+  test('background test notification copy is separate from settings help', () {
+    final l10n = lookupL10n(
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+    );
+
+    expect(l10n.androidTestBackgroundNotificationTitle, 'Orbit 后台提醒测试');
+    expect(l10n.androidTestBackgroundNotificationBody, contains('后台提醒已成功触发'));
+    expect(
+      l10n.androidTestBackgroundNotificationBody,
+      isNot(equals(l10n.androidTestBackgroundReminderSubtitle)),
+    );
   });
 
   test(

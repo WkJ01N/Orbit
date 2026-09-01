@@ -70,6 +70,28 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
+
+        <!-- Orbit native delivery path: posts notifications without starting Flutter. -->
+        <receiver
+            android:name=".OrbitReminderReceiver"
+            android:exported="false"
+            android:process=":reminders" />
+        <receiver
+            android:name=".OrbitReminderMaintenanceReceiver"
+            android:exported="false"
+            android:process=":reminders" />
+        <receiver
+            android:name=".OrbitReminderRestoreReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":reminders">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

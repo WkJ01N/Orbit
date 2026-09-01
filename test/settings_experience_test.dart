@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/features/settings/debug_page.dart';
 import 'package:orbit/features/settings/settings_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_settings.dart';
@@ -77,6 +78,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Enable class reminders'), findsOneWidget);
+    expect(find.text('Test notification now'), findsNothing);
+    expect(find.text('Test background reminder (1 min)'), findsNothing);
 
     await tester.tap(find.byKey(const Key('settings-category-3')));
     await tester.pumpAndSettle();
@@ -85,6 +88,46 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Export JSON backup'), findsOneWidget);
+    expect(find.text('Debug'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Debug'));
+    await tester.tap(find.text('Debug'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DebugPage), findsOneWidget);
+    expect(find.text('Test notification now'), findsOneWidget);
+    expect(find.text('Test background reminder (1 min)'), findsNothing);
+  });
+
+  testWidgets('调试页仅在 Android 模式显示一分钟后台提醒', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+
+    Future<void> pumpDebugPage(bool showAndroidTools) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [localeProvider.overrideWith(_FixedLocaleNotifier.new)],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: DebugPage(showAndroidTools: showAndroidTools),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpDebugPage(false);
+    expect(find.text('Test notification now'), findsOneWidget);
+    expect(find.text('Test background reminder (1 min)'), findsNothing);
+
+    await pumpDebugPage(true);
+    expect(find.text('Test notification now'), findsOneWidget);
+    expect(find.text('Test background reminder (1 min)'), findsOneWidget);
   });
 
   testWidgets('设置分组标题和主题色在不同宽度保持左对齐', (tester) async {

@@ -34,6 +34,14 @@ class UpcomingPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: upcomingAsync.hasValue
+            ? IconButton(
+                key: const Key('upcoming-add-session'),
+                icon: const Icon(Icons.add, size: 21),
+                tooltip: l10n.addSession,
+                onPressed: () => SessionEditSheet.showCreate(context),
+              )
+            : null,
         title: Text(l10n.upcomingTitle),
         actions: [
           IconButton(
@@ -58,14 +66,6 @@ class UpcomingPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(upcomingSessionsProvider),
         ),
       ),
-      // Show FAB only when data is available, matching GridPage behaviour.
-      floatingActionButton: upcomingAsync.hasValue
-          ? FloatingActionButton.extended(
-              onPressed: () => SessionEditSheet.showCreate(context),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addSession),
-            )
-          : null,
     );
   }
 
