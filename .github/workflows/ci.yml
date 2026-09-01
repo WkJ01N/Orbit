@@ -19,8 +19,9 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
-      - run: cd android && ./gradlew :app:testDebugUnitTest
       - run: flutter build apk --debug
+      # Flutter creates the ignored Gradle wrapper during the first Android build.
+      - run: cd android && ./gradlew :app:testDebugUnitTest
 
   windows:
     runs-on: windows-latest
