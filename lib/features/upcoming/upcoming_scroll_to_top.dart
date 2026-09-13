@@ -29,7 +29,6 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
   bool _reduceMotion = false;
   bool _transferring = false;
   double _progressTarget = 0;
-  double? _scrollExtentBasis;
   bool _scrolling = false;
   bool _offsetChanged = false;
 
@@ -43,14 +42,12 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
-    _scrollExtentBasis = null;
     _scheduleRefresh();
   }
 
   @override
   void didUpdateWidget(UpcomingScrollToTop oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _scrollExtentBasis = null;
     _scheduleRefresh();
   }
 
@@ -74,20 +71,17 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
     final extent = position.maxScrollExtent - position.minScrollExtent;
-    // SliverList's estimated extent changes as differently sized rows appear.
-    // Keep its denominator stable through a drag and the following ballistic
-    // scroll, then reconcile once motion ends.
-    if (!_scrolling || _scrollExtentBasis == null) _scrollExtentBasis = extent;
     final offset = (position.pixels - position.minScrollExtent).clamp(
       0.0,
       math.max(0.0, extent),
     );
     final remaining = math.max(0.0, extent - offset);
-    final basis = _scrollExtentBasis ?? extent;
+    // Variable-height rows change SliverList's estimated extent during motion.
+    // Use the current range so the ring stays in sync with the scroll metrics.
     final progress = remaining <= .5 && extent > 0
         ? 1.0
-        : basis > 0
-        ? (offset / basis).clamp(0.0, 1.0)
+        : extent > 0
+        ? (offset / extent).clamp(0.0, 1.0)
         : 0.0;
     if (_reduceMotion ||
         _scrolling ||
@@ -192,11 +186,6 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
             if (notification.depth != 0) return false;
             if (notification is ScrollStartNotification) {
               _scrolling = true;
-              if (_scrollController.hasClients) {
-                _scrollExtentBasis =
-                    _scrollController.position.maxScrollExtent -
-                    _scrollController.position.minScrollExtent;
-              }
             } else if (notification is ScrollEndNotification) {
               _scrolling = false;
               _scheduleRefresh();

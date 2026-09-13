@@ -390,7 +390,7 @@ void main() {
     },
   );
   testWidgets(
-    'variable-height list keeps a stable progress basis while scrolling',
+    'variable-height progress follows current metrics during fast scrolling',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(400, 600);
@@ -416,31 +416,49 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final basis = _position(tester).maxScrollExtent;
+      final initialExtent = _position(tester).maxScrollExtent;
+      void expectCurrentProgress() {
+        final position = _position(tester);
+        expect(
+          _progress(tester, _floatingKey),
+          closeTo(position.pixels / position.maxScrollExtent, .0001),
+        );
+      }
+
       final gesture = await tester.startGesture(const Offset(200, 500));
       await gesture.moveBy(const Offset(0, -350));
       await tester.pump();
-      expect(
-        _progress(tester, _floatingKey),
-        closeTo(_position(tester).pixels / basis, .001),
-      );
-      final previous = _progress(tester, _floatingKey);
-      await gesture.moveBy(const Offset(0, -170));
-      await tester.pump();
-      expect(_progress(tester, _floatingKey), greaterThan(previous));
-      expect(
-        _progress(tester, _floatingKey),
-        closeTo(_position(tester).pixels / basis, .001),
-      );
+      expectCurrentProgress();
+      var extentChanged = _position(tester).maxScrollExtent != initialExtent;
+      for (var i = 0; i < 8; i++) {
+        await gesture.moveBy(const Offset(0, -400));
+        await tester.pump(const Duration(milliseconds: 16));
+        extentChanged |= _position(tester).maxScrollExtent != initialExtent;
+        expectCurrentProgress();
+      }
+      expect(extentChanged, isTrue);
       await gesture.up();
       await tester.pumpAndSettle();
-      expect(
-        _progress(tester, _floatingKey),
-        closeTo(
-          _position(tester).pixels / _position(tester).maxScrollExtent,
-          .001,
-        ),
+      expectCurrentProgress();
+
+      // Check every frame of a fling rather than only its settled endpoint.
+      await _jump(tester, 0);
+      await tester.fling(
+        find.byKey(const Key('upcoming-scroll-view')),
+        const Offset(0, -600),
+        5000,
       );
+      final position = _position(tester);
+      expect(position.isScrollingNotifier.value, isTrue);
+      final releaseOffset = position.pixels;
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(position.isScrollingNotifier.value, isTrue);
+        expectCurrentProgress();
+      }
+      expect(position.pixels, greaterThan(releaseOffset));
+      await tester.pumpAndSettle();
+      expectCurrentProgress();
       expect(tester.takeException(), isNull);
     },
   );
