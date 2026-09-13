@@ -40,14 +40,18 @@
   "resyncPartialFailed": "{count} 条提醒未能排定",
   "@resyncPartialFailed": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "trayInitFailed": "系统托盘不可用",
   "importPickMissingPath": "无法读取文件：{name}",
   "@importPickMissingPath": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "upcomingGoToGrid": "查看课表",
@@ -62,7 +66,13 @@
   "groupThisWeek": "本周",
   "groupLater": "{date} 以后",
   "upcomingWeekMonday": "{date}",
-  "@upcomingWeekMonday": {"placeholders": {"date": {"type": "String"}}},
+  "@upcomingWeekMonday": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "inClass": "上课中",
   "upcomingEmptyTitle": "暂无即将到来的课程",
   "upcomingEmptySubtitle": "所有课程已结束，或尚未导入课表",
@@ -84,10 +94,10 @@
   "sectionData": "数据管理",
   "sectionLanguage": "语言",
   "sectionAppearance": "外观",
-  "themeStyleTitle": "主题风格",
+  "themeStyleTitle": "课程配色",
   "themeStyleSubtitle": "使用统一强调色或为不同课程自动配色",
-  "themeStyleStandard": "标准",
-  "themeStyleColorful": "彩色",
+  "themeStyleStandard": "统一颜色",
+  "themeStyleColorful": "自动分色",
   "themeColorTitle": "主题色",
   "themeColorSubtitle": "选择应用强调色",
   "themeColorCustom": "自定义",
@@ -107,13 +117,29 @@
   "gridDensityCompact": "紧凑",
   "gridDensityStandard": "标准",
   "gridDensityComfortable": "宽松",
+  "scheduleNarrowLayoutTitle": "窄屏课表布局",
+  "scheduleNarrowLayoutSubtitle": "选择一屏整周或经典单日/多日自适应布局",
+  "scheduleNarrowLayoutCompactWeek": "紧凑整周",
+  "scheduleNarrowLayoutAdaptive": "经典自适应",
   "scheduleMultiDayCountTitle": "多日模式显示天数",
   "scheduleMultiDayCountSubtitle": "当前窗口最多可清晰显示 {maxCount} 天",
-  "@scheduleMultiDayCountSubtitle": {"placeholders": {"maxCount": {"type": "int"}}},
+  "@scheduleMultiDayCountSubtitle": {
+    "placeholders": {
+      "maxCount": {
+        "type": "int"
+      }
+    }
+  },
   "scheduleDayCountOption": "{count} 天",
-  "@scheduleDayCountOption": {"placeholders": {"count": {"type": "int"}}},
+  "@scheduleDayCountOption": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "scheduleShowEmptyDaysTitle": "显示无课程日期",
-  "scheduleShowEmptyDaysSubtitle": "关闭后将直接在有课程的日期之间切换",
+  "scheduleShowEmptyDaysSubtitle": "仅用于经典自适应布局；关闭后将在有课程的日期之间切换",
   "upcomingShowCourseDateTitle": "在倒计时旁显示日期",
   "upcomingShowCourseDateSubtitle": "在接下来课程列表中显示课程日期",
   "upcomingDateDisplayTitle": "课程日期格式",
@@ -123,7 +149,13 @@
   "upcomingDateDisplayWeekdayOnly": "仅星期",
   "scheduleJumpToNearestCourse": "跳到最近课程",
   "scheduleCourseCount": "{count} 节课",
-  "@scheduleCourseCount": {"placeholders": {"count": {"type": "int"}}},
+  "@scheduleCourseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "classLeadCustomizeTemplates": "自定义课前提醒文案",
   "classLeadCustomizeTemplatesSubtitle": "留空使用默认文案",
   "classLeadTemplateSheetTitle": "课前提醒文案",
@@ -132,10 +164,18 @@
   "classLeadTemplatePlaceholderHint": "可用 {courseToken}、{roomToken}、{timeToken}、{minutesToken}。留空使用默认文案。",
   "@classLeadTemplatePlaceholderHint": {
     "placeholders": {
-      "courseToken": {"type": "String"},
-      "roomToken": {"type": "String"},
-      "timeToken": {"type": "String"},
-      "minutesToken": {"type": "String"}
+      "courseToken": {
+        "type": "String"
+      },
+      "roomToken": {
+        "type": "String"
+      },
+      "timeToken": {
+        "type": "String"
+      },
+      "minutesToken": {
+        "type": "String"
+      }
     }
   },
   "checkInCustomizeTemplates": "自定义打卡提醒文案",
@@ -146,9 +186,15 @@
   "checkInTemplatePlaceholderHint": "可用 {courseToken}、{roomToken}、{timeToken}。留空使用默认文案。",
   "@checkInTemplatePlaceholderHint": {
     "placeholders": {
-      "courseToken": {"type": "String"},
-      "roomToken": {"type": "String"},
-      "timeToken": {"type": "String"}
+      "courseToken": {
+        "type": "String"
+      },
+      "roomToken": {
+        "type": "String"
+      },
+      "timeToken": {
+        "type": "String"
+      }
     }
   },
   "sessionColor": "课程颜色",
@@ -184,7 +230,7 @@
   "resyncReminders": "重新同步提醒",
   "resyncRemindersSubtitle": "重新根据当前课表排定所有提醒",
   "sectionAndroidBackground": "后台提醒（Android）",
-  "androidBackgroundSubtitle": "提醒通过系统闹钟触发，无需保持应用在前台。建议完成以下设置以提高可靠性。",
+  "androidBackgroundSubtitle": "提醒通过后台定时提醒触发，无需保持应用在前台。建议完成以下设置以提高可靠性。",
   "androidCheckReminderPermissions": "检查提醒权限",
   "androidPermissionsChecked": "已请求通知与精确闹钟权限",
   "androidBatteryOptimization": "电池优化豁免",
@@ -193,14 +239,13 @@
   "androidBatteryOptimizationDisableConfirmTitle": "关闭电池优化豁免？",
   "androidBatteryOptimizationDisableConfirmContent": "将跳转到系统设置以恢复电池优化，后台提醒可能变得不稳定。",
   "androidAutostartHint": "OriginOS / iQOO 请允许自启动和后台高耗电，并在最近任务中锁定 Orbit。",
-  "androidKillBackgroundHint": "已在 iQOO V2408A 验证回到桌面、锁屏及从最近任务上划后仍可提醒。其他 OriginOS 版本的行为可能不同；在系统设置中真正“强行停止”仍会取消应用闹钟。需要时可使用上方“系统闹钟”手动兜底。",
   "debugTitle": "调试",
   "debugSubtitle": "通知与后台提醒诊断工具",
   "androidTestImmediateReminder": "立即测试通知",
   "androidTestImmediateReminderSubtitle": "立即验证通知权限和消息显示。",
   "androidTestImmediateReminderShown": "测试通知已发送。",
   "androidTestBackgroundReminder": "测试后台提醒（1 分钟）",
-  "androidTestBackgroundReminderSubtitle": "使用与课程提醒相同的原生系统闹钟。安排后请回到桌面或锁屏等待 1 分钟。",
+  "androidTestBackgroundReminderSubtitle": "使用与课程提醒相同的原生后台定时提醒。安排后请回到桌面或锁屏等待 1 分钟。",
   "androidTestBackgroundReminderScheduled": "已注册 1 分钟后的测试提醒。请回到桌面或锁屏等待。",
   "androidTestBackgroundReminderScheduledAt": "后台测试已安排在 {time}。请回到桌面或锁屏等待。",
   "androidTestBackgroundNotificationTitle": "Orbit 后台提醒测试",
@@ -259,20 +304,21 @@
   "nextDayTemplatePlaceholderHint": "有课正文可用 {countToken}、{timeToken}、{dateToken}；无课正文可用 {dateToken}。留空使用默认文案。",
   "@nextDayTemplatePlaceholderHint": {
     "placeholders": {
-      "countToken": {"type": "String", "example": "{count}"},
-      "timeToken": {"type": "String", "example": "{time}"},
-      "dateToken": {"type": "String", "example": "{date}"}
+      "countToken": {
+        "type": "String",
+        "example": "{count}"
+      },
+      "timeToken": {
+        "type": "String",
+        "example": "{time}"
+      },
+      "dateToken": {
+        "type": "String",
+        "example": "{date}"
+      }
     }
   },
   "nextDayTemplateReset": "恢复默认",
-  "enableSystemAlarm": "系统闹钟（Android）",
-  "enableSystemAlarmSubtitle": "一键打开系统时钟，为次日第一节课设置闹钟",
-  "systemAlarmLeadTitle": "闹钟提前时间",
-  "systemAlarmLeadSubtitle": "比第一节课提前 {minutes} 分钟响铃",
-  "setTomorrowAlarm": "为明天设置闹钟",
-  "alarmSetSuccess": "已打开系统闹钟设置",
-  "alarmSetFailed": "无法打开系统闹钟",
-  "alarmNoClassTomorrow": "明天没有课程",
   "enableCheckInReminder": "打卡提醒",
   "enableCheckInReminderSubtitle": "在课程开始时提醒通过校园 App 蓝牙打卡",
   "checkInDisableConfirm1Title": "要关闭打卡提醒吗？",
@@ -326,14 +372,18 @@
   "sessionSavedWithOverride": "已保存，并覆盖了 {count} 节时间冲突的课程。",
   "@sessionSavedWithOverride": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "importStrategyTitle": "检测到重复周次",
   "importStrategyMessage": "本次导入有 {count} 个周次已存在课程，请选择导入方式。",
   "@importStrategyMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "importStrategyReplaceWeek": "整周替换",
@@ -350,31 +400,41 @@
   "searchFailed": "搜索失败：{error}",
   "@searchFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "searchResultsTruncated": "仅显示前 {count} 条结果",
   "@searchResultsTruncated": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "gridBatchDeleteFailed": "批量删除失败：{error}",
   "@gridBatchDeleteFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "clearAllFailed": "清除课表失败：{error}",
   "@clearAllFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "launchAtStartupFailed": "更新开机启动设置失败：{error}",
   "@launchAtStartupFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "sectionSchedule": "课表",
@@ -426,15 +486,19 @@
   "reminderScheduleVerifyFailed": "提醒已保存，但 Android 未能将其加入待处理队列。请检查通知、精确闹钟和电池设置后重新同步。",
   "reminderScheduleVerifyFailedBanner": "Android 未能将提醒加入待处理队列。请检查通知、精确闹钟和电池设置后重新同步。",
   "reminderScheduledCount": "已排定 {count} 条提醒",
-  "reminderRegisteredAlarmCount": "已注册 {count} 条系统闹钟",
+  "reminderRegisteredAlarmCount": "已注册 {count} 条后台定时提醒",
   "@reminderRegisteredAlarmCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "@reminderScheduledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "androidNotificationsEnabled": "通知已开启",
@@ -468,5 +532,164 @@
   "restoreModeMerge": "合并并覆盖冲突",
   "restoreModeReplace": "替换当前课表",
   "restoreNothingSelected": "请选择要恢复的课程或应用设置",
-  "restoreSettingsDone": "应用设置已恢复"
+  "restoreSettingsDone": "应用设置已恢复",
+  "addSessionChoiceTitle": "添加课程",
+  "addSingleSession": "添加单节课程",
+  "addBatchSessions": "批量添加课程",
+  "batchAddTitle": "批量添加课程",
+  "batchFirstWeekMonday": "第 1 周周一",
+  "batchTotalWeeks": "学期总周数",
+  "batchSelectedWeeks": "上课周次",
+  "batchMeetings": "每周安排",
+  "batchAddMeeting": "添加每周安排",
+  "batchRemoveMeeting": "删除此安排",
+  "batchSelectAll": "全选",
+  "batchSelectOdd": "单周",
+  "batchSelectEven": "双周",
+  "batchClearWeeks": "清空",
+  "batchMeetingTitle": "安排 {index}",
+  "batchWeekOption": "第 {week} 周",
+  "batchRequiredFields": "请填写课程名称及每个安排的教室",
+  "batchNoWeeks": "请至少选择一个上课周次",
+  "batchNoMeetings": "请至少添加一个每周安排",
+  "batchInvalidTime": "每个安排的结束时间必须晚于开始时间",
+  "batchMeetingOverlap": "同一天的每周安排不能互相重叠",
+  "batchPreviewTitle": "确认批量添加",
+  "batchPreviewSummary": "将生成 {generated} 节课程，其中 {conflicts} 节已有时间冲突。",
+  "batchSkipConflicts": "跳过冲突",
+  "batchOverwriteConflicts": "覆盖冲突",
+  "batchCreateResult": "已添加 {created} 节，跳过 {skipped} 节，覆盖 {overwritten} 节冲突课程",
+  "courseScopeMeetingFromSelected": "此安排从本节起",
+  "courseScopeMeetingAll": "此安排的全部周次",
+  "courseScopeCourseCommon": "整门课程的公共信息",
+  "backToTop": "返回顶部",
+  "scheduleVerticalScaleTitle": "课表纵向高度缩放",
+  "scheduleVerticalScaleSubtitle": "调低可压缩课表高度，显示更多课程。与显示密度组合生效；短课程或较大字体可能限制压缩程度，以保留课程名和时间刻度的可读性。",
+  "scheduleVerticalScaleReset": "恢复默认",
+  "customReminders": "提醒时间自定义",
+  "customRemindersSubtitle": "按课程设置独立时间、筛选、文案和重复发送",
+  "reminderStrong": "强提醒",
+  "reminderStrongConfig": "强提醒配置",
+  "reminderStrongDescription": "循环声音提醒；遵循系统音量、勿扰和通知权限",
+  "reminderCatchUp": "补发",
+  "reminderCatchUpNotice": "此消息为补发，非实时提醒",
+  "reminderOriginalTime": "原计划时间",
+  "reminderDeliveredTime": "补发时间",
+  "reminderAcknowledge": "已知晓",
+  "reminderStop": "停止",
+  "reminderAdd": "添加规则",
+  "reminderEdit": "编辑规则",
+  "reminderCopy": "复制",
+  "reminderDelete": "删除",
+  "reminderSave": "保存",
+  "reminderDiscard": "放弃未保存的更改？",
+  "reminderKeepEditing": "继续编辑",
+  "reminderName": "规则名称",
+  "reminderBasis": "时间基准",
+  "reminderStart": "课程开始",
+  "reminderEnd": "课程结束",
+  "reminderDate": "课程日期的固定时刻",
+  "reminderBefore": "提前",
+  "reminderAfter": "延后",
+  "reminderDays": "天",
+  "reminderHours": "小时",
+  "reminderMinutes": "分钟",
+  "reminderSeconds": "秒",
+  "reminderScope": "课程范围",
+  "reminderAll": "全部课程",
+  "reminderSeries": "课程系列",
+  "reminderSessions": "单节课程",
+  "reminderWeekdays": "星期筛选",
+  "reminderTypes": "课程类型筛选",
+  "reminderDateRange": "课程日期范围",
+  "reminderClearFilter": "清除日期筛选",
+  "reminderTitle": "通知标题",
+  "reminderBody": "通知正文",
+  "reminderCount": "发送次数（1–100，包含首次）",
+  "reminderInterval": "重复间隔（秒，至少 1）",
+  "reminderUntilAck": "确认后停止，最多发送指定次数",
+  "reminderInherit": "继承全局设置",
+  "reminderNormal": "普通提醒",
+  "reminderPreview": "匹配课程与发送预览",
+  "reminderTimingNotice": "秒级时间为计划时间，系统可能延迟发送。新建或重新启用后只安排未来发送。",
+  "reminderInvalid": "请检查数字范围、必填名称及无效占位符",
+  "reminderSound": "声音",
+  "reminderVibration": "震动",
+  "reminderDuration": "持续时间（5–300 秒）",
+  "reminderSystemSound": "选择系统铃声",
+  "reminderImportSound": "导入音频（MP3／M4A／WAV，最多 5 MiB）",
+  "reminderPreviewSound": "试听 / 停止",
+  "reminderOverride": "单独配置强提醒",
+  "reminderEmpty": "尚无自定义提醒规则",
+  "reminderSoundFallback": "缺失或不支持的声音已回退到系统默认音。",
+  "reminderMaintenanceFailed": "后台维护注册失败，完全退出后的后续排程可能无法补充。请重试。",
+  "reminderStrongDegraded": "强提醒无法播放，已保留普通通知。请检查系统限制和声音配置。",
+  "reminderVariableLabels": "课程名|教室|课程日期|星期|开始时间|结束时间|教师|课程代码|发送序号|总次数|计划发送时间",
+  "reminderWeekdayNames": "星期一|星期二|星期三|星期四|星期五|星期六|星期日",
+  "reminderDiscardAction": "放弃更改",
+  "reminderAudioInvalid": "音频不可播放，或文件格式、大小不符合要求。",
+  "reminderDateOffset": "课程日期偏移",
+  "reminderSameDay": "课程当天",
+  "reminderFixedTime": "固定时刻（时／分／秒）",
+  "reminderFilterWeekdays": "周一|周二|周三|周四|周五|周六|周日",
+  "reminderPreviousDay": "前一天",
+  "reminderNextDay": "后一天",
+  "scheduleFitPage": "自适应页面",
+  "scheduleFitPageHint": "完整显示 08:00–22:00；空间不足时省略课程文字，点击查看详情。",
+  "themeMulticolor": "多色配色",
+  "themeMulticolorOff": "原有配色",
+  "themeSchemeNames": "鲜明|富表现力|彩虹|果沙|内容|忠实|中性|黑白",
+  "templateLeadMinutes": "提前分钟",
+  "templateCourseCount": "课程数量",
+  "palettePrimary": "主色",
+  "paletteSecondary": "辅色",
+  "paletteTertiary": "第三色",
+  "paletteColors": "课程调色板",
+  "paletteCustom": "自定义搭配",
+  "paletteDuplicate": "调色板已包含此颜色",
+  "paletteUsePrimary": "设为主色",
+  "paletteUseSecondary": "设为辅色",
+  "paletteUseTertiary": "设为第三色",
+  "paletteMoveEarlier": "前移",
+  "paletteMoveLater": "后移",
+  "paletteReset": "恢复多色配色默认设置？",
+  "palettePreview": "效果预览",
+  "paletteSingle": "单色",
+  "paletteMode": "界面配色",
+  "paletteAutomatic": "根据方案自动生成",
+  "notificationWarning": "未开启通知权限，无法接收提醒。",
+  "notificationOpen": "去开启",
+  "notificationIgnore": "忽略且不再提示",
+  "notificationIgnoreTitle": "忽略通知权限警告？",
+  "notificationIgnoreBody": "未开启通知权限，提醒功能将不会生效。你可以在设置中恢复此警告。",
+  "notificationIgnoreConfirm": "确认忽略",
+  "notificationRestore": "显示权限警告",
+  "notificationRestoreDescription": "在本设备未开启通知权限时提示",
+  "notificationCheckFailed": "无法查询通知权限",
+  "notificationAllowed": "通知权限已开启",
+  "notificationPermissions": "通知权限",
+  "strongTargets": "强提醒适用范围",
+  "strongClassLead": "课前提醒",
+  "strongCheckIn": "签到提醒",
+  "strongSummary": "次日汇总",
+  "strongCustom": "自定义规则",
+  "strongCourses": "课程范围",
+  "strongAllRules": "所有继承规则，包括之后新增的规则",
+  "strongRuleOverrideNotice": "规则明确设置为强提醒或普通提醒时，优先于此处的范围配置。",
+  "strongSummaryNotice": "限定课程范围时，汇总包含任一选中课程才使用强提醒。",
+  "settingsNavigationGroup": "日期导航",
+  "settingsLayoutGroup": "课表布局",
+  "settingsMaintenanceGroup": "权限与维护",
+  "settingsDangerGroup": "数据删除",
+  "settingsDiagnosticsGroup": "诊断",
+  "settingsBackupGroup": "备份与导出",
+  "paletteEdit": "编辑颜色",
+  "paletteHint": "点击颜色选择操作，长按删除。",
+  "actionConfirm": "确认",
+  "paletteTonalSpot": "柔和",
+  "paletteHue": "色相",
+  "paletteChroma": "鲜艳度",
+  "paletteTone": "明度",
+  "paletteScheme": "配色方案",
+  "paletteSchemeDescriptions": "柔和协调的三色|鲜明且有对比的三色|旋转色相的表现力三色|均衡分布的三色色谱|清新的相邻色搭配|保留种子特色的柔和对比|保留种子特色的互补对比|低饱和，颜色区别较轻|灰阶，不使用色相对比"
 }

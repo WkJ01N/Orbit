@@ -1,3 +1,4 @@
+import 'package:orbit/models/course_operation.dart';
 import 'package:flutter/material.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/models/course_session.dart';
@@ -11,8 +12,13 @@ String courseColorKey(CourseSession session) {
   return session.courseName.trim();
 }
 
+String automaticCourseColorKey(CourseSession session) =>
+    CourseSeriesKey.fromSession(session).value;
+int legacyAutomaticColorId(CourseSession session) =>
+    _stableCourseHash(courseColorKey(session)) % 8;
+
 Color contrastForegroundFor(Color background) {
-  return background.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
+  return background.computeLuminance() > 0.179 ? Colors.black : Colors.white;
 }
 
 const _colorfulLightPalette = <Color>[
@@ -40,11 +46,17 @@ const _colorfulDarkPalette = <Color>[
 Color automaticCourseColor(
   CourseSession session, {
   required Brightness brightness,
+  int? colorId,
+  List<PaletteColor> palette = const [],
 }) {
-  final palette = brightness == Brightness.dark
+  final defaults = brightness == Brightness.dark
       ? _colorfulDarkPalette
       : _colorfulLightPalette;
-  return palette[_stableCourseHash(courseColorKey(session)) % palette.length];
+  return automaticColorForId(
+    colorId ?? _stableCourseHash(courseColorKey(session)) % defaults.length,
+    brightness,
+    palette: palette,
+  );
 }
 
 Color resolvedCourseColor({
@@ -52,10 +64,17 @@ Color resolvedCourseColor({
   required ColorScheme colorScheme,
   required AppThemeStyle themeStyle,
   Color? override,
+  int? automaticColorId,
+  List<PaletteColor> palette = const [],
 }) {
   if (override != null) return override;
   if (themeStyle == AppThemeStyle.colorful) {
-    return automaticCourseColor(session, brightness: colorScheme.brightness);
+    return automaticCourseColor(
+      session,
+      brightness: colorScheme.brightness,
+      colorId: automaticColorId,
+      palette: palette,
+    );
   }
   return colorScheme.secondary;
 }
@@ -86,4 +105,111 @@ int _stableCourseHash(String value) {
     hash = (hash * 0x01000193) & 0x7fffffff;
   }
   return hash;
+}
+
+Color automaticColorForId(
+  int id,
+  Brightness brightness, {
+  List<PaletteColor> palette = const [],
+}) {
+  for (final entry in palette) {
+    if (entry.id == id) {
+      return ColorScheme.fromSeed(
+        seedColor: entry.color,
+        brightness: brightness,
+        dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+      ).primary;
+    }
+  }
+  if (id < 0) id = 0;
+  final defaults = brightness == Brightness.dark
+      ? _colorfulDarkPalette
+      : _colorfulLightPalette;
+  if (id < defaults.length) return defaults[id];
+  // Vary saturation and tone as well as hue so large imports do not exhaust
+  // the finite RGB values along a single hue circle.
+  if (id >= 10000) {
+    const levels = 173;
+    final value = ((id - 10000) * 104729 + 895733) % (levels * levels * levels);
+    final channels = [
+      value % levels,
+      value ~/ levels % levels,
+      value ~/ (levels * levels),
+    ];
+    return Color.fromARGB(
+      255,
+      brightness == Brightness.dark ? 255 - channels[0] : channels[0],
+      brightness == Brightness.dark ? 255 - channels[1] : channels[1],
+      brightness == Brightness.dark ? 255 - channels[2] : channels[2],
+    );
+  }
+  final band = (id - 8) ~/ 360;
+  return HSLColor.fromAHSL(
+    1,
+    ((id - 8) * 137.507764 + 15) % 360,
+    (brightness == Brightness.dark ? .65 : .62) + (band % 7) * .03,
+    (brightness == Brightness.dark ? .72 : .38) + (band ~/ 7 % 5) * .012,
+  ).toColor();
+}
+
+/// Preserve reserved identities, repair collisions, and append new colors only.
+Map<String, int> allocateCourseColorIds(
+  Map<String, int> saved,
+  Iterable<String> keys, {
+  Map<String, int> preferred = const {},
+  List<PaletteColor> palette = const [],
+  Set<int> retiredIds = const {},
+}) {
+  final result = <String, int>{};
+  final usedIds = <int>{};
+  final usedLight = <int>{}, usedDark = <int>{};
+  var next = 0;
+  bool available(int id) =>
+      id >= 0 &&
+      !retiredIds.contains(id) &&
+      !usedIds.contains(id) &&
+      !usedLight.contains(
+        automaticColorForId(id, Brightness.light, palette: palette).toARGB32(),
+      ) &&
+      !usedDark.contains(
+        automaticColorForId(id, Brightness.dark, palette: palette).toARGB32(),
+      );
+  void reserve(String key, int id) {
+    result[key] = id;
+    usedIds.add(id);
+    usedLight.add(
+      automaticColorForId(id, Brightness.light, palette: palette).toARGB32(),
+    );
+    usedDark.add(
+      automaticColorForId(id, Brightness.dark, palette: palette).toARGB32(),
+    );
+  }
+
+  // Valid existing assignments have priority over repaired and new assignments.
+  for (final e in saved.entries) {
+    if (available(e.value)) reserve(e.key, e.value);
+  }
+  for (final e in preferred.entries) {
+    if (palette.isNotEmpty && !palette.any((color) => color.id == e.value)) {
+      continue;
+    }
+    if (!result.containsKey(e.key) && available(e.value)) {
+      reserve(e.key, e.value);
+    }
+  }
+  for (final key in {...saved.keys, ...keys}) {
+    if (result.containsKey(key)) continue;
+    final preferredColor = palette
+        .where((entry) => available(entry.id))
+        .firstOrNull;
+    if (preferredColor != null) {
+      reserve(key, preferredColor.id);
+      continue;
+    }
+    while (!available(next)) {
+      next++;
+    }
+    reserve(key, next++);
+  }
+  return result;
 }

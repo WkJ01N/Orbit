@@ -14,6 +14,22 @@ class NotificationCopy {
     required this.nextDaySummaryBody,
     required this.nextDayNoClassTitle,
     required this.nextDayNoClassBody,
+    this.catchUpLabel = 'Catch-up',
+    this.catchUpNotice =
+        'This is a catch-up message, not a real-time reminder.',
+    this.originalLabel = 'Originally scheduled',
+    this.deliveredLabel = 'Delivered',
+    this.acknowledgeLabel = 'Acknowledge',
+    this.stopLabel = 'Stop',
+    this.weekdayNames = const [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ],
   });
 
   final String channelName;
@@ -34,6 +50,13 @@ class NotificationCopy {
   final String Function(int count, String firstTime) nextDaySummaryBody;
   final String nextDayNoClassTitle;
   final String nextDayNoClassBody;
+  final String catchUpLabel,
+      catchUpNotice,
+      originalLabel,
+      deliveredLabel,
+      acknowledgeLabel,
+      stopLabel;
+  final List<String> weekdayNames;
 
   factory NotificationCopy.fromL10n(AppLocalizations l10n) {
     return NotificationCopy(
@@ -60,6 +83,13 @@ class NotificationCopy {
       nextDaySummaryBody: l10n.notificationNextDayBody,
       nextDayNoClassTitle: l10n.notificationNextDayNoClassTitle,
       nextDayNoClassBody: l10n.notificationNextDayNoClassBody,
+      catchUpLabel: l10n.reminderCatchUp,
+      catchUpNotice: l10n.reminderCatchUpNotice,
+      originalLabel: l10n.reminderOriginalTime,
+      deliveredLabel: l10n.reminderDeliveredTime,
+      acknowledgeLabel: l10n.reminderAcknowledge,
+      stopLabel: l10n.reminderStop,
+      weekdayNames: l10n.reminderWeekdayNames.split('|'),
     );
   }
 }

@@ -5,6 +5,8 @@ import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/class_notification_builder.dart';
 import 'package:orbit/services/next_day_summary_builder.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
+import 'package:orbit/services/strong_reminder_resolver.dart';
+import 'package:orbit/models/custom_reminder_rule.dart';
 
 /// Builds Android AlarmManager specs for class-lead and check-in reminders.
 List<ReminderAlarmSpec> buildReminderAlarmSpecs({
@@ -12,6 +14,8 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   required ReminderSettings settings,
   required DateTime now,
   required NotificationCopy copy,
+  Map<String, String> sessionAliases = const {},
+  Map<String, List<String>> seriesMemberships = const {},
 }) {
   final specs = <ReminderAlarmSpec>[];
   var classLeadId = classLeadAlarmBase;
@@ -41,6 +45,14 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
           body: text.body,
           payload: session.id,
           fireAt: reminderAt,
+          strong: resolveStrongReminder(
+            global: settings.strong,
+            type: StrongReminderType.classLead,
+            session: session,
+            aliases: sessionAliases,
+            memberships: seriesMemberships,
+          ),
+          stopLabel: copy.stopLabel,
           bigText: text.bigText,
         ),
       );
@@ -70,6 +82,14 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
           body: text.body,
           payload: 'checkin_${session.id}',
           fireAt: session.startAt,
+          strong: resolveStrongReminder(
+            global: settings.strong,
+            type: StrongReminderType.checkIn,
+            session: session,
+            aliases: sessionAliases,
+            memberships: seriesMemberships,
+          ),
+          stopLabel: copy.stopLabel,
         ),
       );
       if (checkInId >= checkInAlarmLimit) {
@@ -87,6 +107,8 @@ List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
   required ReminderSettings settings,
   required DateTime now,
   required NotificationCopy copy,
+  Map<String, String> sessionAliases = const {},
+  Map<String, List<String>> seriesMemberships = const {},
 }) {
   return buildNextDaySummarySlots(
         allSessions: allSessions,
@@ -102,6 +124,21 @@ List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
           body: slot.body,
           payload: slot.payload,
           fireAt: slot.fireAt,
+          strong: resolveStrongReminder(
+            global: settings.strong,
+            type: StrongReminderType.summary,
+            summarySessions: allSessions
+                .where(
+                  (s) =>
+                      s.date.year == slot.targetDay.year &&
+                      s.date.month == slot.targetDay.month &&
+                      s.date.day == slot.targetDay.day,
+                )
+                .toList(),
+            aliases: sessionAliases,
+            memberships: seriesMemberships,
+          ),
+          stopLabel: copy.stopLabel,
         ),
       )
       .toList();

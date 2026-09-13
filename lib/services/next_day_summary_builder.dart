@@ -14,6 +14,7 @@ class NextDaySummarySlot {
     required this.title,
     required this.body,
     required this.payload,
+    required this.targetDay,
   });
 
   final int notificationId;
@@ -21,6 +22,7 @@ class NextDaySummarySlot {
   final String title;
   final String body;
   final String payload;
+  final DateTime targetDay;
 }
 
 /// Replaces `{key}` placeholders; empty [template] falls back to [fallback].
@@ -81,6 +83,7 @@ List<NextDaySummarySlot> buildNextDaySummarySlots({
       slots.add(
         NextDaySummarySlot(
           notificationId: notificationId,
+          targetDay: targetDay,
           fireAt: notifyAt,
           title: applyNextDayTemplate(
             settings.nextDayWithClassTitleTemplate,
@@ -103,6 +106,7 @@ List<NextDaySummarySlot> buildNextDaySummarySlots({
       slots.add(
         NextDaySummarySlot(
           notificationId: notificationId,
+          targetDay: targetDay,
           fireAt: notifyAt,
           title: applyNextDayTemplate(
             settings.nextDayNoClassTitleTemplate,

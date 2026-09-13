@@ -71,7 +71,7 @@ void main() {
     expect(find.byType(AdjacentPagePager), findsNothing);
   });
 
-  testWidgets('空課程周仍保留 AdjacentPagePager 以支持翻頁', (WidgetTester tester) async {
+  testWidgets('窄屏空課程周保留整页滑动换周', (WidgetTester tester) async {
     final emptyGrid = _emptyWeekGrid();
 
     await tester.binding.setSurfaceSize(const Size(400, 800));
@@ -100,13 +100,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(AdjacentPagePager), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('adjacent-page-current')),
-        matching: find.text('本週無課程'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('本週無課程'), findsWidgets);
     expect(find.text('立即匯入'), findsNothing);
   });
 
@@ -138,15 +132,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    final currentPage = find.byKey(const Key('adjacent-page-current'));
-    expect(
-      find.descendant(of: currentPage, matching: find.text('本週無課程')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: currentPage, matching: find.text('切換至其他週查看課程')),
-      findsOneWidget,
-    );
+    expect(find.text('本週無課程'), findsWidgets);
+    expect(find.text('切換至其他週查看課程'), findsWidgets);
     expect(find.text('立即匯入'), findsNothing);
   });
 }

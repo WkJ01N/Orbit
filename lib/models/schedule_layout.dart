@@ -1,6 +1,6 @@
 import 'package:orbit/models/course_session.dart';
 
-enum ScheduleViewportMode { singleDay, multiDay, fullWeek }
+enum ScheduleViewportMode { singleDay, multiDay, compactWeek, fullWeek }
 
 class ScheduleEventLayout {
   const ScheduleEventLayout({

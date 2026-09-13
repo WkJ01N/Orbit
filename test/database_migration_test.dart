@@ -14,7 +14,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  test('database v2 migrates to v3 without losing active classes', () async {
+  test('database v2 migrates to v5 without losing active classes', () async {
     final tempDir = await Directory.systemTemp.createTemp('orbit_migration_');
     addTearDown(() => tempDir.delete(recursive: true));
     final path = p.join(tempDir.path, 'orbit.db');
@@ -58,5 +58,39 @@ void main() {
     final sessions = await migrated.getAllSessions();
     expect(sessions.single.id, 'legacy');
     expect(sessions.single.deletedAt, isNull);
+    expect(sessions.single.recurrenceSeriesId, isNull);
+    expect(sessions.single.recurrenceMeetingId, isNull);
+    await migrated.acknowledgeReminder('r', 'legacy');
+    expect((await migrated.reminderDeliveryStates()).single['acknowledged'], 1);
+  });
+  test('v4 upgrade and reopening v5 retain reminder state', () async {
+    final dir = await Directory.systemTemp.createTemp('orbit_v4_migration_');
+    final current = await AppDatabase.open(dir.path);
+    await current.close();
+    final old = await openDatabase(p.join(dir.path, 'orbit.db'));
+    for (final table in [
+      'reminder_series_membership',
+      'reminder_session_alias',
+      'reminder_delivery',
+      'reminder_schedule',
+    ]) {
+      await old.execute('DROP TABLE $table');
+    }
+    await old.setVersion(4);
+    await old.close();
+    final upgraded = await AppDatabase.open(dir.path);
+    await upgraded.acknowledgeReminder('r', 's');
+    await upgraded.close();
+    final reopened = await AppDatabase.open(dir.path);
+    try {
+      expect(
+        (await reopened.reminderDeliveryStates()).single['acknowledged'],
+        1,
+      );
+      expect(await reopened.reminderSeriesMemberships(), isEmpty);
+    } finally {
+      await reopened.close();
+      await dir.delete(recursive: true);
+    }
   });
 }

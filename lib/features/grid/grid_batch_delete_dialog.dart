@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
@@ -85,9 +86,12 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
         setState(() => _loadingCount = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.gridLoadFailed('$e'))));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.gridLoadFailed('$e')),
+          ),
+        );
       }
     }
   }
@@ -138,9 +142,12 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
   Future<void> _submit() async {
     final l10n = AppLocalizations.of(context)!;
     if (!_isValidRange()) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.gridBatchDeleteInvalidRange)));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.gridBatchDeleteInvalidRange),
+        ),
+      );
       return;
     }
 
@@ -148,7 +155,7 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
     if (count == 0) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l10n.gridBatchDeleteNone)));
+      ).showAppSnackBar(SnackBar(content: Text(l10n.gridBatchDeleteNone)));
       return;
     }
 
@@ -188,8 +195,11 @@ class _GridBatchDeleteSheetState extends ConsumerState<_GridBatchDeleteSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.gridBatchDeleteFailed('$e'))),
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.gridBatchDeleteFailed('$e')),
+          ),
         );
       }
     }

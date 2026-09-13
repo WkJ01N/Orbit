@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -60,7 +61,7 @@ class DebugPage extends ConsumerWidget {
           copy: notificationCopyFor(ref.read(localeProvider)),
         );
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showAppSnackBar(
       SnackBar(
         content: Text(
           result.succeeded
@@ -91,6 +92,6 @@ class DebugPage extends ConsumerWidget {
         : _failureMessage(l10n, result.failure);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showAppSnackBar(SnackBar(content: Text(message)));
   }
 }

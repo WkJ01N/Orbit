@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -41,6 +42,25 @@ class AndroidNativeReminderService {
     await _migrateLegacyAlarmManagerEntries();
     await _channel.invokeMethod<void>('initialize');
     _initialized = true;
+  }
+
+  Future<void> configureDatabase(String path, NotificationCopy copy) async {
+    await initialize();
+    await _channel.invokeMethod<void>('configureDatabase', {
+      'path': path,
+      'catchup_label': copy.catchUpLabel,
+      'catchup_notice': copy.catchUpNotice,
+      'original_label': copy.originalLabel,
+      'delivered_label': copy.deliveredLabel,
+      'channel_name': copy.channelName,
+      'channel_description': copy.channelDescription,
+    });
+  }
+
+  Future<String?> runtimeStatus() async {
+    if (!Platform.isAndroid) return null;
+    await initialize();
+    return _channel.invokeMethod<String>('runtimeStatus');
   }
 
   void registerNotificationTapHandler(NativeNotificationTapCallback? callback) {
@@ -100,6 +120,7 @@ class AndroidNativeReminderService {
       'exactPreferred': exactPreferred,
       'allowInexactFallback': allowInexactFallback,
       'restoreOnReboot': restoreOnReboot,
+      'metadata': jsonEncode(spec.toJson()),
     };
   }
 

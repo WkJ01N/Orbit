@@ -267,17 +267,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionAppearance => 'Appearance';
 
   @override
-  String get themeStyleTitle => 'Theme style';
+  String get themeStyleTitle => 'Course colors';
 
   @override
   String get themeStyleSubtitle =>
       'Use one accent or automatic colors for each course';
 
   @override
-  String get themeStyleStandard => 'Standard';
+  String get themeStyleStandard => 'Uniform color';
 
   @override
-  String get themeStyleColorful => 'Colorful';
+  String get themeStyleColorful => 'Automatic colors';
 
   @override
   String get themeColorTitle => 'Theme color';
@@ -338,6 +338,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gridDensityComfortable => 'Comfortable';
 
   @override
+  String get scheduleNarrowLayoutTitle => 'Narrow-screen schedule layout';
+
+  @override
+  String get scheduleNarrowLayoutSubtitle =>
+      'Choose a full compact week or the classic adaptive day view';
+
+  @override
+  String get scheduleNarrowLayoutCompactWeek => 'Compact full week';
+
+  @override
+  String get scheduleNarrowLayoutAdaptive => 'Classic adaptive';
+
+  @override
   String get scheduleMultiDayCountTitle => 'Days in multi-day view';
 
   @override
@@ -355,7 +368,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduleShowEmptyDaysSubtitle =>
-      'Turn off to move directly between class days';
+      'Used by classic adaptive view; turn off to move directly between class days';
 
   @override
   String get upcomingShowCourseDateTitle => 'Show date beside countdown';
@@ -550,7 +563,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidBackgroundSubtitle =>
-      'Reminders use system alarms and do not require the app to stay open. Complete the settings below for best reliability.';
+      'Reminders use background scheduled reminders and do not require the app to stay open. Complete the settings below for best reliability.';
 
   @override
   String get androidCheckReminderPermissions => 'Check reminder permissions';
@@ -583,10 +596,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'On OriginOS / iQOO, allow autostart and unrestricted background activity, then lock Orbit in recents.';
 
   @override
-  String get androidKillBackgroundHint =>
-      'Verified on iQOO V2408A after returning home, locking the screen, and swiping Orbit from recents. Behavior may vary on other OriginOS versions; a true Force Stop from system settings still cancels app alarms. Use System alarm above as a manual fallback when needed.';
-
-  @override
   String get debugTitle => 'Debug';
 
   @override
@@ -609,7 +618,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      'Uses the same native system alarm as class reminders. Return home or lock the screen and wait one minute.';
+      'Uses the same native background scheduling as class reminders. Return home or lock the screen and wait one minute.';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
@@ -820,33 +829,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nextDayTemplateReset => 'Reset to defaults';
-
-  @override
-  String get enableSystemAlarm => 'System alarm for first class (Android)';
-
-  @override
-  String get enableSystemAlarmSubtitle =>
-      'Open the system clock app to set an alarm for tomorrow\'s first class';
-
-  @override
-  String get systemAlarmLeadTitle => 'Alarm lead time';
-
-  @override
-  String systemAlarmLeadSubtitle(int minutes) {
-    return 'Alarm rings $minutes minutes before first class';
-  }
-
-  @override
-  String get setTomorrowAlarm => 'Set alarm for tomorrow';
-
-  @override
-  String get alarmSetSuccess => 'System alarm screen opened';
-
-  @override
-  String get alarmSetFailed => 'Failed to open system alarm';
-
-  @override
-  String get alarmNoClassTomorrow => 'No classes tomorrow';
 
   @override
   String get enableCheckInReminder => 'Check-in reminder';
@@ -1272,7 +1254,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String reminderRegisteredAlarmCount(int count) {
-    return '$count system alarm(s) registered';
+    return '$count background reminder(s) registered';
   }
 
   @override
@@ -1395,4 +1377,513 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreSettingsDone => 'App settings restored';
+
+  @override
+  String get addSessionChoiceTitle => 'Add class';
+
+  @override
+  String get addSingleSession => 'Add one class';
+
+  @override
+  String get addBatchSessions => 'Add recurring classes';
+
+  @override
+  String get batchAddTitle => 'Add recurring classes';
+
+  @override
+  String get batchFirstWeekMonday => 'Monday of week 1';
+
+  @override
+  String get batchTotalWeeks => 'Semester length';
+
+  @override
+  String get batchSelectedWeeks => 'Class weeks';
+
+  @override
+  String get batchMeetings => 'Weekly meetings';
+
+  @override
+  String get batchAddMeeting => 'Add weekly meeting';
+
+  @override
+  String get batchRemoveMeeting => 'Remove meeting';
+
+  @override
+  String get batchSelectAll => 'All';
+
+  @override
+  String get batchSelectOdd => 'Odd weeks';
+
+  @override
+  String get batchSelectEven => 'Even weeks';
+
+  @override
+  String get batchClearWeeks => 'Clear';
+
+  @override
+  String batchMeetingTitle(Object index) {
+    return 'Meeting $index';
+  }
+
+  @override
+  String batchWeekOption(Object week) {
+    return 'Week $week';
+  }
+
+  @override
+  String get batchRequiredFields =>
+      'Enter a course name and a room for every meeting';
+
+  @override
+  String get batchNoWeeks => 'Select at least one class week';
+
+  @override
+  String get batchNoMeetings => 'Add at least one weekly meeting';
+
+  @override
+  String get batchInvalidTime => 'Every meeting must end after it starts';
+
+  @override
+  String get batchMeetingOverlap =>
+      'Weekly meetings on the same day cannot overlap';
+
+  @override
+  String get batchPreviewTitle => 'Confirm recurring classes';
+
+  @override
+  String batchPreviewSummary(Object conflicts, Object generated) {
+    return '$generated classes will be created; $conflicts existing classes conflict.';
+  }
+
+  @override
+  String get batchSkipConflicts => 'Skip conflicts';
+
+  @override
+  String get batchOverwriteConflicts => 'Replace conflicts';
+
+  @override
+  String batchCreateResult(Object created, Object overwritten, Object skipped) {
+    return 'Added $created, skipped $skipped, and replaced $overwritten conflicting classes';
+  }
+
+  @override
+  String get courseScopeMeetingFromSelected => 'This meeting from here';
+
+  @override
+  String get courseScopeMeetingAll => 'All weeks of this meeting';
+
+  @override
+  String get courseScopeCourseCommon => 'Common details for the whole course';
+
+  @override
+  String get backToTop => 'Back to top';
+
+  @override
+  String get scheduleVerticalScaleTitle => 'Schedule vertical scale';
+
+  @override
+  String get scheduleVerticalScaleSubtitle =>
+      'Reduce the height to fit more of your schedule. Applies to the selected display density; short classes and large text may limit compression to keep names and time labels readable.';
+
+  @override
+  String get scheduleVerticalScaleReset => 'Restore defaults';
+
+  @override
+  String get customReminders => 'Custom reminder times';
+
+  @override
+  String get customRemindersSubtitle =>
+      'Independent times, filters, messages and repetitions';
+
+  @override
+  String get reminderStrong => 'Strong alert';
+
+  @override
+  String get reminderStrongConfig => 'Strong alert settings';
+
+  @override
+  String get reminderStrongDescription =>
+      'Looping sound; respects system volume, Do Not Disturb and permissions';
+
+  @override
+  String get reminderCatchUp => 'Catch-up';
+
+  @override
+  String get reminderCatchUpNotice =>
+      'This is a catch-up message, not a real-time reminder.';
+
+  @override
+  String get reminderOriginalTime => 'Originally scheduled';
+
+  @override
+  String get reminderDeliveredTime => 'Catch-up time';
+
+  @override
+  String get reminderAcknowledge => 'Acknowledge';
+
+  @override
+  String get reminderStop => 'Stop';
+
+  @override
+  String get reminderAdd => 'Add rule';
+
+  @override
+  String get reminderEdit => 'Edit rule';
+
+  @override
+  String get reminderCopy => 'Duplicate';
+
+  @override
+  String get reminderDelete => 'Delete';
+
+  @override
+  String get reminderSave => 'Save';
+
+  @override
+  String get reminderDiscard => 'Discard unsaved changes?';
+
+  @override
+  String get reminderKeepEditing => 'Keep editing';
+
+  @override
+  String get reminderName => 'Rule name';
+
+  @override
+  String get reminderBasis => 'Time basis';
+
+  @override
+  String get reminderStart => 'Course start';
+
+  @override
+  String get reminderEnd => 'Course end';
+
+  @override
+  String get reminderDate => 'Fixed time on course date';
+
+  @override
+  String get reminderBefore => 'Before';
+
+  @override
+  String get reminderAfter => 'After';
+
+  @override
+  String get reminderDays => 'Days';
+
+  @override
+  String get reminderHours => 'Hours';
+
+  @override
+  String get reminderMinutes => 'Minutes';
+
+  @override
+  String get reminderSeconds => 'Seconds';
+
+  @override
+  String get reminderScope => 'Course scope';
+
+  @override
+  String get reminderAll => 'All courses';
+
+  @override
+  String get reminderSeries => 'Course series';
+
+  @override
+  String get reminderSessions => 'Individual sessions';
+
+  @override
+  String get reminderWeekdays => 'Weekday filter';
+
+  @override
+  String get reminderTypes => 'Course type filter';
+
+  @override
+  String get reminderDateRange => 'Course date range';
+
+  @override
+  String get reminderClearFilter => 'Clear date filter';
+
+  @override
+  String get reminderTitle => 'Notification title';
+
+  @override
+  String get reminderBody => 'Notification message';
+
+  @override
+  String get reminderCount => 'Send count (1–100, including first)';
+
+  @override
+  String get reminderInterval => 'Repeat interval (seconds, at least 1)';
+
+  @override
+  String get reminderUntilAck =>
+      'Stop on acknowledgement, up to the send count';
+
+  @override
+  String get reminderInherit => 'Use global setting';
+
+  @override
+  String get reminderNormal => 'Normal alert';
+
+  @override
+  String get reminderPreview => 'Matching courses and delivery preview';
+
+  @override
+  String get reminderTimingNotice =>
+      'Times include seconds; the system may delay delivery. New or re-enabled rules only schedule future sends.';
+
+  @override
+  String get reminderInvalid =>
+      'Check numeric ranges, the required name and invalid placeholders';
+
+  @override
+  String get reminderSound => 'Sound';
+
+  @override
+  String get reminderVibration => 'Vibration';
+
+  @override
+  String get reminderDuration => 'Duration (5–300 seconds)';
+
+  @override
+  String get reminderSystemSound => 'Choose system sound';
+
+  @override
+  String get reminderImportSound => 'Import audio (MP3/M4A/WAV, up to 5 MiB)';
+
+  @override
+  String get reminderPreviewSound => 'Preview / stop';
+
+  @override
+  String get reminderOverride => 'Override strong alert settings';
+
+  @override
+  String get reminderEmpty => 'No custom reminder rules yet';
+
+  @override
+  String get reminderSoundFallback =>
+      'Missing or unsupported sound replaced with the system default.';
+
+  @override
+  String get reminderMaintenanceFailed =>
+      'Background maintenance registration failed. Later reminders may not be queued after exit. Please retry.';
+
+  @override
+  String get reminderStrongDegraded =>
+      'Strong playback was unavailable; the normal notification was retained. Check system restrictions and sound settings.';
+
+  @override
+  String get reminderVariableLabels =>
+      'Course|Room|Course date|Weekday|Start time|End time|Teachers|Course code|Send index|Total count|Scheduled time';
+
+  @override
+  String get reminderWeekdayNames =>
+      'Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday';
+
+  @override
+  String get reminderDiscardAction => 'Discard changes';
+
+  @override
+  String get reminderAudioInvalid =>
+      'The audio cannot be played, or its format or size is unsupported.';
+
+  @override
+  String get reminderDateOffset => 'Course date offset';
+
+  @override
+  String get reminderSameDay => 'Course day';
+
+  @override
+  String get reminderFixedTime => 'Fixed time (hour / minute / second)';
+
+  @override
+  String get reminderFilterWeekdays => 'Mon|Tue|Wed|Thu|Fri|Sat|Sun';
+
+  @override
+  String get reminderPreviousDay => 'Previous day';
+
+  @override
+  String get reminderNextDay => 'Next day';
+
+  @override
+  String get scheduleFitPage => 'Fit to page';
+
+  @override
+  String get scheduleFitPageHint =>
+      'Show 08:00–22:00 in full. Course text may be hidden; select a course for details.';
+
+  @override
+  String get themeMulticolor => 'Multicolor palette';
+
+  @override
+  String get themeMulticolorOff => 'Original palette';
+
+  @override
+  String get themeSchemeNames =>
+      'Vibrant|Expressive|Rainbow|Fruit salad|Content|Fidelity|Neutral|Monochrome';
+
+  @override
+  String get templateLeadMinutes => 'Lead minutes';
+
+  @override
+  String get templateCourseCount => 'Course count';
+
+  @override
+  String get palettePrimary => 'Primary color';
+
+  @override
+  String get paletteSecondary => 'Secondary color';
+
+  @override
+  String get paletteTertiary => 'Third color';
+
+  @override
+  String get paletteColors => 'Course palette';
+
+  @override
+  String get paletteCustom => 'Custom combination';
+
+  @override
+  String get paletteDuplicate => 'This color is already in the palette';
+
+  @override
+  String get paletteUsePrimary => 'Use as primary';
+
+  @override
+  String get paletteUseSecondary => 'Use as secondary';
+
+  @override
+  String get paletteUseTertiary => 'Use as third color';
+
+  @override
+  String get paletteMoveEarlier => 'Move earlier';
+
+  @override
+  String get paletteMoveLater => 'Move later';
+
+  @override
+  String get paletteReset => 'Reset multicolor settings?';
+
+  @override
+  String get palettePreview => 'Preview';
+
+  @override
+  String get paletteSingle => 'Single color';
+
+  @override
+  String get paletteMode => 'Interface colors';
+
+  @override
+  String get paletteAutomatic => 'Automatic from scheme';
+
+  @override
+  String get notificationWarning =>
+      'Notification permission is off. Reminders cannot be delivered.';
+
+  @override
+  String get notificationOpen => 'Enable notifications';
+
+  @override
+  String get notificationIgnore => 'Ignore and do not show again';
+
+  @override
+  String get notificationIgnoreTitle => 'Ignore the notification warning?';
+
+  @override
+  String get notificationIgnoreBody =>
+      'Without notification permission, reminders will not work. You can restore this warning in Settings.';
+
+  @override
+  String get notificationIgnoreConfirm => 'Confirm ignore';
+
+  @override
+  String get notificationRestore => 'Show permission warnings';
+
+  @override
+  String get notificationRestoreDescription =>
+      'Warn when notifications are disabled on this device';
+
+  @override
+  String get notificationCheckFailed =>
+      'Unable to check notification permission';
+
+  @override
+  String get notificationAllowed => 'Notifications enabled';
+
+  @override
+  String get notificationPermissions => 'Notification permission';
+
+  @override
+  String get strongTargets => 'Apply strong reminders to';
+
+  @override
+  String get strongClassLead => 'Before class';
+
+  @override
+  String get strongCheckIn => 'Check-in';
+
+  @override
+  String get strongSummary => 'Next-day summary';
+
+  @override
+  String get strongCustom => 'Custom rules';
+
+  @override
+  String get strongCourses => 'Course range';
+
+  @override
+  String get strongAllRules => 'All inherited rules, including future rules';
+
+  @override
+  String get strongRuleOverrideNotice =>
+      'Rules explicitly set to Strong or Normal take priority over these selections.';
+
+  @override
+  String get strongSummaryNotice =>
+      'With a limited course range, the summary is strong only if it includes a selected course.';
+
+  @override
+  String get settingsNavigationGroup => 'Navigation';
+
+  @override
+  String get settingsLayoutGroup => 'Schedule layout';
+
+  @override
+  String get settingsMaintenanceGroup => 'Permissions and maintenance';
+
+  @override
+  String get settingsDangerGroup => 'Delete data';
+
+  @override
+  String get settingsDiagnosticsGroup => 'Diagnostics';
+
+  @override
+  String get settingsBackupGroup => 'Backup and export';
+
+  @override
+  String get paletteEdit => 'Edit color';
+
+  @override
+  String get paletteHint => 'Tap a color for actions. Long press to delete.';
+
+  @override
+  String get actionConfirm => 'Confirm';
+
+  @override
+  String get paletteTonalSpot => 'Tonal spot';
+
+  @override
+  String get paletteHue => 'Hue';
+
+  @override
+  String get paletteChroma => 'Color intensity';
+
+  @override
+  String get paletteTone => 'Lightness';
+
+  @override
+  String get paletteScheme => 'Color scheme';
+
+  @override
+  String get paletteSchemeDescriptions =>
+      'Soft, coordinated hues|Vivid contrasting hues|Rotated expressive triad|Balanced three-hue spectrum|Fresh adjacent hues|Seed-led gentle contrast|Seed-led complementary contrast|Low saturation, subtle differences|Grayscale, no hue contrast';
 }

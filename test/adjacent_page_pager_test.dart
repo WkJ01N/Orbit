@@ -90,7 +90,7 @@ void main() {
     expect(find.text('current-1'), findsOneWidget);
   });
 
-  testWidgets('controller navigation is animated and rejects reentry', (
+  testWidgets('rapid controller navigation keeps both requested page changes', (
     tester,
   ) async {
     final harness = await pumpPager(tester);
@@ -102,7 +102,7 @@ void main() {
     expect(translationX(tester, 'adjacent-page-current'), lessThan(0));
     await tester.pumpAndSettle();
 
-    expect(harness.page(), 1);
+    expect(harness.page(), 2);
   });
 
   testWidgets('reduced motion commits controller navigation immediately', (
@@ -114,6 +114,18 @@ void main() {
     await tester.pump();
 
     expect(harness.page(), -1);
+    expect(translationX(tester, 'adjacent-page-current'), 0);
+  });
+
+  testWidgets('three rapid controller requests preserve reversal order', (
+    tester,
+  ) async {
+    final harness = await pumpPager(tester);
+    harness.controller.animateToNext();
+    harness.controller.animateToNext();
+    harness.controller.animateToPrevious();
+    await tester.pumpAndSettle();
+    expect(harness.page(), 1);
     expect(translationX(tester, 'adjacent-page-current'), 0);
   });
 

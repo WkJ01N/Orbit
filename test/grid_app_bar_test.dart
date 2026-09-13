@@ -8,9 +8,11 @@ import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/features/grid/grid_page.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
+import 'package:orbit/features/session/batch_session_edit_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 CourseSession _session({required DateTime date, required int weekday}) {
   final startAt = DateTime(date.year, date.month, date.day, 9);
@@ -33,6 +35,7 @@ CourseSession _session({required DateTime date, required int weekday}) {
 }
 
 Future<void> _pumpGridPage(WidgetTester tester, {required double width}) async {
+  SharedPreferences.setMockInitialValues({});
   final weekStart = weekStartFor(DateTime(2026, 6, 1));
   final session = _session(date: DateTime(2026, 6, 2), weekday: 2);
 
@@ -98,13 +101,70 @@ void main() {
     _expectAppBarControlsDoNotOverlap(tester);
   });
 
-  testWidgets('课表左上角加号打开新增课程表单', (tester) async {
+  testWidgets('课表左上角加号可选择单节或批量添加', (tester) async {
     await _pumpGridPage(tester, width: 360);
 
     await tester.tap(find.byKey(const Key('grid-add-session')));
     await tester.pumpAndSettle();
 
+    expect(find.byIcon(Icons.event_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.event_repeat_outlined), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.event_outlined));
+    await tester.pumpAndSettle();
+
     expect(find.byType(SessionEditSheet), findsOneWidget);
+  });
+
+  testWidgets('批量添加入口在320dp打开可滚动表单', (tester) async {
+    await _pumpGridPage(tester, width: 320);
+
+    await tester.tap(find.byKey(const Key('grid-add-session')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.event_repeat_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BatchSessionEditSheet), findsOneWidget);
+    expect(find.byKey(const Key('batch-create')), findsOneWidget);
+    expect(find.byKey(const Key('batch-add-meeting')), findsOneWidget);
+    expect(find.byKey(const Key('batch-week-18')), findsOneWidget);
+    final meetingTitle = find.byKey(const Key('batch-meeting-title-0'));
+    final meetingWeekday = find.byKey(const Key('batch-meeting-weekday-0'));
+    await tester.ensureVisible(meetingWeekday);
+    expect(
+      tester.getTopLeft(meetingWeekday).dy -
+          tester.getBottomLeft(meetingTitle).dy,
+      greaterThanOrEqualTo(12),
+    );
+    expect(
+      tester.widget<FilterChip>(find.byKey(const Key('batch-week-1'))).selected,
+      isTrue,
+    );
+    final clearWeeks = find.widgetWithText(TextButton, '清空');
+    await tester.ensureVisible(clearWeeks);
+    await tester.tap(clearWeeks);
+    await tester.pump();
+    expect(
+      tester.widget<FilterChip>(find.byKey(const Key('batch-week-1'))).selected,
+      isFalse,
+    );
+    final oddWeeks = find.widgetWithText(TextButton, '單週');
+    await tester.ensureVisible(oddWeeks);
+    await tester.tap(oddWeeks);
+    await tester.pump();
+    expect(
+      tester.widget<FilterChip>(find.byKey(const Key('batch-week-1'))).selected,
+      isTrue,
+    );
+    expect(
+      tester.widget<FilterChip>(find.byKey(const Key('batch-week-2'))).selected,
+      isFalse,
+    );
+    final addMeeting = find.byKey(const Key('batch-add-meeting'));
+    await tester.ensureVisible(addMeeting);
+    await tester.tap(addMeeting);
+    await tester.pump();
+    expect(find.byType(Card), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('课表加载完成前不显示添加课程入口', (tester) async {

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/models/schedule_layout.dart';
 
 const double kScheduleTimeRailWidth = 54;
@@ -9,20 +10,24 @@ const double kScheduleSingleDayBreakpoint = 360;
 const double kScheduleFullWeekBreakpoint = 840;
 const double kScheduleMinimumDayWidth = 96;
 
-ScheduleViewportMode scheduleViewportModeForWidth(double width) {
-  if (width < kScheduleSingleDayBreakpoint) {
-    return ScheduleViewportMode.singleDay;
-  }
+ScheduleViewportMode scheduleViewportModeForWidth(
+  double width, {
+  NarrowScheduleLayout narrowLayout = NarrowScheduleLayout.compactWeek,
+}) {
   if (width >= kScheduleFullWeekBreakpoint) {
     return ScheduleViewportMode.fullWeek;
+  }
+  if (narrowLayout == NarrowScheduleLayout.compactWeek) {
+    return ScheduleViewportMode.compactWeek;
+  }
+  if (width < kScheduleSingleDayBreakpoint) {
+    return ScheduleViewportMode.singleDay;
   }
   return ScheduleViewportMode.multiDay;
 }
 
 int maxMultiDayCountForWidth(double width) {
-  if (width < kScheduleSingleDayBreakpoint) {
-    return 1;
-  }
+  if (width < kScheduleSingleDayBreakpoint) return 1;
   final available = math.max(0, width - kScheduleTimeRailWidth);
   return (available / kScheduleMinimumDayWidth).floor().clamp(1, 6);
 }
@@ -66,6 +71,10 @@ List<DateTime> visibleScheduleDates({
   int weekStartDay = DateTime.monday,
 }) {
   final normalizedAnchor = dateOnly(anchor);
+  if (mode == ScheduleViewportMode.compactWeek) {
+    final start = weekStartFor(normalizedAnchor, startWeekday: weekStartDay);
+    return [for (var i = 0; i < 7; i++) start.add(Duration(days: i))];
+  }
   if (mode == ScheduleViewportMode.fullWeek) {
     final start = weekStartFor(normalizedAnchor, startWeekday: weekStartDay);
     final dates = [for (var i = 0; i < 7; i++) start.add(Duration(days: i))];
@@ -106,7 +115,8 @@ DateTime navigateScheduleAnchor({
   int weekStartDay = DateTime.monday,
 }) {
   final normalized = dateOnly(anchor);
-  if (mode == ScheduleViewportMode.fullWeek) {
+  if (mode == ScheduleViewportMode.fullWeek ||
+      mode == ScheduleViewportMode.compactWeek) {
     return normalized.add(Duration(days: direction * 7));
   }
   if (showEmptyDays) {
@@ -142,6 +152,7 @@ class ScheduleLayoutEngine {
     required List<DateTime> dates,
     required List<CourseSession> sessions,
     required ScheduleViewportMode mode,
+    bool fitToPage = false,
   }) {
     final normalizedDates = dates.map(dateOnly).toList();
     final dateSet = normalizedDates.toSet();
@@ -155,7 +166,7 @@ class ScheduleLayoutEngine {
 
     final days = <ScheduleDayLayout>[];
     var earliest = 8 * 60;
-    var latest = 18 * 60;
+    var latest = (fitToPage ? 22 : 18) * 60;
     var hasEvents = false;
     for (final date in normalizedDates) {
       final daySessions = byDate[date] ?? const <CourseSession>[];
@@ -237,4 +248,17 @@ int _startMinute(CourseSession session) =>
     session.startAt.hour * 60 + session.startAt.minute;
 
 int _endMinute(CourseSession session) =>
-    session.endAt.hour * 60 + session.endAt.minute;
+    dateOnly(session.endAt).isAfter(dateOnly(session.startAt))
+    ? 24 * 60
+    : session.endAt.hour * 60 + session.endAt.minute;
+
+/// Geometry for the actual viewport below the date header.
+class ScheduleFitGeometry {
+  ScheduleFitGeometry(double viewportHeight) {
+    final height = math.max(.001, viewportHeight);
+    inset = math.min(16.0, height * .1);
+    pixelsPerMinute = (height - inset * 2) / (14 * 60);
+  }
+  late final double inset;
+  late final double pixelsPerMinute;
+}

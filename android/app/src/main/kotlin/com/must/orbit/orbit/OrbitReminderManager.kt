@@ -105,6 +105,7 @@ object OrbitReminderManager {
     }
 
     fun buildNotification(context: Context, record: OrbitReminderRecord): Notification? {
+        if(!notificationsAllowed(context))return null
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -141,9 +142,24 @@ object OrbitReminderManager {
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!org.json.JSONObject(record.metadata).optBoolean("fallback"))
             .setPriority(Notification.PRIORITY_MAX)
         record.bigText?.let { builder.setStyle(Notification.BigTextStyle().bigText(it)) }
+        val meta = org.json.JSONObject(record.metadata)
+        if (Build.VERSION.SDK_INT >= 26 && meta.optJSONObject("strong")?.optBoolean("enabled") == true)
+            builder.setGroup("orbit_strong").setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+        val rule = meta.optString("ruleId")
+        if(rule.isNotEmpty() && rule!="null") builder.setStyle(Notification.BigTextStyle().bigText(record.body))
+        fun action(name: String, label: String) {
+            val intent = Intent(context, OrbitReminderActionReceiver::class.java).setAction(name)
+                .putExtra("rule", rule).putExtra("session", meta.optString("sessionId"))
+            intent.data = android.net.Uri.parse("orbit://reminder/${record.notificationId}/$name")
+            val pending = PendingIntent.getBroadcast(context, record.notificationId, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            builder.addAction(Notification.Action.Builder(null, label, pending).build())
+        }
+        val acknowledge = meta.optString("acknowledgeLabel")
+        if (rule.isNotEmpty() && rule != "null" && acknowledge.isNotEmpty()) action("ack", acknowledge)
+        if (meta.optJSONObject("strong")?.optBoolean("enabled") == true) action("stop", meta.optString("stopLabel", "Stop"))
         return builder.build()
     }
 
@@ -151,6 +167,20 @@ object OrbitReminderManager {
         val notification = buildNotification(context, record) ?: return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(record.notificationId, notification)
+        if (org.json.JSONObject(record.metadata).optJSONObject("strong")?.optBoolean("enabled") == true)
+            OrbitStrongReminderService.start(context, record)
+    }
+    fun notificationsAllowed(context: Context): Boolean {
+        if(Build.VERSION.SDK_INT>=33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false
+        val manager=context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if(!manager.areNotificationsEnabled())return false
+        return Build.VERSION.SDK_INT<26 || manager.getNotificationChannel(channelId)?.importance!=NotificationManager.IMPORTANCE_NONE
+    }
+    fun postNormalFallback(context: Context,record: OrbitReminderRecord) {
+        val meta = org.json.JSONObject(record.metadata)
+        meta.optJSONObject("strong")?.put("enabled",false)
+        meta.put("fallback",true)
+        postNotification(context,record.copy(metadata=meta.toString()))
     }
 
     fun restorePersistedReminders(context: Context) {
@@ -158,6 +188,7 @@ object OrbitReminderManager {
         val records = OrbitReminderStore.load(context).values.toList()
         records.forEach { record ->
             when {
+                record.alarmId >= 3_000_000 -> cancel(context,record.alarmId)
                 record.fireAtMillis <= now -> OrbitReminderStore.remove(context, record.alarmId)
                 !record.restoreOnReboot -> {
                     cancelAlarmOnly(context, record.alarmId)
@@ -165,13 +196,21 @@ object OrbitReminderManager {
                 }
                 else -> schedule(
                     context,
-                    record,
+                    rebaseRecord(record),
                     exactPreferred = true,
                     allowInexactFallback = true,
                 )
             }
         }
         ensureMaintenanceAlarm(context)
+        OrbitReminderLedger.replenish(context)
+    }
+    private fun rebaseRecord(record: OrbitReminderRecord): OrbitReminderRecord {
+        val time=org.json.JSONObject(record.metadata).optString("fireAt")
+        if(time.isEmpty())return record
+        val millis=try {java.time.OffsetDateTime.parse(time).toInstant().toEpochMilli()}
+            catch(_: Exception){java.time.LocalDateTime.parse(time).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()}
+        return record.copy(fireAtMillis=millis)
     }
 
     fun ensureMaintenanceAlarm(context: Context) {
@@ -247,5 +286,5 @@ object OrbitReminderManager {
     private fun isCourseReminder(record: OrbitReminderRecord): Boolean =
         (record.alarmId >= classLeadAlarmBase && record.alarmId < checkInAlarmLimit) ||
             (record.alarmId >= nextDaySummaryAlarmBase &&
-                record.alarmId < nextDaySummaryAlarmLimit)
+                record.alarmId < nextDaySummaryAlarmLimit) || record.alarmId >= 3_000_000
 }

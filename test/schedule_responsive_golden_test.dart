@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
@@ -148,7 +149,9 @@ List<CourseSession> _sessions() {
 Future<void> _pumpSchedule(
   WidgetTester tester, {
   required double width,
-  required String golden,
+  String? golden,
+  TextScaler textScaler = TextScaler.noScaling,
+  Brightness brightness = Brightness.light,
 }) async {
   final sessions = _sessions();
   final weekStart = DateTime(2026, 8, 24);
@@ -174,6 +177,11 @@ Future<void> _pumpSchedule(
         currentTimeProvider.overrideWith(_GoldenCurrentTimeNotifier.new),
       ],
       child: MaterialApp(
+        theme: ThemeData(brightness: brightness),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          child: child!,
+        ),
         locale: defaultLocale,
         localizationsDelegates: const [
           AppLocalizations.delegate,
@@ -192,10 +200,13 @@ Future<void> _pumpSchedule(
   );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 200));
-  await expectLater(find.byType(WeekGridView), matchesGoldenFile(golden));
+  if (golden != null) {
+    await expectLater(find.byType(WeekGridView), matchesGoldenFile(golden));
+  }
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('课程卡片使用统一的 8px 圆角', (tester) async {
     await _pumpSchedule(tester, width: 400, golden: 'goldens/schedule_400.png');
 
@@ -210,17 +221,60 @@ void main() {
     final shape = material.shape! as RoundedRectangleBorder;
     final radius = shape.borderRadius.resolve(TextDirection.ltr).topLeft.x;
     expect(radius, 8);
+    final shortestCard = find.byWidgetPredicate(
+      (widget) =>
+          widget is GridSessionChip && widget.session.courseCode == 'APP201',
+    );
+    expect(
+      find.descendant(of: shortestCard, matching: find.text('科技楼 A-308')),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(of: shortestCard, matching: find.text('08:30 - 09:15')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
   }, skip: !Platform.isWindows);
 
-  testWidgets('320dp 单日课表视觉基线', (tester) async {
+  testWidgets('320dp compact week tolerates 200 percent text scaling', (
+    tester,
+  ) async {
+    await _pumpSchedule(
+      tester,
+      width: 320,
+      textScaler: const TextScaler.linear(2),
+    );
+
+    for (var day = 24; day <= 30; day++) {
+      expect(find.byKey(Key('schedule-day-2026-8-$day')), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('320dp 紧凑整周课表视觉基线', (tester) async {
     await _pumpSchedule(tester, width: 320, golden: 'goldens/schedule_320.png');
   }, skip: !Platform.isWindows);
 
-  testWidgets('400dp 三日课表视觉基线', (tester) async {
+  testWidgets('400dp 紧凑整周课表视觉基线', (tester) async {
     await _pumpSchedule(tester, width: 400, golden: 'goldens/schedule_400.png');
   }, skip: !Platform.isWindows);
 
   testWidgets('900dp 整周课表视觉基线', (tester) async {
     await _pumpSchedule(tester, width: 900, golden: 'goldens/schedule_900.png');
   }, skip: !Platform.isWindows);
+
+  testWidgets('360dp 深色紧凑整周全部日期在屏幕内', (tester) async {
+    await _pumpSchedule(
+      tester,
+      width: 360,
+      brightness: Brightness.dark,
+      golden: Platform.isWindows ? 'goldens/schedule_360_dark.png' : null,
+    );
+    for (var day = 24; day <= 30; day++) {
+      final rect = tester.getRect(find.byKey(Key('schedule-day-2026-8-$day')));
+      expect(rect.left, greaterThanOrEqualTo(54));
+      expect(rect.right, lessThanOrEqualTo(360.001));
+    }
+    expect(tester.takeException(), isNull);
+  });
 }

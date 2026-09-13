@@ -2,17 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/providers/reminder_providers.dart';
-import 'package:orbit/services/alarm_intent_service.dart';
 import 'package:orbit/services/startup_service.dart';
 
 export 'database_providers.dart';
 export 'navigation_providers.dart';
 export 'reminder_providers.dart';
 export 'schedule_providers.dart';
-
-final alarmIntentServiceProvider = Provider<AlarmIntentService>(
-  (ref) => AlarmIntentService(),
-);
 
 final startupServiceProvider = Provider<StartupService>(
   (ref) => StartupService(ref.watch(settingsServiceProvider)),
@@ -43,6 +38,7 @@ Duration durationUntilNextMinute(DateTime now) {
 
 class CurrentTimeNotifier extends Notifier<DateTime> {
   Timer? _timer;
+  bool _paused = false;
 
   @override
   DateTime build() {
@@ -53,13 +49,20 @@ class CurrentTimeNotifier extends Notifier<DateTime> {
   }
 
   void syncNow() {
+    _paused = false;
     final now = ref.read(currentTimeClockProvider)();
     state = now;
     _scheduleNextTick(now);
   }
 
+  void pauseTicks() {
+    _paused = true;
+    _timer?.cancel();
+  }
+
   void _scheduleNextTick(DateTime from) {
     _timer?.cancel();
+    if (_paused) return;
     final createTimer = ref.read(currentTimeTimerFactoryProvider);
     _timer = createTimer(durationUntilNextMinute(from), () {
       final now = ref.read(currentTimeClockProvider)();

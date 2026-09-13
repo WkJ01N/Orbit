@@ -39,6 +39,7 @@ void main() {
     await tester.pump();
     expect(find.text('Course deleted'), findsOneWidget);
 
+    await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(find.text('Course deleted'), findsNothing);

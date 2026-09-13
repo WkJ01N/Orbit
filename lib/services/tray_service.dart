@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:orbit/providers/database_providers.dart';
@@ -154,15 +155,21 @@ Future<void> initializeDesktopWindow({bool startHidden = false}) async {
     center: true,
     title: 'Orbit',
   );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    if (startHidden) {
-      await windowManager.hide();
-    } else {
-      await windowManager.show();
-      await windowManager.focus();
-    }
-  });
+  await windowManager.waitUntilReadyToShow(windowOptions);
   await windowManager.setPreventClose(true);
+  if (startHidden) {
+    await windowManager.hide();
+  } else {
+    // Window options are ready before layout; show content with the first frame
+    // instead of surfacing a blank, unpainted window during database loading.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        showMainWindow().catchError((Object error) {
+          debugPrint('Initial window show failed: $error');
+        }),
+      );
+    });
+  }
 }
 
 Future<void> showMainWindow() async {

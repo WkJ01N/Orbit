@@ -7,6 +7,9 @@
     <!-- 接收開機廣播，使鬧鐘在重啟後恢復 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <application
         android:label="Orbit"
@@ -72,6 +75,9 @@
         </receiver>
 
         <!-- Orbit native delivery path: posts notifications without starting Flutter. -->
+        <service android:name=".OrbitStrongReminderService" android:exported="false"
+            android:process=":reminders" android:foregroundServiceType="mediaPlayback" />
+        <receiver android:name=".OrbitReminderActionReceiver" android:exported="false" android:process=":reminders" />
         <receiver
             android:name=".OrbitReminderReceiver"
             android:exported="false"
@@ -103,10 +109,7 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- 允许在 Android 11+ 解析系统时钟，用于设置系统闹钟 -->
-        <intent>
-            <action android:name="android.intent.action.SET_ALARM"/>
-        </intent>
+
         <intent>
             <action android:name="android.intent.action.SHOW_ALARMS"/>
         </intent>

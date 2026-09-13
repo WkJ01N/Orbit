@@ -69,6 +69,25 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Default week'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Narrow-screen schedule layout'),
+      120,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('settings-category-content-1')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Narrow-screen schedule layout'), findsOneWidget);
+    expect(find.text('Compact full week'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Days in multi-day view'),
+      120,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('settings-category-content-1')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Days in multi-day view'), findsOneWidget);
     expect(find.text('Language'), findsNothing);
 
     await tester.tap(find.byKey(const Key('settings-category-2')));
@@ -91,6 +110,7 @@ void main() {
     expect(find.text('Debug'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Debug'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Debug'));
     await tester.pumpAndSettle();
     expect(find.byType(DebugPage), findsOneWidget);
@@ -183,7 +203,7 @@ void main() {
         }
         await tester.ensureVisible(finder);
         await tester.pumpAndSettle();
-        expect(tester.getTopLeft(finder).dx, closeTo(16, 0.1));
+        expect(tester.getTopLeft(finder).dx, closeTo(32, 0.1));
       }
 
       await tester.tap(
@@ -193,9 +213,9 @@ void main() {
       await tester.pumpAndSettle();
       final dataHeader = find.descendant(
         of: find.byType(SectionHeader),
-        matching: find.text('Data management'),
+        matching: find.text('Backup and export'),
       );
-      expect(tester.getTopLeft(dataHeader).dx, closeTo(16, 0.1));
+      expect(tester.getTopLeft(dataHeader).dx, closeTo(32, 0.1));
     }
   });
 

@@ -1,3 +1,4 @@
+import 'package:orbit/providers/course_color_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
@@ -193,8 +194,15 @@ class _SessionActionButtons extends ConsumerWidget {
                   final overrides = ref.read(courseColorOverridesProvider);
                   final themeStyle = appThemeStyleOf(context);
                   final colorScheme = Theme.of(context).colorScheme;
+                  final multi = ref.read(multicolorSettingsProvider);
                   final defaultColor = resolvedCourseColor(
+                    palette: multi.enabled ? multi.palette : const [],
                     session: session,
+                    automaticColorId: themeStyle == AppThemeStyle.colorful
+                        ? ref.read(
+                            resolvedAutomaticCourseColorIdsProvider,
+                          )[automaticCourseColorKey(session)]
+                        : null,
                     colorScheme: colorScheme,
                     themeStyle: themeStyle,
                   );

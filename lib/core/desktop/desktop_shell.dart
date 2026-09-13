@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -46,9 +47,12 @@ class _DesktopShellState extends State<DesktopShell>
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.trayInitFailed)));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.trayInitFailed),
+          ),
+        );
       }
     }
   }
@@ -99,7 +103,7 @@ class _DesktopShellState extends State<DesktopShell>
     if (!_trayHintShown && mounted) {
       _trayHintShown = true;
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
           content: Text(l10n.trayHiddenHint),
           duration: const Duration(seconds: 2),

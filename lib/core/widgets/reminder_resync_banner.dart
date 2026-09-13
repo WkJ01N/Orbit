@@ -36,6 +36,12 @@ class ReminderResyncBanner extends StatelessWidget {
       case ReminderResyncBannerKind.error:
         message = l10n.reminderResyncFailedBanner;
         iconColor = colorScheme.error;
+      case ReminderResyncBannerKind.maintenance:
+        message = l10n.reminderMaintenanceFailed;
+        iconColor = colorScheme.error;
+      case ReminderResyncBannerKind.strong:
+        message = l10n.reminderStrongDegraded;
+        iconColor = colorScheme.tertiary;
     }
 
     return MaterialBanner(

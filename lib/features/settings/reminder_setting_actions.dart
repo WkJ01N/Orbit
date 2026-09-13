@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
@@ -20,23 +21,35 @@ Future<void> applyReminderUpdate(
         syncError != null && syncError.startsWith('partial:');
     final isVerifyFailure = syncError == 'verify';
     if (isVerifyFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.reminderScheduleVerifyFailed)),
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.reminderScheduleVerifyFailed),
+        ),
       );
     } else if (syncError != null && !isPartialFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.reminderSyncFailed(syncError))),
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.reminderSyncFailed(syncError)),
+        ),
       );
     } else if (failures > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.resyncPartialFailed(failures))),
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.resyncPartialFailed(failures)),
+        ),
       );
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.reminderSyncFailed('$e'))));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.reminderSyncFailed('$e')),
+        ),
+      );
     }
   }
 }

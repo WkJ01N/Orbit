@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/widgets/step_confirm_dialog.dart';
@@ -19,7 +20,7 @@ Future<bool> confirmDeleteEndedSessions(
   if (count == 0) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(l10n.deleteEndedNone)));
+    ).showAppSnackBar(SnackBar(content: Text(l10n.deleteEndedNone)));
     return false;
   }
 
@@ -65,9 +66,12 @@ Future<void> deleteEndedSessionsWithFeedback(
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.deleteFailed('$e'))));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.deleteFailed('$e')),
+        ),
+      );
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 typedef SwipeAvailability = bool Function();
 
@@ -57,14 +58,22 @@ class AdjacentPagePagerState extends State<AdjacentPagePager>
     with SingleTickerProviderStateMixin {
   static const _commitFraction = 0.25;
   static const _minFlingVelocity = 400.0;
-  static const _cancelDuration = Duration(milliseconds: 160);
-  static const _programmaticDuration = Duration(milliseconds: 220);
+  static const _spring = SpringDescription(
+    mass: 1,
+    stiffness: 400,
+    damping: 38,
+  );
 
   late final AnimationController _position = AnimationController.unbounded(
     vsync: this,
   );
   double _viewportWidth = 0;
   bool _settling = false;
+  int _generation = 0;
+  int _settleDirection = 0;
+  bool _committingPageChange = false;
+  Future<void> _navigationQueue = Future<void>.value();
+  int _navigationEpoch = 0;
 
   bool get _canGoPrevious =>
       widget.previousChild != null &&
@@ -89,8 +98,9 @@ class AdjacentPagePagerState extends State<AdjacentPagePager>
       oldWidget.controller?._detach(this);
       widget.controller?._attach(this);
     }
-    if (oldWidget.pageKey != widget.pageKey && !_settling) {
-      _cancelInteraction();
+    if (oldWidget.pageKey != widget.pageKey) {
+      if (!_committingPageChange) _cancelInteraction();
+      _committingPageChange = false;
     }
   }
 
@@ -102,13 +112,25 @@ class AdjacentPagePagerState extends State<AdjacentPagePager>
   }
 
   void _onDragStart(DragStartDetails details) {
-    if (_settling) return;
+    _navigationEpoch++;
+    _generation++;
     _position.stop();
+    // Rebase an almost-completed page before accepting a fresh drag. Both the
+    // entering page and its neighbor keep their exact on-screen positions.
+    if (_settling &&
+        _settleDirection != 0 &&
+        _position.value.abs() >= _viewportWidth * .5) {
+      final direction = _settleDirection;
+      _commit(direction);
+      _position.value += direction * _viewportWidth;
+    }
+    _settling = false;
+    _settleDirection = 0;
     widget.onInteractionStart?.call();
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    if (_settling || _viewportWidth <= 0) return;
+    if (_viewportWidth <= 0) return;
     var target = (_position.value + details.delta.dx).clamp(
       -_viewportWidth,
       _viewportWidth,
@@ -122,83 +144,88 @@ class AdjacentPagePagerState extends State<AdjacentPagePager>
   }
 
   Future<void> _onDragEnd(DragEndDetails details) async {
-    if (_settling || _viewportWidth <= 0) return;
+    if (_viewportWidth <= 0) return;
     final threshold = _viewportWidth * _commitFraction;
     final velocity = details.velocity.pixelsPerSecond.dx;
-    if ((_position.value <= -threshold || velocity < -_minFlingVelocity) &&
-        _canGoNext) {
-      await _settleTo(1);
-    } else if ((_position.value >= threshold || velocity > _minFlingVelocity) &&
-        _canGoPrevious) {
-      await _settleTo(-1);
+    // A decisive fling takes precedence over distance, including reversal.
+    final direction = velocity.abs() >= _minFlingVelocity
+        ? (velocity < 0 ? 1 : -1)
+        : (_position.value.abs() >= threshold
+              ? (_position.value < 0 ? 1 : -1)
+              : 0);
+    if (direction > 0 && _canGoNext || direction < 0 && _canGoPrevious) {
+      await _animate(direction, velocity: velocity);
     } else {
-      await _snapBack();
+      await _animate(0, velocity: velocity);
     }
   }
 
-  Future<void> _navigate(int direction) async {
-    if (_settling || _viewportWidth <= 0) return;
-    if (direction < 0 && !_canGoPrevious) return;
-    if (direction > 0 && !_canGoNext) return;
-    widget.onInteractionStart?.call();
-    if (widget.reduceMotion) {
-      _position.value = 0;
-      _commit(direction);
+  Future<void> _navigate(int direction) {
+    final epoch = _navigationEpoch;
+    final request = _navigationQueue.then((_) async {
+      if (!mounted || epoch != _navigationEpoch) return;
+      await _performNavigation(direction);
+    });
+    _navigationQueue = request;
+    return request;
+  }
+
+  Future<void> _performNavigation(int direction) async {
+    if (_viewportWidth <= 0) return;
+    if (direction < 0 && !_canGoPrevious || direction > 0 && !_canGoNext) {
       return;
     }
-    _settling = true;
-    await _position.animateTo(
-      direction > 0 ? -_viewportWidth : _viewportWidth,
-      duration: _programmaticDuration,
-      curve: Curves.easeOutCubic,
-    );
-    if (!mounted) return;
-    _commit(direction);
-    _position.value = 0;
-    _settling = false;
-  }
-
-  Future<void> _settleTo(int direction) async {
-    _settling = true;
-    if (widget.reduceMotion) {
-      _commit(direction);
+    // Rapid arrow presses complete the preceding navigation before starting
+    // another one. Rebuild first so callbacks refer to the new adjacent pages.
+    if (_settling && _settleDirection != 0) {
+      final previous = _settleDirection;
+      _generation++;
+      _position.stop();
+      _commit(previous);
       _position.value = 0;
       _settling = false;
-      return;
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
     }
-    final target = direction > 0 ? -_viewportWidth : _viewportWidth;
-    final remainingFraction =
-        ((target - _position.value).abs() / _viewportWidth).clamp(0.0, 1.0);
-    final duration = Duration(
-      milliseconds: (120 + 100 * remainingFraction).round(),
-    );
-    await _position.animateTo(
-      target,
-      duration: duration,
-      curve: Curves.easeOutCubic,
-    );
-    if (!mounted) return;
-    _commit(direction);
-    _position.value = 0;
-    _settling = false;
+    widget.onInteractionStart?.call();
+    await _animate(direction);
+    if (mounted && _committingPageChange && !widget.reduceMotion) {
+      await WidgetsBinding.instance.endOfFrame;
+    }
   }
 
-  Future<void> _snapBack() async {
-    if (_position.value == 0) return;
-    if (widget.reduceMotion) {
-      _position.value = 0;
-      return;
-    }
+  Future<void> _animate(int direction, {double velocity = 0}) async {
+    final generation = ++_generation;
+    _position.stop();
     _settling = true;
-    await _position.animateTo(
-      0,
-      duration: _cancelDuration,
-      curve: Curves.easeOutCubic,
-    );
+    _settleDirection = direction;
+    final target = -direction * _viewportWidth;
+    if (!widget.reduceMotion && (_position.value - target).abs() > .1) {
+      try {
+        await _position
+            .animateWith(
+              SpringSimulation(
+                _spring,
+                _position.value,
+                target,
+                velocity.clamp(-2400, 2400),
+                tolerance: const Tolerance(distance: .2, velocity: 2),
+              ),
+            )
+            .orCancel;
+      } on TickerCanceled {
+        return;
+      }
+    }
+    if (!mounted || generation != _generation) return;
+    if (direction != 0) _commit(direction);
+    _position.value = 0;
     _settling = false;
+    _settleDirection = 0;
   }
 
   void _commit(int direction) {
+    _committingPageChange = true;
     if (direction < 0) {
       widget.onSwipeToPrevious?.call();
     } else {
@@ -207,13 +234,16 @@ class AdjacentPagePagerState extends State<AdjacentPagePager>
   }
 
   void _cancelInteraction() {
+    _navigationEpoch++;
+    _generation++;
     _position.stop();
     _position.value = 0;
     _settling = false;
+    _settleDirection = 0;
   }
 
   void _onDragCancel() {
-    if (!_settling) _snapBack();
+    if (!_settling) _animate(0);
   }
 
   @override

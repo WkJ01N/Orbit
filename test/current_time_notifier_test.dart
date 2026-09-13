@@ -66,4 +66,31 @@ void main() {
     expect(container.read(currentTimeProvider), now);
     expect(delays.last, const Duration(seconds: 35));
   });
+
+  test('hidden app stops ticking and catches up once on restore', () {
+    var now = DateTime(2026, 9, 12, 8);
+    final timers = <_ControlledTimer>[];
+    final container = ProviderContainer(
+      overrides: [
+        currentTimeClockProvider.overrideWithValue(() => now),
+        currentTimeTimerFactoryProvider.overrideWithValue((delay, callback) {
+          final timer = _ControlledTimer(callback);
+          timers.add(timer);
+          return timer;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(container.read(currentTimeProvider), now);
+    final notifier = container.read(currentTimeProvider.notifier);
+    notifier.pauseTicks();
+    expect(timers.single.isActive, isFalse);
+    now = DateTime(2026, 9, 13, 12, 34, 20);
+    timers.single.fire();
+    expect(container.read(currentTimeProvider), DateTime(2026, 9, 12, 8));
+    notifier.syncNow();
+    expect(container.read(currentTimeProvider), now);
+    expect(timers.length, 2);
+    expect(timers.last.isActive, isTrue);
+  });
 }

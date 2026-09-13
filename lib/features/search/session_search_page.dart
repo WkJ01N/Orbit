@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
@@ -61,9 +62,12 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
       if (mounted) {
         setState(() => _loading = false);
         final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.searchFailed('$e'))));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.searchFailed('$e')),
+          ),
+        );
       }
     }
   }

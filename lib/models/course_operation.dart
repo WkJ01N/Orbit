@@ -2,10 +2,21 @@ import 'package:orbit/models/course_session.dart';
 
 enum CourseOperationScope { single, fromSelected, all }
 
+enum RecurringCourseEditScope {
+  single,
+  meetingFromSelected,
+  meetingAll,
+  courseCommon,
+}
+
 final class CourseSeriesKey {
   const CourseSeriesKey(this.value);
 
   factory CourseSeriesKey.fromSession(CourseSession session) {
+    final recurrenceSeriesId = session.recurrenceSeriesId;
+    if (recurrenceSeriesId != null && recurrenceSeriesId.isNotEmpty) {
+      return CourseSeriesKey('recurrence:$recurrenceSeriesId');
+    }
     final code = _normalize(session.courseCode);
     final section = _normalize(session.section);
     final identity = code.isNotEmpty && !code.startsWith('manual|')

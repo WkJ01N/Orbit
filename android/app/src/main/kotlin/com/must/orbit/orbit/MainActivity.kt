@@ -8,6 +8,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var ringtoneResult: MethodChannel.Result? = null
+    private var preview: android.media.MediaPlayer? = null
     private var reminderChannel: MethodChannel? = null
     private var pendingNotificationPayload: String? = null
 
@@ -42,6 +44,56 @@ class MainActivity : FlutterActivity() {
         ).also { channel ->
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "runtimeStatus" -> {
+                        @Suppress("DEPRECATION")
+                        val prefs=getSharedPreferences("orbit_native_reminders",Context.MODE_PRIVATE or Context.MODE_MULTI_PROCESS)
+                        result.success(prefs.getString("schedule_failure",null) ?: prefs.getString("strong_degraded",null))
+                    }
+                    "configureDatabase" -> {
+                        val editor = getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE).edit()
+                        editor.remove("schedule_failure")
+                        editor.putString("database_path", call.argument<String>("path"))
+                        for (key in listOf("catchup_label","catchup_notice","original_label","delivered_label","channel_name","channel_description"))
+                            editor.putString(key, call.argument<String>(key))
+                        editor.commit()
+                        result.success(null)
+                    }
+                    "chooseRingtone" -> {
+                        if (ringtoneResult != null) { result.error("busy", "Picker already open", null) }
+                        else {
+                            ringtoneResult = result
+                            val picker = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
+                                .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE, android.media.RingtoneManager.TYPE_ALARM)
+                                .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                            @Suppress("DEPRECATION")
+                            startActivityForResult(picker, 6201)
+                        }
+                    }
+                    "previewSound" -> {
+                        try {
+                            preview?.release()
+                            val value = call.argument<String>("value") ?: ""
+                            val uri = if (value.isEmpty()) android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM)
+                                else if (call.argument<String>("kind") == "file") android.net.Uri.fromFile(java.io.File(value)) else android.net.Uri.parse(value)
+                            preview = android.media.MediaPlayer()
+                            preview!!.apply {
+                                setAudioAttributes(android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_ALARM).build())
+                                setDataSource(this@MainActivity,uri);prepare();start()
+                            }
+                            result.success(null)
+                        } catch (e: Exception) { preview?.release();preview=null;result.error("preview", e.message, null) }
+                    }
+                    "validateAudio" -> {
+                        val retriever=android.media.MediaMetadataRetriever()
+                        try {
+                            retriever.setDataSource(call.argument<String>("path"))
+                            val duration=retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0
+                            val hasAudio=retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO)
+                            if(duration<=0 || hasAudio!="yes")result.error("audio_type","Invalid audio",null) else result.success(null)
+                        }catch(e: Exception){result.error("audio_type",e.message,null)}
+                        finally { retriever.release() }
+                    }
+                    "stopPreview" -> { preview?.release(); preview = null; result.success(null) }
                     "initialize", "ensureMaintenanceAlarm" -> {
                         OrbitReminderManager.ensureMaintenanceAlarm(this)
                         result.success(null)
@@ -90,6 +142,7 @@ class MainActivity : FlutterActivity() {
                 channelName = values["channelName"] as String,
                 channelDescription = values["channelDescription"] as String,
                 restoreOnReboot = values["restoreOnReboot"] as? Boolean ?: true,
+                metadata = values["metadata"] as? String ?: "{}",
             )
             val scheduleResult = OrbitReminderManager.schedule(
                 this,
@@ -105,6 +158,18 @@ class MainActivity : FlutterActivity() {
             )
         } catch (error: Exception) {
             result.error("schedule_failed", error.message, null)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 6201) {
+            @Suppress("DEPRECATION")
+            val uri = data?.getParcelableExtra<android.net.Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            ringtoneResult?.success(if (resultCode == RESULT_OK && uri != null)
+                mapOf("kind" to "system", "value" to uri.toString(), "name" to android.media.RingtoneManager.getRingtone(this, uri)?.getTitle(this)) else null)
+            ringtoneResult = null
         }
     }
 

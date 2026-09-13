@@ -1,6 +1,7 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/core/widgets/settings_group.dart';
 import 'package:orbit/features/session/deletion_feedback.dart';
 import 'package:orbit/features/settings/delete_ended_sessions_dialog.dart';
 import 'package:orbit/features/settings/debug_page.dart';
@@ -19,39 +20,57 @@ class SettingsDataSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionHeader(title: l10n.sectionData),
-        const _ExportBackupSection(),
-        ListTile(
-          title: Text(l10n.trashTitle),
-          subtitle: Text(l10n.trashSubtitle),
-          leading: const Icon(Icons.restore_from_trash_outlined),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const DeletedSessionsPage(),
+        SettingsGroup(
+          title: l10n.settingsBackupGroup,
+          children: const [_ExportBackupSection()],
+        ),
+        SettingsGroup(
+          title: l10n.trashTitle,
+          children: [
+            ListTile(
+              title: Text(l10n.trashTitle),
+              subtitle: Text(l10n.trashSubtitle),
+              leading: const Icon(Icons.restore_from_trash_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DeletedSessionsPage(),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-        ListTile(
-          title: Text(l10n.debugTitle),
-          subtitle: Text(l10n.debugSubtitle),
-          leading: const Icon(Icons.bug_report_outlined),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const DebugPage())),
+        SettingsGroup(
+          title: l10n.settingsDiagnosticsGroup,
+          children: [
+            ListTile(
+              title: Text(l10n.debugTitle),
+              subtitle: Text(l10n.debugSubtitle),
+              leading: const Icon(Icons.bug_report_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const DebugPage()),
+              ),
+            ),
+          ],
         ),
-        ListTile(
-          title: Text(l10n.deleteEndedSessions),
-          subtitle: Text(l10n.deleteEndedSessionsSubtitle),
-          leading: Icon(Icons.event_busy, color: colors.error),
-          onTap: () => deleteEndedSessionsWithFeedback(context, ref),
-        ),
-        ListTile(
-          title: Text(l10n.clearAllData),
-          subtitle: Text(l10n.clearAllDataSubtitle),
-          leading: Icon(Icons.delete_outline, color: colors.error),
-          onTap: () => _confirmClearAll(context, ref),
+        SettingsGroup(
+          title: l10n.settingsDangerGroup,
+          children: [
+            ListTile(
+              title: Text(l10n.deleteEndedSessions),
+              subtitle: Text(l10n.deleteEndedSessionsSubtitle),
+              leading: Icon(Icons.event_busy, color: colors.error),
+              onTap: () => deleteEndedSessionsWithFeedback(context, ref),
+            ),
+            const Divider(indent: 16, endIndent: 16),
+            ListTile(
+              title: Text(l10n.clearAllData),
+              subtitle: Text(l10n.clearAllDataSubtitle),
+              leading: Icon(Icons.delete_outline, color: colors.error),
+              onTap: () => _confirmClearAll(context, ref),
+            ),
+          ],
         ),
       ],
     );
@@ -101,9 +120,12 @@ class SettingsDataSection extends ConsumerWidget {
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.clearAllFailed('$error'))));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.clearAllFailed('$error')),
+          ),
+        );
       }
     }
   }

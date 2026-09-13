@@ -70,6 +70,11 @@ class AndroidReminderGuard {
       }
     }
 
+    await openAppNotificationSettings();
+  }
+
+  Future<void> openAppNotificationSettings() async {
+    if (!Platform.isAndroid) return;
     final intent = AndroidIntent(
       action: 'android.settings.APP_NOTIFICATION_SETTINGS',
       arguments: {'android.provider.extra.APP_PACKAGE': _androidPackageName},

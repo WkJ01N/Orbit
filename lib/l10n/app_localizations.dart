@@ -541,7 +541,7 @@ abstract class AppLocalizations {
   /// No description provided for @themeStyleTitle.
   ///
   /// In en, this message translates to:
-  /// **'Theme style'**
+  /// **'Course colors'**
   String get themeStyleTitle;
 
   /// No description provided for @themeStyleSubtitle.
@@ -553,13 +553,13 @@ abstract class AppLocalizations {
   /// No description provided for @themeStyleStandard.
   ///
   /// In en, this message translates to:
-  /// **'Standard'**
+  /// **'Uniform color'**
   String get themeStyleStandard;
 
   /// No description provided for @themeStyleColorful.
   ///
   /// In en, this message translates to:
-  /// **'Colorful'**
+  /// **'Automatic colors'**
   String get themeStyleColorful;
 
   /// No description provided for @themeColorTitle.
@@ -676,6 +676,30 @@ abstract class AppLocalizations {
   /// **'Comfortable'**
   String get gridDensityComfortable;
 
+  /// No description provided for @scheduleNarrowLayoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow-screen schedule layout'**
+  String get scheduleNarrowLayoutTitle;
+
+  /// No description provided for @scheduleNarrowLayoutSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a full compact week or the classic adaptive day view'**
+  String get scheduleNarrowLayoutSubtitle;
+
+  /// No description provided for @scheduleNarrowLayoutCompactWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact full week'**
+  String get scheduleNarrowLayoutCompactWeek;
+
+  /// No description provided for @scheduleNarrowLayoutAdaptive.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic adaptive'**
+  String get scheduleNarrowLayoutAdaptive;
+
   /// No description provided for @scheduleMultiDayCountTitle.
   ///
   /// In en, this message translates to:
@@ -703,7 +727,7 @@ abstract class AppLocalizations {
   /// No description provided for @scheduleShowEmptyDaysSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Turn off to move directly between class days'**
+  /// **'Used by classic adaptive view; turn off to move directly between class days'**
   String get scheduleShowEmptyDaysSubtitle;
 
   /// No description provided for @upcomingShowCourseDateTitle.
@@ -1042,7 +1066,7 @@ abstract class AppLocalizations {
   /// No description provided for @androidBackgroundSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Reminders use system alarms and do not require the app to stay open. Complete the settings below for best reliability.'**
+  /// **'Reminders use background scheduled reminders and do not require the app to stay open. Complete the settings below for best reliability.'**
   String get androidBackgroundSubtitle;
 
   /// No description provided for @androidCheckReminderPermissions.
@@ -1093,12 +1117,6 @@ abstract class AppLocalizations {
   /// **'On OriginOS / iQOO, allow autostart and unrestricted background activity, then lock Orbit in recents.'**
   String get androidAutostartHint;
 
-  /// No description provided for @androidKillBackgroundHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Verified on iQOO V2408A after returning home, locking the screen, and swiping Orbit from recents. Behavior may vary on other OriginOS versions; a true Force Stop from system settings still cancels app alarms. Use System alarm above as a manual fallback when needed.'**
-  String get androidKillBackgroundHint;
-
   /// No description provided for @debugTitle.
   ///
   /// In en, this message translates to:
@@ -1138,7 +1156,7 @@ abstract class AppLocalizations {
   /// No description provided for @androidTestBackgroundReminderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Uses the same native system alarm as class reminders. Return home or lock the screen and wait one minute.'**
+  /// **'Uses the same native background scheduling as class reminders. Return home or lock the screen and wait one minute.'**
   String get androidTestBackgroundReminderSubtitle;
 
   /// No description provided for @androidTestBackgroundReminderScheduled.
@@ -1486,54 +1504,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset to defaults'**
   String get nextDayTemplateReset;
-
-  /// No description provided for @enableSystemAlarm.
-  ///
-  /// In en, this message translates to:
-  /// **'System alarm for first class (Android)'**
-  String get enableSystemAlarm;
-
-  /// No description provided for @enableSystemAlarmSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Open the system clock app to set an alarm for tomorrow\'s first class'**
-  String get enableSystemAlarmSubtitle;
-
-  /// No description provided for @systemAlarmLeadTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Alarm lead time'**
-  String get systemAlarmLeadTitle;
-
-  /// No description provided for @systemAlarmLeadSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Alarm rings {minutes} minutes before first class'**
-  String systemAlarmLeadSubtitle(int minutes);
-
-  /// No description provided for @setTomorrowAlarm.
-  ///
-  /// In en, this message translates to:
-  /// **'Set alarm for tomorrow'**
-  String get setTomorrowAlarm;
-
-  /// No description provided for @alarmSetSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'System alarm screen opened'**
-  String get alarmSetSuccess;
-
-  /// No description provided for @alarmSetFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to open system alarm'**
-  String get alarmSetFailed;
-
-  /// No description provided for @alarmNoClassTomorrow.
-  ///
-  /// In en, this message translates to:
-  /// **'No classes tomorrow'**
-  String get alarmNoClassTomorrow;
 
   /// No description provided for @enableCheckInReminder.
   ///
@@ -2251,7 +2221,7 @@ abstract class AppLocalizations {
   /// No description provided for @reminderRegisteredAlarmCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} system alarm(s) registered'**
+  /// **'{count} background reminder(s) registered'**
   String reminderRegisteredAlarmCount(int count);
 
   /// No description provided for @androidNotificationsEnabled.
@@ -2455,6 +2425,960 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'App settings restored'**
   String get restoreSettingsDone;
+
+  /// No description provided for @addSessionChoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add class'**
+  String get addSessionChoiceTitle;
+
+  /// No description provided for @addSingleSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Add one class'**
+  String get addSingleSession;
+
+  /// No description provided for @addBatchSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Add recurring classes'**
+  String get addBatchSessions;
+
+  /// No description provided for @batchAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add recurring classes'**
+  String get batchAddTitle;
+
+  /// No description provided for @batchFirstWeekMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday of week 1'**
+  String get batchFirstWeekMonday;
+
+  /// No description provided for @batchTotalWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester length'**
+  String get batchTotalWeeks;
+
+  /// No description provided for @batchSelectedWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Class weeks'**
+  String get batchSelectedWeeks;
+
+  /// No description provided for @batchMeetings.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly meetings'**
+  String get batchMeetings;
+
+  /// No description provided for @batchAddMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Add weekly meeting'**
+  String get batchAddMeeting;
+
+  /// No description provided for @batchRemoveMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove meeting'**
+  String get batchRemoveMeeting;
+
+  /// No description provided for @batchSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get batchSelectAll;
+
+  /// No description provided for @batchSelectOdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Odd weeks'**
+  String get batchSelectOdd;
+
+  /// No description provided for @batchSelectEven.
+  ///
+  /// In en, this message translates to:
+  /// **'Even weeks'**
+  String get batchSelectEven;
+
+  /// No description provided for @batchClearWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get batchClearWeeks;
+
+  /// No description provided for @batchMeetingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting {index}'**
+  String batchMeetingTitle(Object index);
+
+  /// No description provided for @batchWeekOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week}'**
+  String batchWeekOption(Object week);
+
+  /// No description provided for @batchRequiredFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a course name and a room for every meeting'**
+  String get batchRequiredFields;
+
+  /// No description provided for @batchNoWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Select at least one class week'**
+  String get batchNoWeeks;
+
+  /// No description provided for @batchNoMeetings.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one weekly meeting'**
+  String get batchNoMeetings;
+
+  /// No description provided for @batchInvalidTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Every meeting must end after it starts'**
+  String get batchInvalidTime;
+
+  /// No description provided for @batchMeetingOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly meetings on the same day cannot overlap'**
+  String get batchMeetingOverlap;
+
+  /// No description provided for @batchPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm recurring classes'**
+  String get batchPreviewTitle;
+
+  /// No description provided for @batchPreviewSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{generated} classes will be created; {conflicts} existing classes conflict.'**
+  String batchPreviewSummary(Object conflicts, Object generated);
+
+  /// No description provided for @batchSkipConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip conflicts'**
+  String get batchSkipConflicts;
+
+  /// No description provided for @batchOverwriteConflicts.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace conflicts'**
+  String get batchOverwriteConflicts;
+
+  /// No description provided for @batchCreateResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {created}, skipped {skipped}, and replaced {overwritten} conflicting classes'**
+  String batchCreateResult(Object created, Object overwritten, Object skipped);
+
+  /// No description provided for @courseScopeMeetingFromSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'This meeting from here'**
+  String get courseScopeMeetingFromSelected;
+
+  /// No description provided for @courseScopeMeetingAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All weeks of this meeting'**
+  String get courseScopeMeetingAll;
+
+  /// No description provided for @courseScopeCourseCommon.
+  ///
+  /// In en, this message translates to:
+  /// **'Common details for the whole course'**
+  String get courseScopeCourseCommon;
+
+  /// No description provided for @backToTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to top'**
+  String get backToTop;
+
+  /// No description provided for @scheduleVerticalScaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule vertical scale'**
+  String get scheduleVerticalScaleTitle;
+
+  /// No description provided for @scheduleVerticalScaleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduce the height to fit more of your schedule. Applies to the selected display density; short classes and large text may limit compression to keep names and time labels readable.'**
+  String get scheduleVerticalScaleSubtitle;
+
+  /// No description provided for @scheduleVerticalScaleReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore defaults'**
+  String get scheduleVerticalScaleReset;
+
+  /// No description provided for @customReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom reminder times'**
+  String get customReminders;
+
+  /// No description provided for @customRemindersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Independent times, filters, messages and repetitions'**
+  String get customRemindersSubtitle;
+
+  /// No description provided for @reminderStrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong alert'**
+  String get reminderStrong;
+
+  /// No description provided for @reminderStrongConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong alert settings'**
+  String get reminderStrongConfig;
+
+  /// No description provided for @reminderStrongDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Looping sound; respects system volume, Do Not Disturb and permissions'**
+  String get reminderStrongDescription;
+
+  /// No description provided for @reminderCatchUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch-up'**
+  String get reminderCatchUp;
+
+  /// No description provided for @reminderCatchUpNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a catch-up message, not a real-time reminder.'**
+  String get reminderCatchUpNotice;
+
+  /// No description provided for @reminderOriginalTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Originally scheduled'**
+  String get reminderOriginalTime;
+
+  /// No description provided for @reminderDeliveredTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch-up time'**
+  String get reminderDeliveredTime;
+
+  /// No description provided for @reminderAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get reminderAcknowledge;
+
+  /// No description provided for @reminderStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get reminderStop;
+
+  /// No description provided for @reminderAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get reminderAdd;
+
+  /// No description provided for @reminderEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit rule'**
+  String get reminderEdit;
+
+  /// No description provided for @reminderCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get reminderCopy;
+
+  /// No description provided for @reminderDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get reminderDelete;
+
+  /// No description provided for @reminderSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get reminderSave;
+
+  /// No description provided for @reminderDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard unsaved changes?'**
+  String get reminderDiscard;
+
+  /// No description provided for @reminderKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get reminderKeepEditing;
+
+  /// No description provided for @reminderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule name'**
+  String get reminderName;
+
+  /// No description provided for @reminderBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Time basis'**
+  String get reminderBasis;
+
+  /// No description provided for @reminderStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Course start'**
+  String get reminderStart;
+
+  /// No description provided for @reminderEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Course end'**
+  String get reminderEnd;
+
+  /// No description provided for @reminderDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed time on course date'**
+  String get reminderDate;
+
+  /// No description provided for @reminderBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Before'**
+  String get reminderBefore;
+
+  /// No description provided for @reminderAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'After'**
+  String get reminderAfter;
+
+  /// No description provided for @reminderDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get reminderDays;
+
+  /// No description provided for @reminderHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get reminderHours;
+
+  /// No description provided for @reminderMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get reminderMinutes;
+
+  /// No description provided for @reminderSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds'**
+  String get reminderSeconds;
+
+  /// No description provided for @reminderScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Course scope'**
+  String get reminderScope;
+
+  /// No description provided for @reminderAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All courses'**
+  String get reminderAll;
+
+  /// No description provided for @reminderSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Course series'**
+  String get reminderSeries;
+
+  /// No description provided for @reminderSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Individual sessions'**
+  String get reminderSessions;
+
+  /// No description provided for @reminderWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday filter'**
+  String get reminderWeekdays;
+
+  /// No description provided for @reminderTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Course type filter'**
+  String get reminderTypes;
+
+  /// No description provided for @reminderDateRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Course date range'**
+  String get reminderDateRange;
+
+  /// No description provided for @reminderClearFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear date filter'**
+  String get reminderClearFilter;
+
+  /// No description provided for @reminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification title'**
+  String get reminderTitle;
+
+  /// No description provided for @reminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification message'**
+  String get reminderBody;
+
+  /// No description provided for @reminderCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Send count (1–100, including first)'**
+  String get reminderCount;
+
+  /// No description provided for @reminderInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat interval (seconds, at least 1)'**
+  String get reminderInterval;
+
+  /// No description provided for @reminderUntilAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop on acknowledgement, up to the send count'**
+  String get reminderUntilAck;
+
+  /// No description provided for @reminderInherit.
+  ///
+  /// In en, this message translates to:
+  /// **'Use global setting'**
+  String get reminderInherit;
+
+  /// No description provided for @reminderNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal alert'**
+  String get reminderNormal;
+
+  /// No description provided for @reminderPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Matching courses and delivery preview'**
+  String get reminderPreview;
+
+  /// No description provided for @reminderTimingNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Times include seconds; the system may delay delivery. New or re-enabled rules only schedule future sends.'**
+  String get reminderTimingNotice;
+
+  /// No description provided for @reminderInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check numeric ranges, the required name and invalid placeholders'**
+  String get reminderInvalid;
+
+  /// No description provided for @reminderSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get reminderSound;
+
+  /// No description provided for @reminderVibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibration'**
+  String get reminderVibration;
+
+  /// No description provided for @reminderDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (5–300 seconds)'**
+  String get reminderDuration;
+
+  /// No description provided for @reminderSystemSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose system sound'**
+  String get reminderSystemSound;
+
+  /// No description provided for @reminderImportSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Import audio (MP3/M4A/WAV, up to 5 MiB)'**
+  String get reminderImportSound;
+
+  /// No description provided for @reminderPreviewSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview / stop'**
+  String get reminderPreviewSound;
+
+  /// No description provided for @reminderOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Override strong alert settings'**
+  String get reminderOverride;
+
+  /// No description provided for @reminderEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom reminder rules yet'**
+  String get reminderEmpty;
+
+  /// No description provided for @reminderSoundFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing or unsupported sound replaced with the system default.'**
+  String get reminderSoundFallback;
+
+  /// No description provided for @reminderMaintenanceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Background maintenance registration failed. Later reminders may not be queued after exit. Please retry.'**
+  String get reminderMaintenanceFailed;
+
+  /// No description provided for @reminderStrongDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong playback was unavailable; the normal notification was retained. Check system restrictions and sound settings.'**
+  String get reminderStrongDegraded;
+
+  /// No description provided for @reminderVariableLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Course|Room|Course date|Weekday|Start time|End time|Teachers|Course code|Send index|Total count|Scheduled time'**
+  String get reminderVariableLabels;
+
+  /// No description provided for @reminderWeekdayNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday'**
+  String get reminderWeekdayNames;
+
+  /// No description provided for @reminderDiscardAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get reminderDiscardAction;
+
+  /// No description provided for @reminderAudioInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The audio cannot be played, or its format or size is unsupported.'**
+  String get reminderAudioInvalid;
+
+  /// No description provided for @reminderDateOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Course date offset'**
+  String get reminderDateOffset;
+
+  /// No description provided for @reminderSameDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Course day'**
+  String get reminderSameDay;
+
+  /// No description provided for @reminderFixedTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed time (hour / minute / second)'**
+  String get reminderFixedTime;
+
+  /// No description provided for @reminderFilterWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon|Tue|Wed|Thu|Fri|Sat|Sun'**
+  String get reminderFilterWeekdays;
+
+  /// No description provided for @reminderPreviousDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous day'**
+  String get reminderPreviousDay;
+
+  /// No description provided for @reminderNextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Next day'**
+  String get reminderNextDay;
+
+  /// No description provided for @scheduleFitPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit to page'**
+  String get scheduleFitPage;
+
+  /// No description provided for @scheduleFitPageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show 08:00–22:00 in full. Course text may be hidden; select a course for details.'**
+  String get scheduleFitPageHint;
+
+  /// No description provided for @themeMulticolor.
+  ///
+  /// In en, this message translates to:
+  /// **'Multicolor palette'**
+  String get themeMulticolor;
+
+  /// No description provided for @themeMulticolorOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Original palette'**
+  String get themeMulticolorOff;
+
+  /// No description provided for @themeSchemeNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibrant|Expressive|Rainbow|Fruit salad|Content|Fidelity|Neutral|Monochrome'**
+  String get themeSchemeNames;
+
+  /// No description provided for @templateLeadMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Lead minutes'**
+  String get templateLeadMinutes;
+
+  /// No description provided for @templateCourseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Course count'**
+  String get templateCourseCount;
+
+  /// No description provided for @palettePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary color'**
+  String get palettePrimary;
+
+  /// No description provided for @paletteSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary color'**
+  String get paletteSecondary;
+
+  /// No description provided for @paletteTertiary.
+  ///
+  /// In en, this message translates to:
+  /// **'Third color'**
+  String get paletteTertiary;
+
+  /// No description provided for @paletteColors.
+  ///
+  /// In en, this message translates to:
+  /// **'Course palette'**
+  String get paletteColors;
+
+  /// No description provided for @paletteCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom combination'**
+  String get paletteCustom;
+
+  /// No description provided for @paletteDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This color is already in the palette'**
+  String get paletteDuplicate;
+
+  /// No description provided for @paletteUsePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as primary'**
+  String get paletteUsePrimary;
+
+  /// No description provided for @paletteUseSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as secondary'**
+  String get paletteUseSecondary;
+
+  /// No description provided for @paletteUseTertiary.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as third color'**
+  String get paletteUseTertiary;
+
+  /// No description provided for @paletteMoveEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Move earlier'**
+  String get paletteMoveEarlier;
+
+  /// No description provided for @paletteMoveLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Move later'**
+  String get paletteMoveLater;
+
+  /// No description provided for @paletteReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset multicolor settings?'**
+  String get paletteReset;
+
+  /// No description provided for @palettePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get palettePreview;
+
+  /// No description provided for @paletteSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Single color'**
+  String get paletteSingle;
+
+  /// No description provided for @paletteMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface colors'**
+  String get paletteMode;
+
+  /// No description provided for @paletteAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic from scheme'**
+  String get paletteAutomatic;
+
+  /// No description provided for @notificationWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission is off. Reminders cannot be delivered.'**
+  String get notificationWarning;
+
+  /// No description provided for @notificationOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable notifications'**
+  String get notificationOpen;
+
+  /// No description provided for @notificationIgnore.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore and do not show again'**
+  String get notificationIgnore;
+
+  /// No description provided for @notificationIgnoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore the notification warning?'**
+  String get notificationIgnoreTitle;
+
+  /// No description provided for @notificationIgnoreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Without notification permission, reminders will not work. You can restore this warning in Settings.'**
+  String get notificationIgnoreBody;
+
+  /// No description provided for @notificationIgnoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm ignore'**
+  String get notificationIgnoreConfirm;
+
+  /// No description provided for @notificationRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show permission warnings'**
+  String get notificationRestore;
+
+  /// No description provided for @notificationRestoreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Warn when notifications are disabled on this device'**
+  String get notificationRestoreDescription;
+
+  /// No description provided for @notificationCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to check notification permission'**
+  String get notificationCheckFailed;
+
+  /// No description provided for @notificationAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications enabled'**
+  String get notificationAllowed;
+
+  /// No description provided for @notificationPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission'**
+  String get notificationPermissions;
+
+  /// No description provided for @strongTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply strong reminders to'**
+  String get strongTargets;
+
+  /// No description provided for @strongClassLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Before class'**
+  String get strongClassLead;
+
+  /// No description provided for @strongCheckIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in'**
+  String get strongCheckIn;
+
+  /// No description provided for @strongSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Next-day summary'**
+  String get strongSummary;
+
+  /// No description provided for @strongCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom rules'**
+  String get strongCustom;
+
+  /// No description provided for @strongCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'Course range'**
+  String get strongCourses;
+
+  /// No description provided for @strongAllRules.
+  ///
+  /// In en, this message translates to:
+  /// **'All inherited rules, including future rules'**
+  String get strongAllRules;
+
+  /// No description provided for @strongRuleOverrideNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Rules explicitly set to Strong or Normal take priority over these selections.'**
+  String get strongRuleOverrideNotice;
+
+  /// No description provided for @strongSummaryNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'With a limited course range, the summary is strong only if it includes a selected course.'**
+  String get strongSummaryNotice;
+
+  /// No description provided for @settingsNavigationGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation'**
+  String get settingsNavigationGroup;
+
+  /// No description provided for @settingsLayoutGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule layout'**
+  String get settingsLayoutGroup;
+
+  /// No description provided for @settingsMaintenanceGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions and maintenance'**
+  String get settingsMaintenanceGroup;
+
+  /// No description provided for @settingsDangerGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete data'**
+  String get settingsDangerGroup;
+
+  /// No description provided for @settingsDiagnosticsGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get settingsDiagnosticsGroup;
+
+  /// No description provided for @settingsBackupGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup and export'**
+  String get settingsBackupGroup;
+
+  /// No description provided for @paletteEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit color'**
+  String get paletteEdit;
+
+  /// No description provided for @paletteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a color for actions. Long press to delete.'**
+  String get paletteHint;
+
+  /// No description provided for @actionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get actionConfirm;
+
+  /// No description provided for @paletteTonalSpot.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonal spot'**
+  String get paletteTonalSpot;
+
+  /// No description provided for @paletteHue.
+  ///
+  /// In en, this message translates to:
+  /// **'Hue'**
+  String get paletteHue;
+
+  /// No description provided for @paletteChroma.
+  ///
+  /// In en, this message translates to:
+  /// **'Color intensity'**
+  String get paletteChroma;
+
+  /// No description provided for @paletteTone.
+  ///
+  /// In en, this message translates to:
+  /// **'Lightness'**
+  String get paletteTone;
+
+  /// No description provided for @paletteScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Color scheme'**
+  String get paletteScheme;
+
+  /// No description provided for @paletteSchemeDescriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Soft, coordinated hues|Vivid contrasting hues|Rotated expressive triad|Balanced three-hue spectrum|Fresh adjacent hues|Seed-led gentle contrast|Seed-led complementary contrast|Low saturation, subtle differences|Grayscale, no hue contrast'**
+  String get paletteSchemeDescriptions;
 }
 
 class _AppLocalizationsDelegate

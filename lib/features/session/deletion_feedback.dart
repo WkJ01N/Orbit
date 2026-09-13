@@ -1,12 +1,10 @@
-import 'dart:async';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
-
-final _deletionSnackBarTimers = Expando<Timer>();
 
 Future<RestoreDeletedResult> restoreDeletedWithRefresh(
   ProviderContainer container,
@@ -29,9 +27,8 @@ void showDeletionUndo({
   if (ids.isEmpty) return;
   final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
-  _deletionSnackBarTimers[messenger]?.cancel();
   messenger.hideCurrentSnackBar();
-  final controller = messenger.showSnackBar(
+  messenger.showAppSnackBar(
     SnackBar(
       content: Text(message),
       duration: const Duration(seconds: 5),
@@ -39,9 +36,8 @@ void showDeletionUndo({
       action: SnackBarAction(
         label: l10n.actionUndo,
         onPressed: () async {
-          _deletionSnackBarTimers[messenger]?.cancel();
           final result = await restoreDeletedWithRefresh(container, ids);
-          messenger.showSnackBar(
+          messenger.showAppSnackBar(
             SnackBar(
               duration: const Duration(seconds: 4),
               content: Text(
@@ -53,10 +49,4 @@ void showDeletionUndo({
       ),
     ),
   );
-  late final Timer dismissalTimer;
-  dismissalTimer = Timer(const Duration(seconds: 5), () {
-    if (_deletionSnackBarTimers[messenger] != dismissalTimer) return;
-    controller.close();
-  });
-  _deletionSnackBarTimers[messenger] = dismissalTimer;
 }

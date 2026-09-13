@@ -2,6 +2,7 @@ import 'package:orbit/core/l10n/zh_variant.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/batch_course.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
@@ -164,6 +165,10 @@ class ScheduleRepository {
         ...prepared.conflictIds,
       ],
       upsert: prepared.updated,
+      identityChanges: {
+        for (var i = 0; i < prepared.targets.length; i++)
+          prepared.targets[i].id: prepared.updated[i].id,
+      },
     );
     return CourseOperationResult(
       affectedCount: prepared.targets.length,
@@ -298,8 +303,109 @@ class ScheduleRepository {
     await _database.replaceSessions(
       deleteIds: deleteIds,
       upsert: [sessionWithId],
+      identityChanges: original == null ? const {} : {original.id: newId},
     );
     return conflicts.length;
+  }
+
+  Future<CourseOperationPreview> previewRecurringCourseUpdate({
+    required CourseSession selected,
+    required CourseSession changes,
+    required RecurringCourseEditScope scope,
+  }) async {
+    final prepared = await _prepareRecurringCourseUpdate(
+      selected: selected,
+      changes: changes,
+      scope: scope,
+    );
+    return CourseOperationPreview(
+      targetCount: prepared.targets.length,
+      conflictCount: prepared.conflictIds.length,
+      firstDate: prepared.targets.first.date,
+      lastDate: prepared.targets.last.date,
+    );
+  }
+
+  Future<CourseOperationResult> updateRecurringCourse({
+    required CourseSession selected,
+    required CourseSession changes,
+    required RecurringCourseEditScope scope,
+  }) async {
+    final prepared = await _prepareRecurringCourseUpdate(
+      selected: selected,
+      changes: changes,
+      scope: scope,
+    );
+    await _database.replaceSessions(
+      deleteIds: [
+        ...prepared.targets.map((session) => session.id),
+        ...prepared.conflictIds,
+      ],
+      upsert: prepared.updated,
+    );
+    return CourseOperationResult(
+      affectedCount: prepared.targets.length,
+      conflictCount: prepared.conflictIds.length,
+    );
+  }
+
+  Future<BatchCoursePreview> previewBatchCreate(
+    List<CourseSession> generated,
+  ) async {
+    final existing = await getAllSessions();
+    final conflicts = existing
+        .where(
+          (stored) =>
+              generated.any((candidate) => _timeOverlaps(stored, candidate)),
+        )
+        .map((session) => session.id)
+        .toSet();
+    return BatchCoursePreview(
+      generatedCount: generated.length,
+      conflictCount: conflicts.length,
+    );
+  }
+
+  Future<BatchCourseSaveResult> saveBatchSessions(
+    List<CourseSession> generated, {
+    required BatchConflictStrategy strategy,
+  }) async {
+    if (generated.isEmpty) {
+      return const BatchCourseSaveResult(
+        createdCount: 0,
+        skippedCount: 0,
+        overwrittenCount: 0,
+      );
+    }
+    final existing = await getAllSessions();
+    final conflictIds = <String>{};
+    final conflictingCandidates = <String>{};
+    for (final candidate in generated) {
+      for (final stored in existing) {
+        if (_timeOverlaps(stored, candidate)) {
+          conflictIds.add(stored.id);
+          conflictingCandidates.add(candidate.id);
+        }
+      }
+    }
+    final toInsert = strategy == BatchConflictStrategy.skip
+        ? generated
+              .where((session) => !conflictingCandidates.contains(session.id))
+              .toList()
+        : generated;
+    await _database.replaceSessions(
+      deleteIds: strategy == BatchConflictStrategy.overwrite
+          ? conflictIds.toList()
+          : const [],
+      upsert: toInsert,
+    );
+    return BatchCourseSaveResult(
+      createdCount: toInsert.length,
+      skippedCount: generated.length - toInsert.length,
+      overwrittenCount: strategy == BatchConflictStrategy.overwrite
+          ? conflictIds.length
+          : 0,
+    );
   }
 
   Future<bool> hasTimeConflict(
@@ -443,6 +549,87 @@ class ScheduleRepository {
     }).toList();
     final targetIds = targets.map((session) => session.id).toSet();
     final active = await getAllSessions();
+    final conflictIds = active
+        .where((session) => !targetIds.contains(session.id))
+        .where(
+          (session) =>
+              updated.any((candidate) => _timeOverlaps(session, candidate)),
+        )
+        .map((session) => session.id)
+        .toSet()
+        .toList();
+    return (targets: targets, updated: updated, conflictIds: conflictIds);
+  }
+
+  Future<
+    ({
+      List<CourseSession> targets,
+      List<CourseSession> updated,
+      List<String> conflictIds,
+    })
+  >
+  _prepareRecurringCourseUpdate({
+    required CourseSession selected,
+    required CourseSession changes,
+    required RecurringCourseEditScope scope,
+  }) async {
+    final seriesId = selected.recurrenceSeriesId;
+    final meetingId = selected.recurrenceMeetingId;
+    if (seriesId == null || meetingId == null) {
+      throw StateError('Recurring course identity is missing');
+    }
+    final active = await getAllSessions();
+    var targets = active
+        .where((session) => session.recurrenceSeriesId == seriesId)
+        .where((session) {
+          return switch (scope) {
+            RecurringCourseEditScope.single => session.id == selected.id,
+            RecurringCourseEditScope.meetingFromSelected =>
+              session.recurrenceMeetingId == meetingId &&
+                  !session.startAt.isBefore(selected.startAt),
+            RecurringCourseEditScope.meetingAll =>
+              session.recurrenceMeetingId == meetingId,
+            RecurringCourseEditScope.courseCommon => true,
+          };
+        })
+        .toList();
+    targets.sort((a, b) => a.startAt.compareTo(b.startAt));
+    final commonOnly = scope == RecurringCourseEditScope.courseCommon;
+    final updated = targets.map((target) {
+      final startAt = commonOnly
+          ? target.startAt
+          : DateTime(
+              target.date.year,
+              target.date.month,
+              target.date.day,
+              changes.startAt.hour,
+              changes.startAt.minute,
+            );
+      final endAt = commonOnly
+          ? target.endAt
+          : DateTime(
+              target.date.year,
+              target.date.month,
+              target.date.day,
+              changes.endAt.hour,
+              changes.endAt.minute,
+            );
+      final next = target.copyWith(
+        courseName: changes.courseName,
+        courseCode: changes.courseCode,
+        section: changes.section,
+        room: commonOnly ? target.room : changes.room,
+        teachers: changes.teachers,
+        faculty: changes.faculty,
+        classType: changes.classType,
+        semester: changes.semester,
+        startAt: startAt,
+        endAt: endAt,
+        clearDeletedAt: true,
+      );
+      return next.copyWith(id: next.computeId());
+    }).toList();
+    final targetIds = targets.map((session) => session.id).toSet();
     final conflictIds = active
         .where((session) => !targetIds.contains(session.id))
         .where(

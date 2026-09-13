@@ -1,4 +1,4 @@
-enum ReminderResyncBannerKind { verify, partial, error }
+enum ReminderResyncBannerKind { verify, partial, error, maintenance, strong }
 
 ReminderResyncBannerKind? reminderResyncBannerKind(String? error) {
   if (error == null) {
@@ -7,6 +7,8 @@ ReminderResyncBannerKind? reminderResyncBannerKind(String? error) {
   if (error == 'verify') {
     return ReminderResyncBannerKind.verify;
   }
+  if (error == 'maintenance') return ReminderResyncBannerKind.maintenance;
+  if (error == 'strong') return ReminderResyncBannerKind.strong;
   if (error.startsWith('partial:')) {
     return ReminderResyncBannerKind.partial;
   }

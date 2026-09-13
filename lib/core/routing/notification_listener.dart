@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,11 +26,16 @@ class _OrbitNotificationListenerState
     extends ConsumerState<OrbitNotificationListener>
     with WidgetsBindingObserver {
   bool _launchPayloadLoaded = false;
+  bool _initialPayloadChecked = false;
+  Timer? _foregroundResync;
+  bool _resyncRunning = false;
+  bool _clockPaused = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _launchPayloadLoaded = ref.read(pendingNotificationPayloadProvider) != null;
     ReminderScheduler.shared.registerNotificationTapHandler(
       (payload) => ref.read(notificationTapHandlerProvider)(payload),
     );
@@ -36,6 +43,7 @@ class _OrbitNotificationListenerState
 
   @override
   void dispose() {
+    _foregroundResync?.cancel();
     ReminderScheduler.shared.registerNotificationTapHandler(null);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -44,22 +52,47 @@ class _OrbitNotificationListenerState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _clockPaused = false;
       ref.read(currentTimeProvider.notifier).syncNow();
-      _maybeResyncOnForeground();
+      _foregroundResync?.cancel();
+      // Let the restored window paint before maintenance and coalesce focus
+      // changes. A hidden window does not need minute-by-minute UI rebuilds.
+      _foregroundResync = Timer(const Duration(milliseconds: 350), () {
+        _foregroundResync = null;
+        unawaited(_maybeResyncOnForeground());
+      });
+    } else {
+      _foregroundResync?.cancel();
+      if (state == AppLifecycleState.inactive && _clockPaused) {
+        _clockPaused = false;
+        ref.read(currentTimeProvider.notifier).syncNow();
+      }
+      if (state == AppLifecycleState.hidden ||
+          state == AppLifecycleState.paused ||
+          state == AppLifecycleState.detached) {
+        _clockPaused = true;
+        ref.read(currentTimeProvider.notifier).pauseTicks();
+      }
     }
   }
 
   Future<void> _maybeResyncOnForeground() async {
-    if (!Platform.isAndroid && !Platform.isWindows) {
+    if (!mounted ||
+        _resyncRunning ||
+        (!Platform.isAndroid && !Platform.isWindows)) {
       return;
     }
-    if (!await ReminderScheduler.shared.shouldResyncOnForeground()) {
-      return;
+    _resyncRunning = true;
+    try {
+      final scheduler = ref.read(reminderSchedulerProvider);
+      if (!await scheduler.shouldResyncOnForeground() || !mounted) return;
+      if (!ref.read(reminderSettingsProvider).hasValue) return;
+      await ref.read(reminderSettingsProvider.notifier).resyncReminders();
+    } catch (error, stack) {
+      debugPrint('Foreground reminder sync failed: $error\n$stack');
+    } finally {
+      _resyncRunning = false;
     }
-    if (!ref.read(reminderSettingsProvider).hasValue) {
-      return;
-    }
-    await ref.read(reminderSettingsProvider.notifier).resyncReminders();
   }
 
   void _scheduleLaunchPayloadLoad() {
@@ -72,10 +105,15 @@ class _OrbitNotificationListenerState
       if (!mounted) {
         return;
       }
-      final payload = await ReminderScheduler.shared
-          .getLaunchNotificationPayload();
-      if (payload != null && mounted) {
-        ref.read(pendingNotificationPayloadProvider.notifier).state = payload;
+      try {
+        final payload = await ref
+            .read(reminderSchedulerProvider)
+            .getLaunchNotificationPayload();
+        if (payload != null && mounted) {
+          ref.read(pendingNotificationPayloadProvider.notifier).state = payload;
+        }
+      } catch (error, stack) {
+        debugPrint('Notification launch payload failed: $error\n$stack');
       }
     });
   }
@@ -103,10 +141,43 @@ class _OrbitNotificationListenerState
       }
     });
 
+    if (!_initialPayloadChecked) {
+      _initialPayloadChecked = true;
+      final initial = ref.read(pendingNotificationPayloadProvider);
+      if (initial != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _handlePayload(context, initial);
+          ref.read(pendingNotificationPayloadProvider.notifier).state = null;
+        });
+      }
+    }
     return widget.child;
   }
 
   Future<void> _handlePayload(BuildContext context, String payload) async {
+    if (payload.startsWith('{')) {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      if (data['action'] == 'ack') {
+        await ReminderScheduler.shared.acknowledgeOccurrence(
+          ref.read(appDatabaseProvider),
+          data['rule'] as String,
+          data['session'] as String,
+        );
+        await ref.read(reminderSettingsProvider.notifier).resyncReminders();
+        return;
+      }
+      if (data['identity'] is String && data['index'] is int) {
+        await ref
+            .read(appDatabaseProvider)
+            .markReminderProcessed(
+              data['rule'] as String,
+              data['identity'] as String,
+              data['index'] as int,
+            );
+      }
+      payload = data['session'] as String;
+    }
     // On Windows the window may be hidden in the tray; surface it so tapping a
     // notification has a visible effect instead of silently routing.
     if (Platform.isWindows) {

@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
@@ -86,13 +87,18 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         Navigator.pop(context, true);
-        messenger.showSnackBar(SnackBar(content: Text(l10n.sessionNoteSaved)));
+        messenger.showAppSnackBar(
+          SnackBar(content: Text(l10n.sessionNoteSaved)),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.sessionSaveFailed('$e'))));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.sessionSaveFailed('$e')),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -105,7 +111,7 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -118,9 +124,15 @@ class _SessionNoteSheetState extends ConsumerState<SessionNoteSheet> {
           const SizedBox(height: 16),
           TextField(
             controller: _noteController,
+            minLines: 1,
             maxLines: 5,
+            textAlignVertical: TextAlignVertical.top,
             decoration: InputDecoration(
               hintText: l10n.sessionNoteHint,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ),
               border: const OutlineInputBorder(),
             ),
           ),

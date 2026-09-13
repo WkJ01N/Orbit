@@ -12,7 +12,9 @@
   "gridLoadFailed": "Failed to load: {error}",
   "@gridLoadFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "gridImportHint": "Please import your schedule on the Import tab first",
@@ -23,14 +25,18 @@
   "gridBatchDeletePreview": "Will delete {count} class sessions",
   "@gridBatchDeletePreview": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "gridBatchDeleteConfirm1Title": "Delete classes in range?",
   "gridBatchDeleteConfirm1Content": "This will delete {count} class sessions fully within the selected time range.",
   "@gridBatchDeleteConfirm1Content": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "gridBatchDeleteConfirm2Title": "Confirm deletion",
@@ -39,7 +45,9 @@
   "gridBatchDeleteDone": "Deleted {count} class sessions",
   "@gridBatchDeleteDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "gridBatchDeleteInvalidRange": "End time must be after start time",
@@ -60,21 +68,27 @@
   "resyncPartialFailed": "{count} reminder(s) could not be scheduled",
   "@resyncPartialFailed": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "trayInitFailed": "System tray unavailable",
   "importPickMissingPath": "Could not read file: {name}",
   "@importPickMissingPath": {
     "placeholders": {
-      "name": {"type": "String"}
+      "name": {
+        "type": "String"
+      }
     }
   },
   "upcomingGoToGrid": "View schedule",
   "gridUntilTime": "until {time}",
   "@gridUntilTime": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "gridEmptyTitle": "No schedule imported",
@@ -84,7 +98,9 @@
   "upcomingLoadFailed": "Failed to load: {error}",
   "@upcomingLoadFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "groupToday": "Today",
@@ -93,11 +109,19 @@
   "groupLater": "After {date}",
   "@groupLater": {
     "placeholders": {
-      "date": {"type": "String"}
+      "date": {
+        "type": "String"
+      }
     }
   },
   "upcomingWeekMonday": "{date}",
-  "@upcomingWeekMonday": {"placeholders": {"date": {"type": "String"}}},
+  "@upcomingWeekMonday": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "inClass": "In class",
   "upcomingEmptyTitle": "No upcoming classes",
   "upcomingEmptySubtitle": "All classes have ended, or no schedule imported yet",
@@ -110,31 +134,41 @@
   "importSuccess": "Imported {count} class sessions",
   "@importSuccess": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "importFailed": "Import failed: {error}",
   "@importFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "importPickFailed": "Failed to pick files: {error}",
   "@importPickFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "importParseFailed": "Parse failed ({error})",
   "@importParseFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "sessionCount": "{count} classes",
   "@sessionCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "settingsTitle": "Settings",
@@ -142,17 +176,19 @@
   "settingsLoadFailed": "Failed to load settings: {error}",
   "@settingsLoadFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "sectionReminders": "Class reminders",
   "sectionData": "Data management",
   "sectionLanguage": "Language",
   "sectionAppearance": "Appearance",
-  "themeStyleTitle": "Theme style",
+  "themeStyleTitle": "Course colors",
   "themeStyleSubtitle": "Use one accent or automatic colors for each course",
-  "themeStyleStandard": "Standard",
-  "themeStyleColorful": "Colorful",
+  "themeStyleStandard": "Uniform color",
+  "themeStyleColorful": "Automatic colors",
   "themeColorTitle": "Theme color",
   "themeColorSubtitle": "Choose the app's accent color",
   "themeColorCustom": "Custom",
@@ -172,13 +208,29 @@
   "gridDensityCompact": "Compact",
   "gridDensityStandard": "Standard",
   "gridDensityComfortable": "Comfortable",
+  "scheduleNarrowLayoutTitle": "Narrow-screen schedule layout",
+  "scheduleNarrowLayoutSubtitle": "Choose a full compact week or the classic adaptive day view",
+  "scheduleNarrowLayoutCompactWeek": "Compact full week",
+  "scheduleNarrowLayoutAdaptive": "Classic adaptive",
   "scheduleMultiDayCountTitle": "Days in multi-day view",
   "scheduleMultiDayCountSubtitle": "This window can show up to {maxCount} readable days",
-  "@scheduleMultiDayCountSubtitle": {"placeholders": {"maxCount": {"type": "int"}}},
+  "@scheduleMultiDayCountSubtitle": {
+    "placeholders": {
+      "maxCount": {
+        "type": "int"
+      }
+    }
+  },
   "scheduleDayCountOption": "{count} days",
-  "@scheduleDayCountOption": {"placeholders": {"count": {"type": "int"}}},
+  "@scheduleDayCountOption": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "scheduleShowEmptyDaysTitle": "Show days without classes",
-  "scheduleShowEmptyDaysSubtitle": "Turn off to move directly between class days",
+  "scheduleShowEmptyDaysSubtitle": "Used by classic adaptive view; turn off to move directly between class days",
   "upcomingShowCourseDateTitle": "Show date beside countdown",
   "upcomingShowCourseDateSubtitle": "Display the course date in the Upcoming list",
   "upcomingDateDisplayTitle": "Course date format",
@@ -188,7 +240,13 @@
   "upcomingDateDisplayWeekdayOnly": "Weekday only",
   "scheduleJumpToNearestCourse": "Nearest class day",
   "scheduleCourseCount": "{count} courses",
-  "@scheduleCourseCount": {"placeholders": {"count": {"type": "int"}}},
+  "@scheduleCourseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "classLeadCustomizeTemplates": "Customize class reminders",
   "classLeadCustomizeTemplatesSubtitle": "Leave blank for default text",
   "classLeadTemplateSheetTitle": "Class reminder text",
@@ -197,10 +255,18 @@
   "classLeadTemplatePlaceholderHint": "Use {courseToken}, {roomToken}, {timeToken}, {minutesToken}. Leave blank for defaults.",
   "@classLeadTemplatePlaceholderHint": {
     "placeholders": {
-      "courseToken": {"type": "String"},
-      "roomToken": {"type": "String"},
-      "timeToken": {"type": "String"},
-      "minutesToken": {"type": "String"}
+      "courseToken": {
+        "type": "String"
+      },
+      "roomToken": {
+        "type": "String"
+      },
+      "timeToken": {
+        "type": "String"
+      },
+      "minutesToken": {
+        "type": "String"
+      }
     }
   },
   "checkInCustomizeTemplates": "Customize check-in reminders",
@@ -211,9 +277,15 @@
   "checkInTemplatePlaceholderHint": "Use {courseToken}, {roomToken}, {timeToken}. Leave blank for defaults.",
   "@checkInTemplatePlaceholderHint": {
     "placeholders": {
-      "courseToken": {"type": "String"},
-      "roomToken": {"type": "String"},
-      "timeToken": {"type": "String"}
+      "courseToken": {
+        "type": "String"
+      },
+      "roomToken": {
+        "type": "String"
+      },
+      "timeToken": {
+        "type": "String"
+      }
     }
   },
   "sessionColor": "Course color",
@@ -241,15 +313,23 @@
   "countdownStartsIn": "{days}d {hours}h {minutes}m",
   "@countdownStartsIn": {
     "placeholders": {
-      "days": {"type": "int"},
-      "hours": {"type": "int"},
-      "minutes": {"type": "int"}
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "countdownSoon": "Soon · {countdown}",
   "@countdownSoon": {
     "placeholders": {
-      "countdown": {"type": "String"}
+      "countdown": {
+        "type": "String"
+      }
     }
   },
   "countdownSoonLabel": "Soon",
@@ -259,19 +339,23 @@
   "leadTimeSubtitle": "Notify {minutes} minutes before class",
   "@leadTimeSubtitle": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "leadTimeOption": "{minutes} min",
   "@leadTimeOption": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "resyncReminders": "Resync reminders",
   "resyncRemindersSubtitle": "Reschedule all reminders from current schedule",
   "sectionAndroidBackground": "Background reminders (Android)",
-  "androidBackgroundSubtitle": "Reminders use system alarms and do not require the app to stay open. Complete the settings below for best reliability.",
+  "androidBackgroundSubtitle": "Reminders use background scheduled reminders and do not require the app to stay open. Complete the settings below for best reliability.",
   "androidCheckReminderPermissions": "Check reminder permissions",
   "androidPermissionsChecked": "Notification and exact alarm permissions requested",
   "androidBatteryOptimization": "Battery optimization exemption",
@@ -280,18 +364,21 @@
   "androidBatteryOptimizationDisableConfirmTitle": "Turn off battery optimization exemption?",
   "androidBatteryOptimizationDisableConfirmContent": "You will be taken to system settings to restore battery optimization. Background reminders may be less reliable.",
   "androidAutostartHint": "On OriginOS / iQOO, allow autostart and unrestricted background activity, then lock Orbit in recents.",
-  "androidKillBackgroundHint": "Verified on iQOO V2408A after returning home, locking the screen, and swiping Orbit from recents. Behavior may vary on other OriginOS versions; a true Force Stop from system settings still cancels app alarms. Use System alarm above as a manual fallback when needed.",
   "debugTitle": "Debug",
   "debugSubtitle": "Notification and background reminder diagnostics",
   "androidTestImmediateReminder": "Test notification now",
   "androidTestImmediateReminderSubtitle": "Immediately verifies notification permission and display.",
   "androidTestImmediateReminderShown": "Test notification sent.",
   "androidTestBackgroundReminder": "Test background reminder (1 min)",
-  "androidTestBackgroundReminderSubtitle": "Uses the same native system alarm as class reminders. Return home or lock the screen and wait one minute.",
+  "androidTestBackgroundReminderSubtitle": "Uses the same native background scheduling as class reminders. Return home or lock the screen and wait one minute.",
   "androidTestBackgroundReminderScheduled": "Test reminder scheduled in 1 minute. Return home or lock the screen and wait.",
   "androidTestBackgroundReminderScheduledAt": "Background test scheduled for {time}. Return home or lock the screen and wait.",
   "@androidTestBackgroundReminderScheduledAt": {
-    "placeholders": {"time": {"type": "String"}}
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
   },
   "androidTestBackgroundNotificationTitle": "Orbit background reminder test",
   "androidTestBackgroundNotificationBody": "The background reminder fired successfully. Orbit can notify you while it is not in the foreground.",
@@ -304,7 +391,9 @@
   "deleteEndedConfirm1Content": "This will delete {count} ended class sessions from your schedule.",
   "@deleteEndedConfirm1Content": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "deleteEndedConfirm2Title": "Confirm deletion",
@@ -313,7 +402,9 @@
   "deleteEndedDone": "Deleted {count} ended class sessions",
   "@deleteEndedDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "clearAllData": "Clear all schedules",
@@ -321,7 +412,9 @@
   "settingsVersion": "Version {version}",
   "@settingsVersion": {
     "placeholders": {
-      "version": {"type": "String"}
+      "version": {
+        "type": "String"
+      }
     }
   },
   "settingsGithub": "GitHub repository",
@@ -344,32 +437,44 @@
   "notificationTitle": "Class starting in {minutes} min",
   "@notificationTitle": {
     "placeholders": {
-      "minutes": {"type": "int"}
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "notificationBody": "{course} @ {room}",
   "@notificationBody": {
     "placeholders": {
-      "course": {"type": "String"},
-      "room": {"type": "String"}
+      "course": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      }
     }
   },
   "notificationTime": "Time: {time}",
   "@notificationTime": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "notificationRoom": "Room: {room}",
   "@notificationRoom": {
     "placeholders": {
-      "room": {"type": "String"}
+      "room": {
+        "type": "String"
+      }
     }
   },
   "notificationTeachers": "Teachers: {teachers}",
   "@notificationTeachers": {
     "placeholders": {
-      "teachers": {"type": "String"}
+      "teachers": {
+        "type": "String"
+      }
     }
   },
   "teachersNotProvided": "Not provided",
@@ -380,7 +485,9 @@
   "nextDaySummaryTimeSubtitle": "Send at {time} the day before",
   "@nextDaySummaryTimeSubtitle": {
     "placeholders": {
-      "time": {"type": "String"}
+      "time": {
+        "type": "String"
+      }
     }
   },
   "nextDayRemindWhenNoClass": "Remind when no classes",
@@ -395,25 +502,21 @@
   "nextDayTemplatePlaceholderHint": "Body with classes: {countToken}, {timeToken}, {dateToken}. No-class body: {dateToken}. Leave blank for defaults.",
   "@nextDayTemplatePlaceholderHint": {
     "placeholders": {
-      "countToken": {"type": "String", "example": "{count}"},
-      "timeToken": {"type": "String", "example": "{time}"},
-      "dateToken": {"type": "String", "example": "{date}"}
+      "countToken": {
+        "type": "String",
+        "example": "{count}"
+      },
+      "timeToken": {
+        "type": "String",
+        "example": "{time}"
+      },
+      "dateToken": {
+        "type": "String",
+        "example": "{date}"
+      }
     }
   },
   "nextDayTemplateReset": "Reset to defaults",
-  "enableSystemAlarm": "System alarm for first class (Android)",
-  "enableSystemAlarmSubtitle": "Open the system clock app to set an alarm for tomorrow's first class",
-  "systemAlarmLeadTitle": "Alarm lead time",
-  "systemAlarmLeadSubtitle": "Alarm rings {minutes} minutes before first class",
-  "@systemAlarmLeadSubtitle": {
-    "placeholders": {
-      "minutes": {"type": "int"}
-    }
-  },
-  "setTomorrowAlarm": "Set alarm for tomorrow",
-  "alarmSetSuccess": "System alarm screen opened",
-  "alarmSetFailed": "Failed to open system alarm",
-  "alarmNoClassTomorrow": "No classes tomorrow",
   "enableCheckInReminder": "Check-in reminder",
   "enableCheckInReminderSubtitle": "Notify at class start time to check in via campus app Bluetooth",
   "checkInDisableConfirm1Title": "Turn off check-in reminders?",
@@ -432,10 +535,18 @@
   "deleteSessionConfirmContent": "{course}\n{date} {time} · {room}",
   "@deleteSessionConfirmContent": {
     "placeholders": {
-      "course": {"type": "String"},
-      "date": {"type": "String"},
-      "time": {"type": "String"},
-      "room": {"type": "String"}
+      "course": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      }
     }
   },
   "sessionDeleted": "Class session deleted",
@@ -445,22 +556,32 @@
   "notificationCheckInTitle": "Check in now: {course} @ {room}",
   "@notificationCheckInTitle": {
     "placeholders": {
-      "course": {"type": "String"},
-      "room": {"type": "String"}
+      "course": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      }
     }
   },
   "notificationCheckInBody": "Open the campus app and complete Bluetooth check-in for {course}",
   "@notificationCheckInBody": {
     "placeholders": {
-      "course": {"type": "String"}
+      "course": {
+        "type": "String"
+      }
     }
   },
   "notificationNextDayTitle": "Tomorrow's schedule",
   "notificationNextDayBody": "{count} classes tomorrow. First class at {time}.",
   "@notificationNextDayBody": {
     "placeholders": {
-      "count": {"type": "int"},
-      "time": {"type": "String"}
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
     }
   },
   "notificationNextDayNoClassTitle": "Tomorrow's schedule",
@@ -474,13 +595,17 @@
   "exportDone": "Exported {count} class sessions",
   "@exportDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "exportFailed": "Export failed: {error}",
   "@exportFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "exportNothingToExport": "No schedule data to export",
@@ -488,19 +613,25 @@
   "restoreConfirmContent": "This will merge {count} class sessions from the backup.",
   "@restoreConfirmContent": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreDone": "Restored {count} class sessions",
   "@restoreDone": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "restoreFailed": "Restore failed: {error}",
   "@restoreFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "backupInvalidFormat": "Invalid backup file format",
@@ -517,14 +648,18 @@
   "sessionSavedWithOverride": "Saved. Replaced {count} overlapping class(es).",
   "@sessionSavedWithOverride": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "importStrategyTitle": "Duplicate weeks detected",
   "importStrategyMessage": "{count} week(s) in this import already contain classes. Choose how to import them.",
   "@importStrategyMessage": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "importStrategyReplaceWeek": "Replace whole week",
@@ -535,13 +670,17 @@
   "sessionSaveFailed": "Failed to save: {error}",
   "@sessionSaveFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "deleteFailed": "Delete failed: {error}",
   "@deleteFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "languageChangedResynced": "Language updated and reminders resynced",
@@ -551,31 +690,41 @@
   "searchFailed": "Search failed: {error}",
   "@searchFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "searchResultsTruncated": "Showing first {count} results only",
   "@searchResultsTruncated": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "gridBatchDeleteFailed": "Batch delete failed: {error}",
   "@gridBatchDeleteFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "clearAllFailed": "Failed to clear schedule: {error}",
   "@clearAllFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "launchAtStartupFailed": "Failed to update startup setting: {error}",
   "@launchAtStartupFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "sectionSchedule": "Schedule",
@@ -622,40 +771,52 @@
   "xlsxErrorInsufficientColumns": "Insufficient columns ({detail})",
   "@xlsxErrorInsufficientColumns": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "xlsxErrorInvalidDate": "Invalid date: {detail}",
   "@xlsxErrorInvalidDate": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "xlsxErrorInvalidTime": "Invalid time: {detail}",
   "@xlsxErrorInvalidTime": {
     "placeholders": {
-      "detail": {"type": "String"}
+      "detail": {
+        "type": "String"
+      }
     }
   },
   "reminderSyncFailed": "Reminder sync failed: {error}",
   "@reminderSyncFailed": {
     "placeholders": {
-      "error": {"type": "String"}
+      "error": {
+        "type": "String"
+      }
     }
   },
   "reminderResyncFailedBanner": "Reminders could not be synced. Tap Resync to try again.",
   "reminderScheduleVerifyFailed": "Reminders were saved, but Android did not queue them. Check notification, exact alarm, and battery settings, then resync.",
   "reminderScheduleVerifyFailedBanner": "Android did not queue any reminders. Check notification, exact alarm, and battery settings, then resync.",
   "reminderScheduledCount": "{count} reminder(s) scheduled",
-  "reminderRegisteredAlarmCount": "{count} system alarm(s) registered",
+  "reminderRegisteredAlarmCount": "{count} background reminder(s) registered",
   "@reminderRegisteredAlarmCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "@reminderScheduledCount": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "androidNotificationsEnabled": "Notifications enabled",
@@ -689,5 +850,164 @@
   "restoreModeMerge": "Merge and replace conflicts",
   "restoreModeReplace": "Replace current schedule",
   "restoreNothingSelected": "Select classes or app settings to restore",
-  "restoreSettingsDone": "App settings restored"
+  "restoreSettingsDone": "App settings restored",
+  "addSessionChoiceTitle": "Add class",
+  "addSingleSession": "Add one class",
+  "addBatchSessions": "Add recurring classes",
+  "batchAddTitle": "Add recurring classes",
+  "batchFirstWeekMonday": "Monday of week 1",
+  "batchTotalWeeks": "Semester length",
+  "batchSelectedWeeks": "Class weeks",
+  "batchMeetings": "Weekly meetings",
+  "batchAddMeeting": "Add weekly meeting",
+  "batchRemoveMeeting": "Remove meeting",
+  "batchSelectAll": "All",
+  "batchSelectOdd": "Odd weeks",
+  "batchSelectEven": "Even weeks",
+  "batchClearWeeks": "Clear",
+  "batchMeetingTitle": "Meeting {index}",
+  "batchWeekOption": "Week {week}",
+  "batchRequiredFields": "Enter a course name and a room for every meeting",
+  "batchNoWeeks": "Select at least one class week",
+  "batchNoMeetings": "Add at least one weekly meeting",
+  "batchInvalidTime": "Every meeting must end after it starts",
+  "batchMeetingOverlap": "Weekly meetings on the same day cannot overlap",
+  "batchPreviewTitle": "Confirm recurring classes",
+  "batchPreviewSummary": "{generated} classes will be created; {conflicts} existing classes conflict.",
+  "batchSkipConflicts": "Skip conflicts",
+  "batchOverwriteConflicts": "Replace conflicts",
+  "batchCreateResult": "Added {created}, skipped {skipped}, and replaced {overwritten} conflicting classes",
+  "courseScopeMeetingFromSelected": "This meeting from here",
+  "courseScopeMeetingAll": "All weeks of this meeting",
+  "courseScopeCourseCommon": "Common details for the whole course",
+  "backToTop": "Back to top",
+  "scheduleVerticalScaleTitle": "Schedule vertical scale",
+  "scheduleVerticalScaleSubtitle": "Reduce the height to fit more of your schedule. Applies to the selected display density; short classes and large text may limit compression to keep names and time labels readable.",
+  "scheduleVerticalScaleReset": "Restore defaults",
+  "customReminders": "Custom reminder times",
+  "customRemindersSubtitle": "Independent times, filters, messages and repetitions",
+  "reminderStrong": "Strong alert",
+  "reminderStrongConfig": "Strong alert settings",
+  "reminderStrongDescription": "Looping sound; respects system volume, Do Not Disturb and permissions",
+  "reminderCatchUp": "Catch-up",
+  "reminderCatchUpNotice": "This is a catch-up message, not a real-time reminder.",
+  "reminderOriginalTime": "Originally scheduled",
+  "reminderDeliveredTime": "Catch-up time",
+  "reminderAcknowledge": "Acknowledge",
+  "reminderStop": "Stop",
+  "reminderAdd": "Add rule",
+  "reminderEdit": "Edit rule",
+  "reminderCopy": "Duplicate",
+  "reminderDelete": "Delete",
+  "reminderSave": "Save",
+  "reminderDiscard": "Discard unsaved changes?",
+  "reminderKeepEditing": "Keep editing",
+  "reminderName": "Rule name",
+  "reminderBasis": "Time basis",
+  "reminderStart": "Course start",
+  "reminderEnd": "Course end",
+  "reminderDate": "Fixed time on course date",
+  "reminderBefore": "Before",
+  "reminderAfter": "After",
+  "reminderDays": "Days",
+  "reminderHours": "Hours",
+  "reminderMinutes": "Minutes",
+  "reminderSeconds": "Seconds",
+  "reminderScope": "Course scope",
+  "reminderAll": "All courses",
+  "reminderSeries": "Course series",
+  "reminderSessions": "Individual sessions",
+  "reminderWeekdays": "Weekday filter",
+  "reminderTypes": "Course type filter",
+  "reminderDateRange": "Course date range",
+  "reminderClearFilter": "Clear date filter",
+  "reminderTitle": "Notification title",
+  "reminderBody": "Notification message",
+  "reminderCount": "Send count (1–100, including first)",
+  "reminderInterval": "Repeat interval (seconds, at least 1)",
+  "reminderUntilAck": "Stop on acknowledgement, up to the send count",
+  "reminderInherit": "Use global setting",
+  "reminderNormal": "Normal alert",
+  "reminderPreview": "Matching courses and delivery preview",
+  "reminderTimingNotice": "Times include seconds; the system may delay delivery. New or re-enabled rules only schedule future sends.",
+  "reminderInvalid": "Check numeric ranges, the required name and invalid placeholders",
+  "reminderSound": "Sound",
+  "reminderVibration": "Vibration",
+  "reminderDuration": "Duration (5–300 seconds)",
+  "reminderSystemSound": "Choose system sound",
+  "reminderImportSound": "Import audio (MP3/M4A/WAV, up to 5 MiB)",
+  "reminderPreviewSound": "Preview / stop",
+  "reminderOverride": "Override strong alert settings",
+  "reminderEmpty": "No custom reminder rules yet",
+  "reminderSoundFallback": "Missing or unsupported sound replaced with the system default.",
+  "reminderMaintenanceFailed": "Background maintenance registration failed. Later reminders may not be queued after exit. Please retry.",
+  "reminderStrongDegraded": "Strong playback was unavailable; the normal notification was retained. Check system restrictions and sound settings.",
+  "reminderVariableLabels": "Course|Room|Course date|Weekday|Start time|End time|Teachers|Course code|Send index|Total count|Scheduled time",
+  "reminderWeekdayNames": "Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday",
+  "reminderDiscardAction": "Discard changes",
+  "reminderAudioInvalid": "The audio cannot be played, or its format or size is unsupported.",
+  "reminderDateOffset": "Course date offset",
+  "reminderSameDay": "Course day",
+  "reminderFixedTime": "Fixed time (hour / minute / second)",
+  "reminderFilterWeekdays": "Mon|Tue|Wed|Thu|Fri|Sat|Sun",
+  "reminderPreviousDay": "Previous day",
+  "reminderNextDay": "Next day",
+  "scheduleFitPage": "Fit to page",
+  "scheduleFitPageHint": "Show 08:00–22:00 in full. Course text may be hidden; select a course for details.",
+  "themeMulticolor": "Multicolor palette",
+  "themeMulticolorOff": "Original palette",
+  "themeSchemeNames": "Vibrant|Expressive|Rainbow|Fruit salad|Content|Fidelity|Neutral|Monochrome",
+  "templateLeadMinutes": "Lead minutes",
+  "templateCourseCount": "Course count",
+  "palettePrimary": "Primary color",
+  "paletteSecondary": "Secondary color",
+  "paletteTertiary": "Third color",
+  "paletteColors": "Course palette",
+  "paletteCustom": "Custom combination",
+  "paletteDuplicate": "This color is already in the palette",
+  "paletteUsePrimary": "Use as primary",
+  "paletteUseSecondary": "Use as secondary",
+  "paletteUseTertiary": "Use as third color",
+  "paletteMoveEarlier": "Move earlier",
+  "paletteMoveLater": "Move later",
+  "paletteReset": "Reset multicolor settings?",
+  "palettePreview": "Preview",
+  "paletteSingle": "Single color",
+  "paletteMode": "Interface colors",
+  "paletteAutomatic": "Automatic from scheme",
+  "notificationWarning": "Notification permission is off. Reminders cannot be delivered.",
+  "notificationOpen": "Enable notifications",
+  "notificationIgnore": "Ignore and do not show again",
+  "notificationIgnoreTitle": "Ignore the notification warning?",
+  "notificationIgnoreBody": "Without notification permission, reminders will not work. You can restore this warning in Settings.",
+  "notificationIgnoreConfirm": "Confirm ignore",
+  "notificationRestore": "Show permission warnings",
+  "notificationRestoreDescription": "Warn when notifications are disabled on this device",
+  "notificationCheckFailed": "Unable to check notification permission",
+  "notificationAllowed": "Notifications enabled",
+  "notificationPermissions": "Notification permission",
+  "strongTargets": "Apply strong reminders to",
+  "strongClassLead": "Before class",
+  "strongCheckIn": "Check-in",
+  "strongSummary": "Next-day summary",
+  "strongCustom": "Custom rules",
+  "strongCourses": "Course range",
+  "strongAllRules": "All inherited rules, including future rules",
+  "strongRuleOverrideNotice": "Rules explicitly set to Strong or Normal take priority over these selections.",
+  "strongSummaryNotice": "With a limited course range, the summary is strong only if it includes a selected course.",
+  "settingsNavigationGroup": "Navigation",
+  "settingsLayoutGroup": "Schedule layout",
+  "settingsMaintenanceGroup": "Permissions and maintenance",
+  "settingsDangerGroup": "Delete data",
+  "settingsDiagnosticsGroup": "Diagnostics",
+  "settingsBackupGroup": "Backup and export",
+  "paletteEdit": "Edit color",
+  "paletteHint": "Tap a color for actions. Long press to delete.",
+  "actionConfirm": "Confirm",
+  "paletteTonalSpot": "Tonal spot",
+  "paletteHue": "Hue",
+  "paletteChroma": "Color intensity",
+  "paletteTone": "Lightness",
+  "paletteScheme": "Color scheme",
+  "paletteSchemeDescriptions": "Soft, coordinated hues|Vivid contrasting hues|Rotated expressive triad|Balanced three-hue spectrum|Fresh adjacent hues|Seed-led gentle contrast|Seed-led complementary contrast|Low saturation, subtle differences|Grayscale, no hue contrast"
 }

@@ -8,12 +8,13 @@ const checkInAlarmLimit = 1000000;
 const nextDaySummaryAlarmBase = 1000000;
 const nextDaySummaryAlarmLimit = nextDaySummaryAlarmBase + 30;
 
-/// System alarms — kept outside course reminder ranges.
+/// Background maintenance and diagnostics — outside course reminder ranges.
 const maintenanceAlarmId = 2000000;
 const backgroundTestNotificationId = 2000001;
 const immediateTestNotificationId = 2000002;
 
 bool isCourseReminderNotificationId(int id) {
   return (id >= classLeadAlarmBase && id < checkInAlarmLimit) ||
-      (id >= nextDaySummaryAlarmBase && id < nextDaySummaryAlarmLimit);
+      (id >= nextDaySummaryAlarmBase && id < nextDaySummaryAlarmLimit) ||
+      id >= 3000000;
 }

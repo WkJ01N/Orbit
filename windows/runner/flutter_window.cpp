@@ -3,9 +3,11 @@
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "single_instance.h"
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(const flutter::DartProject& project,
+                             bool start_hidden, bool reminder_headless)
+    : project_(project), start_hidden_(start_hidden), reminder_headless_(reminder_headless) {}
 
 FlutterWindow::~FlutterWindow() {}
 
@@ -25,10 +27,13 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  reminder_channel_=CreateReminderMaintenanceChannel(flutter_controller_->engine()->messenger(),GetHandle(),[this]() {reminder_headless_=false;});
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
+    if (!start_hidden_) {
+      this->Show();
+    }
   });
 
   // Flutter can complete the first frame before the "show window" callback is
@@ -40,6 +45,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  reminder_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -51,6 +57,16 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if(message==GetShowExistingInstanceMessage() && reminder_headless_) {
+    reminder_channel_->InvokeMethod("showAfterMaintenance",nullptr);
+    return 0;
+  }
+  if(message==WM_TIMECHANGE || (message==WM_SETTINGCHANGE && lparam &&
+     (std::wstring(reinterpret_cast<const wchar_t*>(lparam))==L"intl" ||
+      std::wstring(reinterpret_cast<const wchar_t*>(lparam))==L"TimeZoneInformation"))) {
+    if(reminder_channel_) reminder_channel_->InvokeMethod("maintenance",nullptr);
+    if(message==WM_TIMECHANGE) return 0;
+  }
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
@@ -62,6 +78,18 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_APP+51:
+      CompleteReminderOperation(lparam);
+      return 0;
+    case WM_COPYDATA: {
+      const auto* data=reinterpret_cast<const COPYDATASTRUCT*>(lparam);
+      if(data && data->dwData==0x4F524249 && data->cbData==12 &&
+         std::string(static_cast<const char*>(data->lpData),11)=="maintenance") {
+        reminder_channel_->InvokeMethod("maintenance",nullptr);
+        return TRUE;
+      }
+      break;
+    }
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

@@ -6,7 +6,7 @@ import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/skeleton_box.dart';
 import 'package:orbit/features/grid/grid_batch_delete_dialog.dart';
 import 'package:orbit/features/search/session_search_page.dart';
-import 'package:orbit/features/session/session_edit_sheet.dart';
+import 'package:orbit/features/session/session_add_action.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -26,7 +26,7 @@ class GridPage extends ConsumerWidget {
     return Scaffold(
       appBar: _GridAppBar(
         onAdd: sessionsAsync.hasValue
-            ? () => SessionEditSheet.showCreate(context)
+            ? () => showSessionAddAction(context)
             : null,
         onBatchDelete: canBatchDelete
             ? () => showGridBatchDeleteDialog(

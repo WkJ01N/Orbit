@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
+import 'package:orbit/core/widgets/adjacent_page_pager.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
@@ -53,11 +54,12 @@ CourseSession _session(DateTime date, String code) {
 }
 
 void main() {
-  testWidgets('课表箭头和键盘使用动画且保留纵向滚动位置', (tester) async {
+  testWidgets('窄屏课表箭头和键盘按整周切换并保留纵向位置', (tester) async {
     final monday = DateTime(2026, 8, 24);
     final sessions = [
-      for (var day = 0; day < 5; day++)
-        _session(monday.add(Duration(days: day)), 'C$day'),
+      for (var week = 0; week < 3; week++)
+        for (var day = 0; day < 5; day++)
+          _session(monday.add(Duration(days: week * 7 + day)), 'C$week-$day'),
     ];
     final container = ProviderContainer(
       overrides: [
@@ -99,32 +101,67 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final currentPage = find.byKey(const Key('adjacent-page-current'));
-    final currentScrollable = find.descendant(
-      of: currentPage,
-      matching: find.byType(Scrollable),
+    expect(find.byType(AdjacentPagePager), findsOneWidget);
+    expect(find.byKey(const Key('schedule-day-2026-8-24')), findsOneWidget);
+    expect(find.byKey(const Key('schedule-day-2026-8-30')), findsOneWidget);
+    expect(find.byKey(const Key('schedule-horizontal-header')), findsNothing);
+    expect(find.byKey(const Key('schedule-horizontal-body')), findsNothing);
+    final dayRects = [
+      for (var day = 24; day <= 30; day++)
+        tester.getRect(find.byKey(Key('schedule-day-2026-8-$day'))),
+    ];
+    expect(dayRects.first.left, closeTo(54, 0.1));
+    expect(dayRects.last.right, closeTo(320, 0.1));
+    expect(dayRects.map((rect) => rect.width).toSet().length, 1);
+    final cornerRect = tester.getRect(
+      find.byKey(const Key('schedule-corner')).hitTestable(),
     );
-    await tester.drag(currentScrollable, const Offset(0, -180));
+    expect(cornerRect.right, closeTo(dayRects.first.left, 0.1));
+    expect(cornerRect.bottom, closeTo(dayRects.first.bottom, 0.1));
+    final currentLineRect = tester.getRect(
+      find.byKey(const Key('schedule-current-time-line')),
+    );
+    expect(currentLineRect.left, closeTo(dayRects.first.left, 0.1));
+    expect(currentLineRect.width, closeTo(dayRects.first.width, 0.1));
+
+    await tester.drag(find.byType(AdjacentPagePager), const Offset(-240, 0));
+    await tester.pumpAndSettle();
+    expect(
+      container.read(selectedScheduleDateProvider),
+      monday.add(const Duration(days: 7)),
+    );
+
+    final verticalScrollable = find.descendant(
+      of: find.byKey(const Key('adjacent-page-current')),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable && widget.axisDirection == AxisDirection.down,
+      ),
+    );
+    expect(verticalScrollable, findsOneWidget);
+    await tester.drag(verticalScrollable, const Offset(0, -180));
     await tester.pumpAndSettle();
     final before = tester
-        .state<ScrollableState>(currentScrollable)
+        .state<ScrollableState>(verticalScrollable)
         .position
         .pixels;
     expect(before, greaterThan(0));
 
     await tester.tap(find.byIcon(Icons.chevron_right));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(container.read(selectedScheduleDateProvider), monday);
     await tester.pumpAndSettle();
     expect(
       container.read(selectedScheduleDateProvider),
-      monday.add(const Duration(days: 1)),
+      monday.add(const Duration(days: 14)),
     );
     final after = tester
         .state<ScrollableState>(
           find.descendant(
             of: find.byKey(const Key('adjacent-page-current')),
-            matching: find.byType(Scrollable),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Scrollable &&
+                  widget.axisDirection == AxisDirection.down,
+            ),
           ),
         )
         .position
@@ -135,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       container.read(selectedScheduleDateProvider),
-      monday.add(const Duration(days: 2)),
+      monday.add(const Duration(days: 21)),
     );
   });
 }

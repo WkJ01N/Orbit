@@ -2,32 +2,33 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.3.2** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.4.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
 | 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
-| 导出与备份 | JSON v2 完整备份课程、主题、提醒与显示设置，并兼容 v1；支持课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出 |
-| 课表网格 | 按真实时间定位的单日 / 多日 / 整周时间轴；跟手左右滑动、回弹、箭头与方向键过渡；翻页保留滚动位置；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度和批量删除 |
-| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程 |
-| 提醒 | 课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；Android 原生 `AlarmManager` 接收器在不启动 Flutter 的情况下直接通知；IANA 时区排程；精确 / 非精确降级；开机与更新时间恢复；通知点击跳转课程详情；Android 可选系统闹钟 |
-| 课程管理 | 单节、本节及以后或全部同课程的批量编辑与删除；7 天回收站、即时撤销和冲突安全恢复；课程备注及按科目自定义颜色 |
-| 外观 | 标准与彩色主题；主题色（9 预设 + 自定义 HEX）；深浅色模式手动切换（跟随系统 / 浅色 / 深色） |
-| Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启 |
+| 导出与备份 | JSON v4 完整备份课程、批量系列、主题、提醒规则、引用音频与显示设置，并兼容 v1–3；支持课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出 |
+| 课表网格 | 按真实时间定位的整周时间轴；窄屏默认一屏显示完整七天，可切换经典单日/多日自适应布局，宽屏一屏展示整周；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度、50%–150% 纵向缩放及 08:00–22:00 页面自适应；支持批量删除 |
+| 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程；实时滚动进度回顶按钮，到底后在课程下方居中显示 |
+| 提醒 | 独立自定义规则支持开始／结束偏移、日期固定时刻、课程筛选、秒级间隔、文案占位符、1–100 次发送及确认后停止；强提醒可按提醒类型、独立规则、课程系列或课次配置，明确指定普通／强提醒的规则优先；最近 24 小时只补发最后一条未处理消息。课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；Android 原生 `AlarmManager` 接收器在不启动 Flutter 的情况下直接通知；IANA 时区排程；精确 / 非精确降级；开机与更新时间恢复；通知点击跳转课程详情 |
+| 课程管理 | 按学期周次与多个每周安排批量加课；冲突预览、跳过或覆盖；按每周安排编辑；7 天回收站、即时撤销和冲突安全恢复；课程备注及按科目自定义颜色 |
+| 外观 | 单色／多色独立保存；多色支持九种生成方案、主／辅／第三色独立编辑及不限数量调色板；课程配色独立选择统一颜色／自动分色，手动颜色优先；跟随系统／浅色／深色 |
+| Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启；系统循环强提醒、15 分钟隐藏维护和通知动作后台处理 |
 | Android | 原生 AlarmManager 后台提醒（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；OriginOS 任务锁定说明；重启后自动恢复提醒 |
 | 多语言 | 繁体中文、简体中文、English |
+| 通知权限 | Android 和 Windows 全页面权限警告、通知设置直达、二次确认后永久忽略；忽略仅保存在本设备，可在设置恢复提示；权限恢复自动重新排程 |
 | 隐私 | 数据仅存本机 SQLite，不上传云端 |
 
 ## 快速开始（用户）
 
-可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.3.2：
+可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.3.3：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.3.2-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.3.2-android.apk` | 修复 Android 后台提醒；从 v1.3.0 / v1.3.1 可直接覆盖安装 |
+| Windows | `orbit-v1.3.3-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.3.3-android.apk` | 支持批量加课与手机紧凑整周课表；可从 v1.3.0 及以后直接覆盖安装 |
 
 ## 从源码运行
 
@@ -43,7 +44,7 @@
 git clone https://github.com/WkJ01N/Orbit.git
 cd Orbit
 flutter pub get
-flutter test          # 128 项测试
+flutter test          # 完整自动化测试
 flutter run -d windows
 flutter run -d android
 ```
@@ -67,22 +68,32 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath orbit-v1.3.2-windows-x64.zip
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.4.0/orbit-v1.4.0-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.3.2/orbit-v1.3.2-android.apk
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.4.0/orbit-v1.4.0-android.apk -Force
 ```
 
 ## 更新日志
 
 完整 Release Note 见 [CHANGELOG.md](CHANGELOG.md)。
 
+### v1.3.3
+
+- 新增按学期周次、单双周和多个每周安排批量添加课程
+- 批量保存支持冲突预览、跳过或覆盖，并可按每周安排安全编辑
+- 窄屏默认使用“紧凑整周”：固定时间轴，一屏显示七天，左右滑动切换周；课程名换行、教室靠底，时间与教师按空间显示
+- 设置中可切换“经典自适应”，保留单日/多日、窄屏显示天数及隐藏无课日期；紧凑整周始终显示七天
+- 修复批量安排标题间距和课表时钟格底线对齐，适配窄屏当前时间红线
+- 数据库升级至 v4，JSON 备份升级至 v3 并兼容旧版本
+- 版本号 1.3.3（build `+14`）
+
 ### v1.3.2
 
-- Android 课程提醒改由原生系统闹钟接收器直接发布，不依赖后台启动 Flutter
+- Android 课程提醒改由原生后台定时提醒接收器直接发布，不依赖后台启动 Flutter
 - 修复 iQOO / OriginOS 回到桌面、锁屏、进程冻结或最近任务上划后不提醒
 - 通知诊断工具移至“数据管理 → 调试”，课表新增入口移至标题栏左侧
-- 系统设置中的真正强行停止仍会取消应用闹钟，可使用系统时钟手动兜底
+- 系统设置中的真正强行停止仍会取消应用闹钟，需重新打开应用恢复后台排程
 - 版本号 1.3.2（build `+13`）
 
 ### v1.2.1
@@ -172,7 +183,7 @@ Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.3.2/orbit-v1.
 
 **修复与其他**
 - 详情弹窗删除 ref 已释放、红线跨天显示、手动课学院与提醒不触发等
-- 课前 / 打卡提醒、详情编辑 / 备注、Android 系统闹钟、宽屏列对齐、设置页版本号
+- 课前 / 打卡提醒、详情编辑 / 备注、Android 后台定时提醒、宽屏列对齐、设置页版本号
 - 版本号 1.1.0（build `+5`）；测试 70 项；预编译包见 `release/v1.1.0/`
 
 ### v1.0.3

@@ -24,6 +24,8 @@ void main() {
       faculty: 'Example',
       semester: '2606',
       note: 'note',
+      recurrenceSeriesId: 'series-1',
+      recurrenceMeetingId: 'meeting-1',
     );
 
     final service = ScheduleBackupService();
@@ -36,6 +38,8 @@ void main() {
     expect(restored.first.room, session.room);
     expect(restored.first.teachers, session.teachers);
     expect(restored.first.note, session.note);
+    expect(restored.first.recurrenceSeriesId, session.recurrenceSeriesId);
+    expect(restored.first.recurrenceMeetingId, session.recurrenceMeetingId);
   });
 
   test('decode rejects invalid format', () {
@@ -46,7 +50,7 @@ void main() {
     );
   });
 
-  test('v2 backup preserves portable settings', () {
+  test('v4 backup preserves portable settings', () {
     const settings = PortableSettings(
       locale: 'en',
       themeColor: 0xFF123456,
@@ -60,6 +64,7 @@ void main() {
         checkInReminderEnabled: false,
       ),
       scheduleDisplay: ScheduleDisplaySettings(
+        narrowLayout: NarrowScheduleLayout.adaptive,
         preferredMultiDayCount: 4,
         showEmptyDays: false,
       ),
@@ -71,11 +76,29 @@ void main() {
       service.encodeToJson(const [], settings: settings),
     );
 
-    expect(backup.version, 2);
+    expect(backup.version, 4);
     expect(backup.settings?.locale, 'en');
     expect(backup.settings?.reminders.leadMinutes, 30);
     expect(backup.settings?.scheduleDisplay.showEmptyDays, isFalse);
+    expect(
+      backup.settings?.scheduleDisplay.narrowLayout,
+      NarrowScheduleLayout.adaptive,
+    );
     expect(backup.settings?.courseColorOverrides['P0721'], 0xFFABCDEF);
+  });
+
+  test('v2 backup without recurrence metadata remains supported', () {
+    final service = ScheduleBackupService();
+    final raw = jsonEncode({
+      'version': 2,
+      'exportedAt': '2026-08-30T12:00:00.000',
+      'sessions': <Object?>[],
+    });
+
+    final backup = service.decodeBackup(raw);
+
+    expect(backup.version, 2);
+    expect(backup.sessions, isEmpty);
   });
 
   test('v1 session-only backup remains supported', () {

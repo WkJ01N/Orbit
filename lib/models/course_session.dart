@@ -18,6 +18,8 @@ class CourseSession {
     this.sourceFile,
     this.note,
     this.deletedAt,
+    this.recurrenceSeriesId,
+    this.recurrenceMeetingId,
   });
 
   final String id;
@@ -36,6 +38,8 @@ class CourseSession {
   final String? sourceFile;
   final String? note;
   final DateTime? deletedAt;
+  final String? recurrenceSeriesId;
+  final String? recurrenceMeetingId;
 
   static String buildId({
     required DateTime date,
@@ -81,6 +85,8 @@ class CourseSession {
       deletedAt: map['deleted_at'] == null
           ? null
           : DateTime.parse(map['deleted_at'] as String),
+      recurrenceSeriesId: map['recurrence_series_id'] as String?,
+      recurrenceMeetingId: map['recurrence_meeting_id'] as String?,
     );
   }
 
@@ -102,6 +108,8 @@ class CourseSession {
       'source_file': sourceFile,
       'note': note,
       'deleted_at': deletedAt?.toIso8601String(),
+      'recurrence_series_id': recurrenceSeriesId,
+      'recurrence_meeting_id': recurrenceMeetingId,
     };
   }
 
@@ -124,6 +132,10 @@ class CourseSession {
     bool clearNote = false,
     DateTime? deletedAt,
     bool clearDeletedAt = false,
+    String? recurrenceSeriesId,
+    String? recurrenceMeetingId,
+    bool clearRecurrenceSeriesId = false,
+    bool clearRecurrenceMeetingId = false,
   }) {
     return CourseSession(
       id: id ?? this.id,
@@ -142,6 +154,12 @@ class CourseSession {
       sourceFile: sourceFile ?? this.sourceFile,
       note: clearNote ? null : (note ?? this.note),
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
+      recurrenceSeriesId: clearRecurrenceSeriesId
+          ? null
+          : (recurrenceSeriesId ?? this.recurrenceSeriesId),
+      recurrenceMeetingId: clearRecurrenceMeetingId
+          ? null
+          : (recurrenceMeetingId ?? this.recurrenceMeetingId),
     );
   }
 

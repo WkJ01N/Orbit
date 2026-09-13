@@ -1,3 +1,4 @@
+import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -12,10 +13,11 @@ import 'package:orbit/core/widgets/section_header.dart';
 import 'package:orbit/core/widgets/skeleton_box.dart';
 import 'package:orbit/features/search/session_search_page.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
-import 'package:orbit/features/session/session_edit_sheet.dart';
+import 'package:orbit/features/session/session_add_action.dart';
 import 'package:orbit/features/session/session_countdown.dart';
 import 'package:orbit/features/session/session_countdown_label.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
+import 'package:orbit/features/upcoming/upcoming_scroll_to_top.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -39,7 +41,7 @@ class UpcomingPage extends ConsumerWidget {
                 key: const Key('upcoming-add-session'),
                 icon: const Icon(Icons.add, size: 21),
                 tooltip: l10n.addSession,
-                onPressed: () => SessionEditSheet.showCreate(context),
+                onPressed: () => showSessionAddAction(context),
               )
             : null,
         title: Text(l10n.upcomingTitle),
@@ -159,7 +161,7 @@ class _WeekHeaderItem extends _FlatItem {
 }
 
 // ---------------------------------------------------------------------------
-// List widget — fully flat ListView.builder with a per-minute time refresh
+// List widget — fully flat lazy sliver list with a per-minute time refresh
 // ---------------------------------------------------------------------------
 
 class _UpcomingList extends StatefulWidget {
@@ -209,7 +211,7 @@ class _UpcomingListState extends State<_UpcomingList> {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
 
-    // Flatten groups into a single list so ListView.builder is truly lazy.
+    // Flatten groups into a single list so course cards remain truly lazy.
     final items = <_FlatItem>[];
     final seenWeeks = <DateTime>{};
     for (final group in widget.groups) {
@@ -228,25 +230,26 @@ class _UpcomingListState extends State<_UpcomingList> {
       }
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 16),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return switch (item) {
-          _HeaderItem(:final label) => SectionHeader(title: label),
-          _WeekHeaderItem(:final monday) => _WeekMarker(
-            monday: monday,
-            label: l10n.upcomingWeekMonday(
-              DateFormat.yMd(locale).format(monday),
+    return UpcomingScrollToTop(
+      sliver: SliverList.builder(
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return switch (item) {
+            _HeaderItem(:final label) => SectionHeader(title: label),
+            _WeekHeaderItem(:final monday) => _WeekMarker(
+              monday: monday,
+              label: l10n.upcomingWeekMonday(
+                DateFormat.yMd(locale).format(monday),
+              ),
             ),
-          ),
-          _SessionItem(:final session) => _SessionCard(
-            session: session,
-            now: _now,
-          ),
-        };
-      },
+            _SessionItem(:final session) => _SessionCard(
+              session: session,
+              now: _now,
+            ),
+          };
+        },
+      ),
     );
   }
 }
@@ -302,8 +305,15 @@ class _SessionCard extends ConsumerWidget {
     final overrides = ref.watch(courseColorOverridesProvider);
     final themeStyle = appThemeStyleOf(context);
     final displaySettings = ref.watch(scheduleDisplaySettingsProvider);
+    final multi = ref.watch(multicolorSettingsProvider);
     final accent = resolvedCourseColor(
+      palette: multi.enabled ? multi.palette : const [],
       session: session,
+      automaticColorId: themeStyle == AppThemeStyle.colorful
+          ? ref.watch(
+              resolvedAutomaticCourseColorIdsProvider,
+            )[automaticCourseColorKey(session)]
+          : null,
       colorScheme: colorScheme,
       themeStyle: themeStyle,
       override: overrides[courseColorKey(session)],

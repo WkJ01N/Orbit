@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
@@ -40,7 +41,7 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
     final container = ProviderScope.containerOf(context);
     final result = await restoreDeletedWithRefresh(container, ids);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showAppSnackBar(
       SnackBar(
         content: Text(l10n.trashRestoreResult(result.restored, result.skipped)),
       ),

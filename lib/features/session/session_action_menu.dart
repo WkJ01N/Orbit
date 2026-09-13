@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -219,9 +220,12 @@ class SessionActionMenu {
         return true;
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(l10n.deleteFailed('$e'))));
+          ScaffoldMessenger.of(context).showAppSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 6),
+              content: Text(l10n.deleteFailed('$e')),
+            ),
+          );
         }
         return false;
       }

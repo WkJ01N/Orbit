@@ -43,7 +43,7 @@ void main() {
   });
 
   test('contrastForegroundFor 根据亮度选择前景色', () {
-    expect(contrastForegroundFor(Colors.white), Colors.black87);
+    expect(contrastForegroundFor(Colors.white), Colors.black);
     expect(contrastForegroundFor(Colors.black), Colors.white);
   });
 

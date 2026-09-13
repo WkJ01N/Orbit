@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -226,17 +227,23 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final name = _nameController.text.trim();
     final room = _roomController.text.trim();
     if (name.isEmpty || room.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.sessionCreateRequiredFields)));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.sessionCreateRequiredFields),
+        ),
+      );
       return;
     }
 
     final finalSession = _buildSession();
     if (!finalSession.endAt.isAfter(finalSession.startAt)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.editSessionEndBeforeStart)));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.editSessionEndBeforeStart),
+        ),
+      );
       return;
     }
 
@@ -245,6 +252,8 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     setState(() => _saving = true);
     try {
       var scope = CourseOperationScope.single;
+      var recurringScope = RecurringCourseEditScope.single;
+      var isRecurringEdit = false;
       CourseOperationResult? operationResult;
       int overwritten;
       final original = widget.session;
@@ -254,18 +263,37 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           CourseOperationScope.all,
         );
         if (matching.length > 1 && mounted) {
-          final selectedScope = await showCourseScopeDialog(context);
-          if (selectedScope == null || !mounted) {
-            setState(() => _saving = false);
-            return;
+          if (original.recurrenceSeriesId != null &&
+              original.recurrenceMeetingId != null) {
+            final selectedScope = await showRecurringCourseEditScopeDialog(
+              context,
+            );
+            if (selectedScope == null || !mounted) {
+              setState(() => _saving = false);
+              return;
+            }
+            recurringScope = selectedScope;
+            isRecurringEdit = true;
+          } else {
+            final selectedScope = await showCourseScopeDialog(context);
+            if (selectedScope == null || !mounted) {
+              setState(() => _saving = false);
+              return;
+            }
+            scope = selectedScope;
           }
-          scope = selectedScope;
         }
-        final preview = await repository.previewCourseSeriesUpdate(
-          selected: original,
-          changes: finalSession,
-          scope: scope,
-        );
+        final preview = isRecurringEdit
+            ? await repository.previewRecurringCourseUpdate(
+                selected: original,
+                changes: finalSession,
+                scope: recurringScope,
+              )
+            : await repository.previewCourseSeriesUpdate(
+                selected: original,
+                changes: finalSession,
+                scope: scope,
+              );
         if ((preview.targetCount > 1 || preview.conflictCount > 0) && mounted) {
           final confirmed = await showDialog<bool>(
             context: context,
@@ -296,11 +324,17 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             return;
           }
         }
-        operationResult = await repository.updateCourseSeries(
-          selected: original,
-          changes: finalSession,
-          scope: scope,
-        );
+        operationResult = isRecurringEdit
+            ? await repository.updateRecurringCourse(
+                selected: original,
+                changes: finalSession,
+                scope: recurringScope,
+              )
+            : await repository.updateCourseSeries(
+                selected: original,
+                changes: finalSession,
+                scope: scope,
+              );
         overwritten = operationResult.conflictCount;
       } else {
         overwritten = await repository.saveSessionWithConflictResolution(
@@ -318,7 +352,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             : overwritten > 0
             ? l10n.sessionSavedWithOverride(overwritten)
             : (widget.isCreateMode ? l10n.sessionCreated : l10n.sessionUpdated);
-        messenger.showSnackBar(
+        messenger.showAppSnackBar(
           SnackBar(
             content: Text(baseMessage),
             duration: const Duration(seconds: 4),
@@ -328,9 +362,12 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       ref.read(reminderSettingsProvider.notifier).scheduleResync();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.sessionSaveFailed('$e'))));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 6),
+            content: Text(l10n.sessionSaveFailed('$e')),
+          ),
+        );
       }
     } finally {
       if (mounted) {

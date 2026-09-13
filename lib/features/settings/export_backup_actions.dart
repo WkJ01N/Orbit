@@ -1,3 +1,5 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -25,10 +27,43 @@ Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
       return;
     }
 
+    await ref
+        .read(automaticCourseColorIdsProvider.notifier)
+        .ensureSaved(sessions);
     final settings = await ref
         .read(settingsServiceProvider)
         .exportPortableSettings();
-    final json = await repository.exportToJsonBackup(settings: settings);
+    final json = await ScheduleBackupService().encodeWithAudio(
+      sessions,
+      settings,
+      sessionAliases: await ref
+          .read(appDatabaseProvider)
+          .reminderSessionAliases(),
+      seriesMemberships: await ref
+          .read(appDatabaseProvider)
+          .reminderSeriesMemberships(),
+    );
+    if (!context.mounted) return;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.exportScheduleJson),
+        content: Text(
+          '${(utf8.encode(json).length / 1024 / 1024).toStringAsFixed(2)} MiB',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.actionCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.reminderSave),
+          ),
+        ],
+      ),
+    );
+    if (proceed != true) return;
     final path = await FilePicker.platform.saveFile(
       dialogTitle: l10n.exportScheduleJson,
       fileName: 'orbit-backup.json',
@@ -49,7 +84,7 @@ Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) {
-      _showSnackBar(context, l10n.exportFailed('$e'));
+      _showSnackBar(context, l10n.exportFailed('$e'), isError: true);
     }
   }
 }
@@ -88,7 +123,7 @@ Future<void> exportScheduleXlsx(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) {
-      _showSnackBar(context, l10n.exportFailed('$e'));
+      _showSnackBar(context, l10n.exportFailed('$e'), isError: true);
     }
   }
 }
@@ -126,7 +161,11 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       backup = ScheduleBackupService().decodeBackup(raw);
     } on ScheduleBackupException catch (e) {
       if (context.mounted) {
-        _showSnackBar(context, _backupErrorMessage(l10n, e.message));
+        _showSnackBar(
+          context,
+          _backupErrorMessage(l10n, e.message),
+          isError: true,
+        );
       }
       return;
     }
@@ -141,20 +180,32 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       return;
     }
 
+    final restoredSettings =
+        selection.restoreSettings && backup.settings != null
+        ? await ScheduleBackupService().restoreAudio(backup)
+        : null;
     List<CourseSession> restored = const [];
     if (selection.restoreCourses) {
       restored = await ref
           .read(scheduleRepositoryProvider)
           .restoreBackupSessions(backup.sessions, strategy: selection.strategy);
     }
-    if (selection.restoreSettings && backup.settings != null) {
+    if (selection.restoreCourses) refreshSchedule(ref);
+    if (restoredSettings != null) {
       await ref
           .read(settingsServiceProvider)
-          .importPortableSettings(backup.settings!);
+          .importPortableSettings(restoredSettings.settings);
+      await ref.read(appDatabaseProvider).clearReminderHistory();
+      if (restoredSettings.soundFallback && context.mounted) {
+        _showSnackBar(context, l10n.reminderSoundFallback);
+      }
       ref.invalidate(localeProvider);
       ref.invalidate(themeColorProvider);
       ref.invalidate(themeModeProvider);
       ref.invalidate(themeStyleProvider);
+      ref.invalidate(colorSchemeProvider);
+      ref.invalidate(multicolorSettingsProvider);
+      ref.invalidate(automaticCourseColorIdsProvider);
       ref.invalidate(courseColorOverridesProvider);
       ref.invalidate(gridDefaultWeekModeProvider);
       ref.invalidate(weekStartDayProvider);
@@ -166,7 +217,6 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
     final failures = await ref
         .read(reminderSettingsProvider.notifier)
         .resyncReminders();
-    refreshSchedule(ref);
 
     if (context.mounted) {
       final baseMessage = selection.restoreCourses
@@ -179,7 +229,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) {
-      _showSnackBar(context, l10n.restoreFailed('$e'));
+      _showSnackBar(context, l10n.restoreFailed('$e'), isError: true);
     }
   }
 }
@@ -311,6 +361,12 @@ String _backupErrorMessage(AppLocalizations l10n, String code) {
   };
 }
 
-void _showSnackBar(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+void _showSnackBar(
+  BuildContext context,
+  String message, {
+  bool isError = false,
+}) {
+  ScaffoldMessenger.of(
+    context,
+  ).showAppSnackBar(SnackBar(content: Text(message)), isError: isError);
 }

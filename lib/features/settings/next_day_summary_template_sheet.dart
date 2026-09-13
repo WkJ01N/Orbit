@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/reminder_template_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/widgets/adaptive_bottom_sheet.dart';
@@ -157,17 +158,17 @@ class _NextDaySummaryTemplateSheetState
   }
 
   Widget _field(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        minLines: 1,
-        maxLines: 3,
-      ),
+    return ReminderTemplateField(
+      label: label,
+      controller: controller,
+      multiline:
+          controller == _withClassBodyController ||
+          controller == _noClassBodyController,
+      variables:
+          controller == _noClassTitleController ||
+              controller == _noClassBodyController
+          ? const ['date']
+          : const ['count', 'time', 'date'],
     );
   }
 }

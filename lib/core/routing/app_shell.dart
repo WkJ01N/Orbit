@@ -166,8 +166,8 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// Keeps every destination alive while the previous and next pages share a
-/// short transition. This avoids an abrupt content swap without losing state.
+/// Builds destinations on their first visit and retains visited page state.
+/// The previous and next pages share a short transition.
 class _AnimatedIndexedStack extends StatefulWidget {
   const _AnimatedIndexedStack({required this.index, required this.children});
 
@@ -186,6 +186,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
     value: 1.0,
   )..addStatusListener(_handleAnimationStatus);
   late int _activeIndex = widget.index;
+  late final Set<int> _visited = {widget.index};
   int? _previousIndex;
   int _direction = 1;
 
@@ -196,6 +197,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
       _previousIndex = _activeIndex;
       _direction = widget.index > _activeIndex ? 1 : -1;
       _activeIndex = widget.index;
+      _visited.add(_activeIndex);
       _controller.forward(from: 0.0);
     }
   }
@@ -224,7 +226,10 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
             : Curves.easeOutCubic.transform(_controller.value);
         final hiddenIndexes = <int>[
           for (var index = 0; index < widget.children.length; index++)
-            if (index != _activeIndex && index != _previousIndex) index,
+            if (_visited.contains(index) &&
+                index != _activeIndex &&
+                (reduceMotion || index != _previousIndex))
+              index,
         ];
 
         return Stack(

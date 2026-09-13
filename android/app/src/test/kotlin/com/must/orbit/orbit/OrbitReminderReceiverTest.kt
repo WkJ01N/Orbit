@@ -26,6 +26,7 @@ class OrbitReminderReceiverTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        context.deleteDatabase("orbit_native_reminders.db")
         context
             .getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
             .edit()
@@ -35,6 +36,7 @@ class OrbitReminderReceiverTest {
 
     @After
     fun tearDown() {
+        context.deleteDatabase("orbit_native_reminders.db")
         context
             .getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
             .edit()

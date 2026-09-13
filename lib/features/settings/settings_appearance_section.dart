@@ -1,10 +1,13 @@
+import 'package:orbit/core/widgets/settings_choice_tile.dart';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/features/settings/theme_scheme_page.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/color_picker_dialog.dart';
-import 'package:orbit/core/widgets/section_header.dart';
+import 'package:orbit/core/widgets/settings_group.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 
@@ -17,63 +20,116 @@ class SettingsAppearanceSection extends ConsumerWidget {
     final style = ref.watch(themeStyleProvider);
     final mode = ref.watch(themeModeProvider);
     final color = ref.watch(themeColorProvider);
+    final multi = ref.watch(multicolorSettingsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionHeader(title: l10n.sectionAppearance),
-        ListTile(
-          title: Text(l10n.themeStyleTitle),
-          subtitle: Text(l10n.themeStyleSubtitle),
-          trailing: _SettingsDropdown<AppThemeStyle>(
-            value: style,
-            items: AppThemeStyle.values
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(
-                      value == AppThemeStyle.standard
-                          ? l10n.themeStyleStandard
-                          : l10n.themeStyleColorful,
-                    ),
+        SettingsGroup(
+          title: l10n.sectionAppearance,
+          children: [
+            SettingsChoiceTile(
+              title: Text(l10n.themeStyleTitle),
+              subtitle: Text(l10n.themeStyleSubtitle),
+              trailing: _SettingsDropdown<AppThemeStyle>(
+                value: style,
+                items: AppThemeStyle.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(
+                          value == AppThemeStyle.standard
+                              ? l10n.themeStyleStandard
+                              : l10n.themeStyleColorful,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(themeStyleProvider.notifier).setStyle(value);
+                  }
+                },
+              ),
+            ),
+            SettingsChoiceTile(
+              title: Text(l10n.themeModeTitle),
+              subtitle: Text(l10n.themeModeSubtitle),
+              trailing: _SettingsDropdown<ThemeMode>(
+                value: mode,
+                items: ThemeMode.values
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(_themeModeLabel(l10n, value)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(themeModeProvider.notifier).setThemeMode(value);
+                  }
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(l10n.paletteMode),
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(l10n.paletteSingle),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(l10n.themeMulticolor),
+                      ),
+                    ],
+                    selected: {multi.enabled},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (v) => ref
+                        .read(multicolorSettingsProvider.notifier)
+                        .setValue(multi.copyWith(enabled: v.first)),
                   ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(themeStyleProvider.notifier).setStyle(value);
-              }
-            },
-          ),
-        ),
-        ListTile(
-          title: Text(l10n.themeModeTitle),
-          subtitle: Text(l10n.themeModeSubtitle),
-          trailing: _SettingsDropdown<ThemeMode>(
-            value: mode,
-            items: ThemeMode.values
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text(_themeModeLabel(l10n, value)),
-                  ),
-                )
-                .toList(),
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(themeModeProvider.notifier).setThemeMode(value);
-              }
-            },
-          ),
-        ),
-        _ThemeColorPicker(
-          currentColor: color,
-          onSelected: (value) =>
-              ref.read(themeColorProvider.notifier).setColor(value),
+                ],
+              ),
+            ),
+            if (!multi.enabled)
+              _ThemeColorPicker(
+                currentColor: color,
+                onSelected: (value) =>
+                    ref.read(themeColorProvider.notifier).setColor(value),
+              ),
+            ListTile(
+              title: Text(l10n.themeMulticolor),
+              subtitle: Text(
+                !multi.enabled
+                    ? l10n.paletteSingle
+                    : multi.isCustom
+                    ? l10n.paletteCustom
+                    : multi.scheme == AppColorScheme.original
+                    ? l10n.paletteTonalSpot
+                    : l10n.themeSchemeNames.split('|')[multi.scheme.index - 1],
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ThemeSchemePage()),
+                );
+              },
+            ),
+          ],
         ),
         if (Platform.isWindows) ...[
-          const SizedBox(height: 8),
-          SectionHeader(title: l10n.sectionSystem),
-          const _LaunchAtStartupTile(),
+          SettingsGroup(
+            title: l10n.sectionSystem,
+            children: const [_LaunchAtStartupTile()],
+          ),
         ],
         const SizedBox(height: 8),
       ],
@@ -243,7 +299,7 @@ class _LaunchAtStartupTileState extends ConsumerState<_LaunchAtStartupTile> {
                 if (mounted) setState(() => _enabled = value);
               } catch (error) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(context).showAppSnackBar(
                     SnackBar(
                       content: Text(l10n.launchAtStartupFailed('$error')),
                     ),

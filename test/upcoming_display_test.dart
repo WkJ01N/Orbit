@@ -31,6 +31,67 @@ CourseSession _session(DateTime date, String code) {
 }
 
 void main() {
+  testWidgets('长课程列表到底后按钮位于最后课程下方，点击平滑回顶', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final sessions = List.generate(
+      40,
+      (index) => _session(
+        DateTime.now().add(Duration(days: index + 1)),
+        'scroll-$index',
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          upcomingSessionsProvider.overrideWith((ref) async => sessions),
+        ],
+        child: MaterialApp(
+          locale: const Locale('zh', 'Hans'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const UpcomingPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position;
+    // Lazy variable-height cards refine their extent as the end is laid out.
+    for (var attempt = 0; attempt < 5; attempt++) {
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      if (position.extentAfter < 0.5) break;
+    }
+    final footer = find.byKey(const Key('upcoming-back-to-top-footer'));
+    expect(footer.hitTestable(), findsOneWidget);
+    expect(
+      find.byKey(const Key('upcoming-back-to-top-floating')).hitTestable(),
+      findsNothing,
+    );
+    final lastCard = find.ancestor(
+      of: find.byKey(Key('upcoming-course-date-${sessions.last.id}')),
+      matching: find.byType(Card),
+    );
+    expect(
+      tester.getRect(lastCard).bottom,
+      lessThan(tester.getRect(footer).top),
+    );
+    await tester.tap(footer);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(position.pixels, greaterThan(0));
+    await tester.pumpAndSettle();
+    expect(position.pixels, 0);
+    expect(footer.hitTestable(), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('接下来列表为每周首节课显示周日期和课程日期', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final today = DateTime.now();
@@ -94,6 +155,8 @@ void main() {
     expect(addIcon.size, 21);
 
     await tester.tap(add);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.event_outlined));
     await tester.pumpAndSettle();
     expect(find.byType(SessionEditSheet), findsOneWidget);
   });

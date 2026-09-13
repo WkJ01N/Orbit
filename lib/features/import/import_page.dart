@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -199,7 +200,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         final message = failures > 0
             ? '${l10n.importSuccess(allSessions.length)} ${l10n.resyncPartialFailed(failures)}'
             : l10n.importSuccess(allSessions.length);
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
             content: Text(message),
             action: SnackBarAction(

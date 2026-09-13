@@ -1,3 +1,5 @@
+import 'package:orbit/models/custom_reminder_rule.dart';
+
 class ReminderSettings {
   const ReminderSettings({
     this.leadMinutes = 15,
@@ -14,9 +16,9 @@ class ReminderSettings {
     this.classLeadBodyTemplate,
     this.checkInTitleTemplate,
     this.checkInBodyTemplate,
-    this.systemAlarmEnabled = false,
-    this.systemAlarmLeadMinutes = 10,
     this.checkInReminderEnabled = true,
+    this.customRules = const [],
+    this.strong = const StrongReminderSettings(),
   });
 
   final int leadMinutes;
@@ -33,13 +35,11 @@ class ReminderSettings {
   final String? classLeadBodyTemplate;
   final String? checkInTitleTemplate;
   final String? checkInBodyTemplate;
-  final bool systemAlarmEnabled;
-  final int systemAlarmLeadMinutes;
   final bool checkInReminderEnabled;
+  final List<CustomReminderRule> customRules;
+  final StrongReminderSettings strong;
 
   static const List<int> leadMinuteOptions = [5, 10, 15, 30, 45, 60, 90, 120];
-
-  static const List<int> alarmLeadMinuteOptions = [5, 10, 15, 20, 30, 45, 60];
 
   ReminderSettings copyWith({
     int? leadMinutes,
@@ -64,9 +64,9 @@ class ReminderSettings {
     bool clearClassLeadBodyTemplate = false,
     bool clearCheckInTitleTemplate = false,
     bool clearCheckInBodyTemplate = false,
-    bool? systemAlarmEnabled,
-    int? systemAlarmLeadMinutes,
     bool? checkInReminderEnabled,
+    List<CustomReminderRule>? customRules,
+    StrongReminderSettings? strong,
   }) {
     return ReminderSettings(
       leadMinutes: leadMinutes ?? this.leadMinutes,
@@ -102,11 +102,10 @@ class ReminderSettings {
       checkInBodyTemplate: clearCheckInBodyTemplate
           ? null
           : (checkInBodyTemplate ?? this.checkInBodyTemplate),
-      systemAlarmEnabled: systemAlarmEnabled ?? this.systemAlarmEnabled,
-      systemAlarmLeadMinutes:
-          systemAlarmLeadMinutes ?? this.systemAlarmLeadMinutes,
       checkInReminderEnabled:
           checkInReminderEnabled ?? this.checkInReminderEnabled,
+      customRules: customRules ?? this.customRules,
+      strong: strong ?? this.strong,
     );
   }
 

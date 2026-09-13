@@ -1,5 +1,7 @@
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
+import 'package:orbit/core/theme/app_theme.dart';
 
 class PortableSettings {
   const PortableSettings({
@@ -13,33 +15,63 @@ class PortableSettings {
     required this.reminders,
     required this.scheduleDisplay,
     required this.courseColorOverrides,
+    this.colorScheme = 'original',
+    this.automaticCourseColorIds = const {},
+    this.multicolor,
   });
 
   final String locale;
   final int themeColor;
   final String themeMode;
   final String themeStyle;
+  final String colorScheme;
+  final MulticolorSettings? multicolor;
+  final Map<String, int> automaticCourseColorIds;
   final String gridDefaultWeekMode;
   final int weekStartDay;
   final String gridDensity;
   final ReminderSettings reminders;
   final ScheduleDisplaySettings scheduleDisplay;
   final Map<String, int> courseColorOverrides;
+  PortableSettings withReminders(ReminderSettings value) => PortableSettings(
+    locale: locale,
+    themeColor: themeColor,
+    themeMode: themeMode,
+    themeStyle: themeStyle,
+    colorScheme: colorScheme,
+    multicolor: multicolor,
+    automaticCourseColorIds: automaticCourseColorIds,
+    gridDefaultWeekMode: gridDefaultWeekMode,
+    weekStartDay: weekStartDay,
+    gridDensity: gridDensity,
+    reminders: value,
+    scheduleDisplay: scheduleDisplay,
+    courseColorOverrides: courseColorOverrides,
+  );
 
   Map<String, dynamic> toJson() => {
     'locale': locale,
     'themeColor': themeColor,
     'themeMode': themeMode,
     'themeStyle': themeStyle,
+    'colorScheme': colorScheme,
+    if (multicolor != null) 'multicolor': multicolor!.toJson(),
+    'automaticCourseColorIds': automaticCourseColorIds,
     'gridDefaultWeekMode': gridDefaultWeekMode,
     'weekStartDay': weekStartDay,
     'gridDensity': gridDensity,
     'reminders': _remindersToJson(reminders),
     'scheduleDisplay': {
+      'fitToPage': scheduleDisplay.fitToPage,
+      'narrowLayout': scheduleDisplay.narrowLayout.name,
       'preferredMultiDayCount': scheduleDisplay.preferredMultiDayCount,
       'showEmptyDays': scheduleDisplay.showEmptyDays,
       'showUpcomingCourseDate': scheduleDisplay.showUpcomingCourseDate,
       'upcomingDateDisplay': scheduleDisplay.upcomingDateDisplay.name,
+      'verticalScalePercent':
+          ScheduleDisplaySettings.normalizeVerticalScalePercent(
+            scheduleDisplay.verticalScalePercent,
+          ),
     },
     'courseColorOverrides': courseColorOverrides,
   };
@@ -58,11 +90,35 @@ class PortableSettings {
       themeColor: json['themeColor'] as int? ?? 0xFF39C5BB,
       themeMode: json['themeMode'] as String? ?? 'system',
       themeStyle: json['themeStyle'] as String? ?? 'standard',
+      colorScheme: json['colorScheme'] is String
+          ? json['colorScheme'] as String
+          : 'original',
+      multicolor: json['multicolor'] is Map<String, dynamic>
+          ? MulticolorSettings.fromJson(
+              json['multicolor'] as Map<String, dynamic>,
+            )
+          : null,
+      automaticCourseColorIds: json['automaticCourseColorIds'] is Map
+          ? {
+              for (final e in (json['automaticCourseColorIds'] as Map).entries)
+                if (e.key is String && e.value is int && e.value >= 0)
+                  e.key as String: e.value as int,
+            }
+          : const {},
       gridDefaultWeekMode: json['gridDefaultWeekMode'] as String? ?? 'smart',
       weekStartDay: json['weekStartDay'] as int? ?? DateTime.monday,
       gridDensity: json['gridDensity'] as String? ?? 'standard',
       reminders: _remindersFromJson(reminders),
       scheduleDisplay: ScheduleDisplaySettings(
+        fitToPage: display['fitToPage'] == true,
+        verticalScalePercent:
+            ScheduleDisplaySettings.normalizeVerticalScalePercent(
+              display['verticalScalePercent'],
+            ),
+        narrowLayout: NarrowScheduleLayout.values.firstWhere(
+          (value) => value.name == display['narrowLayout'],
+          orElse: () => NarrowScheduleLayout.compactWeek,
+        ),
         preferredMultiDayCount: display['preferredMultiDayCount'] as int? ?? 3,
         showEmptyDays: display['showEmptyDays'] as bool? ?? true,
         showUpcomingCourseDate:
@@ -79,6 +135,8 @@ class PortableSettings {
   }
 
   static Map<String, dynamic> _remindersToJson(ReminderSettings value) => {
+    'customRules': value.customRules.map((r) => r.toJson()).toList(),
+    'strong': value.strong.toJson(),
     'leadMinutes': value.leadMinutes,
     'enabled': value.enabled,
     'nextDaySummaryEnabled': value.nextDaySummaryEnabled,
@@ -93,13 +151,21 @@ class PortableSettings {
     'classLeadBodyTemplate': value.classLeadBodyTemplate,
     'checkInTitleTemplate': value.checkInTitleTemplate,
     'checkInBodyTemplate': value.checkInBodyTemplate,
-    'systemAlarmEnabled': value.systemAlarmEnabled,
-    'systemAlarmLeadMinutes': value.systemAlarmLeadMinutes,
     'checkInReminderEnabled': value.checkInReminderEnabled,
   };
 
   static ReminderSettings _remindersFromJson(Map<String, dynamic> json) {
     return ReminderSettings(
+      customRules: (json['customRules'] as List? ?? [])
+          .map(
+            (v) => CustomReminderRule.fromJson(
+              Map<String, dynamic>.from(v as Map),
+            ),
+          )
+          .toList(),
+      strong: StrongReminderSettings.fromJson(
+        Map<String, dynamic>.from(json['strong'] as Map? ?? {}),
+      ),
       leadMinutes: json['leadMinutes'] as int? ?? 15,
       enabled: json['enabled'] as bool? ?? true,
       nextDaySummaryEnabled: json['nextDaySummaryEnabled'] as bool? ?? true,
@@ -118,8 +184,6 @@ class PortableSettings {
       classLeadBodyTemplate: json['classLeadBodyTemplate'] as String?,
       checkInTitleTemplate: json['checkInTitleTemplate'] as String?,
       checkInBodyTemplate: json['checkInBodyTemplate'] as String?,
-      systemAlarmEnabled: json['systemAlarmEnabled'] as bool? ?? false,
-      systemAlarmLeadMinutes: json['systemAlarmLeadMinutes'] as int? ?? 10,
       checkInReminderEnabled: json['checkInReminderEnabled'] as bool? ?? true,
     );
   }

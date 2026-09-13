@@ -1,8 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 
-class ImportFormatHelp extends StatelessWidget {
+class ImportFormatHelp extends StatefulWidget {
   const ImportFormatHelp({super.key});
+  @override
+  State<ImportFormatHelp> createState() => _ImportFormatHelpState();
+}
+
+class _ImportFormatHelpState extends State<ImportFormatHelp>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+  );
+  late final _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOutCubic,
+    reverseCurve: Curves.easeInOutCubic,
+  );
+  bool _expanded = false;
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = _expanded ? 1 : 0;
+    } else if (_expanded) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = _expanded ? 1 : 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,48 +64,68 @@ class ImportFormatHelp extends StatelessWidget {
       ('M', l10n.importFormatSemester, l10n.importFormatSemesterExample),
     ];
 
-    return ExpansionTile(
-      title: Text(l10n.importFormatTitle),
-      subtitle: Text(l10n.importFormatSubtitle),
+    return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Table(
-            columnWidths: const {
-              0: FixedColumnWidth(28),
-              1: FlexColumnWidth(2),
-              2: FlexColumnWidth(3),
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: [
-              TableRow(
-                children: [
-                  _headerCell(context, l10n.importFormatColumn),
-                  _headerCell(context, l10n.importFormatField),
-                  _headerCell(context, l10n.importFormatExample),
-                ],
-              ),
-              for (final row in rows)
-                TableRow(
+        Semantics(
+          expanded: _expanded,
+          child: ListTile(
+            title: Text(l10n.importFormatTitle),
+            subtitle: Text(l10n.importFormatSubtitle),
+            onTap: _toggle,
+            trailing: RotationTransition(
+              turns: Tween<double>(begin: 0, end: .5).animate(_curve),
+              child: const Icon(Icons.expand_more),
+            ),
+          ),
+        ),
+        SizeTransition(
+          sizeFactor: _curve,
+          alignment: Alignment.topCenter,
+          child: FadeTransition(
+            opacity: _curve,
+            child: IgnorePointer(
+              ignoring: !_expanded,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(28),
+                    1: FlexColumnWidth(2),
+                    2: FlexColumnWidth(3),
+                  },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(row.$1),
+                    TableRow(
+                      children: [
+                        _headerCell(context, l10n.importFormatColumn),
+                        _headerCell(context, l10n.importFormatField),
+                        _headerCell(context, l10n.importFormatExample),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(row.$2),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        row.$3,
-                        style: Theme.of(context).textTheme.bodySmall,
+                    for (final row in rows)
+                      TableRow(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(row.$1),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(row.$2),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              row.$3,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
-            ],
+              ),
+            ),
           ),
         ),
       ],

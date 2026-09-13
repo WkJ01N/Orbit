@@ -15,6 +15,7 @@ data class OrbitReminderRecord(
     val channelName: String,
     val channelDescription: String,
     val restoreOnReboot: Boolean,
+    val metadata: String = "{}",
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("alarmId", alarmId)
@@ -27,6 +28,7 @@ data class OrbitReminderRecord(
         put("channelName", channelName)
         put("channelDescription", channelDescription)
         put("restoreOnReboot", restoreOnReboot)
+        put("metadata", metadata)
     }
 
     companion object {
@@ -41,74 +43,69 @@ data class OrbitReminderRecord(
             channelName = json.getString("channelName"),
             channelDescription = json.getString("channelDescription"),
             restoreOnReboot = json.optBoolean("restoreOnReboot", true),
+            metadata = json.optString("metadata", "{}"),
         )
     }
 }
 
 object OrbitReminderStore {
-    private const val preferencesName = "orbit_native_reminders"
-    private const val recordsKey = "records_v1"
-    private val lock = Any()
-
-    fun load(context: Context): MutableMap<Int, OrbitReminderRecord> = synchronized(lock) {
-        val raw = preferences(context).getString(recordsKey, null) ?: return@synchronized mutableMapOf()
+    private fun open(context: Context): android.database.sqlite.SQLiteDatabase {
+        val file = context.getDatabasePath("orbit_native_reminders.db")
+        file.parentFile?.mkdirs()
+        val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null)
+        db.execSQL("CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, record TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        db.beginTransaction()
         try {
-            val array = JSONArray(raw)
-            buildMap {
-                for (index in 0 until array.length()) {
-                    val record = OrbitReminderRecord.fromJson(array.getJSONObject(index))
-                    put(record.alarmId, record)
+            val migrated = db.rawQuery("SELECT value FROM metadata WHERE key='migrated'", null).use { it.moveToFirst() }
+            if (!migrated) {
+                val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
+                val raw = prefs.getString("records_v1", null)
+                if (raw != null) {
+                    val records = JSONArray(raw)
+                    for (i in 0 until records.length()) {
+                        val record = records.getJSONObject(i)
+                        db.execSQL("INSERT OR IGNORE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.getInt("alarmId"),record.toString()))
+                    }
                 }
-            }.toMutableMap()
-        } catch (_: Exception) {
-            preferences(context).edit().remove(recordsKey).commit()
-            mutableMapOf()
+                db.execSQL("INSERT INTO metadata(key,value) VALUES('migrated','1')")
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+        return db
+    }
+    fun load(context: Context): MutableMap<Int,OrbitReminderRecord> = open(context).use { db ->
+        val result = mutableMapOf<Int,OrbitReminderRecord>()
+        db.rawQuery("SELECT record FROM records", null).use { cursor ->
+            while(cursor.moveToNext()) {
+                val record = OrbitReminderRecord.fromJson(JSONObject(cursor.getString(0)))
+                result[record.alarmId] = record
+            }
+        }
+        result
+    }
+    fun get(context: Context,alarmId: Int): OrbitReminderRecord? = open(context).use { db ->
+        db.rawQuery("SELECT record FROM records WHERE id=?", arrayOf(alarmId.toString())).use { cursor ->
+            if(cursor.moveToFirst()) OrbitReminderRecord.fromJson(JSONObject(cursor.getString(0))) else null
         }
     }
-
-    fun get(context: Context, alarmId: Int): OrbitReminderRecord? =
-        load(context)[alarmId]
-
-    fun upsert(context: Context, record: OrbitReminderRecord) = synchronized(lock) {
-        val records = load(context)
-        records[record.alarmId] = record
-        write(context, records)
+    fun upsert(context: Context,record: OrbitReminderRecord) = open(context).use { db ->
+        db.execSQL("INSERT OR REPLACE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.alarmId,record.toJson().toString()))
     }
-
-    fun remove(context: Context, alarmId: Int) = synchronized(lock) {
-        val records = load(context)
-        if (records.remove(alarmId) != null) {
-            write(context, records)
-        }
+    fun remove(context: Context,alarmId: Int) = open(context).use { db -> db.delete("records","id=?",arrayOf(alarmId.toString())) }
+    fun removeWhere(context: Context,predicate: (OrbitReminderRecord)->Boolean): List<OrbitReminderRecord> = open(context).use { db ->
+        db.beginTransaction()
+        try {
+            val removed = mutableListOf<OrbitReminderRecord>()
+            db.rawQuery("SELECT record FROM records",null).use { cursor ->
+                while(cursor.moveToNext()) {
+                    val record = OrbitReminderRecord.fromJson(JSONObject(cursor.getString(0)))
+                    if(predicate(record)) removed.add(record)
+                }
+            }
+            removed.forEach { db.delete("records","id=?",arrayOf(it.alarmId.toString())) }
+            db.setTransactionSuccessful()
+            removed
+        } finally { db.endTransaction() }
     }
-
-    fun removeWhere(
-        context: Context,
-        predicate: (OrbitReminderRecord) -> Boolean,
-    ): List<OrbitReminderRecord> = synchronized(lock) {
-        val records = load(context)
-        val removed = records.values.filter(predicate)
-        if (removed.isNotEmpty()) {
-            removed.forEach { records.remove(it.alarmId) }
-            write(context, records)
-        }
-        removed
-    }
-
-    private fun write(context: Context, records: Map<Int, OrbitReminderRecord>) {
-        val editor = preferences(context).edit()
-        if (records.isEmpty()) {
-            editor.remove(recordsKey).commit()
-            return
-        }
-        val array = JSONArray()
-        records.values.sortedBy { it.alarmId }.forEach { array.put(it.toJson()) }
-        editor.putString(recordsKey, array.toString()).commit()
-    }
-
-    @Suppress("DEPRECATION")
-    private fun preferences(context: Context) = context.getSharedPreferences(
-        preferencesName,
-        Context.MODE_PRIVATE or Context.MODE_MULTI_PROCESS,
-    )
 }

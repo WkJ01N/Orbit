@@ -260,16 +260,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sectionAppearance => '外觀';
 
   @override
-  String get themeStyleTitle => '主題風格';
+  String get themeStyleTitle => '課程配色';
 
   @override
   String get themeStyleSubtitle => '使用統一強調色或為不同課程自動配色';
 
   @override
-  String get themeStyleStandard => '標準';
+  String get themeStyleStandard => '統一顏色';
 
   @override
-  String get themeStyleColorful => '彩色';
+  String get themeStyleColorful => '自動分色';
 
   @override
   String get themeColorTitle => '主題色';
@@ -329,6 +329,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gridDensityComfortable => '寬鬆';
 
   @override
+  String get scheduleNarrowLayoutTitle => '窄螢幕課表佈局';
+
+  @override
+  String get scheduleNarrowLayoutSubtitle => '選擇一屏整週或經典單日／多日自適應佈局';
+
+  @override
+  String get scheduleNarrowLayoutCompactWeek => '緊湊整週';
+
+  @override
+  String get scheduleNarrowLayoutAdaptive => '經典自適應';
+
+  @override
   String get scheduleMultiDayCountTitle => '多日模式顯示天數';
 
   @override
@@ -345,7 +357,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scheduleShowEmptyDaysTitle => '顯示無課程日期';
 
   @override
-  String get scheduleShowEmptyDaysSubtitle => '關閉後將直接在有課程的日期之間切換';
+  String get scheduleShowEmptyDaysSubtitle => '僅用於經典自適應佈局；關閉後將在有課程的日期之間切換';
 
   @override
   String get upcomingShowCourseDateTitle => '在倒數旁顯示日期';
@@ -534,7 +546,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidBackgroundSubtitle =>
-      '提醒透過系統鬧鐘觸發，無需保持應用在前台。建議完成以下設定以提高可靠性。';
+      '提醒透過背景定時提醒觸發，無需保持應用在前台。建議完成以下設定以提高可靠性。';
 
   @override
   String get androidCheckReminderPermissions => '檢查提醒權限';
@@ -563,10 +575,6 @@ class AppLocalizationsZh extends AppLocalizations {
       'OriginOS / iQOO 請允許自啟動和背景高耗電，並在最近任務中鎖定 Orbit。';
 
   @override
-  String get androidKillBackgroundHint =>
-      '已在 iQOO V2408A 驗證回到桌面、鎖定螢幕及從最近任務上划後仍可提醒。其他 OriginOS 版本的行為可能不同；在系統設定中真正「強制停止」仍會取消應用鬧鐘。需要時可使用上方「系統鬧鐘」手動備援。';
-
-  @override
   String get debugTitle => '偵錯';
 
   @override
@@ -586,7 +594,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的原生系統鬧鐘。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
+      '使用與課程提醒相同的原生背景定時提醒。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
@@ -786,32 +794,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get nextDayTemplateReset => '恢復預設';
-
-  @override
-  String get enableSystemAlarm => '系統鬧鐘（Android）';
-
-  @override
-  String get enableSystemAlarmSubtitle => '一鍵開啟系統時鐘，為次日第一節課設定鬧鐘';
-
-  @override
-  String get systemAlarmLeadTitle => '鬧鐘提前時間';
-
-  @override
-  String systemAlarmLeadSubtitle(int minutes) {
-    return '比第一節課提前 $minutes 分鐘響鈴';
-  }
-
-  @override
-  String get setTomorrowAlarm => '為明天設定鬧鐘';
-
-  @override
-  String get alarmSetSuccess => '已開啟系統鬧鐘設定';
-
-  @override
-  String get alarmSetFailed => '無法開啟系統鬧鐘';
-
-  @override
-  String get alarmNoClassTomorrow => '明天沒有課程';
 
   @override
   String get enableCheckInReminder => '打卡提醒';
@@ -1222,7 +1204,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String reminderRegisteredAlarmCount(int count) {
-    return '已註冊 $count 條系統鬧鐘';
+    return '已註冊 $count 條背景定時提醒';
   }
 
   @override
@@ -1342,6 +1324,494 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get restoreSettingsDone => '應用設置已還原';
+
+  @override
+  String get addSessionChoiceTitle => '添加課程';
+
+  @override
+  String get addSingleSession => '添加單節課程';
+
+  @override
+  String get addBatchSessions => '批量添加課程';
+
+  @override
+  String get batchAddTitle => '批量添加課程';
+
+  @override
+  String get batchFirstWeekMonday => '第 1 週週一';
+
+  @override
+  String get batchTotalWeeks => '學期總週數';
+
+  @override
+  String get batchSelectedWeeks => '上課週次';
+
+  @override
+  String get batchMeetings => '每週安排';
+
+  @override
+  String get batchAddMeeting => '添加每週安排';
+
+  @override
+  String get batchRemoveMeeting => '刪除此安排';
+
+  @override
+  String get batchSelectAll => '全選';
+
+  @override
+  String get batchSelectOdd => '單週';
+
+  @override
+  String get batchSelectEven => '雙週';
+
+  @override
+  String get batchClearWeeks => '清空';
+
+  @override
+  String batchMeetingTitle(Object index) {
+    return '安排 $index';
+  }
+
+  @override
+  String batchWeekOption(Object week) {
+    return '第 $week 週';
+  }
+
+  @override
+  String get batchRequiredFields => '請填寫課程名稱及每個安排的教室';
+
+  @override
+  String get batchNoWeeks => '請至少選擇一個上課週次';
+
+  @override
+  String get batchNoMeetings => '請至少添加一個每週安排';
+
+  @override
+  String get batchInvalidTime => '每個安排的結束時間必須晚於開始時間';
+
+  @override
+  String get batchMeetingOverlap => '同一天的每週安排不能互相重疊';
+
+  @override
+  String get batchPreviewTitle => '確認批量添加';
+
+  @override
+  String batchPreviewSummary(Object conflicts, Object generated) {
+    return '將生成 $generated 節課程，其中 $conflicts 節已有時間衝突。';
+  }
+
+  @override
+  String get batchSkipConflicts => '跳過衝突';
+
+  @override
+  String get batchOverwriteConflicts => '覆蓋衝突';
+
+  @override
+  String batchCreateResult(Object created, Object overwritten, Object skipped) {
+    return '已添加 $created 節，跳過 $skipped 節，覆蓋 $overwritten 節衝突課程';
+  }
+
+  @override
+  String get courseScopeMeetingFromSelected => '此安排從本節起';
+
+  @override
+  String get courseScopeMeetingAll => '此安排的全部週次';
+
+  @override
+  String get courseScopeCourseCommon => '整門課程的公共信息';
+
+  @override
+  String get backToTop => '返回頂部';
+
+  @override
+  String get scheduleVerticalScaleTitle => '課表縱向高度縮放';
+
+  @override
+  String get scheduleVerticalScaleSubtitle =>
+      '調低可壓縮課表高度，顯示更多課程。與顯示密度組合生效；短課程或較大字體可能限制壓縮程度，以保留課程名和時間刻度的可讀性。';
+
+  @override
+  String get scheduleVerticalScaleReset => '恢復預設';
+
+  @override
+  String get customReminders => '提醒时间自定义';
+
+  @override
+  String get customRemindersSubtitle => '按课程设置独立时间、筛选、文案和重复发送';
+
+  @override
+  String get reminderStrong => '强提醒';
+
+  @override
+  String get reminderStrongConfig => '强提醒配置';
+
+  @override
+  String get reminderStrongDescription => '循环声音提醒；遵循系统音量、勿扰和通知权限';
+
+  @override
+  String get reminderCatchUp => '补发';
+
+  @override
+  String get reminderCatchUpNotice => '此消息为补发，非实时提醒';
+
+  @override
+  String get reminderOriginalTime => '原计划时间';
+
+  @override
+  String get reminderDeliveredTime => '补发时间';
+
+  @override
+  String get reminderAcknowledge => '已知晓';
+
+  @override
+  String get reminderStop => '停止';
+
+  @override
+  String get reminderAdd => '添加规则';
+
+  @override
+  String get reminderEdit => '编辑规则';
+
+  @override
+  String get reminderCopy => '复制';
+
+  @override
+  String get reminderDelete => '删除';
+
+  @override
+  String get reminderSave => '保存';
+
+  @override
+  String get reminderDiscard => '放弃未保存的更改？';
+
+  @override
+  String get reminderKeepEditing => '继续编辑';
+
+  @override
+  String get reminderName => '规则名称';
+
+  @override
+  String get reminderBasis => '时间基准';
+
+  @override
+  String get reminderStart => '课程开始';
+
+  @override
+  String get reminderEnd => '课程结束';
+
+  @override
+  String get reminderDate => '课程日期的固定时刻';
+
+  @override
+  String get reminderBefore => '提前';
+
+  @override
+  String get reminderAfter => '延后';
+
+  @override
+  String get reminderDays => '天';
+
+  @override
+  String get reminderHours => '小时';
+
+  @override
+  String get reminderMinutes => '分钟';
+
+  @override
+  String get reminderSeconds => '秒';
+
+  @override
+  String get reminderScope => '课程范围';
+
+  @override
+  String get reminderAll => '全部课程';
+
+  @override
+  String get reminderSeries => '课程系列';
+
+  @override
+  String get reminderSessions => '单节课程';
+
+  @override
+  String get reminderWeekdays => '星期筛选';
+
+  @override
+  String get reminderTypes => '课程类型筛选';
+
+  @override
+  String get reminderDateRange => '课程日期范围';
+
+  @override
+  String get reminderClearFilter => '清除日期筛选';
+
+  @override
+  String get reminderTitle => '通知标题';
+
+  @override
+  String get reminderBody => '通知正文';
+
+  @override
+  String get reminderCount => '发送次数（1–100，包含首次）';
+
+  @override
+  String get reminderInterval => '重复间隔（秒，至少 1）';
+
+  @override
+  String get reminderUntilAck => '确认后停止，最多发送指定次数';
+
+  @override
+  String get reminderInherit => '继承全局设置';
+
+  @override
+  String get reminderNormal => '普通提醒';
+
+  @override
+  String get reminderPreview => '匹配课程与发送预览';
+
+  @override
+  String get reminderTimingNotice => '秒级时间为计划时间，系统可能延迟发送。新建或重新启用后只安排未来发送。';
+
+  @override
+  String get reminderInvalid => '请检查数字范围、必填名称及无效占位符';
+
+  @override
+  String get reminderSound => '声音';
+
+  @override
+  String get reminderVibration => '震动';
+
+  @override
+  String get reminderDuration => '持续时间（5–300 秒）';
+
+  @override
+  String get reminderSystemSound => '选择系统铃声';
+
+  @override
+  String get reminderImportSound => '导入音频（MP3／M4A／WAV，最多 5 MiB）';
+
+  @override
+  String get reminderPreviewSound => '试听 / 停止';
+
+  @override
+  String get reminderOverride => '单独配置强提醒';
+
+  @override
+  String get reminderEmpty => '尚无自定义提醒规则';
+
+  @override
+  String get reminderSoundFallback => '缺失或不支持的声音已回退到系统默认音。';
+
+  @override
+  String get reminderMaintenanceFailed => '后台维护注册失败，完全退出后的后续排程可能无法补充。请重试。';
+
+  @override
+  String get reminderStrongDegraded => '强提醒无法播放，已保留普通通知。请检查系统限制和声音配置。';
+
+  @override
+  String get reminderVariableLabels =>
+      '课程名|教室|课程日期|星期|开始时间|结束时间|教师|课程代码|发送序号|总次数|计划发送时间';
+
+  @override
+  String get reminderWeekdayNames => '星期一|星期二|星期三|星期四|星期五|星期六|星期日';
+
+  @override
+  String get reminderDiscardAction => '放弃更改';
+
+  @override
+  String get reminderAudioInvalid => '音频不可播放，或文件格式、大小不符合要求。';
+
+  @override
+  String get reminderDateOffset => '課程日期偏移';
+
+  @override
+  String get reminderSameDay => '課程當天';
+
+  @override
+  String get reminderFixedTime => '固定時刻（時／分／秒）';
+
+  @override
+  String get reminderFilterWeekdays => '週一|週二|週三|週四|週五|週六|週日';
+
+  @override
+  String get reminderPreviousDay => '前一天';
+
+  @override
+  String get reminderNextDay => '後一天';
+
+  @override
+  String get scheduleFitPage => '自適應頁面';
+
+  @override
+  String get scheduleFitPageHint => '完整顯示 08:00–22:00；空間不足時省略課程文字，點擊查看詳情。';
+
+  @override
+  String get themeMulticolor => '多色配色';
+
+  @override
+  String get themeMulticolorOff => '原有配色';
+
+  @override
+  String get themeSchemeNames => '鮮明|富表現力|彩虹|果沙|內容|忠實|中性|黑白';
+
+  @override
+  String get templateLeadMinutes => '提前分鐘';
+
+  @override
+  String get templateCourseCount => '課程數量';
+
+  @override
+  String get palettePrimary => '主色';
+
+  @override
+  String get paletteSecondary => '輔色';
+
+  @override
+  String get paletteTertiary => '第三色';
+
+  @override
+  String get paletteColors => '課程調色盤';
+
+  @override
+  String get paletteCustom => '自訂搭配';
+
+  @override
+  String get paletteDuplicate => '調色盤已包含此顏色';
+
+  @override
+  String get paletteUsePrimary => '設為主色';
+
+  @override
+  String get paletteUseSecondary => '設為輔色';
+
+  @override
+  String get paletteUseTertiary => '設為第三色';
+
+  @override
+  String get paletteMoveEarlier => '前移';
+
+  @override
+  String get paletteMoveLater => '後移';
+
+  @override
+  String get paletteReset => '恢復多色配色預設設定？';
+
+  @override
+  String get palettePreview => '效果預覽';
+
+  @override
+  String get paletteSingle => '單色';
+
+  @override
+  String get paletteMode => '介面配色';
+
+  @override
+  String get paletteAutomatic => '依方案自動產生';
+
+  @override
+  String get notificationWarning => '未開啟通知權限，無法接收提醒。';
+
+  @override
+  String get notificationOpen => '去開啟';
+
+  @override
+  String get notificationIgnore => '忽略且不再提示';
+
+  @override
+  String get notificationIgnoreTitle => '忽略通知權限警告？';
+
+  @override
+  String get notificationIgnoreBody => '未開啟通知權限，提醒功能將不會生效。你可以在設定中恢復此警告。';
+
+  @override
+  String get notificationIgnoreConfirm => '確認忽略';
+
+  @override
+  String get notificationRestore => '顯示權限警告';
+
+  @override
+  String get notificationRestoreDescription => '在本裝置未開啟通知權限時提示';
+
+  @override
+  String get notificationCheckFailed => '無法查詢通知權限';
+
+  @override
+  String get notificationAllowed => '通知權限已開啟';
+
+  @override
+  String get notificationPermissions => '通知權限';
+
+  @override
+  String get strongTargets => '強提醒適用範圍';
+
+  @override
+  String get strongClassLead => '課前提醒';
+
+  @override
+  String get strongCheckIn => '簽到提醒';
+
+  @override
+  String get strongSummary => '次日彙總';
+
+  @override
+  String get strongCustom => '自訂規則';
+
+  @override
+  String get strongCourses => '課程範圍';
+
+  @override
+  String get strongAllRules => '所有繼承規則，包括之後新增的規則';
+
+  @override
+  String get strongRuleOverrideNotice => '規則明確設定為強提醒或普通提醒時，優先於此處的範圍設定。';
+
+  @override
+  String get strongSummaryNotice => '限定課程範圍時，彙總包含任一選中課程才使用強提醒。';
+
+  @override
+  String get settingsNavigationGroup => '日期導覽';
+
+  @override
+  String get settingsLayoutGroup => '課表版面';
+
+  @override
+  String get settingsMaintenanceGroup => '權限與維護';
+
+  @override
+  String get settingsDangerGroup => '資料刪除';
+
+  @override
+  String get settingsDiagnosticsGroup => '診斷';
+
+  @override
+  String get settingsBackupGroup => '備份與匯出';
+
+  @override
+  String get paletteEdit => '編輯顏色';
+
+  @override
+  String get paletteHint => '點擊顏色選擇操作，長按刪除。';
+
+  @override
+  String get actionConfirm => '確認';
+
+  @override
+  String get paletteTonalSpot => '柔和';
+
+  @override
+  String get paletteHue => '色相';
+
+  @override
+  String get paletteChroma => '鮮豔度';
+
+  @override
+  String get paletteTone => '明度';
+
+  @override
+  String get paletteScheme => '配色方案';
+
+  @override
+  String get paletteSchemeDescriptions =>
+      '柔和协调的三色|鲜明且有对比的三色|旋转色相的表现力三色|均衡分布的三色色谱|清新的相邻色搭配|保留种子特色的柔和对比|保留种子特色的互补对比|低饱和，颜色区别较轻|灰阶，不使用色相对比';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -1600,16 +2070,16 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get sectionAppearance => '外观';
 
   @override
-  String get themeStyleTitle => '主题风格';
+  String get themeStyleTitle => '课程配色';
 
   @override
   String get themeStyleSubtitle => '使用统一强调色或为不同课程自动配色';
 
   @override
-  String get themeStyleStandard => '标准';
+  String get themeStyleStandard => '统一颜色';
 
   @override
-  String get themeStyleColorful => '彩色';
+  String get themeStyleColorful => '自动分色';
 
   @override
   String get themeColorTitle => '主题色';
@@ -1669,6 +2139,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get gridDensityComfortable => '宽松';
 
   @override
+  String get scheduleNarrowLayoutTitle => '窄屏课表布局';
+
+  @override
+  String get scheduleNarrowLayoutSubtitle => '选择一屏整周或经典单日/多日自适应布局';
+
+  @override
+  String get scheduleNarrowLayoutCompactWeek => '紧凑整周';
+
+  @override
+  String get scheduleNarrowLayoutAdaptive => '经典自适应';
+
+  @override
   String get scheduleMultiDayCountTitle => '多日模式显示天数';
 
   @override
@@ -1685,7 +2167,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get scheduleShowEmptyDaysTitle => '显示无课程日期';
 
   @override
-  String get scheduleShowEmptyDaysSubtitle => '关闭后将直接在有课程的日期之间切换';
+  String get scheduleShowEmptyDaysSubtitle => '仅用于经典自适应布局；关闭后将在有课程的日期之间切换';
 
   @override
   String get upcomingShowCourseDateTitle => '在倒计时旁显示日期';
@@ -1874,7 +2356,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get androidBackgroundSubtitle =>
-      '提醒通过系统闹钟触发，无需保持应用在前台。建议完成以下设置以提高可靠性。';
+      '提醒通过后台定时提醒触发，无需保持应用在前台。建议完成以下设置以提高可靠性。';
 
   @override
   String get androidCheckReminderPermissions => '检查提醒权限';
@@ -1903,10 +2385,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
       'OriginOS / iQOO 请允许自启动和后台高耗电，并在最近任务中锁定 Orbit。';
 
   @override
-  String get androidKillBackgroundHint =>
-      '已在 iQOO V2408A 验证回到桌面、锁屏及从最近任务上划后仍可提醒。其他 OriginOS 版本的行为可能不同；在系统设置中真正“强行停止”仍会取消应用闹钟。需要时可使用上方“系统闹钟”手动兜底。';
-
-  @override
   String get debugTitle => '调试';
 
   @override
@@ -1926,7 +2404,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用与课程提醒相同的原生系统闹钟。安排后请回到桌面或锁屏等待 1 分钟。';
+      '使用与课程提醒相同的原生后台定时提醒。安排后请回到桌面或锁屏等待 1 分钟。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
@@ -2126,32 +2604,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get nextDayTemplateReset => '恢复默认';
-
-  @override
-  String get enableSystemAlarm => '系统闹钟（Android）';
-
-  @override
-  String get enableSystemAlarmSubtitle => '一键打开系统时钟，为次日第一节课设置闹钟';
-
-  @override
-  String get systemAlarmLeadTitle => '闹钟提前时间';
-
-  @override
-  String systemAlarmLeadSubtitle(int minutes) {
-    return '比第一节课提前 $minutes 分钟响铃';
-  }
-
-  @override
-  String get setTomorrowAlarm => '为明天设置闹钟';
-
-  @override
-  String get alarmSetSuccess => '已打开系统闹钟设置';
-
-  @override
-  String get alarmSetFailed => '无法打开系统闹钟';
-
-  @override
-  String get alarmNoClassTomorrow => '明天没有课程';
 
   @override
   String get enableCheckInReminder => '打卡提醒';
@@ -2562,7 +3014,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String reminderRegisteredAlarmCount(int count) {
-    return '已注册 $count 条系统闹钟';
+    return '已注册 $count 条后台定时提醒';
   }
 
   @override
@@ -2682,6 +3134,494 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get restoreSettingsDone => '应用设置已恢复';
+
+  @override
+  String get addSessionChoiceTitle => '添加课程';
+
+  @override
+  String get addSingleSession => '添加单节课程';
+
+  @override
+  String get addBatchSessions => '批量添加课程';
+
+  @override
+  String get batchAddTitle => '批量添加课程';
+
+  @override
+  String get batchFirstWeekMonday => '第 1 周周一';
+
+  @override
+  String get batchTotalWeeks => '学期总周数';
+
+  @override
+  String get batchSelectedWeeks => '上课周次';
+
+  @override
+  String get batchMeetings => '每周安排';
+
+  @override
+  String get batchAddMeeting => '添加每周安排';
+
+  @override
+  String get batchRemoveMeeting => '删除此安排';
+
+  @override
+  String get batchSelectAll => '全选';
+
+  @override
+  String get batchSelectOdd => '单周';
+
+  @override
+  String get batchSelectEven => '双周';
+
+  @override
+  String get batchClearWeeks => '清空';
+
+  @override
+  String batchMeetingTitle(Object index) {
+    return '安排 $index';
+  }
+
+  @override
+  String batchWeekOption(Object week) {
+    return '第 $week 周';
+  }
+
+  @override
+  String get batchRequiredFields => '请填写课程名称及每个安排的教室';
+
+  @override
+  String get batchNoWeeks => '请至少选择一个上课周次';
+
+  @override
+  String get batchNoMeetings => '请至少添加一个每周安排';
+
+  @override
+  String get batchInvalidTime => '每个安排的结束时间必须晚于开始时间';
+
+  @override
+  String get batchMeetingOverlap => '同一天的每周安排不能互相重叠';
+
+  @override
+  String get batchPreviewTitle => '确认批量添加';
+
+  @override
+  String batchPreviewSummary(Object conflicts, Object generated) {
+    return '将生成 $generated 节课程，其中 $conflicts 节已有时间冲突。';
+  }
+
+  @override
+  String get batchSkipConflicts => '跳过冲突';
+
+  @override
+  String get batchOverwriteConflicts => '覆盖冲突';
+
+  @override
+  String batchCreateResult(Object created, Object overwritten, Object skipped) {
+    return '已添加 $created 节，跳过 $skipped 节，覆盖 $overwritten 节冲突课程';
+  }
+
+  @override
+  String get courseScopeMeetingFromSelected => '此安排从本节起';
+
+  @override
+  String get courseScopeMeetingAll => '此安排的全部周次';
+
+  @override
+  String get courseScopeCourseCommon => '整门课程的公共信息';
+
+  @override
+  String get backToTop => '返回顶部';
+
+  @override
+  String get scheduleVerticalScaleTitle => '课表纵向高度缩放';
+
+  @override
+  String get scheduleVerticalScaleSubtitle =>
+      '调低可压缩课表高度，显示更多课程。与显示密度组合生效；短课程或较大字体可能限制压缩程度，以保留课程名和时间刻度的可读性。';
+
+  @override
+  String get scheduleVerticalScaleReset => '恢复默认';
+
+  @override
+  String get customReminders => '提醒时间自定义';
+
+  @override
+  String get customRemindersSubtitle => '按课程设置独立时间、筛选、文案和重复发送';
+
+  @override
+  String get reminderStrong => '强提醒';
+
+  @override
+  String get reminderStrongConfig => '强提醒配置';
+
+  @override
+  String get reminderStrongDescription => '循环声音提醒；遵循系统音量、勿扰和通知权限';
+
+  @override
+  String get reminderCatchUp => '补发';
+
+  @override
+  String get reminderCatchUpNotice => '此消息为补发，非实时提醒';
+
+  @override
+  String get reminderOriginalTime => '原计划时间';
+
+  @override
+  String get reminderDeliveredTime => '补发时间';
+
+  @override
+  String get reminderAcknowledge => '已知晓';
+
+  @override
+  String get reminderStop => '停止';
+
+  @override
+  String get reminderAdd => '添加规则';
+
+  @override
+  String get reminderEdit => '编辑规则';
+
+  @override
+  String get reminderCopy => '复制';
+
+  @override
+  String get reminderDelete => '删除';
+
+  @override
+  String get reminderSave => '保存';
+
+  @override
+  String get reminderDiscard => '放弃未保存的更改？';
+
+  @override
+  String get reminderKeepEditing => '继续编辑';
+
+  @override
+  String get reminderName => '规则名称';
+
+  @override
+  String get reminderBasis => '时间基准';
+
+  @override
+  String get reminderStart => '课程开始';
+
+  @override
+  String get reminderEnd => '课程结束';
+
+  @override
+  String get reminderDate => '课程日期的固定时刻';
+
+  @override
+  String get reminderBefore => '提前';
+
+  @override
+  String get reminderAfter => '延后';
+
+  @override
+  String get reminderDays => '天';
+
+  @override
+  String get reminderHours => '小时';
+
+  @override
+  String get reminderMinutes => '分钟';
+
+  @override
+  String get reminderSeconds => '秒';
+
+  @override
+  String get reminderScope => '课程范围';
+
+  @override
+  String get reminderAll => '全部课程';
+
+  @override
+  String get reminderSeries => '课程系列';
+
+  @override
+  String get reminderSessions => '单节课程';
+
+  @override
+  String get reminderWeekdays => '星期筛选';
+
+  @override
+  String get reminderTypes => '课程类型筛选';
+
+  @override
+  String get reminderDateRange => '课程日期范围';
+
+  @override
+  String get reminderClearFilter => '清除日期筛选';
+
+  @override
+  String get reminderTitle => '通知标题';
+
+  @override
+  String get reminderBody => '通知正文';
+
+  @override
+  String get reminderCount => '发送次数（1–100，包含首次）';
+
+  @override
+  String get reminderInterval => '重复间隔（秒，至少 1）';
+
+  @override
+  String get reminderUntilAck => '确认后停止，最多发送指定次数';
+
+  @override
+  String get reminderInherit => '继承全局设置';
+
+  @override
+  String get reminderNormal => '普通提醒';
+
+  @override
+  String get reminderPreview => '匹配课程与发送预览';
+
+  @override
+  String get reminderTimingNotice => '秒级时间为计划时间，系统可能延迟发送。新建或重新启用后只安排未来发送。';
+
+  @override
+  String get reminderInvalid => '请检查数字范围、必填名称及无效占位符';
+
+  @override
+  String get reminderSound => '声音';
+
+  @override
+  String get reminderVibration => '震动';
+
+  @override
+  String get reminderDuration => '持续时间（5–300 秒）';
+
+  @override
+  String get reminderSystemSound => '选择系统铃声';
+
+  @override
+  String get reminderImportSound => '导入音频（MP3／M4A／WAV，最多 5 MiB）';
+
+  @override
+  String get reminderPreviewSound => '试听 / 停止';
+
+  @override
+  String get reminderOverride => '单独配置强提醒';
+
+  @override
+  String get reminderEmpty => '尚无自定义提醒规则';
+
+  @override
+  String get reminderSoundFallback => '缺失或不支持的声音已回退到系统默认音。';
+
+  @override
+  String get reminderMaintenanceFailed => '后台维护注册失败，完全退出后的后续排程可能无法补充。请重试。';
+
+  @override
+  String get reminderStrongDegraded => '强提醒无法播放，已保留普通通知。请检查系统限制和声音配置。';
+
+  @override
+  String get reminderVariableLabels =>
+      '课程名|教室|课程日期|星期|开始时间|结束时间|教师|课程代码|发送序号|总次数|计划发送时间';
+
+  @override
+  String get reminderWeekdayNames => '星期一|星期二|星期三|星期四|星期五|星期六|星期日';
+
+  @override
+  String get reminderDiscardAction => '放弃更改';
+
+  @override
+  String get reminderAudioInvalid => '音频不可播放，或文件格式、大小不符合要求。';
+
+  @override
+  String get reminderDateOffset => '课程日期偏移';
+
+  @override
+  String get reminderSameDay => '课程当天';
+
+  @override
+  String get reminderFixedTime => '固定时刻（时／分／秒）';
+
+  @override
+  String get reminderFilterWeekdays => '周一|周二|周三|周四|周五|周六|周日';
+
+  @override
+  String get reminderPreviousDay => '前一天';
+
+  @override
+  String get reminderNextDay => '后一天';
+
+  @override
+  String get scheduleFitPage => '自适应页面';
+
+  @override
+  String get scheduleFitPageHint => '完整显示 08:00–22:00；空间不足时省略课程文字，点击查看详情。';
+
+  @override
+  String get themeMulticolor => '多色配色';
+
+  @override
+  String get themeMulticolorOff => '原有配色';
+
+  @override
+  String get themeSchemeNames => '鲜明|富表现力|彩虹|果沙|内容|忠实|中性|黑白';
+
+  @override
+  String get templateLeadMinutes => '提前分钟';
+
+  @override
+  String get templateCourseCount => '课程数量';
+
+  @override
+  String get palettePrimary => '主色';
+
+  @override
+  String get paletteSecondary => '辅色';
+
+  @override
+  String get paletteTertiary => '第三色';
+
+  @override
+  String get paletteColors => '课程调色板';
+
+  @override
+  String get paletteCustom => '自定义搭配';
+
+  @override
+  String get paletteDuplicate => '调色板已包含此颜色';
+
+  @override
+  String get paletteUsePrimary => '设为主色';
+
+  @override
+  String get paletteUseSecondary => '设为辅色';
+
+  @override
+  String get paletteUseTertiary => '设为第三色';
+
+  @override
+  String get paletteMoveEarlier => '前移';
+
+  @override
+  String get paletteMoveLater => '后移';
+
+  @override
+  String get paletteReset => '恢复多色配色默认设置？';
+
+  @override
+  String get palettePreview => '效果预览';
+
+  @override
+  String get paletteSingle => '单色';
+
+  @override
+  String get paletteMode => '界面配色';
+
+  @override
+  String get paletteAutomatic => '根据方案自动生成';
+
+  @override
+  String get notificationWarning => '未开启通知权限，无法接收提醒。';
+
+  @override
+  String get notificationOpen => '去开启';
+
+  @override
+  String get notificationIgnore => '忽略且不再提示';
+
+  @override
+  String get notificationIgnoreTitle => '忽略通知权限警告？';
+
+  @override
+  String get notificationIgnoreBody => '未开启通知权限，提醒功能将不会生效。你可以在设置中恢复此警告。';
+
+  @override
+  String get notificationIgnoreConfirm => '确认忽略';
+
+  @override
+  String get notificationRestore => '显示权限警告';
+
+  @override
+  String get notificationRestoreDescription => '在本设备未开启通知权限时提示';
+
+  @override
+  String get notificationCheckFailed => '无法查询通知权限';
+
+  @override
+  String get notificationAllowed => '通知权限已开启';
+
+  @override
+  String get notificationPermissions => '通知权限';
+
+  @override
+  String get strongTargets => '强提醒适用范围';
+
+  @override
+  String get strongClassLead => '课前提醒';
+
+  @override
+  String get strongCheckIn => '签到提醒';
+
+  @override
+  String get strongSummary => '次日汇总';
+
+  @override
+  String get strongCustom => '自定义规则';
+
+  @override
+  String get strongCourses => '课程范围';
+
+  @override
+  String get strongAllRules => '所有继承规则，包括之后新增的规则';
+
+  @override
+  String get strongRuleOverrideNotice => '规则明确设置为强提醒或普通提醒时，优先于此处的范围配置。';
+
+  @override
+  String get strongSummaryNotice => '限定课程范围时，汇总包含任一选中课程才使用强提醒。';
+
+  @override
+  String get settingsNavigationGroup => '日期导航';
+
+  @override
+  String get settingsLayoutGroup => '课表布局';
+
+  @override
+  String get settingsMaintenanceGroup => '权限与维护';
+
+  @override
+  String get settingsDangerGroup => '数据删除';
+
+  @override
+  String get settingsDiagnosticsGroup => '诊断';
+
+  @override
+  String get settingsBackupGroup => '备份与导出';
+
+  @override
+  String get paletteEdit => '编辑颜色';
+
+  @override
+  String get paletteHint => '点击颜色选择操作，长按删除。';
+
+  @override
+  String get actionConfirm => '确认';
+
+  @override
+  String get paletteTonalSpot => '柔和';
+
+  @override
+  String get paletteHue => '色相';
+
+  @override
+  String get paletteChroma => '鲜艳度';
+
+  @override
+  String get paletteTone => '明度';
+
+  @override
+  String get paletteScheme => '配色方案';
+
+  @override
+  String get paletteSchemeDescriptions =>
+      '柔和协调的三色|鲜明且有对比的三色|旋转色相的表现力三色|均衡分布的三色色谱|清新的相邻色搭配|保留种子特色的柔和对比|保留种子特色的互补对比|低饱和，颜色区别较轻|灰阶，不使用色相对比';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2940,16 +3880,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sectionAppearance => '外觀';
 
   @override
-  String get themeStyleTitle => '主題風格';
+  String get themeStyleTitle => '課程配色';
 
   @override
   String get themeStyleSubtitle => '使用統一強調色或為不同課程自動配色';
 
   @override
-  String get themeStyleStandard => '標準';
+  String get themeStyleStandard => '統一顏色';
 
   @override
-  String get themeStyleColorful => '彩色';
+  String get themeStyleColorful => '自動分色';
 
   @override
   String get themeColorTitle => '主題色';
@@ -3009,6 +3949,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get gridDensityComfortable => '寬鬆';
 
   @override
+  String get scheduleNarrowLayoutTitle => '窄螢幕課表佈局';
+
+  @override
+  String get scheduleNarrowLayoutSubtitle => '選擇一屏整週或經典單日／多日自適應佈局';
+
+  @override
+  String get scheduleNarrowLayoutCompactWeek => '緊湊整週';
+
+  @override
+  String get scheduleNarrowLayoutAdaptive => '經典自適應';
+
+  @override
   String get scheduleMultiDayCountTitle => '多日模式顯示天數';
 
   @override
@@ -3025,7 +3977,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get scheduleShowEmptyDaysTitle => '顯示無課程日期';
 
   @override
-  String get scheduleShowEmptyDaysSubtitle => '關閉後將直接在有課程的日期之間切換';
+  String get scheduleShowEmptyDaysSubtitle => '僅用於經典自適應佈局；關閉後將在有課程的日期之間切換';
 
   @override
   String get upcomingShowCourseDateTitle => '在倒數旁顯示日期';
@@ -3214,7 +4166,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get androidBackgroundSubtitle =>
-      '提醒透過系統鬧鐘觸發，無需保持應用在前台。建議完成以下設定以提高可靠性。';
+      '提醒透過背景定時提醒觸發，無需保持應用在前台。建議完成以下設定以提高可靠性。';
 
   @override
   String get androidCheckReminderPermissions => '檢查提醒權限';
@@ -3243,10 +4195,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       'OriginOS / iQOO 請允許自啟動和背景高耗電，並在最近任務中鎖定 Orbit。';
 
   @override
-  String get androidKillBackgroundHint =>
-      '已在 iQOO V2408A 驗證回到桌面、鎖定螢幕及從最近任務上划後仍可提醒。其他 OriginOS 版本的行為可能不同；在系統設定中真正「強制停止」仍會取消應用鬧鐘。需要時可使用上方「系統鬧鐘」手動備援。';
-
-  @override
   String get debugTitle => '偵錯';
 
   @override
@@ -3266,7 +4214,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的原生系統鬧鐘。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
+      '使用與課程提醒相同的原生背景定時提醒。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
@@ -3466,32 +4414,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get nextDayTemplateReset => '恢復預設';
-
-  @override
-  String get enableSystemAlarm => '系統鬧鐘（Android）';
-
-  @override
-  String get enableSystemAlarmSubtitle => '一鍵開啟系統時鐘，為次日第一節課設定鬧鐘';
-
-  @override
-  String get systemAlarmLeadTitle => '鬧鐘提前時間';
-
-  @override
-  String systemAlarmLeadSubtitle(int minutes) {
-    return '比第一節課提前 $minutes 分鐘響鈴';
-  }
-
-  @override
-  String get setTomorrowAlarm => '為明天設定鬧鐘';
-
-  @override
-  String get alarmSetSuccess => '已開啟系統鬧鐘設定';
-
-  @override
-  String get alarmSetFailed => '無法開啟系統鬧鐘';
-
-  @override
-  String get alarmNoClassTomorrow => '明天沒有課程';
 
   @override
   String get enableCheckInReminder => '打卡提醒';
@@ -3902,7 +4824,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String reminderRegisteredAlarmCount(int count) {
-    return '已註冊 $count 條系統鬧鐘';
+    return '已註冊 $count 條背景定時提醒';
   }
 
   @override
@@ -4022,4 +4944,492 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get restoreSettingsDone => '應用設置已還原';
+
+  @override
+  String get addSessionChoiceTitle => '添加課程';
+
+  @override
+  String get addSingleSession => '添加單節課程';
+
+  @override
+  String get addBatchSessions => '批量添加課程';
+
+  @override
+  String get batchAddTitle => '批量添加課程';
+
+  @override
+  String get batchFirstWeekMonday => '第 1 週週一';
+
+  @override
+  String get batchTotalWeeks => '學期總週數';
+
+  @override
+  String get batchSelectedWeeks => '上課週次';
+
+  @override
+  String get batchMeetings => '每週安排';
+
+  @override
+  String get batchAddMeeting => '添加每週安排';
+
+  @override
+  String get batchRemoveMeeting => '刪除此安排';
+
+  @override
+  String get batchSelectAll => '全選';
+
+  @override
+  String get batchSelectOdd => '單週';
+
+  @override
+  String get batchSelectEven => '雙週';
+
+  @override
+  String get batchClearWeeks => '清空';
+
+  @override
+  String batchMeetingTitle(Object index) {
+    return '安排 $index';
+  }
+
+  @override
+  String batchWeekOption(Object week) {
+    return '第 $week 週';
+  }
+
+  @override
+  String get batchRequiredFields => '請填寫課程名稱及每個安排的教室';
+
+  @override
+  String get batchNoWeeks => '請至少選擇一個上課週次';
+
+  @override
+  String get batchNoMeetings => '請至少添加一個每週安排';
+
+  @override
+  String get batchInvalidTime => '每個安排的結束時間必須晚於開始時間';
+
+  @override
+  String get batchMeetingOverlap => '同一天的每週安排不能互相重疊';
+
+  @override
+  String get batchPreviewTitle => '確認批量添加';
+
+  @override
+  String batchPreviewSummary(Object conflicts, Object generated) {
+    return '將生成 $generated 節課程，其中 $conflicts 節已有時間衝突。';
+  }
+
+  @override
+  String get batchSkipConflicts => '跳過衝突';
+
+  @override
+  String get batchOverwriteConflicts => '覆蓋衝突';
+
+  @override
+  String batchCreateResult(Object created, Object overwritten, Object skipped) {
+    return '已添加 $created 節，跳過 $skipped 節，覆蓋 $overwritten 節衝突課程';
+  }
+
+  @override
+  String get courseScopeMeetingFromSelected => '此安排從本節起';
+
+  @override
+  String get courseScopeMeetingAll => '此安排的全部週次';
+
+  @override
+  String get courseScopeCourseCommon => '整門課程的公共信息';
+
+  @override
+  String get backToTop => '返回頂部';
+
+  @override
+  String get scheduleVerticalScaleTitle => '課表縱向高度縮放';
+
+  @override
+  String get scheduleVerticalScaleSubtitle =>
+      '調低可壓縮課表高度，顯示更多課程。與顯示密度組合生效；短課程或較大字體可能限制壓縮程度，以保留課程名和時間刻度的可讀性。';
+
+  @override
+  String get scheduleVerticalScaleReset => '恢復預設';
+
+  @override
+  String get customReminders => '提醒時間自訂';
+
+  @override
+  String get customRemindersSubtitle => '按課程設定獨立時間、篩選、文案與重複發送';
+
+  @override
+  String get reminderStrong => '強提醒';
+
+  @override
+  String get reminderStrongConfig => '強提醒設定';
+
+  @override
+  String get reminderStrongDescription => '循環聲音提醒；遵循系統音量、勿擾與通知權限';
+
+  @override
+  String get reminderCatchUp => '補發';
+
+  @override
+  String get reminderCatchUpNotice => '此訊息為補發，非即時提醒';
+
+  @override
+  String get reminderOriginalTime => '原計劃時間';
+
+  @override
+  String get reminderDeliveredTime => '補發時間';
+
+  @override
+  String get reminderAcknowledge => '已知曉';
+
+  @override
+  String get reminderStop => '停止';
+
+  @override
+  String get reminderAdd => '新增規則';
+
+  @override
+  String get reminderEdit => '編輯規則';
+
+  @override
+  String get reminderCopy => '複製';
+
+  @override
+  String get reminderDelete => '刪除';
+
+  @override
+  String get reminderSave => '儲存';
+
+  @override
+  String get reminderDiscard => '捨棄未儲存的變更？';
+
+  @override
+  String get reminderKeepEditing => '繼續編輯';
+
+  @override
+  String get reminderName => '規則名稱';
+
+  @override
+  String get reminderBasis => '時間基準';
+
+  @override
+  String get reminderStart => '課程開始';
+
+  @override
+  String get reminderEnd => '課程結束';
+
+  @override
+  String get reminderDate => '課程日期的固定時刻';
+
+  @override
+  String get reminderBefore => '提前';
+
+  @override
+  String get reminderAfter => '延後';
+
+  @override
+  String get reminderDays => '天';
+
+  @override
+  String get reminderHours => '小時';
+
+  @override
+  String get reminderMinutes => '分鐘';
+
+  @override
+  String get reminderSeconds => '秒';
+
+  @override
+  String get reminderScope => '課程範圍';
+
+  @override
+  String get reminderAll => '全部課程';
+
+  @override
+  String get reminderSeries => '課程系列';
+
+  @override
+  String get reminderSessions => '單節課程';
+
+  @override
+  String get reminderWeekdays => '星期篩選';
+
+  @override
+  String get reminderTypes => '課程類型篩選';
+
+  @override
+  String get reminderDateRange => '課程日期範圍';
+
+  @override
+  String get reminderClearFilter => '清除日期篩選';
+
+  @override
+  String get reminderTitle => '通知標題';
+
+  @override
+  String get reminderBody => '通知內文';
+
+  @override
+  String get reminderCount => '發送次數（1–100，包含首次）';
+
+  @override
+  String get reminderInterval => '重複間隔（秒，至少 1）';
+
+  @override
+  String get reminderUntilAck => '確認後停止，最多發送指定次數';
+
+  @override
+  String get reminderInherit => '繼承全域設定';
+
+  @override
+  String get reminderNormal => '一般提醒';
+
+  @override
+  String get reminderPreview => '符合課程與發送預覽';
+
+  @override
+  String get reminderTimingNotice => '秒級時間為計劃時間，系統可能延遲發送。新增或重新啟用後僅安排未來發送。';
+
+  @override
+  String get reminderInvalid => '請檢查數字範圍、必填名稱與無效預留位置';
+
+  @override
+  String get reminderSound => '聲音';
+
+  @override
+  String get reminderVibration => '震動';
+
+  @override
+  String get reminderDuration => '持續時間（5–300 秒）';
+
+  @override
+  String get reminderSystemSound => '選擇系統鈴聲';
+
+  @override
+  String get reminderImportSound => '匯入音訊（MP3／M4A／WAV，最多 5 MiB）';
+
+  @override
+  String get reminderPreviewSound => '試聽 / 停止';
+
+  @override
+  String get reminderOverride => '單獨設定強提醒';
+
+  @override
+  String get reminderEmpty => '尚無自訂提醒規則';
+
+  @override
+  String get reminderSoundFallback => '缺失或不支援的聲音已改用系統預設音。';
+
+  @override
+  String get reminderMaintenanceFailed => '背景維護註冊失敗，完全結束後的後續排程可能無法補充。請重試。';
+
+  @override
+  String get reminderStrongDegraded => '強提醒無法播放，已保留一般通知。請檢查系統限制與聲音設定。';
+
+  @override
+  String get reminderVariableLabels =>
+      '課程名|教室|課程日期|星期|開始時間|結束時間|教師|課程代碼|發送序號|總次數|計劃發送時間';
+
+  @override
+  String get reminderWeekdayNames => '星期一|星期二|星期三|星期四|星期五|星期六|星期日';
+
+  @override
+  String get reminderDiscardAction => '捨棄變更';
+
+  @override
+  String get reminderAudioInvalid => '音訊無法播放，或檔案格式、大小不符合要求。';
+
+  @override
+  String get reminderDateOffset => '課程日期偏移';
+
+  @override
+  String get reminderSameDay => '課程當天';
+
+  @override
+  String get reminderFixedTime => '固定時刻（時／分／秒）';
+
+  @override
+  String get reminderFilterWeekdays => '週一|週二|週三|週四|週五|週六|週日';
+
+  @override
+  String get reminderPreviousDay => '前一天';
+
+  @override
+  String get reminderNextDay => '後一天';
+
+  @override
+  String get scheduleFitPage => '自適應頁面';
+
+  @override
+  String get scheduleFitPageHint => '完整顯示 08:00–22:00；空間不足時省略課程文字，點擊查看詳情。';
+
+  @override
+  String get themeMulticolor => '多色配色';
+
+  @override
+  String get themeMulticolorOff => '原有配色';
+
+  @override
+  String get themeSchemeNames => '鮮明|富表現力|彩虹|果沙|內容|忠實|中性|黑白';
+
+  @override
+  String get templateLeadMinutes => '提前分鐘';
+
+  @override
+  String get templateCourseCount => '課程數量';
+
+  @override
+  String get palettePrimary => '主色';
+
+  @override
+  String get paletteSecondary => '輔色';
+
+  @override
+  String get paletteTertiary => '第三色';
+
+  @override
+  String get paletteColors => '課程調色盤';
+
+  @override
+  String get paletteCustom => '自訂搭配';
+
+  @override
+  String get paletteDuplicate => '調色盤已包含此顏色';
+
+  @override
+  String get paletteUsePrimary => '設為主色';
+
+  @override
+  String get paletteUseSecondary => '設為輔色';
+
+  @override
+  String get paletteUseTertiary => '設為第三色';
+
+  @override
+  String get paletteMoveEarlier => '前移';
+
+  @override
+  String get paletteMoveLater => '後移';
+
+  @override
+  String get paletteReset => '恢復多色配色預設設定？';
+
+  @override
+  String get palettePreview => '效果預覽';
+
+  @override
+  String get paletteSingle => '單色';
+
+  @override
+  String get paletteMode => '介面配色';
+
+  @override
+  String get paletteAutomatic => '依方案自動產生';
+
+  @override
+  String get notificationWarning => '未開啟通知權限，無法接收提醒。';
+
+  @override
+  String get notificationOpen => '去開啟';
+
+  @override
+  String get notificationIgnore => '忽略且不再提示';
+
+  @override
+  String get notificationIgnoreTitle => '忽略通知權限警告？';
+
+  @override
+  String get notificationIgnoreBody => '未開啟通知權限，提醒功能將不會生效。你可以在設定中恢復此警告。';
+
+  @override
+  String get notificationIgnoreConfirm => '確認忽略';
+
+  @override
+  String get notificationRestore => '顯示權限警告';
+
+  @override
+  String get notificationRestoreDescription => '在本裝置未開啟通知權限時提示';
+
+  @override
+  String get notificationCheckFailed => '無法查詢通知權限';
+
+  @override
+  String get notificationAllowed => '通知權限已開啟';
+
+  @override
+  String get notificationPermissions => '通知權限';
+
+  @override
+  String get strongTargets => '強提醒適用範圍';
+
+  @override
+  String get strongClassLead => '課前提醒';
+
+  @override
+  String get strongCheckIn => '簽到提醒';
+
+  @override
+  String get strongSummary => '次日彙總';
+
+  @override
+  String get strongCustom => '自訂規則';
+
+  @override
+  String get strongCourses => '課程範圍';
+
+  @override
+  String get strongAllRules => '所有繼承規則，包括之後新增的規則';
+
+  @override
+  String get strongRuleOverrideNotice => '規則明確設定為強提醒或普通提醒時，優先於此處的範圍設定。';
+
+  @override
+  String get strongSummaryNotice => '限定課程範圍時，彙總包含任一選中課程才使用強提醒。';
+
+  @override
+  String get settingsNavigationGroup => '日期導覽';
+
+  @override
+  String get settingsLayoutGroup => '課表版面';
+
+  @override
+  String get settingsMaintenanceGroup => '權限與維護';
+
+  @override
+  String get settingsDangerGroup => '資料刪除';
+
+  @override
+  String get settingsDiagnosticsGroup => '診斷';
+
+  @override
+  String get settingsBackupGroup => '備份與匯出';
+
+  @override
+  String get paletteEdit => '編輯顏色';
+
+  @override
+  String get paletteHint => '點擊顏色選擇操作，長按刪除。';
+
+  @override
+  String get actionConfirm => '確認';
+
+  @override
+  String get paletteTonalSpot => '柔和';
+
+  @override
+  String get paletteHue => '色相';
+
+  @override
+  String get paletteChroma => '鮮豔度';
+
+  @override
+  String get paletteTone => '明度';
+
+  @override
+  String get paletteScheme => '配色方案';
+
+  @override
+  String get paletteSchemeDescriptions =>
+      '柔和協調的三色|鮮明且有對比的三色|旋轉色相的表現力三色|均衡分布的三色色譜|清新的相鄰色搭配|保留種子特色的柔和對比|保留種子特色的互補對比|低飽和，顏色區別較輕|灰階，不使用色相對比';
 }

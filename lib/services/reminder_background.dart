@@ -23,6 +23,7 @@ Future<void> reminderMaintenanceCallback() async {
     final repository = ScheduleRepository(database, XlsxParser());
     final upcoming = await repository.getUpcomingSessions();
     final all = await repository.getAllSessions();
+    ReminderScheduler.shared.database = database;
     await ReminderScheduler.shared.rescheduleAll(
       upcomingSessions: upcoming,
       allSessions: all,

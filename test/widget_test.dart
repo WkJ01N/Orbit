@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/routing/app_shell.dart';
 import 'package:orbit/core/routing/app_tab.dart';
+import 'package:orbit/features/settings/settings_page.dart';
+import 'package:orbit/features/upcoming/upcoming_page.dart';
+import 'package:orbit/features/import/import_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
@@ -18,6 +21,46 @@ List<Override> _testOverrides() => [
 ];
 
 void main() {
+  testWidgets(
+    'startup builds only the selected page and retains visited state',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _testOverrides(),
+          child: MaterialApp(
+            locale: defaultLocale,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const AppShell(),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(SettingsPage, skipOffstage: false), findsNothing);
+      expect(find.byType(UpcomingPage, skipOffstage: false), findsNothing);
+      expect(find.byType(ImportPage, skipOffstage: false), findsNothing);
+      await tester.tap(find.text('設置').last);
+      await tester.pumpAndSettle();
+      final settings = tester.element(find.byType(SettingsPage));
+      await tester.tap(find.text('接下來').last);
+      await tester.pumpAndSettle();
+      expect(
+        tester.element(find.byType(SettingsPage, skipOffstage: false)),
+        same(settings),
+      );
+      await tester.tap(find.text('設置').last);
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(SettingsPage)), same(settings));
+    },
+  );
+
   testWidgets('AppShell 顯示四個導航分頁', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

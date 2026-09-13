@@ -55,9 +55,11 @@ final scheduleDisplaySettingsProvider =
 class ScheduleDisplaySettingsNotifier
     extends Notifier<ScheduleDisplaySettings> {
   int _loadGeneration = 0;
+  Future<void> _saveTail = Future.value();
 
   @override
   ScheduleDisplaySettings build() {
+    ref.onDispose(() => _loadGeneration++);
     _load();
     return const ScheduleDisplaySettings();
   }
@@ -74,26 +76,49 @@ class ScheduleDisplaySettingsNotifier
 
   Future<void> setPreferredMultiDayCount(int count) async {
     final next = state.copyWith(preferredMultiDayCount: count.clamp(1, 6));
-    state = next;
-    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+    await _save(next);
+  }
+
+  Future<void> setNarrowLayout(NarrowScheduleLayout layout) async {
+    final next = state.copyWith(narrowLayout: layout);
+    await _save(next);
   }
 
   Future<void> setShowEmptyDays(bool value) async {
     final next = state.copyWith(showEmptyDays: value);
-    state = next;
-    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+    await _save(next);
   }
 
   Future<void> setShowUpcomingCourseDate(bool value) async {
     final next = state.copyWith(showUpcomingCourseDate: value);
-    state = next;
-    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+    await _save(next);
   }
 
   Future<void> setUpcomingDateDisplay(UpcomingDateDisplay value) async {
     final next = state.copyWith(upcomingDateDisplay: value);
+    await _save(next);
+  }
+
+  Future<void> setFitToPage(bool value) =>
+      _save(state.copyWith(fitToPage: value));
+
+  Future<void> resetVerticalScale() =>
+      _save(state.copyWith(fitToPage: false, verticalScalePercent: 100));
+
+  Future<void> setVerticalScalePercent(int value) =>
+      _save(state.copyWith(verticalScalePercent: value));
+
+  Future<void> _save(ScheduleDisplaySettings next) {
+    // Publish immediately; serialize disk writes so rapid slider changes and
+    // changes to neighboring settings cannot restore an older snapshot.
+    _loadGeneration++;
     state = next;
-    await ref.read(settingsServiceProvider).saveScheduleDisplaySettings(next);
+    final service = ref.read(settingsServiceProvider);
+    final save = _saveTail.then(
+      (_) => service.saveScheduleDisplaySettings(next),
+    );
+    _saveTail = save.catchError((Object _) {});
+    return save;
   }
 }
 

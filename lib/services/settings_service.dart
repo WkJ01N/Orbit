@@ -6,6 +6,7 @@ import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,8 +30,6 @@ class SettingsService {
   static const _classLeadBodyKey = 'class_lead_body_tpl';
   static const _checkInTitleKey = 'check_in_title_tpl';
   static const _checkInBodyKey = 'check_in_body_tpl';
-  static const _systemAlarmEnabledKey = 'system_alarm_enabled';
-  static const _systemAlarmLeadMinutesKey = 'system_alarm_lead_minutes';
   static const _checkInReminderEnabledKey = 'check_in_reminder_enabled';
   static const _launchAtStartupKey = 'launch_at_startup';
   static const _gridDefaultWeekModeKey = 'grid_default_week_mode';
@@ -38,9 +37,13 @@ class SettingsService {
   static const _gridDensityKey = 'grid_density';
   static const _courseColorOverridesKey = 'course_color_overrides';
   static const _scheduleMultiDayCountKey = 'schedule_multi_day_count';
+  static const _scheduleNarrowLayoutKey = 'schedule_narrow_layout';
+  static const _scheduleVerticalScaleKey = 'schedule_vertical_scale_percent';
   static const _scheduleShowEmptyDaysKey = 'schedule_show_empty_days';
   static const _upcomingShowCourseDateKey = 'upcoming_show_course_date';
   static const _upcomingDateDisplayKey = 'upcoming_date_display';
+  static const _batchFirstWeekMondayKey = 'batch_first_week_monday';
+  static const _batchTotalWeeksKey = 'batch_total_weeks';
 
   SharedPreferences? _prefs;
 
@@ -50,7 +53,33 @@ class SettingsService {
 
   Future<ReminderSettings> load() async {
     final prefs = await _prefsInstance();
+    final rules = <CustomReminderRule>[];
+    var strong = const StrongReminderSettings();
+    try {
+      final raw = jsonDecode(prefs.getString('custom_reminder_rules') ?? '[]');
+      if (raw is List) {
+        for (final item in raw) {
+          try {
+            rules.add(
+              CustomReminderRule.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            );
+          } catch (error) {
+            debugPrint('Invalid reminder rule: $error');
+          }
+        }
+      }
+      strong = StrongReminderSettings.fromJson(
+        jsonDecode(prefs.getString('strong_reminder_settings') ?? '{}')
+            as Map<String, dynamic>,
+      );
+    } catch (error) {
+      debugPrint('Invalid reminder settings: $error');
+    }
     return ReminderSettings(
+      customRules: rules,
+      strong: strong,
       leadMinutes: prefs.getInt(_leadMinutesKey) ?? 15,
       enabled: prefs.getBool(_enabledKey) ?? true,
       nextDaySummaryEnabled: prefs.getBool(_nextDaySummaryEnabledKey) ?? true,
@@ -66,14 +95,20 @@ class SettingsService {
       classLeadBodyTemplate: prefs.getString(_classLeadBodyKey),
       checkInTitleTemplate: prefs.getString(_checkInTitleKey),
       checkInBodyTemplate: prefs.getString(_checkInBodyKey),
-      systemAlarmEnabled: prefs.getBool(_systemAlarmEnabledKey) ?? false,
-      systemAlarmLeadMinutes: prefs.getInt(_systemAlarmLeadMinutesKey) ?? 10,
       checkInReminderEnabled: prefs.getBool(_checkInReminderEnabledKey) ?? true,
     );
   }
 
   Future<void> save(ReminderSettings settings) async {
     final prefs = await _prefsInstance();
+    await prefs.setString(
+      'custom_reminder_rules',
+      jsonEncode(settings.customRules.map((r) => r.toJson()).toList()),
+    );
+    await prefs.setString(
+      'strong_reminder_settings',
+      jsonEncode(settings.strong.toJson()),
+    );
     await prefs.setInt(_leadMinutesKey, settings.leadMinutes);
     await prefs.setBool(_enabledKey, settings.enabled);
     await prefs.setBool(
@@ -125,11 +160,6 @@ class SettingsService {
       prefs,
       _checkInBodyKey,
       settings.checkInBodyTemplate,
-    );
-    await prefs.setBool(_systemAlarmEnabledKey, settings.systemAlarmEnabled);
-    await prefs.setInt(
-      _systemAlarmLeadMinutesKey,
-      settings.systemAlarmLeadMinutes,
     );
     await prefs.setBool(
       _checkInReminderEnabledKey,
@@ -195,6 +225,74 @@ class SettingsService {
     await prefs.setString(_themeStyleKey, style.name);
   }
 
+  Future<AppColorScheme> loadColorScheme() async {
+    final prefs = await _prefsInstance();
+    return AppColorScheme.values.firstWhere(
+      (s) => s.name == prefs.getString('color_scheme'),
+      orElse: () => AppColorScheme.original,
+    );
+  }
+
+  Future<void> saveColorScheme(AppColorScheme scheme) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString('color_scheme', scheme.name);
+  }
+
+  Future<MulticolorSettings> loadMulticolorSettings() async {
+    final prefs = await _prefsInstance();
+    final raw = prefs.getString('multicolor_settings');
+    if (raw != null) {
+      try {
+        return MulticolorSettings.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>,
+        );
+      } catch (_) {
+        return const MulticolorSettings();
+      }
+    }
+    final scheme = await loadColorScheme();
+    return MulticolorSettings(
+      enabled: scheme != AppColorScheme.original,
+      primary: await loadThemeColor(),
+      scheme: scheme == AppColorScheme.original
+          ? AppColorScheme.expressive
+          : scheme,
+    );
+  }
+
+  Future<void> saveMulticolorSettings(MulticolorSettings value) async {
+    await (await _prefsInstance()).setString(
+      'multicolor_settings',
+      jsonEncode(value.toJson()),
+    );
+  }
+
+  Future<bool> loadPermissionWarningIgnored() async =>
+      (await _prefsInstance()).getBool('notification_warning_ignored') ?? false;
+  Future<void> savePermissionWarningIgnored(bool value) async =>
+      (await _prefsInstance()).setBool('notification_warning_ignored', value);
+
+  Future<Map<String, int>> loadAutomaticCourseColorIds() async {
+    final prefs = await _prefsInstance();
+    try {
+      final json =
+          jsonDecode(prefs.getString('automatic_course_color_ids') ?? '{}')
+              as Map;
+      return {
+        for (final e in json.entries)
+          if (e.key is String && e.value is int && e.value >= 0)
+            e.key as String: e.value as int,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveAutomaticCourseColorIds(Map<String, int> ids) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString('automatic_course_color_ids', jsonEncode(ids));
+  }
+
   Future<bool> loadLaunchAtStartup() async {
     final prefs = await _prefsInstance();
     return prefs.getBool(_launchAtStartupKey) ?? false;
@@ -250,6 +348,15 @@ class SettingsService {
   Future<ScheduleDisplaySettings> loadScheduleDisplaySettings() async {
     final prefs = await _prefsInstance();
     return ScheduleDisplaySettings(
+      fitToPage: prefs.getBool('schedule_fit_to_page') ?? false,
+      verticalScalePercent:
+          ScheduleDisplaySettings.normalizeVerticalScalePercent(
+            prefs.get(_scheduleVerticalScaleKey),
+          ),
+      narrowLayout: NarrowScheduleLayout.values.firstWhere(
+        (layout) => layout.name == prefs.getString(_scheduleNarrowLayoutKey),
+        orElse: () => NarrowScheduleLayout.compactWeek,
+      ),
       preferredMultiDayCount: (prefs.getInt(_scheduleMultiDayCountKey) ?? 3)
           .clamp(1, 6),
       showEmptyDays: prefs.getBool(_scheduleShowEmptyDaysKey) ?? true,
@@ -265,6 +372,14 @@ class SettingsService {
     ScheduleDisplaySettings settings,
   ) async {
     final prefs = await _prefsInstance();
+    await prefs.setBool('schedule_fit_to_page', settings.fitToPage);
+    await prefs.setString(_scheduleNarrowLayoutKey, settings.narrowLayout.name);
+    await prefs.setInt(
+      _scheduleVerticalScaleKey,
+      ScheduleDisplaySettings.normalizeVerticalScalePercent(
+        settings.verticalScalePercent,
+      ),
+    );
     await prefs.setInt(
       _scheduleMultiDayCountKey,
       settings.preferredMultiDayCount.clamp(1, 6),
@@ -278,6 +393,32 @@ class SettingsService {
       _upcomingDateDisplayKey,
       settings.upcomingDateDisplay.name,
     );
+  }
+
+  Future<({DateTime? firstWeekMonday, int totalWeeks})>
+  loadBatchCourseDefaults() async {
+    final prefs = await _prefsInstance();
+    final rawDate = prefs.getString(_batchFirstWeekMondayKey);
+    return (
+      firstWeekMonday: rawDate == null ? null : DateTime.tryParse(rawDate),
+      totalWeeks: (prefs.getInt(_batchTotalWeeksKey) ?? 18).clamp(1, 30),
+    );
+  }
+
+  Future<void> saveBatchCourseDefaults({
+    required DateTime firstWeekMonday,
+    required int totalWeeks,
+  }) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString(
+      _batchFirstWeekMondayKey,
+      DateTime(
+        firstWeekMonday.year,
+        firstWeekMonday.month,
+        firstWeekMonday.day,
+      ).toIso8601String(),
+    );
+    await prefs.setInt(_batchTotalWeeksKey, totalWeeks.clamp(1, 30));
   }
 
   Future<Map<String, Color>> loadCourseColorOverrides() async {
@@ -320,6 +461,9 @@ class SettingsService {
       themeColor: themeColor.toARGB32(),
       themeMode: themeMode.name,
       themeStyle: themeStyle.name,
+      colorScheme: (await loadColorScheme()).name,
+      multicolor: await loadMulticolorSettings(),
+      automaticCourseColorIds: await loadAutomaticCourseColorIds(),
       gridDefaultWeekMode: gridMode.name,
       weekStartDay: weekStart,
       gridDensity: density.name,
@@ -358,6 +502,24 @@ class SettingsService {
         (value) => value.name == snapshot.gridDensity,
         orElse: () => GridDensity.standard,
       ),
+    );
+    await saveColorScheme(
+      AppColorScheme.values.firstWhere(
+        (s) => s.name == snapshot.colorScheme,
+        orElse: () => AppColorScheme.original,
+      ),
+    );
+    await saveAutomaticCourseColorIds(snapshot.automaticCourseColorIds);
+    await saveMulticolorSettings(
+      snapshot.multicolor ??
+          MulticolorSettings(
+            enabled: snapshot.colorScheme != 'original',
+            primary: Color(snapshot.themeColor),
+            scheme: AppColorScheme.values.firstWhere(
+              (s) => s.name == snapshot.colorScheme,
+              orElse: () => AppColorScheme.expressive,
+            ),
+          ),
     );
     await save(snapshot.reminders);
     await saveScheduleDisplaySettings(snapshot.scheduleDisplay);
