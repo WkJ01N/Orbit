@@ -20,6 +20,7 @@ Future<void> _pumpList(
   Locale locale = const Locale('zh', 'Hans'),
   void Function(int)? onBuild,
   EdgeInsets safePadding = EdgeInsets.zero,
+  Widget? sliver,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(400, 600);
@@ -43,18 +44,20 @@ Future<void> _pumpList(
         ),
         child: Scaffold(
           body: UpcomingScrollToTop(
-            sliver: SliverFixedExtentList.builder(
-              itemExtent: itemExtent,
-              itemCount: count,
-              itemBuilder: (context, index) {
-                onBuild?.call(index);
-                return ColoredBox(
-                  key: Key('course-$index'),
-                  color: index.isEven ? Colors.teal.shade50 : Colors.white,
-                  child: Center(child: Text('课程 $index')),
-                );
-              },
-            ),
+            sliver:
+                sliver ??
+                SliverFixedExtentList.builder(
+                  itemExtent: itemExtent,
+                  itemCount: count,
+                  itemBuilder: (context, index) {
+                    onBuild?.call(index);
+                    return ColoredBox(
+                      key: Key('course-$index'),
+                      color: index.isEven ? Colors.teal.shade50 : Colors.white,
+                      child: Center(child: Text('课程 $index')),
+                    );
+                  },
+                ),
           ),
         ),
       ),
@@ -82,6 +85,73 @@ double _progress(WidgetTester tester, Key key) {
 }
 
 void main() {
+  for (final reduceMotion in [false, true]) {
+    testWidgets(
+      'extent corrections are smoothed without delaying offsets (reduceMotion: $reduceMotion)',
+      (tester) async {
+        final height = ValueNotifier(100.0);
+        addTearDown(height.dispose);
+        await _pumpList(
+          tester,
+          reduceMotion: reduceMotion,
+          sliver: SliverList.builder(
+            itemCount: 40,
+            itemBuilder: (context, index) => ValueListenableBuilder<double>(
+              valueListenable: height,
+              builder: (context, value, _) =>
+                  SizedBox(height: value, child: Text('Course $index')),
+            ),
+          ),
+        );
+        final gesture = await tester.startGesture(const Offset(200, 500));
+        await gesture.moveBy(const Offset(0, -450));
+        await tester.pump();
+        final position = _position(tester);
+        final previous = _progress(tester, _floatingKey);
+        final previousExtent = position.maxScrollExtent;
+        height.value = 102;
+        await tester.pump();
+        expect(position.maxScrollExtent, greaterThan(previousExtent));
+        var target = position.pixels / position.maxScrollExtent;
+        expect(target, lessThan(previous - .0001));
+        if (reduceMotion) {
+          expect(_progress(tester, _floatingKey), closeTo(target, .0001));
+        } else {
+          expect(_progress(tester, _floatingKey), closeTo(previous, .0001));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 40));
+          expect(
+            _progress(tester, _floatingKey),
+            inExclusiveRange(target, previous),
+          );
+          final duringCorrection = _progress(tester, _floatingKey);
+          final offset = position.pixels;
+          await gesture.moveBy(const Offset(0, -10));
+          await tester.pump();
+          expect(
+            _progress(tester, _floatingKey) - duringCorrection,
+            closeTo((position.pixels - offset) / position.maxScrollExtent, .0001),
+          );
+          target = position.pixels / position.maxScrollExtent;
+        }
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(_progress(tester, _floatingKey), closeTo(target, .0001));
+
+        // Once the range is stable, movement tracks the offset immediately.
+        final offset = position.pixels;
+        await gesture.moveBy(const Offset(0, -100));
+        await tester.pump();
+        expect(
+          _progress(tester, _floatingKey) - target,
+          closeTo((position.pixels - offset) / position.maxScrollExtent, .0001),
+        );
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('progress follows each drag update before scrolling stops', (
     tester,
   ) async {
@@ -417,11 +487,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       final initialExtent = _position(tester).maxScrollExtent;
-      void expectCurrentProgress() {
+      void expectCurrentProgress({double tolerance = .015001}) {
         final position = _position(tester);
         expect(
           _progress(tester, _floatingKey),
-          closeTo(position.pixels / position.maxScrollExtent, .0001),
+          closeTo(position.pixels / position.maxScrollExtent, tolerance),
         );
       }
 
@@ -439,7 +509,7 @@ void main() {
       expect(extentChanged, isTrue);
       await gesture.up();
       await tester.pumpAndSettle();
-      expectCurrentProgress();
+      expectCurrentProgress(tolerance: .0001);
 
       // Check every frame of a fling rather than only its settled endpoint.
       await _jump(tester, 0);
@@ -458,7 +528,7 @@ void main() {
       }
       expect(position.pixels, greaterThan(releaseOffset));
       await tester.pumpAndSettle();
-      expectCurrentProgress();
+      expectCurrentProgress(tolerance: .0001);
       expect(tester.takeException(), isNull);
     },
   );

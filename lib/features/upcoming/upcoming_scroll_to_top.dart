@@ -17,10 +17,11 @@ class UpcomingScrollToTop extends StatefulWidget {
 }
 
 class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _location = ValueNotifier(_ButtonLocation.hidden);
   late final _progress = AnimationController(vsync: this);
+  late final _extentCorrection = AnimationController.unbounded(vsync: this);
   bool _refreshScheduled = false;
   bool _hasOverflow = false;
   bool _shown = false;
@@ -29,13 +30,16 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
   bool _reduceMotion = false;
   bool _transferring = false;
   double _progressTarget = 0;
-  bool _scrolling = false;
-  bool _offsetChanged = false;
+  double? _previousExtent;
+  double _previousOffset = 0;
+  // Limit visual deviation to 1.5 percentage points (5.4 degrees of the ring).
+  static const _maxCorrection = .015;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _extentCorrection.addListener(_updateProgress);
   }
 
   @override
@@ -52,7 +56,6 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
   }
 
   void _onScroll() {
-    _offsetChanged = true;
     _scheduleRefresh();
   }
 
@@ -61,12 +64,18 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
     _refreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshScheduled = false;
-      if (mounted) _refreshMetrics(scrolling: _offsetChanged);
-      _offsetChanged = false;
+      if (mounted) _refreshMetrics();
     });
   }
 
-  void _refreshMetrics({bool scrolling = false}) {
+  void _updateProgress() {
+    _progress.value = (_progressTarget + _extentCorrection.value).clamp(
+      0.0,
+      1.0,
+    );
+  }
+
+  void _refreshMetrics() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
@@ -83,20 +92,33 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
         : extent > 0
         ? (offset / extent).clamp(0.0, 1.0)
         : 0.0;
-    if (_reduceMotion ||
-        _scrolling ||
-        scrolling ||
-        progress == 0 ||
-        progress == 1) {
-      _progress.value = progress;
-    } else if (_progressTarget != progress) {
-      _progress.animateTo(
-        progress,
-        duration: const Duration(milliseconds: 120),
+    _progressTarget = progress;
+    final previousExtent = _previousExtent;
+    if (_reduceMotion || progress == 0 || progress == 1) {
+      _extentCorrection.value = 0;
+    } else if (previousExtent != null &&
+        previousExtent > 0 &&
+        extent > 0 &&
+        previousExtent != extent) {
+      // Offset movement remains immediate. Only changes to the estimated range
+      // are eased out, including while dragging and during ballistic scrolling.
+      final correction =
+          _extentCorrection.value +
+          _previousOffset / previousExtent -
+          _previousOffset / extent;
+      _extentCorrection.value = correction.clamp(
+        -_maxCorrection,
+        _maxCorrection,
+      );
+      _extentCorrection.animateTo(
+        0,
+        duration: const Duration(milliseconds: 80),
         curve: Curves.easeOutCubic,
       );
     }
-    _progressTarget = progress;
+    _previousExtent = extent;
+    _previousOffset = offset.toDouble();
+    _updateProgress();
 
     if (!_hasOverflow || extent <= 0 || offset <= 0) {
       _shown = false;
@@ -152,6 +174,7 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
   void dispose() {
     _scrollController.dispose();
     _progress.dispose();
+    _extentCorrection.dispose();
     _location.dispose();
     super.dispose();
   }
@@ -181,51 +204,39 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
           if (notification.depth == 0) _scheduleRefresh();
           return false;
         },
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification.depth != 0) return false;
-            if (notification is ScrollStartNotification) {
-              _scrolling = true;
-            } else if (notification is ScrollEndNotification) {
-              _scrolling = false;
-              _scheduleRefresh();
-            }
-            return false;
-          },
-          child: Stack(
-            children: [
-              CustomScrollView(
-                key: const Key('upcoming-scroll-view'),
-                controller: _scrollController,
-                slivers: [
-                  widget.sliver,
-                  SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      // Excluding the footer avoids manufacturing overflow for
-                      // short lists or toggling its height during transitions.
-                      _hasOverflow =
-                          constraints.precedingScrollExtent + 16 >
-                          constraints.viewportMainAxisExtent + 0.5;
-                      return SliverToBoxAdapter(
-                        child: SizedBox(
-                          key: const Key('upcoming-back-to-top-footer-space'),
-                          height: _hasOverflow ? 88 : 16,
-                          child: _hasOverflow
-                              ? Center(child: _button(_ButtonLocation.footer))
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              Positioned(
-                right: 16,
-                bottom: 16,
-                child: _button(_ButtonLocation.floating),
-              ),
-            ],
-          ),
+        child: Stack(
+          children: [
+            CustomScrollView(
+              key: const Key('upcoming-scroll-view'),
+              controller: _scrollController,
+              slivers: [
+                widget.sliver,
+                SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    // Excluding the footer avoids manufacturing overflow for
+                    // short lists or toggling its height during transitions.
+                    _hasOverflow =
+                        constraints.precedingScrollExtent + 16 >
+                        constraints.viewportMainAxisExtent + 0.5;
+                    return SliverToBoxAdapter(
+                      child: SizedBox(
+                        key: const Key('upcoming-back-to-top-footer-space'),
+                        height: _hasOverflow ? 88 : 16,
+                        child: _hasOverflow
+                            ? Center(child: _button(_ButtonLocation.footer))
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: _button(_ButtonLocation.floating),
+            ),
+          ],
         ),
       ),
     );
