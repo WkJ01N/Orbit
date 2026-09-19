@@ -34,7 +34,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: orbit-${{ github.ref_name }}-android.apk
-          generate_release_notes: true
+          body_path: release/${{ github.ref_name }}/RELEASE_NOTES.md
 
   windows:
     runs-on: windows-latest
@@ -53,4 +53,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: orbit-${{ github.ref_name }}-windows-x64.zip
-          generate_release_notes: true
+          body_path: release/${{ github.ref_name }}/RELEASE_NOTES.md
