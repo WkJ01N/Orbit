@@ -11,6 +11,7 @@ import 'package:orbit/features/import/import_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 List<Override> _testOverrides() => [
   localeProvider.overrideWith(() => _FixedLocaleNotifier()),
@@ -21,6 +22,7 @@ List<Override> _testOverrides() => [
 ];
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets(
     'startup builds only the selected page and retains visited state',
     (tester) async {
@@ -113,7 +115,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('選擇 xlsx 課表檔案'), findsOneWidget);
+    expect(find.text('選擇 XLSX / CSV 課表檔案'), findsOneWidget);
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
       AppTab.import.index,

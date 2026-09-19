@@ -34,7 +34,7 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 4;
+  static const backupVersion = 5;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,

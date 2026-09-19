@@ -14,7 +14,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  test('database v2 migrates to v5 without losing active classes', () async {
+  test('database v2 migrates to v6 without losing active classes', () async {
     final tempDir = await Directory.systemTemp.createTemp('orbit_migration_');
     addTearDown(() => tempDir.delete(recursive: true));
     final path = p.join(tempDir.path, 'orbit.db');
@@ -63,7 +63,7 @@ void main() {
     await migrated.acknowledgeReminder('r', 'legacy');
     expect((await migrated.reminderDeliveryStates()).single['acknowledged'], 1);
   });
-  test('v4 upgrade and reopening v5 retain reminder state', () async {
+  test('v4 upgrade and reopening v6 retain reminder state', () async {
     final dir = await Directory.systemTemp.createTemp('orbit_v4_migration_');
     final current = await AppDatabase.open(dir.path);
     await current.close();

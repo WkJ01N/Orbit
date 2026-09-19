@@ -3,72 +3,91 @@ package com.must.orbit.orbit
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
-
-private const val REMINDER_PROCESS_EXIT_DELAY_MILLIS = 250L
-
-/**
- * The receivers live in a dedicated process. OriginOS freezes cached processes very
- * aggressively, including this process after a notification has been posted. Leaving
- * no cached receiver process lets AlarmManager start a fresh process for every alarm,
- * including while the screen is off.
- */
-internal fun exitDedicatedReminderProcessSoon() {
-    Handler(Looper.getMainLooper()).postDelayed(
-        {
-            if (!OrbitStrongReminderService.active && !OrbitStrongReminderService.starting) android.os.Process.killProcess(android.os.Process.myPid())
-        },
-        REMINDER_PROCESS_EXIT_DELAY_MILLIS,
-    )
-}
+import org.json.JSONObject
 
 class OrbitReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        OrbitReminderProcess.beginTask(context)
+        val alarmId = intent.getIntExtra(OrbitReminderManager.alarmIdExtra, -1)
+        OrbitReminderDiagnostics.event("receive", alarmId)
         try {
-            val alarmId = intent.getIntExtra(OrbitReminderManager.alarmIdExtra, -1)
             if (alarmId < 0) return
-            val record = OrbitReminderStore.get(context, alarmId) ?: return
-            try {
-                if (OrbitReminderManager.notificationsAllowed(context) && OrbitReminderLedger.claim(context, record)) OrbitReminderManager.postNotification(context, record)
-            } finally {
-                OrbitReminderStore.remove(context, alarmId)
-                val meta=org.json.JSONObject(record.metadata)
-                val rule=meta.optString("ruleId")
-                if(OrbitReminderManager.notificationsAllowed(context) && rule.isNotEmpty() && rule!="null")
-                    OrbitReminderLedger.replenish(context,rule,meta.getString("sessionId"))
+            val record = OrbitReminderStore.get(context, alarmId) ?: run {
+                OrbitReminderDiagnostics.event("receive_missing_record", alarmId)
+                return
             }
+            val result = try {
+                OrbitReminderLedger.deliver(context, record) {
+                    OrbitReminderManager.postNotification(context, record)
+                }
+            } catch (error: Exception) {
+                OrbitReminderDiagnostics.failure(context, "delivery", alarmId, error)
+                OrbitReminderDeliveryResult.RETRY
+            }
+            if (result == OrbitReminderDeliveryResult.RETRY) {
+                OrbitReminderManager.deferDelivery(context, record)
+                return
+            }
+            OrbitReminderStore.remove(context, alarmId)
+            val meta = JSONObject(record.metadata)
+            val rule = meta.optString("ruleId")
+            if (rule.isNotEmpty() && rule != "null") {
+                OrbitReminderLedger.replenish(context, rule, meta.getString("sessionId"))
+            }
+        } catch (error: Exception) {
+            OrbitReminderDiagnostics.failure(context, "receive", alarmId, error)
         } finally {
-            exitDedicatedReminderProcessSoon()
+            OrbitReminderProcess.lifecycle.endTask()
         }
     }
 }
 
 class OrbitReminderActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        OrbitReminderProcess.beginTask(context)
+        OrbitReminderDiagnostics.event("action", reason = intent.action)
         try {
-            if (intent.action == "ack") {
+            if (intent.action == OrbitReminderKeepAliveService.disableAction) {
+                OrbitReminderKeepAliveService.setEnabled(context, false)
+            } else if (intent.action == "ack") {
                 val rule=intent.getStringExtra("rule") ?: return
                 val session=intent.getStringExtra("session") ?: return
                 OrbitReminderLedger.acknowledge(context,rule,session)
                 OrbitStrongReminderService.acknowledge(context,rule,session)
-            } else if(intent.action=="stop") context.stopService(Intent(context, OrbitStrongReminderService::class.java))
-        } finally { exitDedicatedReminderProcessSoon() }
+            } else if(intent.action=="stop") OrbitStrongReminderService.stop(context)
+        } catch (error: Exception) {
+            OrbitReminderDiagnostics.failure(context, "action", error = error)
+        } finally { OrbitReminderProcess.lifecycle.endTask() }
+    }
+}
+
+private fun BroadcastReceiver.restoreAsync(context: Context, stage: String) {
+    OrbitReminderProcess.beginTask(context)
+    val pending = goAsync()
+    try {
+        Thread {
+            try {
+                OrbitReminderDiagnostics.event(stage)
+                OrbitReminderManager.restorePersistedReminders(context)
+            } catch (error: Exception) {
+                OrbitReminderDiagnostics.failure(context, stage, error = error)
+            } finally {
+                try { pending?.finish() }
+                finally { OrbitReminderProcess.lifecycle.endTask() }
+            }
+        }.start()
+    } catch (error: Exception) {
+        try {
+            pending?.finish()
+            OrbitReminderDiagnostics.failure(context, stage, error = error)
+        } finally { OrbitReminderProcess.lifecycle.endTask() }
     }
 }
 
 class OrbitReminderRestoreReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val pending=goAsync()
-        Thread {try {OrbitReminderManager.restorePersistedReminders(context)}
-            finally {pending?.finish();exitDedicatedReminderProcessSoon()}}.start()
-    }
+    override fun onReceive(context: Context, intent: Intent) = restoreAsync(context, "restore")
 }
 
 class OrbitReminderMaintenanceReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val pending=goAsync()
-        Thread {try {OrbitReminderManager.restorePersistedReminders(context)}
-            finally {pending?.finish();exitDedicatedReminderProcessSoon()}}.start()
-    }
+    override fun onReceive(context: Context, intent: Intent) = restoreAsync(context, "maintenance")
 }

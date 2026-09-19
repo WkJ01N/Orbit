@@ -1,34 +1,35 @@
 # Orbit
 
-跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入学生课表 xlsx 后自动识别课程，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
+跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.4.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.5.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
-| 导入 | 多文件并行解析、自动合并去重；重复周导入策略选择；导入成功可跳转课表；格式说明与本地化错误提示 |
-| 导出与备份 | JSON v4 完整备份课程、批量系列、主题、提醒规则、引用音频与显示设置，并兼容 v1–3；支持课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出 |
+| 导入 | XLSX 多工作表与 CSV（UTF-8 / GBK / GB18030）；按表头识别课程列表、周网格合并格与一格多课；可视化模板、正则捕获组与测试预览；学期与作息方案、周次展开；导入前预览去重、定位错误与明确跳过；重复周导入策略选择 |
+| 导出与备份 | JSON v5 完整备份课程、批量系列、主题、提醒规则、引用音频、显示设置及识别模板、学期、作息方案，并兼容 v1–4；支持无课程时备份设置、课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出与识别模板 JSON 分享 |
+| 账号与同步 | 可选 CloudBase 邮箱账号；支持显示名称、私有头像、验证码重发与 8–20 位字母数字密码；本地优先同步课程、自定义导入模板、学期与作息方案；可按设备配置启动、回前台、本地变化、网络恢复四种自动同步事件及网络条件；首次登录预览合并、离线修改队列、删除标记和并发冲突选择；退出账号默认保留本机课表 |
 | 课表网格 | 按真实时间定位的整周时间轴；窄屏默认一屏显示完整七天，可切换经典单日/多日自适应布局，宽屏一屏展示整周；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度、50%–150% 纵向缩放及 08:00–22:00 页面自适应；支持批量删除 |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程；实时滚动进度回顶按钮，到底后在课程下方居中显示 |
 | 提醒 | 独立自定义规则支持开始／结束偏移、日期固定时刻、课程筛选、秒级间隔、文案占位符、1–100 次发送及确认后停止；强提醒可按提醒类型、独立规则、课程系列或课次配置，明确指定普通／强提醒的规则优先；最近 24 小时只补发最后一条未处理消息。课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；Android 原生 `AlarmManager` 接收器在不启动 Flutter 的情况下直接通知；IANA 时区排程；精确 / 非精确降级；开机与更新时间恢复；通知点击跳转课程详情 |
 | 课程管理 | 按学期周次与多个每周安排批量加课；冲突预览、跳过或覆盖；按每周安排编辑；7 天回收站、即时撤销和冲突安全恢复；课程备注及按科目自定义颜色 |
 | 外观 | 单色／多色独立保存；多色支持九种生成方案、主／辅／第三色独立编辑及不限数量调色板；课程配色独立选择统一颜色／自动分色，手动颜色优先；跟随系统／浅色／深色 |
 | Windows | 系统托盘、最小化到托盘、锁屏唤醒托盘自检、通知点击唤窗、单实例启动、快速退出、可选开机自启；系统循环强提醒、15 分钟隐藏维护和通知动作后台处理 |
-| Android | 原生 AlarmManager 后台提醒（课前 / 打卡 / 次日摘要）；电池优化双向开关；权限分项引导（含精确闹钟）；OriginOS 任务锁定说明；重启后自动恢复提醒 |
+| Android | 原生 AlarmManager 后台提醒（课前 / 打卡 / 次日摘要）；持久化阶段诊断与强制停止识别；可选低打扰增强提醒服务；电池优化双向开关；权限分项引导（含精确闹钟）；OriginOS 自启动、高耗电与任务锁定说明；重启后自动恢复提醒 |
 | 多语言 | 繁体中文、简体中文、English |
 | 通知权限 | Android 和 Windows 全页面权限警告、通知设置直达、二次确认后永久忽略；忽略仅保存在本设备，可在设置恢复提示；权限恢复自动重新排程 |
-| 隐私 | 数据仅存本机 SQLite，不上传云端 |
+| 隐私 | 未登录时数据仅存本机；用户主动登录并确认首次合并后，课表及课表方案才会上传到隔离的个人云空间；通知权限、提醒运行状态和登录令牌不进入课表备份 |
 
 ## 快速开始（用户）
 
-可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.3.3：
+可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.5.0：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.3.3-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.3.3-android.apk` | 支持批量加课与手机紧凑整周课表；可从 v1.3.0 及以后直接覆盖安装 |
+| Windows | `orbit-v1.5.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.5.0-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
 
 ## 从源码运行
 
@@ -49,12 +50,21 @@ flutter run -d windows
 flutter run -d android
 ```
 
+官方 Release 已连接 Orbit 的 CloudBase 环境。自行构建时可按
+[CloudBase 部署说明](cloudbase/README.md) 使用自己的环境，并加入：
+
+```bash
+flutter run -d windows \
+  --dart-define=ORBIT_CLOUDBASE_ENV=<测试环境 ID> \
+  --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+```
+
 ## 构建 Release
 
 ```bash
 flutter test
-flutter build windows --release
-flutter build apk --release
+flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
 ```
 
 | 平台 | 构建输出 |
@@ -68,10 +78,10 @@ flutter build apk --release
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.4.0/orbit-v1.4.0-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.0/orbit-v1.5.0-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.4.0/orbit-v1.4.0-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.0/orbit-v1.5.0-android.apk -Force
 ```
 
 ## 更新日志
@@ -247,7 +257,11 @@ Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.4.0/orbit-v1.
 - 版本号升至 1.0.1（`pubspec.yaml` build `+2`）
 - 测试增至 48 项（含空态与翻页回归用例）
 
-## 课表 xlsx 格式
+## 课表导入格式
+
+支持按表头识别的 XLSX / CSV 课程列表，以及星期为列、节次为行的周网格。XLSX 可选择多个工作表；CSV 自动尝试 UTF-8 与 GB18030，也可手动选择 GBK 和分隔符。导入页及「设置 → 数据管理」可管理识别模板、学期与作息方案。详细步骤、网格多课与正则示例见 [课表导入指南](docs/importing-schedules.md)。
+
+原有 Orbit 13 列 XLSX 格式继续兼容：
 
 导出的课表为逐行列表，每行一节课：
 
@@ -267,7 +281,7 @@ Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.4.0/orbit-v1.
 | L | 教师 | Miku,null（解析时过滤 null）|
 | M | 学期 | 2606 |
 
-解析器以列位置为主、列名为辅，对导出格式轻微调整有一定容错。
+原有格式按固定列位置读取；通用课程列表按简繁中文或英文表头识别，列可重排。自定义模板可指定列、课程区域、固定值及正则提取规则。
 
 ## 技术栈
 

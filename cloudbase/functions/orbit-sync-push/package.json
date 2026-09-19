@@ -1,0 +1,12 @@
+{
+  "name": "orbit-sync-push",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}

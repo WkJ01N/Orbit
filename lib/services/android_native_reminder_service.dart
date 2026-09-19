@@ -22,6 +22,69 @@ class NativeReminderScheduleResult {
   final bool usedInexactFallback;
 }
 
+class ReminderDiagnosticEvent {
+  const ReminderDiagnosticEvent({
+    required this.timestamp,
+    required this.stage,
+    this.alarmId,
+    this.reason,
+  });
+
+  final DateTime timestamp;
+  final String stage;
+  final int? alarmId;
+  final String? reason;
+
+  factory ReminderDiagnosticEvent.fromMap(Map<dynamic, dynamic> value) =>
+      ReminderDiagnosticEvent(
+        timestamp: DateTime.fromMillisecondsSinceEpoch(
+          (value['timestamp'] as num).toInt(),
+        ),
+        stage: value['stage'] as String,
+        alarmId: (value['alarmId'] as num?)?.toInt(),
+        reason: value['reason'] as String?,
+      );
+}
+
+class ReminderReliabilityStatus {
+  const ReminderReliabilityStatus({
+    this.enhancedMode = false,
+    this.storedReminderCount = 0,
+    this.registeredReminderCount = 0,
+    this.forcedStopDetected = false,
+    this.exitTimestamp,
+    this.exitDescription,
+    this.events = const [],
+  });
+
+  final bool enhancedMode;
+  final int storedReminderCount;
+  final int registeredReminderCount;
+  final bool forcedStopDetected;
+  final DateTime? exitTimestamp;
+  final String? exitDescription;
+  final List<ReminderDiagnosticEvent> events;
+
+  factory ReminderReliabilityStatus.fromMap(Map<dynamic, dynamic> value) =>
+      ReminderReliabilityStatus(
+        enhancedMode: value['enhancedMode'] == true,
+        storedReminderCount:
+            (value['storedReminderCount'] as num?)?.toInt() ?? 0,
+        registeredReminderCount:
+            (value['registeredReminderCount'] as num?)?.toInt() ?? 0,
+        forcedStopDetected: value['forcedStopDetected'] == true,
+        exitTimestamp: value['exitTimestamp'] == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(
+                (value['exitTimestamp'] as num).toInt(),
+              ),
+        exitDescription: value['exitDescription'] as String?,
+        events: (value['events'] as List? ?? const [])
+            .map((item) => ReminderDiagnosticEvent.fromMap(item as Map))
+            .toList(growable: false),
+      );
+}
+
 /// Bridges Orbit's platform-neutral reminder specs to the Android receiver
 /// that posts notifications without starting Flutter in the background.
 class AndroidNativeReminderService {
@@ -61,6 +124,39 @@ class AndroidNativeReminderService {
     if (!Platform.isAndroid) return null;
     await initialize();
     return _channel.invokeMethod<String>('runtimeStatus');
+  }
+
+  Future<ReminderReliabilityStatus> reliabilityStatus() async {
+    if (!Platform.isAndroid) return const ReminderReliabilityStatus();
+    await initialize();
+    final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
+      'reminderReliabilityStatus',
+    );
+    return ReminderReliabilityStatus.fromMap(raw ?? const {});
+  }
+
+  Future<void> setEnhancedReminderMode({
+    required bool enabled,
+    required String channel,
+    required String title,
+    required String body,
+    required String disable,
+  }) async {
+    if (!Platform.isAndroid) return;
+    await initialize();
+    await _channel.invokeMethod<void>('setEnhancedReminderMode', {
+      'enabled': enabled,
+      'channel': channel,
+      'title': title,
+      'body': body,
+      'disable': disable,
+    });
+  }
+
+  Future<bool> openAutostartSettings() async {
+    if (!Platform.isAndroid) return false;
+    await initialize();
+    return await _channel.invokeMethod<bool>('openAutostartSettings') ?? false;
   }
 
   void registerNotificationTapHandler(NativeNotificationTapCallback? callback) {

@@ -49,31 +49,116 @@ data class OrbitReminderRecord(
 }
 
 object OrbitReminderStore {
+    private val legacyMetadataKeys = listOf(
+        "database_path", "catchup_label", "catchup_notice", "original_label",
+        "delivered_label", "channel_name", "channel_description",
+        "schedule_failure", "strong_degraded",
+    )
+
     private fun open(context: Context): android.database.sqlite.SQLiteDatabase {
         val file = context.getDatabasePath("orbit_native_reminders.db")
         file.parentFile?.mkdirs()
         val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null)
-        db.execSQL("CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, record TEXT NOT NULL)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        try {
+            db.execSQL("CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, record TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS diagnostics(timestamp INTEGER NOT NULL, stage TEXT NOT NULL, alarm_id INTEGER, reason TEXT)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS diagnostics_timestamp ON diagnostics(timestamp DESC)")
+            db.beginTransaction()
+            try {
+                val migrated = db.rawQuery("SELECT value FROM metadata WHERE key='migrated'", null).use { it.moveToFirst() }
+                if (!migrated) {
+                    val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
+                    val raw = prefs.getString("records_v1", null)
+                    if (raw != null) {
+                        val records = JSONArray(raw)
+                        for (i in 0 until records.length()) {
+                            val record = records.getJSONObject(i)
+                            db.execSQL("INSERT OR IGNORE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.getInt("alarmId"),record.toString()))
+                        }
+                    }
+                    db.execSQL("INSERT INTO metadata(key,value) VALUES('migrated','1')")
+                }
+                val configMigrated = db.rawQuery(
+                    "SELECT value FROM metadata WHERE key='config_migrated_v1'", null,
+                ).use { it.moveToFirst() }
+                if (!configMigrated) {
+                    val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
+                    for (key in legacyMetadataKeys) {
+                        prefs.getString(key, null)?.let { value ->
+                            db.execSQL("INSERT OR IGNORE INTO metadata(key,value) VALUES(?,?)", arrayOf(key, value))
+                        }
+                    }
+                    db.execSQL("INSERT INTO metadata(key,value) VALUES('config_migrated_v1','1')")
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+        } catch (error: Exception) {
+            db.close()
+            throw error
+        }
+        return db
+    }
+
+    /** Read afresh: SharedPreferences caches cannot synchronize the two processes. */
+    fun metadata(context: Context): Map<String, String> = open(context).use { db ->
+        buildMap {
+            db.rawQuery("SELECT key,value FROM metadata", null).use { cursor ->
+                while (cursor.moveToNext()) put(cursor.getString(0), cursor.getString(1))
+            }
+        }
+    }
+
+    fun updateMetadata(context: Context, values: Map<String, String?>) = open(context).use { db ->
         db.beginTransaction()
         try {
-            val migrated = db.rawQuery("SELECT value FROM metadata WHERE key='migrated'", null).use { it.moveToFirst() }
-            if (!migrated) {
-                val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
-                val raw = prefs.getString("records_v1", null)
-                if (raw != null) {
-                    val records = JSONArray(raw)
-                    for (i in 0 until records.length()) {
-                        val record = records.getJSONObject(i)
-                        db.execSQL("INSERT OR IGNORE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.getInt("alarmId"),record.toString()))
-                    }
-                }
-                db.execSQL("INSERT INTO metadata(key,value) VALUES('migrated','1')")
+            for ((key, value) in values) {
+                if (value == null) db.delete("metadata", "key=?", arrayOf(key))
+                else db.execSQL("INSERT OR REPLACE INTO metadata(key,value) VALUES(?,?)", arrayOf(key, value))
             }
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
-        return db
     }
+
+    fun appendDiagnostic(
+        context: Context,
+        stage: String,
+        alarmId: Int?,
+        reason: String?,
+    ) = open(context).use { db ->
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "INSERT INTO diagnostics(timestamp,stage,alarm_id,reason) VALUES(?,?,?,?)",
+                arrayOf<Any?>(System.currentTimeMillis(), stage.take(64), alarmId, reason?.take(96)),
+            )
+            db.execSQL(
+                "DELETE FROM diagnostics WHERE rowid NOT IN (SELECT rowid FROM diagnostics ORDER BY timestamp DESC LIMIT 64)",
+            )
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    fun diagnostics(context: Context, limit: Int = 32): List<Map<String, Any?>> =
+        open(context).use { db ->
+            buildList {
+                db.rawQuery(
+                    "SELECT timestamp,stage,alarm_id,reason FROM diagnostics ORDER BY timestamp DESC LIMIT ?",
+                    arrayOf(limit.coerceIn(1, 64).toString()),
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        add(
+                            mapOf(
+                                "timestamp" to cursor.getLong(0),
+                                "stage" to cursor.getString(1),
+                                "alarmId" to if (cursor.isNull(2)) null else cursor.getInt(2),
+                                "reason" to if (cursor.isNull(3)) null else cursor.getString(3),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     fun load(context: Context): MutableMap<Int,OrbitReminderRecord> = open(context).use { db ->
         val result = mutableMapOf<Int,OrbitReminderRecord>()
         db.rawQuery("SELECT record FROM records", null).use { cursor ->

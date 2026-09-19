@@ -62,6 +62,12 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# connectivity_plus contains UTF-8 source comments. Explicitly select UTF-8 so
+# Chinese Windows code pages do not turn MSVC warning C4819 into a /WX error.
+if(TARGET connectivity_plus_plugin)
+  target_compile_options(connectivity_plus_plugin PRIVATE /utf-8)
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

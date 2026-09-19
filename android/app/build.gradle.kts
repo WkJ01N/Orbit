@@ -92,6 +92,34 @@ flutter {
     source = "../.."
 }
 
+// Flutter 3.44 can leave the dev-only integration_test plugin in the shared
+// generated registrant after tests or `flutter pub get`. The release variant
+// does not package that plugin, so remove only its registration block after
+// Flutter has regenerated the file and before Java compilation.
+val prepareReleasePluginRegistrant by tasks.registering {
+    dependsOn("compileFlutterBuildRelease")
+    doLast {
+        val registrant = file(
+            "src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java",
+        )
+        if (!registrant.exists()) return@doLast
+        val integrationTestBlock = """
+    try {
+      flutterEngine.getPlugins().add(new dev.flutter.plugins.integration_test.IntegrationTestPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin integration_test, dev.flutter.plugins.integration_test.IntegrationTestPlugin", e);
+    }
+"""
+        val original = registrant.readText()
+        val sanitized = original.replace(integrationTestBlock, "")
+        if (sanitized != original) registrant.writeText(sanitized)
+    }
+}
+
+tasks.matching { it.name == "compileReleaseJavaWithJavac" }.configureEach {
+    dependsOn(prepareReleasePluginRegistrant)
+}
+
 // Flutter's debug assets are packaged into Robolectric's host-test APK.
 // Gradle 9 requires this producer/consumer relationship to be explicit.
 tasks.matching { it.name == "packageDebugUnitTestForUnitTest" }.configureEach {

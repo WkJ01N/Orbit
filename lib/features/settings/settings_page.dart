@@ -1,11 +1,11 @@
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
-import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/app_info.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/reminder_resync_banner.dart';
 import 'package:orbit/core/widgets/settings_group.dart';
@@ -27,6 +27,7 @@ import 'package:orbit/features/settings/custom_reminders_page.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
+import 'package:orbit/services/android_native_reminder_service.dart';
 import 'package:orbit/services/schedule_layout_engine.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1023,13 +1024,17 @@ class _AndroidBackgroundSectionState
     with WidgetsBindingObserver {
   bool _isIgnoringBatteryOptimizations = false;
   ReminderPermissionStatus? _permissionStatus;
+  ReminderReliabilityStatus? _reliabilityStatus;
+  bool _changingEnhancedMode = false;
+  Future<void>? _statusRefresh;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadBatteryStatus();
-    _loadPermissionStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshStatuses();
+    });
   }
 
   @override
@@ -1041,29 +1046,82 @@ class _AndroidBackgroundSectionState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadBatteryStatus();
-      _loadPermissionStatus();
+      _refreshStatuses();
     }
   }
 
-  Future<void> _loadPermissionStatus() async {
-    final status = await AndroidReminderGuard.instance.queryPermissionStatus();
-    if (mounted) {
-      setState(() => _permissionStatus = status);
+  Future<void> _refreshStatuses({bool refreshAfterActive = false}) async {
+    final active = _statusRefresh;
+    if (active != null) {
+      await active;
+      if (refreshAfterActive && mounted) await _refreshStatuses();
+      return;
+    }
+
+    late final Future<void> operation;
+    operation = _performStatusRefresh().whenComplete(() {
+      if (identical(_statusRefresh, operation)) _statusRefresh = null;
+    });
+    _statusRefresh = operation;
+    await operation;
+  }
+
+  Future<void> _performStatusRefresh() async {
+    final values = await Future.wait<Object?>([
+      _readStatus(
+        AndroidReminderGuard.instance.isIgnoringBatteryOptimizations,
+      ),
+      _readStatus(AndroidReminderGuard.instance.queryPermissionStatus),
+      _readStatus(AndroidNativeReminderService.instance.reliabilityStatus),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      if (values[0] case final bool ignoring) {
+        _isIgnoringBatteryOptimizations = ignoring;
+      }
+      if (values[1] case final ReminderPermissionStatus permission) {
+        _permissionStatus = permission;
+      }
+      if (values[2] case final ReminderReliabilityStatus reliability) {
+        _reliabilityStatus = reliability;
+      }
+    });
+  }
+
+  Future<T?> _readStatus<T>(Future<T> Function() load) async {
+    try {
+      return await load();
+    } catch (_) {
+      return null;
     }
   }
 
-  Future<void> _loadBatteryStatus() async {
-    final ignoring = await AndroidReminderGuard.instance
-        .isIgnoringBatteryOptimizations();
-    if (mounted) {
-      setState(() => _isIgnoringBatteryOptimizations = ignoring);
+  Future<void> _setEnhancedMode(bool enabled) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _changingEnhancedMode = true);
+    try {
+      await AndroidNativeReminderService.instance.setEnhancedReminderMode(
+        enabled: enabled,
+        channel: l10n.androidEnhancedReminderChannel,
+        title: l10n.androidEnhancedReminderNotificationTitle,
+        body: l10n.androidEnhancedReminderNotificationBody,
+        disable: l10n.androidEnhancedReminderDisable,
+      );
+      await _refreshStatuses(refreshAfterActive: true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(l10n.androidTestBackgroundReminderFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _changingEnhancedMode = false);
     }
   }
 
   Future<void> _checkPermissions() async {
     await AndroidReminderGuard.instance.ensureReminderPermissions();
-    await _loadPermissionStatus();
+    await _refreshStatuses(refreshAfterActive: true);
     if (!mounted) {
       return;
     }
@@ -1138,6 +1196,52 @@ class _AndroidBackgroundSectionState
           ),
           value: _isIgnoringBatteryOptimizations,
           onChanged: _onBatteryOptimizationChanged,
+        ),
+        if (_reliabilityStatus?.forcedStopDetected == true)
+          Card(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: ListTile(
+              leading: Icon(
+                Icons.report_problem_outlined,
+                color: Theme.of(context).colorScheme.onErrorContainer,
+              ),
+              title: Text(l10n.androidForcedStopDetected),
+              subtitle: Text(l10n.androidForcedStopDetectedSubtitle),
+            ),
+          ),
+        SwitchListTile(
+          secondary: const Icon(Icons.shield_outlined),
+          title: Text(l10n.androidEnhancedReminder),
+          subtitle: Text(
+            '${l10n.androidEnhancedReminderSubtitle}\n'
+            '${l10n.androidEnhancedReminderLimit}',
+          ),
+          value: _reliabilityStatus?.enhancedMode ?? false,
+          onChanged: _changingEnhancedMode ? null : _setEnhancedMode,
+        ),
+        ListTile(
+          leading: const Icon(Icons.fact_check_outlined),
+          title: Text(l10n.androidReminderReliability),
+          subtitle: _reliabilityStatus == null
+              ? null
+              : Text(
+                  l10n.androidReminderReliabilityStatus(
+                    _reliabilityStatus!.registeredReminderCount,
+                    _reliabilityStatus!.storedReminderCount,
+                  ),
+                ),
+          trailing: IconButton(
+            onPressed: _refreshStatuses,
+            icon: const Icon(Icons.refresh),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.phonelink_setup_outlined),
+          title: Text(l10n.androidOriginOsSettings),
+          subtitle: Text(l10n.androidOriginOsSettingsSubtitle),
+          trailing: const Icon(Icons.open_in_new),
+          onTap: AndroidNativeReminderService.instance.openAutostartSettings,
         ),
       ],
     );

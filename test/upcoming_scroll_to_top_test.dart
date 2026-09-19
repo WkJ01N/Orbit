@@ -130,7 +130,10 @@ void main() {
           await tester.pump();
           expect(
             _progress(tester, _floatingKey) - duringCorrection,
-            closeTo((position.pixels - offset) / position.maxScrollExtent, .0001),
+            closeTo(
+              (position.pixels - offset) / position.maxScrollExtent,
+              .0001,
+            ),
           );
           target = position.pixels / position.maxScrollExtent;
         }

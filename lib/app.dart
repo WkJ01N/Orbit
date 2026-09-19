@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +11,8 @@ import 'package:orbit/core/routing/notification_listener.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/providers/account_sync_providers.dart';
+import 'package:orbit/models/auto_sync_settings.dart';
 import 'package:orbit/core/widgets/notification_permission_banner.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 
@@ -34,9 +39,11 @@ class OrbitApp extends ConsumerWidget {
       navigatorObservers: [_messageRouteObserver],
       builder: (context, child) => AppScaffoldMessenger(
         routeObserver: _messageRouteObserver,
-        child: NotificationPermissionHost(
-          navigatorKey: _navigatorKey,
-          child: child!,
+        child: _AccountSyncLifecycleHost(
+          child: NotificationPermissionHost(
+            navigatorKey: _navigatorKey,
+            child: child!,
+          ),
         ),
       ),
       title: 'Orbit',
@@ -66,5 +73,96 @@ class OrbitApp extends ConsumerWidget {
         child: DesktopShell(child: AppShell()),
       ),
     );
+  }
+}
+
+class _AccountSyncLifecycleHost extends ConsumerStatefulWidget {
+  const _AccountSyncLifecycleHost({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_AccountSyncLifecycleHost> createState() =>
+      _AccountSyncLifecycleHostState();
+}
+
+class _AccountSyncLifecycleHostState
+    extends ConsumerState<_AccountSyncLifecycleHost>
+    with WidgetsBindingObserver {
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool? _networkAllowed;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeConnectivity();
+  }
+
+  Future<void> _initializeConnectivity() async {
+    try {
+      final connectivity = Connectivity();
+      final initial = await connectivity.checkConnectivity();
+      if (!mounted) return;
+      _networkAllowed = await _isAllowedNetwork(initial);
+      _connectivitySubscription = connectivity.onConnectivityChanged.listen(
+        _onConnectivityChanged,
+        onError: (Object error, StackTrace stack) {
+          debugPrint('Connectivity monitor failed: $error');
+        },
+      );
+    } catch (error) {
+      debugPrint('Connectivity monitor unavailable: $error');
+    }
+  }
+
+  Future<bool> _isAllowedNetwork(List<ConnectivityResult> results) async {
+    if (results.isEmpty || results.every((r) => r == ConnectivityResult.none)) {
+      return false;
+    }
+    final settings = await ref
+        .read(settingsServiceProvider)
+        .loadAutoSyncSettings();
+    if (settings.networkPolicy == SyncNetworkPolicy.any) return true;
+    return results.any(
+      (result) =>
+          result == ConnectivityResult.wifi ||
+          result == ConnectivityResult.ethernet,
+    );
+  }
+
+  Future<void> _onConnectivityChanged(List<ConnectivityResult> results) async {
+    final allowed = await _isAllowedNetwork(results);
+    final wasAllowed = _networkAllowed;
+    _networkAllowed = allowed;
+    if (wasAllowed == false && allowed && mounted) {
+      await ref
+          .read(accountSyncProvider.notifier)
+          .triggerSync(SyncTrigger.networkRestored);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_connectivitySubscription?.cancel());
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(
+        ref
+            .read(accountSyncProvider.notifier)
+            .triggerSync(SyncTrigger.appResume),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(accountSyncProvider);
+    return widget.child;
   }
 }

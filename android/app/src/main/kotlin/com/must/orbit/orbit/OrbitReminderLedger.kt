@@ -7,11 +7,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+internal enum class OrbitReminderDeliveryResult { DELIVERED, SKIPPED, RETRY }
+
 /** Shares the v5 delivery ledger with Flutter. SQLite serializes cross-process actions. */
 object OrbitReminderLedger {
     private fun open(context: Context): SQLiteDatabase? {
-        @Suppress("DEPRECATION")
-        val path = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE or Context.MODE_MULTI_PROCESS).getString("database_path", null) ?: return null
+        val path = OrbitReminderStore.metadata(context)["database_path"] ?: return null
         return SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READWRITE)
     }
     private fun identity(record: OrbitReminderRecord): JSONObject = JSONObject(record.metadata)
@@ -26,24 +27,37 @@ object OrbitReminderLedger {
         }
         return false
     }
-    fun claim(context: Context, record: OrbitReminderRecord): Boolean {
+    internal fun deliver(
+        context: Context,
+        record: OrbitReminderRecord,
+        publish: () -> Boolean,
+    ): OrbitReminderDeliveryResult {
         val meta = identity(record)
         val rule = meta.optString("ruleId")
-        if (rule.isEmpty() || rule == "null") return true
+        if (rule.isEmpty() || rule == "null") {
+            return if (publish()) OrbitReminderDeliveryResult.DELIVERED else OrbitReminderDeliveryResult.RETRY
+        }
         val session = meta.getString("sessionId")
         val index = meta.optInt("sendIndex", 1)
-        val db = open(context) ?: return false
+        val db = open(context) ?: return OrbitReminderDeliveryResult.RETRY
         db.use {
             it.beginTransaction()
             try {
                 it.rawQuery("SELECT acknowledged,processed_index FROM reminder_delivery WHERE rule_id=? AND session_id=?", arrayOf(rule, session)).use { cursor ->
-                    if (cursor.moveToFirst() && (cursor.getInt(0) == 1 || cursor.getInt(1) >= index)) return false
+                    if (cursor.moveToFirst() && (cursor.getInt(0) == 1 ||
+                            (cursor.getInt(1) >= index && !meta.optBoolean("fallback")))) {
+                        OrbitReminderDiagnostics.event("delivery_skipped", record.alarmId, "acknowledged_or_processed")
+                        return OrbitReminderDeliveryResult.SKIPPED
+                    }
                 }
+                // Publish before committing processed_index. Failed posts leave the schedule
+                // intact, while the transaction serializes acknowledgement and duplicates.
+                if (!publish()) return OrbitReminderDeliveryResult.RETRY
                 it.execSQL("INSERT OR IGNORE INTO reminder_delivery(rule_id,session_id) VALUES(?,?)",arrayOf(rule,session))
                 it.execSQL("UPDATE reminder_delivery SET processed_index=MAX(processed_index,?),catchup_index=MAX(catchup_index,?) WHERE rule_id=? AND session_id=?",arrayOf<Any>(index,if(meta.optBoolean("catchUp")) index else 0,rule,session))
                 it.delete("reminder_schedule", "rule_id=? AND session_id=? AND send_index<=?", arrayOf(rule, session, index.toString()))
                 it.setTransactionSuccessful()
-                return true
+                return OrbitReminderDeliveryResult.DELIVERED
             } finally { it.endTransaction() }
         }
     }
@@ -75,8 +89,7 @@ object OrbitReminderLedger {
                 }
             }
         }
-        @Suppress("DEPRECATION")
-        val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE or Context.MODE_MULTI_PROCESS)
+        val config = OrbitReminderStore.metadata(context)
         groups.values.forEach { entries ->
             fun time(meta: JSONObject) = java.time.OffsetDateTime.parse(meta.getString("fireAt")).toInstant().toEpochMilli()
             // Dart serializes local dates without an offset, so interpret those in the local zone.
@@ -98,20 +111,21 @@ object OrbitReminderLedger {
             val catchUp = at <= now
             if (catchUp) {
                 val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                if(!next.optBoolean("catchUp"))title = "[${prefs.getString("catchup_label", "Catch-up")}] $title"
+                if(!next.optBoolean("catchUp"))title = "[${config["catchup_label"] ?: "Catch-up"}] $title"
                 else body=body.lines().dropLast(3).joinToString("\n")
-                body += "\n${prefs.getString("original_label", "Originally scheduled")}: ${format.format(Date(at))}\n" +
-                    "${prefs.getString("delivered_label", "Delivered")}: ${format.format(Date(now))}\n${prefs.getString("catchup_notice", "This is a catch-up message, not a real-time reminder.")}"
+                body += "\n${config["original_label"] ?: "Originally scheduled"}: ${format.format(Date(at))}\n" +
+                    "${config["delivered_label"] ?: "Delivered"}: ${format.format(Date(now))}\n${config["catchup_notice"] ?: "This is a catch-up message, not a real-time reminder."}"
                 next.put("catchUp", true)
             }
             val record = OrbitReminderRecord(next.getInt("alarmId"),next.getInt("notificationId"),
                 if(catchUp) now+1000 else at,title,body,null,next.getString("payload"),
-                prefs.getString("channel_name", "Course reminders")!!,prefs.getString("channel_description", "Course reminders")!!,true,next.toString())
+                config["channel_name"] ?: "Course reminders",config["channel_description"] ?: "Course reminders",true,next.toString())
             val existing=OrbitReminderStore.get(context,record.alarmId)
             if(existing==null || existing.fireAtMillis<=now || (!catchUp && existing.fireAtMillis!=at))
                 if (!OrbitReminderManager.schedule(context,record,true,true).scheduled) {
-                    prefs.edit().putString("schedule_failure", "replenish").commit()
+                    OrbitReminderStore.updateMetadata(context, mapOf("schedule_failure" to "replenish"))
                 }
+            OrbitReminderDiagnostics.event("replenish", record.alarmId, if (catchUp) "catch_up" else "next")
         }
     }
 }

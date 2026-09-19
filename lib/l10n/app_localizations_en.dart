@@ -9,6 +9,370 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get importAuto => 'Auto detect';
+
+  @override
+  String get importTemplates => 'Recognition templates';
+
+  @override
+  String get importPlans => 'Semester & period times';
+
+  @override
+  String get importListLayout => 'Course list';
+
+  @override
+  String get importGridLayout => 'Weekly grid';
+
+  @override
+  String get importLegacyLayout => 'Orbit 13-column format';
+
+  @override
+  String get importTemplateName => 'Template name';
+
+  @override
+  String get importBuiltIn => 'Built-in · copy to edit';
+
+  @override
+  String get importCopy => 'Copy';
+
+  @override
+  String get importShareTemplate => 'Export template JSON';
+
+  @override
+  String get importLoadTemplate => 'Import template JSON';
+
+  @override
+  String get importLayoutStep => 'Layout & region';
+
+  @override
+  String get importFieldsStep => 'Field mapping';
+
+  @override
+  String get importRegexStep => 'Extraction rules';
+
+  @override
+  String get importTestStep => 'Test & preview';
+
+  @override
+  String get importHeaderRow => 'Header row (1-based)';
+
+  @override
+  String get importFirstRow => 'First course row';
+
+  @override
+  String get importLastRow => 'Last course row (blank = end)';
+
+  @override
+  String get importFirstColumn => 'First course column (1-based)';
+
+  @override
+  String get importLastColumn => 'Last course column';
+
+  @override
+  String get importWeekdayColumns => 'Column:weekday, e.g. 2:1,3:2';
+
+  @override
+  String get importPeriodRows => 'Row:periods, e.g. 2:1-2;3:3-4';
+
+  @override
+  String get importColumnSource => 'Column';
+
+  @override
+  String get importTextSource => 'Course text';
+
+  @override
+  String get importFixedSource => 'Fixed value';
+
+  @override
+  String get importWeekdaySource => 'Grid weekday';
+
+  @override
+  String get importPeriodsSource => 'Grid periods';
+
+  @override
+  String get importColumnNumber => 'Column number (1-based)';
+
+  @override
+  String get importFixedValue => 'Fixed value';
+
+  @override
+  String get importPattern => 'Regular expression (blank = original)';
+
+  @override
+  String get importCaptureGroup => 'Capture group number or name';
+
+  @override
+  String get importCaseSensitive => 'Case sensitive';
+
+  @override
+  String get importMultiLine => 'Multiline anchors';
+
+  @override
+  String get importDotAll => 'Dot matches newline';
+
+  @override
+  String get importUnicode => 'Unicode mode';
+
+  @override
+  String get importBlockPattern => 'Course block separator / match regex';
+
+  @override
+  String get importRepeatBlocks => 'Repeated course block matching';
+
+  @override
+  String get importTestText => 'Sample course text';
+
+  @override
+  String get importRunTest => 'Run test';
+
+  @override
+  String get importOriginal => 'Original text';
+
+  @override
+  String get importMatches => 'Matches & capture groups';
+
+  @override
+  String get importExtracted => 'Extracted fields';
+
+  @override
+  String get importSave => 'Save';
+
+  @override
+  String get importNext => 'Next';
+
+  @override
+  String get importBack => 'Back';
+
+  @override
+  String get importSemesterName => 'Semester name';
+
+  @override
+  String get importFirstMonday => 'First week Monday (YYYY-MM-DD)';
+
+  @override
+  String get importTotalWeeks => 'Total weeks (1–30)';
+
+  @override
+  String get importPeriodPlanName => 'Period time plan name';
+
+  @override
+  String get importPeriodTimeInput =>
+      'Period,start,end — one per line; e.g. 1,08:00,08:45';
+
+  @override
+  String get importDefaultWeeks => 'Weeks when absent from file (e.g. 1-18)';
+
+  @override
+  String get importConfirmContext =>
+      'Confirm semester, weeks and period times for this import';
+
+  @override
+  String get importTemporaryContext =>
+      'Temporary changes apply only to this import. Save plans separately.';
+
+  @override
+  String get importEncoding => 'CSV encoding';
+
+  @override
+  String get importDelimiter => 'CSV delimiter';
+
+  @override
+  String get importComma => 'Comma';
+
+  @override
+  String get importSemicolon => 'Semicolon';
+
+  @override
+  String get importTab => 'Tab';
+
+  @override
+  String get importPreview => 'Parse & preview';
+
+  @override
+  String get importSkipErrors => 'Explicitly skip failed courses';
+
+  @override
+  String get importSkipDescription =>
+      'Failed courses will not be imported. Review each error first.';
+
+  @override
+  String get importCancelTask => 'Cancel parsing';
+
+  @override
+  String get importSelectSheet => 'Select worksheets to import';
+
+  @override
+  String get importRawTable =>
+      'Original table — tap a cell to select coordinates';
+
+  @override
+  String get importChooseCoordinate => 'Use selected cell as';
+
+  @override
+  String get importNoSelection => 'No worksheet selected';
+
+  @override
+  String get importNone => 'None';
+
+  @override
+  String get importValid => 'Valid';
+
+  @override
+  String get importDuplicates => 'Duplicates';
+
+  @override
+  String get importErrors => 'Errors';
+
+  @override
+  String get importDeleteConfirm => 'Delete this saved template or plan?';
+
+  @override
+  String get importHelp =>
+      'Lists need course name, date (or weekday and weeks), and start/end times (or periods). Grids use weekday columns and period rows. Separate multiple courses by a blank line, or configure block rules. Weekly schedules need a confirmed semester and period time plan.';
+
+  @override
+  String get importFieldCourseName => 'Course name';
+
+  @override
+  String get importFieldCourseCode => 'Course code';
+
+  @override
+  String get importFieldSection => 'Section';
+
+  @override
+  String get importFieldRoom => 'Room';
+
+  @override
+  String get importFieldTeachers => 'Teachers';
+
+  @override
+  String get importFieldFaculty => 'Faculty';
+
+  @override
+  String get importFieldClassType => 'Class type';
+
+  @override
+  String get importFieldSemester => 'Semester';
+
+  @override
+  String get importFieldDate => 'Date';
+
+  @override
+  String get importFieldWeekday => 'Weekday';
+
+  @override
+  String get importFieldWeeks => 'Weeks';
+
+  @override
+  String get importFieldPeriods => 'Periods';
+
+  @override
+  String get importFieldStartTime => 'Start time';
+
+  @override
+  String get importFieldEndTime => 'End time';
+
+  @override
+  String get importErrorAmbiguous =>
+      'Multiple templates match; select one explicitly.';
+
+  @override
+  String get importErrorTemplateInvalid =>
+      'Invalid template or region configuration.';
+
+  @override
+  String get importErrorTemplateVersion => 'Unsupported template version.';
+
+  @override
+  String get importErrorCaptureGroup =>
+      'Capture group number or name is invalid.';
+
+  @override
+  String get importErrorMissingName => 'Course name is required.';
+
+  @override
+  String get importErrorSemesterInvalid =>
+      'Check semester name, Monday date and total weeks.';
+
+  @override
+  String get importErrorPeriodInvalid =>
+      'Invalid period numbers or period time plan.';
+
+  @override
+  String get importErrorInvalidTime =>
+      'Invalid time; end must be later than start.';
+
+  @override
+  String get importErrorInvalidDate => 'Invalid calendar date.';
+
+  @override
+  String get importErrorInvalidWeekday =>
+      'Weekday must be Monday through Sunday.';
+
+  @override
+  String get importErrorWeekdayMismatch =>
+      'Weekday does not match the calendar date.';
+
+  @override
+  String get importErrorInvalidWeeks =>
+      'Invalid weeks or weeks outside the semester.';
+
+  @override
+  String get importErrorWeeksRequired =>
+      'Confirm applicable weeks when missing from the file.';
+
+  @override
+  String get importErrorContextRequired =>
+      'Confirm the semester and required period time plan.';
+
+  @override
+  String get importErrorUnknownPeriod =>
+      'No time mapping for one or more periods.';
+
+  @override
+  String get importErrorHorizontalMerge =>
+      'Course merged across weekday columns is unsupported.';
+
+  @override
+  String get importErrorZeroLength =>
+      'Course block rules must not match empty text.';
+
+  @override
+  String get importErrorNoMatch => 'No matching course block found.';
+
+  @override
+  String get importErrorUnmatchedText =>
+      'Course block rule leaves unmatched text; refine the rule.';
+
+  @override
+  String get importErrorIdConflict =>
+      'Same class ID has different content; resolve or explicitly skip.';
+
+  @override
+  String get importErrorNoSessions => 'No valid courses found.';
+
+  @override
+  String get importErrorNoSheet => 'No worksheet found.';
+
+  @override
+  String get importErrorUnsupportedFile =>
+      'Only XLSX and CSV files are supported.';
+
+  @override
+  String get importErrorEncodingFailed =>
+      'Could not decode CSV; choose an encoding or convert the file.';
+
+  @override
+  String get importErrorTimeout =>
+      'Parsing timed out. Your configuration is retained.';
+
+  @override
+  String get importErrorCancelled => 'Parsing cancelled.';
+
+  @override
+  String get importErrorWorkerFailed => 'Parsing worker failed. Please retry.';
+
+  @override
   String get appTitle => 'Orbit Schedule';
 
   @override
@@ -157,7 +521,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gridEmptySubtitle =>
-      'Go to Import and select your xlsx schedule files';
+      'Go to Import and select your XLSX or CSV schedule files';
 
   @override
   String get gridImportNow => 'Import now';
@@ -212,7 +576,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importCancel => 'Cancel';
 
   @override
-  String get importPickTitle => 'Select xlsx schedule files';
+  String get importPickTitle => 'Select XLSX / CSV schedule files';
 
   @override
   String get importPickSubtitle =>
@@ -618,15 +982,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      'Uses the same native background scheduling as class reminders. Return home or lock the screen and wait one minute.';
+      'Registers the same native alarm as class reminders. After one minute, reopen Orbit to inspect registration, receiver, and notification stages.';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      'Test reminder scheduled in 1 minute. Return home or lock the screen and wait.';
+      'Stage 1 passed: the one-minute alarm is registered. Leave Orbit, wait, then check Reminder diagnostics.';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return 'Background test scheduled for $time. Return home or lock the screen and wait.';
+    return 'Stage 1 passed: Android registered the alarm for $time. Leave Orbit, wait, then check Reminder diagnostics.';
   }
 
   @override
@@ -1116,8 +1480,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importFormatTitle => 'Schedule file format';
 
   @override
-  String get importFormatSubtitle =>
-      'xlsx columns A–M (one row per class session)';
+  String get importFormatSubtitle => 'XLSX / CSV course lists and weekly grids';
 
   @override
   String get importFormatColumn => 'Col';
@@ -1886,4 +2249,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get paletteSchemeDescriptions =>
       'Soft, coordinated hues|Vivid contrasting hues|Rotated expressive triad|Balanced three-hue spectrum|Fresh adjacent hues|Seed-led gentle contrast|Seed-led complementary contrast|Low saturation, subtle differences|Grayscale, no hue contrast';
+
+  @override
+  String get androidEnhancedReminder => 'Enhanced reminder mode';
+
+  @override
+  String get androidEnhancedReminderSubtitle =>
+      'Keeps a quiet ongoing notification while future reminders exist to improve reliability on some phones.';
+
+  @override
+  String get androidEnhancedReminderLimit =>
+      'A real force stop still prevents Android from delivering alarms until Orbit is opened again.';
+
+  @override
+  String get androidEnhancedReminderChannel => 'Reminder reliability';
+
+  @override
+  String get androidEnhancedReminderNotificationTitle =>
+      'Enhanced reminders enabled';
+
+  @override
+  String get androidEnhancedReminderNotificationBody =>
+      'Orbit is protecting future course reminders.';
+
+  @override
+  String get androidEnhancedReminderDisable => 'Turn off';
+
+  @override
+  String get androidOriginOsSettings => 'OriginOS background settings';
+
+  @override
+  String get androidOriginOsSettingsSubtitle =>
+      'Enable autostart and background high power usage, remove battery restrictions, then lock Orbit in Recents.';
+
+  @override
+  String get androidOpenAutostartSettings => 'Open settings';
+
+  @override
+  String get androidForcedStopDetected => 'Orbit was force-stopped';
+
+  @override
+  String get androidForcedStopDetectedSubtitle =>
+      'The recent-app cleaner stopped Orbit and canceled its alarms. Complete the OriginOS settings below, then run the one-minute test again.';
+
+  @override
+  String get androidReminderReliability => 'Reminder registration';
+
+  @override
+  String androidReminderReliabilityStatus(int registered, int stored) {
+    return '$registered of $stored future reminders are registered with Android.';
+  }
+
+  @override
+  String get androidReminderDiagnostics => 'Reminder diagnostics';
+
+  @override
+  String get androidReminderDiagnosticsEmpty =>
+      'No native reminder events recorded yet.';
 }

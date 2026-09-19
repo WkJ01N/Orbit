@@ -14,24 +14,32 @@ import org.json.JSONObject
 class OrbitStrongReminderService : Service() {
     companion object {
         @Volatile var active = false
-        @Volatile var starting = false
+            private set
         private val occurrences = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
         fun acknowledge(context: Context, rule: String, session: String): Boolean {
             if (!occurrences.remove("$rule|$session") || occurrences.isNotEmpty()) return false
-            context.stopService(Intent(context, OrbitStrongReminderService::class.java))
+            stop(context)
             return true
         }
-        fun start(context: Context, record: OrbitReminderRecord) {
+        fun stop(context: Context) {
+            if (context.stopService(Intent(context, OrbitStrongReminderService::class.java))) {
+                OrbitReminderProcess.lifecycle.cancelServiceStarts()
+                OrbitReminderDiagnostics.event("strong_stop_requested")
+            }
+        }
+        fun start(context: Context, record: OrbitReminderRecord): Boolean {
             val intent = Intent(context, OrbitStrongReminderService::class.java)
                 .putExtra("record", record.toJson().toString())
+            OrbitReminderProcess.lifecycle.beginServiceStart()
             try {
-                starting = true
-                if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+                val component = if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
+                if (component == null) throw IllegalStateException("Service not started")
+                OrbitReminderDiagnostics.event("strong_start_requested", record.alarmId)
+                return true
             } catch (e: Exception) {
-                starting = false
-                context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE).edit()
-                    .putString("strong_degraded", e.javaClass.simpleName).commit()
-                OrbitReminderManager.postNormalFallback(context,record)
+                OrbitReminderProcess.lifecycle.endServiceStart()
+                OrbitReminderDiagnostics.strongFailure(context, "start", record.alarmId, e)
+                return OrbitReminderManager.postNormalFallback(context,record)
             }
         }
     }
@@ -39,9 +47,29 @@ class OrbitStrongReminderService : Service() {
     private var player: MediaPlayer? = null
     private var vibration: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    override fun onCreate() {
+        super.onCreate()
+        OrbitReminderProcess.serviceCreated(this)
+    }
     override fun onBind(intent: Intent?) = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        starting = false
+        OrbitReminderProcess.lifecycle.endServiceStart()
+        return try {
+            startReminder(intent)
+        } catch (error: Exception) {
+            OrbitReminderDiagnostics.failure(this, "strong_service", error = error)
+            try {
+                intent?.getStringExtra("record")?.let {
+                    OrbitReminderManager.recoverNormalFallback(this, OrbitReminderRecord.fromJson(JSONObject(it)))
+                }
+            } catch (fallbackError: Exception) {
+                OrbitReminderDiagnostics.failure(this, "strong_service_fallback", error = fallbackError)
+            }
+            stopSelf()
+            START_NOT_STICKY
+        }
+    }
+    private fun startReminder(intent: Intent?): Int {
         if (intent?.action == "stop") { stopSelf(); return START_NOT_STICKY }
         val record = OrbitReminderRecord.fromJson(JSONObject(intent?.getStringExtra("record") ?: run { stopSelf(); return START_NOT_STICKY }))
         if(OrbitReminderLedger.acknowledged(this,record)) {
@@ -57,12 +85,13 @@ class OrbitStrongReminderService : Service() {
         val notification = OrbitReminderManager.buildNotification(this, record) ?: run { stopSelf(); return START_NOT_STICKY }
         try { startForeground(2_200_000, notification) }
         catch(e: Exception) {
-            getSharedPreferences("orbit_native_reminders",Context.MODE_PRIVATE).edit().putString("strong_degraded",e.javaClass.simpleName).commit()
-            OrbitReminderManager.postNormalFallback(this,record)
+            OrbitReminderDiagnostics.strongFailure(this, "foreground", record.alarmId, e)
+            OrbitReminderManager.recoverNormalFallback(this,record)
             stopSelf();return START_NOT_STICKY
         }
         active = true
-        getSharedPreferences("orbit_native_reminders",Context.MODE_PRIVATE).edit().remove("strong_degraded").commit()
+        OrbitReminderStore.updateMetadata(this, mapOf("strong_degraded" to null))
+        OrbitReminderDiagnostics.event("strong_active", record.alarmId)
         val seconds = settings.optInt("durationSeconds", 30).coerceIn(5, 300)
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Orbit:StrongReminder")
             .also { it.acquire((seconds + 1) * 1000L) }
@@ -86,8 +115,8 @@ class OrbitStrongReminderService : Service() {
                 }
             } catch (e: Exception) {
                 player?.release(); player = null
-                getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE).edit().putString("strong_degraded", e.javaClass.simpleName).commit()
-                OrbitReminderManager.postNormalFallback(this,record)
+                OrbitReminderDiagnostics.strongFailure(this, "audio", record.alarmId, e)
+                OrbitReminderManager.recoverNormalFallback(this,record)
             }
         }
         if (permitted && settings.optBoolean("vibrationEnabled", true)) {
@@ -100,10 +129,21 @@ class OrbitStrongReminderService : Service() {
         return START_NOT_STICKY
     }
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null); player?.release(); player = null
-        vibration?.cancel(); if (wakeLock?.isHeld == true) wakeLock?.release()
-        occurrences.clear()
-        active = false; stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy()
-        exitDedicatedReminderProcessSoon()
+        try {
+            handler.removeCallbacksAndMessages(null)
+            player?.release(); player = null
+            vibration?.cancel()
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+        } finally {
+            occurrences.clear()
+            active = false
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                super.onDestroy()
+            } finally {
+                OrbitReminderDiagnostics.event("strong_destroyed")
+                OrbitReminderProcess.lifecycle.serviceDestroyed()
+            }
+        }
     }
 }

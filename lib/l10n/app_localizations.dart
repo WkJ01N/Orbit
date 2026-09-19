@@ -100,6 +100,684 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
+  /// No description provided for @importAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto detect'**
+  String get importAuto;
+
+  /// No description provided for @importTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognition templates'**
+  String get importTemplates;
+
+  /// No description provided for @importPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester & period times'**
+  String get importPlans;
+
+  /// No description provided for @importListLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Course list'**
+  String get importListLayout;
+
+  /// No description provided for @importGridLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly grid'**
+  String get importGridLayout;
+
+  /// No description provided for @importLegacyLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit 13-column format'**
+  String get importLegacyLayout;
+
+  /// No description provided for @importTemplateName.
+  ///
+  /// In en, this message translates to:
+  /// **'Template name'**
+  String get importTemplateName;
+
+  /// No description provided for @importBuiltIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in · copy to edit'**
+  String get importBuiltIn;
+
+  /// No description provided for @importCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get importCopy;
+
+  /// No description provided for @importShareTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Export template JSON'**
+  String get importShareTemplate;
+
+  /// No description provided for @importLoadTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Import template JSON'**
+  String get importLoadTemplate;
+
+  /// No description provided for @importLayoutStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout & region'**
+  String get importLayoutStep;
+
+  /// No description provided for @importFieldsStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Field mapping'**
+  String get importFieldsStep;
+
+  /// No description provided for @importRegexStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Extraction rules'**
+  String get importRegexStep;
+
+  /// No description provided for @importTestStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Test & preview'**
+  String get importTestStep;
+
+  /// No description provided for @importHeaderRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Header row (1-based)'**
+  String get importHeaderRow;
+
+  /// No description provided for @importFirstRow.
+  ///
+  /// In en, this message translates to:
+  /// **'First course row'**
+  String get importFirstRow;
+
+  /// No description provided for @importLastRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Last course row (blank = end)'**
+  String get importLastRow;
+
+  /// No description provided for @importFirstColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'First course column (1-based)'**
+  String get importFirstColumn;
+
+  /// No description provided for @importLastColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Last course column'**
+  String get importLastColumn;
+
+  /// No description provided for @importWeekdayColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Column:weekday, e.g. 2:1,3:2'**
+  String get importWeekdayColumns;
+
+  /// No description provided for @importPeriodRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Row:periods, e.g. 2:1-2;3:3-4'**
+  String get importPeriodRows;
+
+  /// No description provided for @importColumnSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Column'**
+  String get importColumnSource;
+
+  /// No description provided for @importTextSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Course text'**
+  String get importTextSource;
+
+  /// No description provided for @importFixedSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed value'**
+  String get importFixedSource;
+
+  /// No description provided for @importWeekdaySource.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid weekday'**
+  String get importWeekdaySource;
+
+  /// No description provided for @importPeriodsSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid periods'**
+  String get importPeriodsSource;
+
+  /// No description provided for @importColumnNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Column number (1-based)'**
+  String get importColumnNumber;
+
+  /// No description provided for @importFixedValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed value'**
+  String get importFixedValue;
+
+  /// No description provided for @importPattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Regular expression (blank = original)'**
+  String get importPattern;
+
+  /// No description provided for @importCaptureGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture group number or name'**
+  String get importCaptureGroup;
+
+  /// No description provided for @importCaseSensitive.
+  ///
+  /// In en, this message translates to:
+  /// **'Case sensitive'**
+  String get importCaseSensitive;
+
+  /// No description provided for @importMultiLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiline anchors'**
+  String get importMultiLine;
+
+  /// No description provided for @importDotAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Dot matches newline'**
+  String get importDotAll;
+
+  /// No description provided for @importUnicode.
+  ///
+  /// In en, this message translates to:
+  /// **'Unicode mode'**
+  String get importUnicode;
+
+  /// No description provided for @importBlockPattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Course block separator / match regex'**
+  String get importBlockPattern;
+
+  /// No description provided for @importRepeatBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeated course block matching'**
+  String get importRepeatBlocks;
+
+  /// No description provided for @importTestText.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample course text'**
+  String get importTestText;
+
+  /// No description provided for @importRunTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Run test'**
+  String get importRunTest;
+
+  /// No description provided for @importOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original text'**
+  String get importOriginal;
+
+  /// No description provided for @importMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches & capture groups'**
+  String get importMatches;
+
+  /// No description provided for @importExtracted.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracted fields'**
+  String get importExtracted;
+
+  /// No description provided for @importSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get importSave;
+
+  /// No description provided for @importNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get importNext;
+
+  /// No description provided for @importBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get importBack;
+
+  /// No description provided for @importSemesterName.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester name'**
+  String get importSemesterName;
+
+  /// No description provided for @importFirstMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'First week Monday (YYYY-MM-DD)'**
+  String get importFirstMonday;
+
+  /// No description provided for @importTotalWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Total weeks (1–30)'**
+  String get importTotalWeeks;
+
+  /// No description provided for @importPeriodPlanName.
+  ///
+  /// In en, this message translates to:
+  /// **'Period time plan name'**
+  String get importPeriodPlanName;
+
+  /// No description provided for @importPeriodTimeInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Period,start,end — one per line; e.g. 1,08:00,08:45'**
+  String get importPeriodTimeInput;
+
+  /// No description provided for @importDefaultWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks when absent from file (e.g. 1-18)'**
+  String get importDefaultWeeks;
+
+  /// No description provided for @importConfirmContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm semester, weeks and period times for this import'**
+  String get importConfirmContext;
+
+  /// No description provided for @importTemporaryContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary changes apply only to this import. Save plans separately.'**
+  String get importTemporaryContext;
+
+  /// No description provided for @importEncoding.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV encoding'**
+  String get importEncoding;
+
+  /// No description provided for @importDelimiter.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV delimiter'**
+  String get importDelimiter;
+
+  /// No description provided for @importComma.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma'**
+  String get importComma;
+
+  /// No description provided for @importSemicolon.
+  ///
+  /// In en, this message translates to:
+  /// **'Semicolon'**
+  String get importSemicolon;
+
+  /// No description provided for @importTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab'**
+  String get importTab;
+
+  /// No description provided for @importPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Parse & preview'**
+  String get importPreview;
+
+  /// No description provided for @importSkipErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Explicitly skip failed courses'**
+  String get importSkipErrors;
+
+  /// No description provided for @importSkipDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed courses will not be imported. Review each error first.'**
+  String get importSkipDescription;
+
+  /// No description provided for @importCancelTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel parsing'**
+  String get importCancelTask;
+
+  /// No description provided for @importSelectSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Select worksheets to import'**
+  String get importSelectSheet;
+
+  /// No description provided for @importRawTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Original table — tap a cell to select coordinates'**
+  String get importRawTable;
+
+  /// No description provided for @importChooseCoordinate.
+  ///
+  /// In en, this message translates to:
+  /// **'Use selected cell as'**
+  String get importChooseCoordinate;
+
+  /// No description provided for @importNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'No worksheet selected'**
+  String get importNoSelection;
+
+  /// No description provided for @importNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get importNone;
+
+  /// No description provided for @importValid.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid'**
+  String get importValid;
+
+  /// No description provided for @importDuplicates.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicates'**
+  String get importDuplicates;
+
+  /// No description provided for @importErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get importErrors;
+
+  /// No description provided for @importDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this saved template or plan?'**
+  String get importDeleteConfirm;
+
+  /// No description provided for @importHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Lists need course name, date (or weekday and weeks), and start/end times (or periods). Grids use weekday columns and period rows. Separate multiple courses by a blank line, or configure block rules. Weekly schedules need a confirmed semester and period time plan.'**
+  String get importHelp;
+
+  /// No description provided for @importFieldCourseName.
+  ///
+  /// In en, this message translates to:
+  /// **'Course name'**
+  String get importFieldCourseName;
+
+  /// No description provided for @importFieldCourseCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Course code'**
+  String get importFieldCourseCode;
+
+  /// No description provided for @importFieldSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Section'**
+  String get importFieldSection;
+
+  /// No description provided for @importFieldRoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Room'**
+  String get importFieldRoom;
+
+  /// No description provided for @importFieldTeachers.
+  ///
+  /// In en, this message translates to:
+  /// **'Teachers'**
+  String get importFieldTeachers;
+
+  /// No description provided for @importFieldFaculty.
+  ///
+  /// In en, this message translates to:
+  /// **'Faculty'**
+  String get importFieldFaculty;
+
+  /// No description provided for @importFieldClassType.
+  ///
+  /// In en, this message translates to:
+  /// **'Class type'**
+  String get importFieldClassType;
+
+  /// No description provided for @importFieldSemester.
+  ///
+  /// In en, this message translates to:
+  /// **'Semester'**
+  String get importFieldSemester;
+
+  /// No description provided for @importFieldDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get importFieldDate;
+
+  /// No description provided for @importFieldWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday'**
+  String get importFieldWeekday;
+
+  /// No description provided for @importFieldWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Weeks'**
+  String get importFieldWeeks;
+
+  /// No description provided for @importFieldPeriods.
+  ///
+  /// In en, this message translates to:
+  /// **'Periods'**
+  String get importFieldPeriods;
+
+  /// No description provided for @importFieldStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get importFieldStartTime;
+
+  /// No description provided for @importFieldEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get importFieldEndTime;
+
+  /// No description provided for @importErrorAmbiguous.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple templates match; select one explicitly.'**
+  String get importErrorAmbiguous;
+
+  /// No description provided for @importErrorTemplateInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid template or region configuration.'**
+  String get importErrorTemplateInvalid;
+
+  /// No description provided for @importErrorTemplateVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsupported template version.'**
+  String get importErrorTemplateVersion;
+
+  /// No description provided for @importErrorCaptureGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture group number or name is invalid.'**
+  String get importErrorCaptureGroup;
+
+  /// No description provided for @importErrorMissingName.
+  ///
+  /// In en, this message translates to:
+  /// **'Course name is required.'**
+  String get importErrorMissingName;
+
+  /// No description provided for @importErrorSemesterInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check semester name, Monday date and total weeks.'**
+  String get importErrorSemesterInvalid;
+
+  /// No description provided for @importErrorPeriodInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid period numbers or period time plan.'**
+  String get importErrorPeriodInvalid;
+
+  /// No description provided for @importErrorInvalidTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid time; end must be later than start.'**
+  String get importErrorInvalidTime;
+
+  /// No description provided for @importErrorInvalidDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid calendar date.'**
+  String get importErrorInvalidDate;
+
+  /// No description provided for @importErrorInvalidWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday must be Monday through Sunday.'**
+  String get importErrorInvalidWeekday;
+
+  /// No description provided for @importErrorWeekdayMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday does not match the calendar date.'**
+  String get importErrorWeekdayMismatch;
+
+  /// No description provided for @importErrorInvalidWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid weeks or weeks outside the semester.'**
+  String get importErrorInvalidWeeks;
+
+  /// No description provided for @importErrorWeeksRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm applicable weeks when missing from the file.'**
+  String get importErrorWeeksRequired;
+
+  /// No description provided for @importErrorContextRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm the semester and required period time plan.'**
+  String get importErrorContextRequired;
+
+  /// No description provided for @importErrorUnknownPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'No time mapping for one or more periods.'**
+  String get importErrorUnknownPeriod;
+
+  /// No description provided for @importErrorHorizontalMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Course merged across weekday columns is unsupported.'**
+  String get importErrorHorizontalMerge;
+
+  /// No description provided for @importErrorZeroLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Course block rules must not match empty text.'**
+  String get importErrorZeroLength;
+
+  /// No description provided for @importErrorNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching course block found.'**
+  String get importErrorNoMatch;
+
+  /// No description provided for @importErrorUnmatchedText.
+  ///
+  /// In en, this message translates to:
+  /// **'Course block rule leaves unmatched text; refine the rule.'**
+  String get importErrorUnmatchedText;
+
+  /// No description provided for @importErrorIdConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Same class ID has different content; resolve or explicitly skip.'**
+  String get importErrorIdConflict;
+
+  /// No description provided for @importErrorNoSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'No valid courses found.'**
+  String get importErrorNoSessions;
+
+  /// No description provided for @importErrorNoSheet.
+  ///
+  /// In en, this message translates to:
+  /// **'No worksheet found.'**
+  String get importErrorNoSheet;
+
+  /// No description provided for @importErrorUnsupportedFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Only XLSX and CSV files are supported.'**
+  String get importErrorUnsupportedFile;
+
+  /// No description provided for @importErrorEncodingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not decode CSV; choose an encoding or convert the file.'**
+  String get importErrorEncodingFailed;
+
+  /// No description provided for @importErrorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing timed out. Your configuration is retained.'**
+  String get importErrorTimeout;
+
+  /// No description provided for @importErrorCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing cancelled.'**
+  String get importErrorCancelled;
+
+  /// No description provided for @importErrorWorkerFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing worker failed. Please retry.'**
+  String get importErrorWorkerFailed;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -361,7 +1039,7 @@ abstract class AppLocalizations {
   /// No description provided for @gridEmptySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Go to Import and select your xlsx schedule files'**
+  /// **'Go to Import and select your XLSX or CSV schedule files'**
   String get gridEmptySubtitle;
 
   /// No description provided for @gridImportNow.
@@ -457,7 +1135,7 @@ abstract class AppLocalizations {
   /// No description provided for @importPickTitle.
   ///
   /// In en, this message translates to:
-  /// **'Select xlsx schedule files'**
+  /// **'Select XLSX / CSV schedule files'**
   String get importPickTitle;
 
   /// No description provided for @importPickSubtitle.
@@ -1156,19 +1834,19 @@ abstract class AppLocalizations {
   /// No description provided for @androidTestBackgroundReminderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Uses the same native background scheduling as class reminders. Return home or lock the screen and wait one minute.'**
+  /// **'Registers the same native alarm as class reminders. After one minute, reopen Orbit to inspect registration, receiver, and notification stages.'**
   String get androidTestBackgroundReminderSubtitle;
 
   /// No description provided for @androidTestBackgroundReminderScheduled.
   ///
   /// In en, this message translates to:
-  /// **'Test reminder scheduled in 1 minute. Return home or lock the screen and wait.'**
+  /// **'Stage 1 passed: the one-minute alarm is registered. Leave Orbit, wait, then check Reminder diagnostics.'**
   String get androidTestBackgroundReminderScheduled;
 
   /// No description provided for @androidTestBackgroundReminderScheduledAt.
   ///
   /// In en, this message translates to:
-  /// **'Background test scheduled for {time}. Return home or lock the screen and wait.'**
+  /// **'Stage 1 passed: Android registered the alarm for {time}. Leave Orbit, wait, then check Reminder diagnostics.'**
   String androidTestBackgroundReminderScheduledAt(String time);
 
   /// No description provided for @androidTestBackgroundNotificationTitle.
@@ -1975,7 +2653,7 @@ abstract class AppLocalizations {
   /// No description provided for @importFormatSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'xlsx columns A–M (one row per class session)'**
+  /// **'XLSX / CSV course lists and weekly grids'**
   String get importFormatSubtitle;
 
   /// No description provided for @importFormatColumn.
@@ -3379,6 +4057,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Soft, coordinated hues|Vivid contrasting hues|Rotated expressive triad|Balanced three-hue spectrum|Fresh adjacent hues|Seed-led gentle contrast|Seed-led complementary contrast|Low saturation, subtle differences|Grayscale, no hue contrast'**
   String get paletteSchemeDescriptions;
+
+  /// No description provided for @androidEnhancedReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhanced reminder mode'**
+  String get androidEnhancedReminder;
+
+  /// No description provided for @androidEnhancedReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps a quiet ongoing notification while future reminders exist to improve reliability on some phones.'**
+  String get androidEnhancedReminderSubtitle;
+
+  /// No description provided for @androidEnhancedReminderLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'A real force stop still prevents Android from delivering alarms until Orbit is opened again.'**
+  String get androidEnhancedReminderLimit;
+
+  /// No description provided for @androidEnhancedReminderChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder reliability'**
+  String get androidEnhancedReminderChannel;
+
+  /// No description provided for @androidEnhancedReminderNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhanced reminders enabled'**
+  String get androidEnhancedReminderNotificationTitle;
+
+  /// No description provided for @androidEnhancedReminderNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit is protecting future course reminders.'**
+  String get androidEnhancedReminderNotificationBody;
+
+  /// No description provided for @androidEnhancedReminderDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get androidEnhancedReminderDisable;
+
+  /// No description provided for @androidOriginOsSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'OriginOS background settings'**
+  String get androidOriginOsSettings;
+
+  /// No description provided for @androidOriginOsSettingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable autostart and background high power usage, remove battery restrictions, then lock Orbit in Recents.'**
+  String get androidOriginOsSettingsSubtitle;
+
+  /// No description provided for @androidOpenAutostartSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get androidOpenAutostartSettings;
+
+  /// No description provided for @androidForcedStopDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit was force-stopped'**
+  String get androidForcedStopDetected;
+
+  /// No description provided for @androidForcedStopDetectedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The recent-app cleaner stopped Orbit and canceled its alarms. Complete the OriginOS settings below, then run the one-minute test again.'**
+  String get androidForcedStopDetectedSubtitle;
+
+  /// No description provided for @androidReminderReliability.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder registration'**
+  String get androidReminderReliability;
+
+  /// No description provided for @androidReminderReliabilityStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'{registered} of {stored} future reminders are registered with Android.'**
+  String androidReminderReliabilityStatus(int registered, int stored);
+
+  /// No description provided for @androidReminderDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder diagnostics'**
+  String get androidReminderDiagnostics;
+
+  /// No description provided for @androidReminderDiagnosticsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No native reminder events recorded yet.'**
+  String get androidReminderDiagnosticsEmpty;
 }
 
 class _AppLocalizationsDelegate

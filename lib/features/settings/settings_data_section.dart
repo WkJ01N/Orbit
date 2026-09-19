@@ -9,6 +9,9 @@ import 'package:orbit/features/settings/deleted_sessions_page.dart';
 import 'package:orbit/features/settings/export_backup_actions.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/features/import/import_templates_page.dart';
+import 'package:orbit/features/import/import_plan_editor.dart';
+import 'package:orbit/features/settings/account_sync_page.dart';
 
 class SettingsDataSection extends ConsumerWidget {
   const SettingsDataSection({super.key});
@@ -20,6 +23,50 @@ class SettingsDataSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SettingsGroup(
+          title: _accountSyncLabel(context),
+          children: [
+            ListTile(
+              title: Text(_accountSyncLabel(context)),
+              subtitle: Text(_accountSyncSubtitle(context)),
+              leading: const Icon(Icons.cloud_sync_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const AccountSyncPage(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: l10n.importTemplates,
+          children: [
+            ListTile(
+              title: Text(l10n.importTemplates),
+              leading: const Icon(Icons.rule),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const ImportTemplatesPage(),
+                ),
+              ),
+            ),
+            ListTile(
+              title: Text(l10n.importPlans),
+              leading: const Icon(Icons.schedule),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const ImportPlansPage(),
+                ),
+              ),
+            ),
+          ],
+        ),
         SettingsGroup(
           title: l10n.settingsBackupGroup,
           children: const [_ExportBackupSection()],
@@ -129,6 +176,26 @@ class SettingsDataSection extends ConsumerWidget {
       }
     }
   }
+}
+
+String _accountSyncLabel(BuildContext context) {
+  final locale = Localizations.localeOf(context);
+  if (locale.languageCode != 'zh') return 'Account & sync';
+  return locale.scriptCode?.toLowerCase() == 'hant' ||
+          locale.countryCode == 'TW'
+      ? '帳號與同步'
+      : '账号与同步';
+}
+
+String _accountSyncSubtitle(BuildContext context) {
+  final locale = Localizations.localeOf(context);
+  if (locale.languageCode != 'zh') {
+    return 'Optionally sync schedules across your devices';
+  }
+  return locale.scriptCode?.toLowerCase() == 'hant' ||
+          locale.countryCode == 'TW'
+      ? '選擇性地在不同裝置間同步課表'
+      : '可选地在不同设备间同步课表';
 }
 
 class _ExportBackupSection extends ConsumerStatefulWidget {

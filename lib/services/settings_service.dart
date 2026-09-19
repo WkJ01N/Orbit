@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:orbit/models/schedule_import.dart';
 
 import 'package:flutter/material.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
@@ -9,6 +10,7 @@ import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
+import 'package:orbit/models/auto_sync_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsService {
@@ -44,8 +46,53 @@ class SettingsService {
   static const _upcomingDateDisplayKey = 'upcoming_date_display';
   static const _batchFirstWeekMondayKey = 'batch_first_week_monday';
   static const _batchTotalWeeksKey = 'batch_total_weeks';
+  static const _autoSyncSettingsKey = 'auto_sync_settings_v1';
 
   SharedPreferences? _prefs;
+  Future<void> _importSaveTail = Future.value();
+
+  Future<ImportConfiguration> loadImportConfiguration() async {
+    final prefs = await _prefsInstance();
+    final text = prefs.getString('schedule_import_configuration');
+    if (text == null) return const ImportConfiguration();
+    return ImportConfiguration.fromJson(
+      jsonDecode(text) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> saveImportConfiguration(ImportConfiguration configuration) {
+    final encoded = jsonEncode(configuration.toJson());
+    // Validate the complete snapshot before modifying persisted settings.
+    ImportConfiguration.fromJson(jsonDecode(encoded) as Map<String, dynamic>);
+    final write = _importSaveTail.then((_) async {
+      final prefs = await _prefsInstance();
+      if (!await prefs.setString('schedule_import_configuration', encoded)) {
+        throw StateError('Could not save import configuration');
+      }
+    });
+    _importSaveTail = write.catchError((Object _) {});
+    return write;
+  }
+
+  Future<AutoSyncSettings> loadAutoSyncSettings() async {
+    final raw = (await _prefsInstance()).getString(_autoSyncSettingsKey);
+    if (raw == null) return const AutoSyncSettings();
+    try {
+      return AutoSyncSettings.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return const AutoSyncSettings();
+    }
+  }
+
+  Future<void> saveAutoSyncSettings(AutoSyncSettings settings) async {
+    final saved = await (await _prefsInstance()).setString(
+      _autoSyncSettingsKey,
+      jsonEncode(settings.toJson()),
+    );
+    if (!saved) throw StateError('Could not save automatic sync settings');
+  }
 
   Future<SharedPreferences> _prefsInstance() async {
     return _prefs ??= await SharedPreferences.getInstance();
@@ -472,10 +519,18 @@ class SettingsService {
       courseColorOverrides: colors.map(
         (key, value) => MapEntry(key, value.toARGB32()),
       ),
+      importConfiguration: await loadImportConfiguration(),
+      autoSyncSettings: await loadAutoSyncSettings(),
     );
   }
 
   Future<void> importPortableSettings(PortableSettings snapshot) async {
+    if (snapshot.importConfiguration != null) {
+      await saveImportConfiguration(snapshot.importConfiguration!);
+    }
+    if (snapshot.autoSyncSettings != null) {
+      await saveAutoSyncSettings(snapshot.autoSyncSettings!);
+    }
     await saveLocale(localeFromStorage(snapshot.locale));
     await saveThemeColor(Color(snapshot.themeColor));
     await saveThemeMode(

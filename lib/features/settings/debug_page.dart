@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/android_native_reminder_service.dart';
 
 class DebugPage extends ConsumerWidget {
   const DebugPage({super.key, this.showAndroidTools});
@@ -33,6 +34,54 @@ class DebugPage extends ConsumerWidget {
               leading: const Icon(Icons.alarm_on_outlined),
               onTap: () => _scheduleBackgroundTestReminder(context, ref),
             ),
+          if (showAndroidTools ?? Platform.isAndroid)
+            ListTile(
+              title: Text(l10n.androidReminderDiagnostics),
+              leading: const Icon(Icons.fact_check_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showReminderDiagnostics(context),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showReminderDiagnostics(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final status = await AndroidNativeReminderService.instance
+        .reliabilityStatus();
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.androidReminderDiagnostics),
+        content: SizedBox(
+          width: 520,
+          child: status.events.isEmpty
+              ? Text(l10n.androidReminderDiagnosticsEmpty)
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: status.events.length,
+                  separatorBuilder: (_, _) => const Divider(height: 16),
+                  itemBuilder: (context, index) {
+                    final event = status.events[index];
+                    final alarm = event.alarmId == null
+                        ? ''
+                        : ' · #${event.alarmId}';
+                    final reason = event.reason == null
+                        ? ''
+                        : ' · ${event.reason}';
+                    return Text(
+                      '${event.timestamp.toLocal()} · ${event.stage}$alarm$reason',
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+          ),
         ],
       ),
     );

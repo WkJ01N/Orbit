@@ -1,7 +1,9 @@
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/models/auto_sync_settings.dart';
 
 class PortableSettings {
   const PortableSettings({
@@ -18,9 +20,13 @@ class PortableSettings {
     this.colorScheme = 'original',
     this.automaticCourseColorIds = const {},
     this.multicolor,
+    this.importConfiguration,
+    this.autoSyncSettings,
   });
 
   final String locale;
+  final ImportConfiguration? importConfiguration;
+  final AutoSyncSettings? autoSyncSettings;
   final int themeColor;
   final String themeMode;
   final String themeStyle;
@@ -47,10 +53,16 @@ class PortableSettings {
     reminders: value,
     scheduleDisplay: scheduleDisplay,
     courseColorOverrides: courseColorOverrides,
+    importConfiguration: importConfiguration,
+    autoSyncSettings: autoSyncSettings,
   );
 
   Map<String, dynamic> toJson() => {
     'locale': locale,
+    if (importConfiguration != null)
+      'importConfiguration': importConfiguration!.toJson(),
+    if (autoSyncSettings != null)
+      'autoSyncSettings': autoSyncSettings!.toJson(),
     'themeColor': themeColor,
     'themeMode': themeMode,
     'themeStyle': themeStyle,
@@ -86,6 +98,16 @@ class PortableSettings {
       throw const FormatException('Invalid portable settings');
     }
     return PortableSettings(
+      importConfiguration: json['importConfiguration'] == null
+          ? null
+          : ImportConfiguration.fromJson(
+              Map<String, dynamic>.from(json['importConfiguration'] as Map),
+            ),
+      autoSyncSettings: json['autoSyncSettings'] == null
+          ? null
+          : AutoSyncSettings.fromJson(
+              Map<String, dynamic>.from(json['autoSyncSettings'] as Map),
+            ),
       locale: json['locale'] as String? ?? 'zh_Hant',
       themeColor: json['themeColor'] as int? ?? 0xFF39C5BB,
       themeMode: json['themeMode'] as String? ?? 'system',

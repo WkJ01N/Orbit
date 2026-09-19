@@ -9,6 +9,346 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get importAuto => '自動識別';
+
+  @override
+  String get importTemplates => '識別模板';
+
+  @override
+  String get importPlans => '學期與作息';
+
+  @override
+  String get importListLayout => '課程列表';
+
+  @override
+  String get importGridLayout => '週課表網格';
+
+  @override
+  String get importLegacyLayout => 'Orbit 13 欄格式';
+
+  @override
+  String get importTemplateName => '模板名稱';
+
+  @override
+  String get importBuiltIn => '內建模板 · 複製後編輯';
+
+  @override
+  String get importCopy => '複製';
+
+  @override
+  String get importShareTemplate => '匯出模板 JSON';
+
+  @override
+  String get importLoadTemplate => '匯入模板 JSON';
+
+  @override
+  String get importLayoutStep => '佈局與區域';
+
+  @override
+  String get importFieldsStep => '欄位映射';
+
+  @override
+  String get importRegexStep => '提取規則';
+
+  @override
+  String get importTestStep => '測試與預覽';
+
+  @override
+  String get importHeaderRow => '表頭列（從 1 開始）';
+
+  @override
+  String get importFirstRow => '課程起始列';
+
+  @override
+  String get importLastRow => '課程結束列（留空至表末）';
+
+  @override
+  String get importFirstColumn => '課程起始欄（從 1 開始）';
+
+  @override
+  String get importLastColumn => '課程結束欄';
+
+  @override
+  String get importWeekdayColumns => '欄:星期，例如 2:1,3:2';
+
+  @override
+  String get importPeriodRows => '列:節次，例如 2:1-2;3:3-4';
+
+  @override
+  String get importColumnSource => '指定欄';
+
+  @override
+  String get importTextSource => '課程區塊文字';
+
+  @override
+  String get importFixedSource => '固定值';
+
+  @override
+  String get importWeekdaySource => '網格星期';
+
+  @override
+  String get importPeriodsSource => '網格節次';
+
+  @override
+  String get importColumnNumber => '欄號（從 1 開始）';
+
+  @override
+  String get importFixedValue => '固定值';
+
+  @override
+  String get importPattern => '正規表示式（留空使用原文）';
+
+  @override
+  String get importCaptureGroup => '擷取群組編號或名稱';
+
+  @override
+  String get importCaseSensitive => '區分大小寫';
+
+  @override
+  String get importMultiLine => '多行錨點';
+
+  @override
+  String get importDotAll => '點號匹配換行';
+
+  @override
+  String get importUnicode => 'Unicode 模式';
+
+  @override
+  String get importBlockPattern => '課程區塊分隔／匹配正規式';
+
+  @override
+  String get importRepeatBlocks => '重複匹配課程區塊';
+
+  @override
+  String get importTestText => '範例課程文字';
+
+  @override
+  String get importRunTest => '執行測試';
+
+  @override
+  String get importOriginal => '原文';
+
+  @override
+  String get importMatches => '匹配與擷取群組';
+
+  @override
+  String get importExtracted => '提取欄位';
+
+  @override
+  String get importSave => '儲存';
+
+  @override
+  String get importNext => '下一步';
+
+  @override
+  String get importBack => '上一步';
+
+  @override
+  String get importSemesterName => '學期名稱';
+
+  @override
+  String get importFirstMonday => '第一週週一（YYYY-MM-DD）';
+
+  @override
+  String get importTotalWeeks => '總週數（1–30）';
+
+  @override
+  String get importPeriodPlanName => '作息方案名稱';
+
+  @override
+  String get importPeriodTimeInput => '節次,開始,結束，每列一節，例如 1,08:00,08:45';
+
+  @override
+  String get importDefaultWeeks => '檔案缺少週次時適用的週次（如 1-18）';
+
+  @override
+  String get importConfirmContext => '確認本次匯入的學期、週次與作息';
+
+  @override
+  String get importTemporaryContext => '臨時調整僅用於本次匯入；儲存方案請進入方案管理。';
+
+  @override
+  String get importEncoding => 'CSV 編碼';
+
+  @override
+  String get importDelimiter => 'CSV 分隔符';
+
+  @override
+  String get importComma => '逗號';
+
+  @override
+  String get importSemicolon => '分號';
+
+  @override
+  String get importTab => '定位字元';
+
+  @override
+  String get importPreview => '解析與預覽';
+
+  @override
+  String get importSkipErrors => '明確略過識別失敗的課程';
+
+  @override
+  String get importSkipDescription => '失敗的課程不會匯入，請先檢查每條錯誤。';
+
+  @override
+  String get importCancelTask => '取消解析';
+
+  @override
+  String get importSelectSheet => '選擇要匯入的工作表';
+
+  @override
+  String get importRawTable => '原表預覽 — 點選儲存格選擇座標';
+
+  @override
+  String get importChooseCoordinate => '將所選儲存格設為';
+
+  @override
+  String get importNoSelection => '尚未選擇工作表';
+
+  @override
+  String get importNone => '不使用';
+
+  @override
+  String get importValid => '有效';
+
+  @override
+  String get importDuplicates => '重複';
+
+  @override
+  String get importErrors => '失敗';
+
+  @override
+  String get importDeleteConfirm => '刪除此已儲存的模板或方案？';
+
+  @override
+  String get importHelp =>
+      '列表需課程名、日期（或星期和週次）及起止時間（或節次）。網格以星期為欄、節次為列；同格多課可用空列分隔或設定課程區塊規則。按週課表需確認學期和作息。';
+
+  @override
+  String get importFieldCourseName => '課程名';
+
+  @override
+  String get importFieldCourseCode => '課程編號';
+
+  @override
+  String get importFieldSection => '班別';
+
+  @override
+  String get importFieldRoom => '教室';
+
+  @override
+  String get importFieldTeachers => '教師';
+
+  @override
+  String get importFieldFaculty => '學院';
+
+  @override
+  String get importFieldClassType => '課堂類型';
+
+  @override
+  String get importFieldSemester => '學期';
+
+  @override
+  String get importFieldDate => '日期';
+
+  @override
+  String get importFieldWeekday => '星期';
+
+  @override
+  String get importFieldWeeks => '週次';
+
+  @override
+  String get importFieldPeriods => '節次';
+
+  @override
+  String get importFieldStartTime => '開始時間';
+
+  @override
+  String get importFieldEndTime => '結束時間';
+
+  @override
+  String get importErrorAmbiguous => '有多個候選模板，請明確選擇。';
+
+  @override
+  String get importErrorTemplateInvalid => '模板或區域設定無效。';
+
+  @override
+  String get importErrorTemplateVersion => '不支援此模板版本。';
+
+  @override
+  String get importErrorCaptureGroup => '擷取群組編號或名稱無效。';
+
+  @override
+  String get importErrorMissingName => '缺少課程名。';
+
+  @override
+  String get importErrorSemesterInvalid => '請檢查學期名稱、週一日期和總週數。';
+
+  @override
+  String get importErrorPeriodInvalid => '節次或作息方案無效。';
+
+  @override
+  String get importErrorInvalidTime => '時間無效，結束時間必須晚於開始。';
+
+  @override
+  String get importErrorInvalidDate => '日期無效。';
+
+  @override
+  String get importErrorInvalidWeekday => '星期必須為週一至週日。';
+
+  @override
+  String get importErrorWeekdayMismatch => '星期與日期不一致。';
+
+  @override
+  String get importErrorInvalidWeeks => '週次無效或超出學期範圍。';
+
+  @override
+  String get importErrorWeeksRequired => '檔案缺少週次，請確認適用週次。';
+
+  @override
+  String get importErrorContextRequired => '請確認學期與所需作息方案。';
+
+  @override
+  String get importErrorUnknownPeriod => '部分節次沒有對應時間。';
+
+  @override
+  String get importErrorHorizontalMerge => '不支援跨多個星期欄合併的課程格。';
+
+  @override
+  String get importErrorZeroLength => '課程區塊規則不能匹配空文字。';
+
+  @override
+  String get importErrorNoMatch => '未匹配到課程區塊。';
+
+  @override
+  String get importErrorUnmatchedText => '課程區塊規則遺漏了部分文字，請修正规則。';
+
+  @override
+  String get importErrorIdConflict => '相同課次編號對應不同內容，請修正或明確略過。';
+
+  @override
+  String get importErrorNoSessions => '沒有識別到有效課程。';
+
+  @override
+  String get importErrorNoSheet => '檔案沒有工作表。';
+
+  @override
+  String get importErrorUnsupportedFile => '僅支援 XLSX 和 CSV 檔案。';
+
+  @override
+  String get importErrorEncodingFailed => 'CSV 解碼失敗，請切換編碼或轉換檔案。';
+
+  @override
+  String get importErrorTimeout => '解析逾時，設定已保留。';
+
+  @override
+  String get importErrorCancelled => '解析已取消。';
+
+  @override
+  String get importErrorWorkerFailed => '解析工作失敗，請重試。';
+
+  @override
   String get appTitle => 'Orbit 課表';
 
   @override
@@ -152,7 +492,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gridEmptyTitle => '尚未匯入課表';
 
   @override
-  String get gridEmptySubtitle => '請前往「匯入」頁面選擇課表 xlsx 檔案';
+  String get gridEmptySubtitle => '請前往「匯入」頁面選擇 XLSX 或 CSV 課表檔案';
 
   @override
   String get gridImportNow => '立即匯入';
@@ -206,7 +546,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importCancel => '取消';
 
   @override
-  String get importPickTitle => '選擇 xlsx 課表檔案';
+  String get importPickTitle => '選擇 XLSX / CSV 課表檔案';
 
   @override
   String get importPickSubtitle => '可同時選擇多個週次的課表';
@@ -594,15 +934,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的原生背景定時提醒。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
+      '註冊與課程提醒相同的原生鬧鐘。一分鐘後重新開啟 Orbit，可檢查註冊、接收與通知階段。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已註冊 1 分鐘後的測試提醒。請回到桌面或鎖定螢幕等待。';
+      '階段 1 已通過：一分鐘測試鬧鐘已註冊。離開 Orbit 並等待，然後查看提醒診斷記錄。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '背景測試已安排在 $time。請回到桌面或鎖定螢幕等待。';
+    return '階段 1 已通過：Android 已註冊 $time 的鬧鐘。離開 Orbit 並等待，然後查看提醒診斷記錄。';
   }
 
   @override
@@ -1068,7 +1408,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importFormatTitle => '課表檔案格式';
 
   @override
-  String get importFormatSubtitle => 'xlsx 欄 A–M（每列一節課）';
+  String get importFormatSubtitle => 'XLSX / CSV 課程列表與週課表網格';
 
   @override
   String get importFormatColumn => '欄';
@@ -1812,11 +2152,405 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get paletteSchemeDescriptions =>
       '柔和协调的三色|鲜明且有对比的三色|旋转色相的表现力三色|均衡分布的三色色谱|清新的相邻色搭配|保留种子特色的柔和对比|保留种子特色的互补对比|低饱和，颜色区别较轻|灰阶，不使用色相对比';
+
+  @override
+  String get androidEnhancedReminder => '增強提醒模式';
+
+  @override
+  String get androidEnhancedReminderSubtitle =>
+      '存在未來提醒時顯示一則安靜的常駐通知，提高部分手機上的提醒可靠性。';
+
+  @override
+  String get androidEnhancedReminderLimit =>
+      '真正的強制停止仍會阻止 Android 傳送鬧鐘，直至再次開啟 Orbit。';
+
+  @override
+  String get androidEnhancedReminderChannel => '提醒可靠性';
+
+  @override
+  String get androidEnhancedReminderNotificationTitle => '增強提醒已開啟';
+
+  @override
+  String get androidEnhancedReminderNotificationBody => 'Orbit 正在保護之後的課程提醒。';
+
+  @override
+  String get androidEnhancedReminderDisable => '關閉';
+
+  @override
+  String get androidOriginOsSettings => 'OriginOS 背景設定';
+
+  @override
+  String get androidOriginOsSettingsSubtitle =>
+      '請開啟自動啟動和背景高耗電、取消電池限制，並在最近任務中鎖定 Orbit。';
+
+  @override
+  String get androidOpenAutostartSettings => '開啟設定';
+
+  @override
+  String get androidForcedStopDetected => 'Orbit 曾被強制停止';
+
+  @override
+  String get androidForcedStopDetectedSubtitle =>
+      '最近任務清理器停止了 Orbit 並取消了鬧鐘。請完成下方 OriginOS 設定後重新執行一分鐘測試。';
+
+  @override
+  String get androidReminderReliability => '提醒註冊狀態';
+
+  @override
+  String androidReminderReliabilityStatus(int registered, int stored) {
+    return '$stored 個未來提醒中有 $registered 個已註冊到 Android。';
+  }
+
+  @override
+  String get androidReminderDiagnostics => '提醒診斷記錄';
+
+  @override
+  String get androidReminderDiagnosticsEmpty => '尚未記錄原生提醒事件。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
 class AppLocalizationsZhHans extends AppLocalizationsZh {
   AppLocalizationsZhHans() : super('zh_Hans');
+
+  @override
+  String get importAuto => '自动识别';
+
+  @override
+  String get importTemplates => '识别模板';
+
+  @override
+  String get importPlans => '学期与作息';
+
+  @override
+  String get importListLayout => '课程列表';
+
+  @override
+  String get importGridLayout => '周课表网格';
+
+  @override
+  String get importLegacyLayout => 'Orbit 13 列格式';
+
+  @override
+  String get importTemplateName => '模板名称';
+
+  @override
+  String get importBuiltIn => '内置模板 · 复制后编辑';
+
+  @override
+  String get importCopy => '复制';
+
+  @override
+  String get importShareTemplate => '导出模板 JSON';
+
+  @override
+  String get importLoadTemplate => '导入模板 JSON';
+
+  @override
+  String get importLayoutStep => '布局与区域';
+
+  @override
+  String get importFieldsStep => '字段映射';
+
+  @override
+  String get importRegexStep => '提取规则';
+
+  @override
+  String get importTestStep => '测试与预览';
+
+  @override
+  String get importHeaderRow => '表头行（从 1 开始）';
+
+  @override
+  String get importFirstRow => '课程起始行';
+
+  @override
+  String get importLastRow => '课程结束行（留空至表末）';
+
+  @override
+  String get importFirstColumn => '课程起始列（从 1 开始）';
+
+  @override
+  String get importLastColumn => '课程结束列';
+
+  @override
+  String get importWeekdayColumns => '列:星期，例如 2:1,3:2';
+
+  @override
+  String get importPeriodRows => '行:节次，例如 2:1-2;3:3-4';
+
+  @override
+  String get importColumnSource => '指定列';
+
+  @override
+  String get importTextSource => '课程块文字';
+
+  @override
+  String get importFixedSource => '固定值';
+
+  @override
+  String get importWeekdaySource => '网格星期';
+
+  @override
+  String get importPeriodsSource => '网格节次';
+
+  @override
+  String get importColumnNumber => '列号（从 1 开始）';
+
+  @override
+  String get importFixedValue => '固定值';
+
+  @override
+  String get importPattern => '正则表达式（留空使用原文）';
+
+  @override
+  String get importCaptureGroup => '捕获组编号或名称';
+
+  @override
+  String get importCaseSensitive => '区分大小写';
+
+  @override
+  String get importMultiLine => '多行锚点';
+
+  @override
+  String get importDotAll => '点号匹配换行';
+
+  @override
+  String get importUnicode => 'Unicode 模式';
+
+  @override
+  String get importBlockPattern => '课程块分隔／匹配正则';
+
+  @override
+  String get importRepeatBlocks => '重复匹配课程块';
+
+  @override
+  String get importTestText => '示例课程文字';
+
+  @override
+  String get importRunTest => '运行测试';
+
+  @override
+  String get importOriginal => '原文';
+
+  @override
+  String get importMatches => '匹配与捕获组';
+
+  @override
+  String get importExtracted => '提取字段';
+
+  @override
+  String get importSave => '保存';
+
+  @override
+  String get importNext => '下一步';
+
+  @override
+  String get importBack => '上一步';
+
+  @override
+  String get importSemesterName => '学期名称';
+
+  @override
+  String get importFirstMonday => '第一周周一（YYYY-MM-DD）';
+
+  @override
+  String get importTotalWeeks => '总周数（1–30）';
+
+  @override
+  String get importPeriodPlanName => '作息方案名称';
+
+  @override
+  String get importPeriodTimeInput => '节次,开始,结束，每行一节，例如 1,08:00,08:45';
+
+  @override
+  String get importDefaultWeeks => '文件缺少周次时适用的周次（如 1-18）';
+
+  @override
+  String get importConfirmContext => '确认本次导入的学期、周次与作息';
+
+  @override
+  String get importTemporaryContext => '临时调整仅用于本次导入；保存方案请进入方案管理。';
+
+  @override
+  String get importEncoding => 'CSV 编码';
+
+  @override
+  String get importDelimiter => 'CSV 分隔符';
+
+  @override
+  String get importComma => '逗号';
+
+  @override
+  String get importSemicolon => '分号';
+
+  @override
+  String get importTab => '制表符';
+
+  @override
+  String get importPreview => '解析与预览';
+
+  @override
+  String get importSkipErrors => '明确跳过识别失败的课程';
+
+  @override
+  String get importSkipDescription => '失败的课程不会导入，请先检查每条错误。';
+
+  @override
+  String get importCancelTask => '取消解析';
+
+  @override
+  String get importSelectSheet => '选择要导入的工作表';
+
+  @override
+  String get importRawTable => '原表预览 — 点击单元格选择坐标';
+
+  @override
+  String get importChooseCoordinate => '将所选单元格设为';
+
+  @override
+  String get importNoSelection => '尚未选择工作表';
+
+  @override
+  String get importNone => '不使用';
+
+  @override
+  String get importValid => '有效';
+
+  @override
+  String get importDuplicates => '重复';
+
+  @override
+  String get importErrors => '失败';
+
+  @override
+  String get importDeleteConfirm => '删除此已保存的模板或方案？';
+
+  @override
+  String get importHelp =>
+      '列表需课程名、日期（或星期和周次）及起止时间（或节次）。网格以星期为列、节次为行；同格多课可用空行分隔或配置课程块规则。按周课表需确认学期和作息。';
+
+  @override
+  String get importFieldCourseName => '课程名';
+
+  @override
+  String get importFieldCourseCode => '课程编号';
+
+  @override
+  String get importFieldSection => '班别';
+
+  @override
+  String get importFieldRoom => '教室';
+
+  @override
+  String get importFieldTeachers => '教师';
+
+  @override
+  String get importFieldFaculty => '学院';
+
+  @override
+  String get importFieldClassType => '课堂类型';
+
+  @override
+  String get importFieldSemester => '学期';
+
+  @override
+  String get importFieldDate => '日期';
+
+  @override
+  String get importFieldWeekday => '星期';
+
+  @override
+  String get importFieldWeeks => '周次';
+
+  @override
+  String get importFieldPeriods => '节次';
+
+  @override
+  String get importFieldStartTime => '开始时间';
+
+  @override
+  String get importFieldEndTime => '结束时间';
+
+  @override
+  String get importErrorAmbiguous => '有多个候选模板，请明确选择。';
+
+  @override
+  String get importErrorTemplateInvalid => '模板或区域配置无效。';
+
+  @override
+  String get importErrorTemplateVersion => '不支持此模板版本。';
+
+  @override
+  String get importErrorCaptureGroup => '捕获组编号或名称无效。';
+
+  @override
+  String get importErrorMissingName => '缺少课程名。';
+
+  @override
+  String get importErrorSemesterInvalid => '请检查学期名称、周一日期和总周数。';
+
+  @override
+  String get importErrorPeriodInvalid => '节次或作息方案无效。';
+
+  @override
+  String get importErrorInvalidTime => '时间无效，结束时间必须晚于开始。';
+
+  @override
+  String get importErrorInvalidDate => '日期无效。';
+
+  @override
+  String get importErrorInvalidWeekday => '星期必须为周一至周日。';
+
+  @override
+  String get importErrorWeekdayMismatch => '星期与日期不一致。';
+
+  @override
+  String get importErrorInvalidWeeks => '周次无效或超出学期范围。';
+
+  @override
+  String get importErrorWeeksRequired => '文件缺少周次，请确认适用周次。';
+
+  @override
+  String get importErrorContextRequired => '请确认学期与所需作息方案。';
+
+  @override
+  String get importErrorUnknownPeriod => '部分节次没有对应时间。';
+
+  @override
+  String get importErrorHorizontalMerge => '不支持跨多个星期列合并的课程格。';
+
+  @override
+  String get importErrorZeroLength => '课程块规则不能匹配空文字。';
+
+  @override
+  String get importErrorNoMatch => '未匹配到课程块。';
+
+  @override
+  String get importErrorUnmatchedText => '课程块规则遗漏了部分文字，请修正规则。';
+
+  @override
+  String get importErrorIdConflict => '相同课次编号对应不同内容，请修正或明确跳过。';
+
+  @override
+  String get importErrorNoSessions => '没有识别到有效课程。';
+
+  @override
+  String get importErrorNoSheet => '文件没有工作表。';
+
+  @override
+  String get importErrorUnsupportedFile => '仅支持 XLSX 和 CSV 文件。';
+
+  @override
+  String get importErrorEncodingFailed => 'CSV 解码失败，请切换编码或转换文件。';
+
+  @override
+  String get importErrorTimeout => '解析超时，配置已保留。';
+
+  @override
+  String get importErrorCancelled => '解析已取消。';
+
+  @override
+  String get importErrorWorkerFailed => '解析任务失败，请重试。';
 
   @override
   String get appTitle => 'Orbit 课表';
@@ -1962,7 +2696,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get gridEmptyTitle => '尚未导入课表';
 
   @override
-  String get gridEmptySubtitle => '请前往「导入」页面选择课表 xlsx 文件';
+  String get gridEmptySubtitle => '请前往「导入」页面选择 XLSX 或 CSV 课表文件';
 
   @override
   String get gridImportNow => '立即导入';
@@ -2016,7 +2750,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get importCancel => '取消';
 
   @override
-  String get importPickTitle => '选择 xlsx 课表文件';
+  String get importPickTitle => '选择 XLSX / CSV 课表文件';
 
   @override
   String get importPickSubtitle => '可同时选择多个周次的课表';
@@ -2404,15 +3138,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用与课程提醒相同的原生后台定时提醒。安排后请回到桌面或锁屏等待 1 分钟。';
+      '注册与课程提醒相同的原生闹钟。一分钟后重新打开 Orbit，可检查注册、接收与通知阶段。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已注册 1 分钟后的测试提醒。请回到桌面或锁屏等待。';
+      '阶段 1 已通过：一分钟测试闹钟已注册。离开 Orbit 并等待，然后查看提醒诊断记录。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '后台测试已安排在 $time。请回到桌面或锁屏等待。';
+    return '阶段 1 已通过：Android 已注册 $time 的闹钟。离开 Orbit 并等待，然后查看提醒诊断记录。';
   }
 
   @override
@@ -2878,7 +3612,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get importFormatTitle => '课表文件格式';
 
   @override
-  String get importFormatSubtitle => 'xlsx 列 A–M（每行一节课）';
+  String get importFormatSubtitle => 'XLSX / CSV 课程列表与周课表网格';
 
   @override
   String get importFormatColumn => '列';
@@ -3622,11 +4356,405 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get paletteSchemeDescriptions =>
       '柔和协调的三色|鲜明且有对比的三色|旋转色相的表现力三色|均衡分布的三色色谱|清新的相邻色搭配|保留种子特色的柔和对比|保留种子特色的互补对比|低饱和，颜色区别较轻|灰阶，不使用色相对比';
+
+  @override
+  String get androidEnhancedReminder => '增强提醒模式';
+
+  @override
+  String get androidEnhancedReminderSubtitle =>
+      '存在未来提醒时显示一条安静的常驻通知，提高部分手机上的提醒可靠性。';
+
+  @override
+  String get androidEnhancedReminderLimit =>
+      '真正的强制停止仍会阻止 Android 发送闹钟，直至再次打开 Orbit。';
+
+  @override
+  String get androidEnhancedReminderChannel => '提醒可靠性';
+
+  @override
+  String get androidEnhancedReminderNotificationTitle => '增强提醒已开启';
+
+  @override
+  String get androidEnhancedReminderNotificationBody => 'Orbit 正在保护之后的课程提醒。';
+
+  @override
+  String get androidEnhancedReminderDisable => '关闭';
+
+  @override
+  String get androidOriginOsSettings => 'OriginOS 后台设置';
+
+  @override
+  String get androidOriginOsSettingsSubtitle =>
+      '请开启自启动和后台高耗电、取消电池限制，并在最近任务中锁定 Orbit。';
+
+  @override
+  String get androidOpenAutostartSettings => '打开设置';
+
+  @override
+  String get androidForcedStopDetected => 'Orbit 曾被强制停止';
+
+  @override
+  String get androidForcedStopDetectedSubtitle =>
+      '最近任务清理器停止了 Orbit 并取消了闹钟。请完成下方 OriginOS 设置后重新运行一分钟测试。';
+
+  @override
+  String get androidReminderReliability => '提醒注册状态';
+
+  @override
+  String androidReminderReliabilityStatus(int registered, int stored) {
+    return '$stored 个未来提醒中有 $registered 个已注册到 Android。';
+  }
+
+  @override
+  String get androidReminderDiagnostics => '提醒诊断记录';
+
+  @override
+  String get androidReminderDiagnosticsEmpty => '尚未记录原生提醒事件。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
 class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
+
+  @override
+  String get importAuto => '自動識別';
+
+  @override
+  String get importTemplates => '識別模板';
+
+  @override
+  String get importPlans => '學期與作息';
+
+  @override
+  String get importListLayout => '課程列表';
+
+  @override
+  String get importGridLayout => '週課表網格';
+
+  @override
+  String get importLegacyLayout => 'Orbit 13 欄格式';
+
+  @override
+  String get importTemplateName => '模板名稱';
+
+  @override
+  String get importBuiltIn => '內建模板 · 複製後編輯';
+
+  @override
+  String get importCopy => '複製';
+
+  @override
+  String get importShareTemplate => '匯出模板 JSON';
+
+  @override
+  String get importLoadTemplate => '匯入模板 JSON';
+
+  @override
+  String get importLayoutStep => '佈局與區域';
+
+  @override
+  String get importFieldsStep => '欄位映射';
+
+  @override
+  String get importRegexStep => '提取規則';
+
+  @override
+  String get importTestStep => '測試與預覽';
+
+  @override
+  String get importHeaderRow => '表頭列（從 1 開始）';
+
+  @override
+  String get importFirstRow => '課程起始列';
+
+  @override
+  String get importLastRow => '課程結束列（留空至表末）';
+
+  @override
+  String get importFirstColumn => '課程起始欄（從 1 開始）';
+
+  @override
+  String get importLastColumn => '課程結束欄';
+
+  @override
+  String get importWeekdayColumns => '欄:星期，例如 2:1,3:2';
+
+  @override
+  String get importPeriodRows => '列:節次，例如 2:1-2;3:3-4';
+
+  @override
+  String get importColumnSource => '指定欄';
+
+  @override
+  String get importTextSource => '課程區塊文字';
+
+  @override
+  String get importFixedSource => '固定值';
+
+  @override
+  String get importWeekdaySource => '網格星期';
+
+  @override
+  String get importPeriodsSource => '網格節次';
+
+  @override
+  String get importColumnNumber => '欄號（從 1 開始）';
+
+  @override
+  String get importFixedValue => '固定值';
+
+  @override
+  String get importPattern => '正規表示式（留空使用原文）';
+
+  @override
+  String get importCaptureGroup => '擷取群組編號或名稱';
+
+  @override
+  String get importCaseSensitive => '區分大小寫';
+
+  @override
+  String get importMultiLine => '多行錨點';
+
+  @override
+  String get importDotAll => '點號匹配換行';
+
+  @override
+  String get importUnicode => 'Unicode 模式';
+
+  @override
+  String get importBlockPattern => '課程區塊分隔／匹配正規式';
+
+  @override
+  String get importRepeatBlocks => '重複匹配課程區塊';
+
+  @override
+  String get importTestText => '範例課程文字';
+
+  @override
+  String get importRunTest => '執行測試';
+
+  @override
+  String get importOriginal => '原文';
+
+  @override
+  String get importMatches => '匹配與擷取群組';
+
+  @override
+  String get importExtracted => '提取欄位';
+
+  @override
+  String get importSave => '儲存';
+
+  @override
+  String get importNext => '下一步';
+
+  @override
+  String get importBack => '上一步';
+
+  @override
+  String get importSemesterName => '學期名稱';
+
+  @override
+  String get importFirstMonday => '第一週週一（YYYY-MM-DD）';
+
+  @override
+  String get importTotalWeeks => '總週數（1–30）';
+
+  @override
+  String get importPeriodPlanName => '作息方案名稱';
+
+  @override
+  String get importPeriodTimeInput => '節次,開始,結束，每列一節，例如 1,08:00,08:45';
+
+  @override
+  String get importDefaultWeeks => '檔案缺少週次時適用的週次（如 1-18）';
+
+  @override
+  String get importConfirmContext => '確認本次匯入的學期、週次與作息';
+
+  @override
+  String get importTemporaryContext => '臨時調整僅用於本次匯入；儲存方案請進入方案管理。';
+
+  @override
+  String get importEncoding => 'CSV 編碼';
+
+  @override
+  String get importDelimiter => 'CSV 分隔符';
+
+  @override
+  String get importComma => '逗號';
+
+  @override
+  String get importSemicolon => '分號';
+
+  @override
+  String get importTab => '定位字元';
+
+  @override
+  String get importPreview => '解析與預覽';
+
+  @override
+  String get importSkipErrors => '明確略過識別失敗的課程';
+
+  @override
+  String get importSkipDescription => '失敗的課程不會匯入，請先檢查每條錯誤。';
+
+  @override
+  String get importCancelTask => '取消解析';
+
+  @override
+  String get importSelectSheet => '選擇要匯入的工作表';
+
+  @override
+  String get importRawTable => '原表預覽 — 點選儲存格選擇座標';
+
+  @override
+  String get importChooseCoordinate => '將所選儲存格設為';
+
+  @override
+  String get importNoSelection => '尚未選擇工作表';
+
+  @override
+  String get importNone => '不使用';
+
+  @override
+  String get importValid => '有效';
+
+  @override
+  String get importDuplicates => '重複';
+
+  @override
+  String get importErrors => '失敗';
+
+  @override
+  String get importDeleteConfirm => '刪除此已儲存的模板或方案？';
+
+  @override
+  String get importHelp =>
+      '列表需課程名、日期（或星期和週次）及起止時間（或節次）。網格以星期為欄、節次為列；同格多課可用空列分隔或設定課程區塊規則。按週課表需確認學期和作息。';
+
+  @override
+  String get importFieldCourseName => '課程名';
+
+  @override
+  String get importFieldCourseCode => '課程編號';
+
+  @override
+  String get importFieldSection => '班別';
+
+  @override
+  String get importFieldRoom => '教室';
+
+  @override
+  String get importFieldTeachers => '教師';
+
+  @override
+  String get importFieldFaculty => '學院';
+
+  @override
+  String get importFieldClassType => '課堂類型';
+
+  @override
+  String get importFieldSemester => '學期';
+
+  @override
+  String get importFieldDate => '日期';
+
+  @override
+  String get importFieldWeekday => '星期';
+
+  @override
+  String get importFieldWeeks => '週次';
+
+  @override
+  String get importFieldPeriods => '節次';
+
+  @override
+  String get importFieldStartTime => '開始時間';
+
+  @override
+  String get importFieldEndTime => '結束時間';
+
+  @override
+  String get importErrorAmbiguous => '有多個候選模板，請明確選擇。';
+
+  @override
+  String get importErrorTemplateInvalid => '模板或區域設定無效。';
+
+  @override
+  String get importErrorTemplateVersion => '不支援此模板版本。';
+
+  @override
+  String get importErrorCaptureGroup => '擷取群組編號或名稱無效。';
+
+  @override
+  String get importErrorMissingName => '缺少課程名。';
+
+  @override
+  String get importErrorSemesterInvalid => '請檢查學期名稱、週一日期和總週數。';
+
+  @override
+  String get importErrorPeriodInvalid => '節次或作息方案無效。';
+
+  @override
+  String get importErrorInvalidTime => '時間無效，結束時間必須晚於開始。';
+
+  @override
+  String get importErrorInvalidDate => '日期無效。';
+
+  @override
+  String get importErrorInvalidWeekday => '星期必須為週一至週日。';
+
+  @override
+  String get importErrorWeekdayMismatch => '星期與日期不一致。';
+
+  @override
+  String get importErrorInvalidWeeks => '週次無效或超出學期範圍。';
+
+  @override
+  String get importErrorWeeksRequired => '檔案缺少週次，請確認適用週次。';
+
+  @override
+  String get importErrorContextRequired => '請確認學期與所需作息方案。';
+
+  @override
+  String get importErrorUnknownPeriod => '部分節次沒有對應時間。';
+
+  @override
+  String get importErrorHorizontalMerge => '不支援跨多個星期欄合併的課程格。';
+
+  @override
+  String get importErrorZeroLength => '課程區塊規則不能匹配空文字。';
+
+  @override
+  String get importErrorNoMatch => '未匹配到課程區塊。';
+
+  @override
+  String get importErrorUnmatchedText => '課程區塊規則遺漏了部分文字，請修正规則。';
+
+  @override
+  String get importErrorIdConflict => '相同課次編號對應不同內容，請修正或明確略過。';
+
+  @override
+  String get importErrorNoSessions => '沒有識別到有效課程。';
+
+  @override
+  String get importErrorNoSheet => '檔案沒有工作表。';
+
+  @override
+  String get importErrorUnsupportedFile => '僅支援 XLSX 和 CSV 檔案。';
+
+  @override
+  String get importErrorEncodingFailed => 'CSV 解碼失敗，請切換編碼或轉換檔案。';
+
+  @override
+  String get importErrorTimeout => '解析逾時，設定已保留。';
+
+  @override
+  String get importErrorCancelled => '解析已取消。';
+
+  @override
+  String get importErrorWorkerFailed => '解析工作失敗，請重試。';
 
   @override
   String get appTitle => 'Orbit 課表';
@@ -3772,7 +4900,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get gridEmptyTitle => '尚未匯入課表';
 
   @override
-  String get gridEmptySubtitle => '請前往「匯入」頁面選擇課表 xlsx 檔案';
+  String get gridEmptySubtitle => '請前往「匯入」頁面選擇 XLSX 或 CSV 課表檔案';
 
   @override
   String get gridImportNow => '立即匯入';
@@ -3826,7 +4954,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get importCancel => '取消';
 
   @override
-  String get importPickTitle => '選擇 xlsx 課表檔案';
+  String get importPickTitle => '選擇 XLSX / CSV 課表檔案';
 
   @override
   String get importPickSubtitle => '可同時選擇多個週次的課表';
@@ -4214,15 +5342,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get androidTestBackgroundReminderSubtitle =>
-      '使用與課程提醒相同的原生背景定時提醒。安排後請回到桌面或鎖定螢幕等待 1 分鐘。';
+      '註冊與課程提醒相同的原生鬧鐘。一分鐘後重新開啟 Orbit，可檢查註冊、接收與通知階段。';
 
   @override
   String get androidTestBackgroundReminderScheduled =>
-      '已註冊 1 分鐘後的測試提醒。請回到桌面或鎖定螢幕等待。';
+      '階段 1 已通過：一分鐘測試鬧鐘已註冊。離開 Orbit 並等待，然後查看提醒診斷記錄。';
 
   @override
   String androidTestBackgroundReminderScheduledAt(String time) {
-    return '背景測試已安排在 $time。請回到桌面或鎖定螢幕等待。';
+    return '階段 1 已通過：Android 已註冊 $time 的鬧鐘。離開 Orbit 並等待，然後查看提醒診斷記錄。';
   }
 
   @override
@@ -4688,7 +5816,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get importFormatTitle => '課表檔案格式';
 
   @override
-  String get importFormatSubtitle => 'xlsx 欄 A–M（每列一節課）';
+  String get importFormatSubtitle => 'XLSX / CSV 課程列表與週課表網格';
 
   @override
   String get importFormatColumn => '欄';
@@ -5432,4 +6560,58 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get paletteSchemeDescriptions =>
       '柔和協調的三色|鮮明且有對比的三色|旋轉色相的表現力三色|均衡分布的三色色譜|清新的相鄰色搭配|保留種子特色的柔和對比|保留種子特色的互補對比|低飽和，顏色區別較輕|灰階，不使用色相對比';
+
+  @override
+  String get androidEnhancedReminder => '增強提醒模式';
+
+  @override
+  String get androidEnhancedReminderSubtitle =>
+      '存在未來提醒時顯示一則安靜的常駐通知，提高部分手機上的提醒可靠性。';
+
+  @override
+  String get androidEnhancedReminderLimit =>
+      '真正的強制停止仍會阻止 Android 傳送鬧鐘，直至再次開啟 Orbit。';
+
+  @override
+  String get androidEnhancedReminderChannel => '提醒可靠性';
+
+  @override
+  String get androidEnhancedReminderNotificationTitle => '增強提醒已開啟';
+
+  @override
+  String get androidEnhancedReminderNotificationBody => 'Orbit 正在保護之後的課程提醒。';
+
+  @override
+  String get androidEnhancedReminderDisable => '關閉';
+
+  @override
+  String get androidOriginOsSettings => 'OriginOS 背景設定';
+
+  @override
+  String get androidOriginOsSettingsSubtitle =>
+      '請開啟自動啟動和背景高耗電、取消電池限制，並在最近任務中鎖定 Orbit。';
+
+  @override
+  String get androidOpenAutostartSettings => '開啟設定';
+
+  @override
+  String get androidForcedStopDetected => 'Orbit 曾被強制停止';
+
+  @override
+  String get androidForcedStopDetectedSubtitle =>
+      '最近任務清理器停止了 Orbit 並取消了鬧鐘。請完成下方 OriginOS 設定後重新執行一分鐘測試。';
+
+  @override
+  String get androidReminderReliability => '提醒註冊狀態';
+
+  @override
+  String androidReminderReliabilityStatus(int registered, int stored) {
+    return '$stored 個未來提醒中有 $registered 個已註冊到 Android。';
+  }
+
+  @override
+  String get androidReminderDiagnostics => '提醒診斷記錄';
+
+  @override
+  String get androidReminderDiagnosticsEmpty => '尚未記錄原生提醒事件。';
 }

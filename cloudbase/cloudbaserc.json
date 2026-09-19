@@ -1,0 +1,30 @@
+{
+  "envId": "orbit-sync-beta-d6fjsl9220203313",
+  "functionRoot": "./functions",
+  "functions": [
+    {
+      "name": "orbit-sync-push",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 60,
+      "memorySize": 256,
+      "installDependency": true
+    },
+    {
+      "name": "orbit-sync-pull",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 30,
+      "memorySize": 256,
+      "installDependency": true
+    },
+    {
+      "name": "orbit-sync-delete-data",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 60,
+      "memorySize": 256,
+      "installDependency": true
+    }
+  ]
+}

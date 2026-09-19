@@ -1,0 +1,6 @@
+{
+  "orbit_sync_records": { "read": false, "write": false },
+  "orbit_sync_changes": { "read": false, "write": false },
+  "orbit_sync_state": { "read": false, "write": false },
+  "orbit_sync_mutations": { "read": false, "write": false }
+}

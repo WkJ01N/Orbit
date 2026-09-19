@@ -1,6 +1,7 @@
 import 'package:excel/excel.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/services/course_import_identity.dart';
 
 enum XlsxParseErrorCode {
   noSheet,
@@ -45,9 +46,20 @@ class XlsxParser {
       throw XlsxParseException(XlsxParseErrorCode.emptySheet);
     }
 
+    return parseRows([
+      for (var index = 0; index < sheet.maxRows; index++)
+        _readRow(sheet, index),
+    ], sourceFile: sourceFile);
+  }
+
+  /// Shared legacy adapter for the import pipeline and the compatibility API.
+  List<CourseSession> parseRows(List<List<String>> rows, {String? sourceFile}) {
+    if (rows.length <= 1) {
+      throw XlsxParseException(XlsxParseErrorCode.emptySheet);
+    }
     final sessions = <CourseSession>[];
-    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
-      final row = _readRow(sheet, rowIndex);
+    for (var rowIndex = 1; rowIndex < rows.length; rowIndex++) {
+      final row = rows[rowIndex];
       if (_isRowEmpty(row)) {
         continue;
       }
@@ -83,8 +95,16 @@ class XlsxParser {
     final weekday = _parseWeekday(row[5], date);
     final startAt = _parseDateTime(date, row[9]);
     final endAt = _parseDateTime(date, row[10]);
-    final courseCode = row[7].trim();
+    final teachers = _parseTeachers(row[11]);
+    final courseCode = row[7].trim().isEmpty
+        ? generatedImportCourseCode(
+            courseImportIdentity(row[6], row[8], teachers, row[3]),
+          )
+        : row[7].trim();
     final section = row[8].trim();
+    if (!endAt.isAfter(startAt)) {
+      throw XlsxParseException(XlsxParseErrorCode.invalidTime, detail: row[10]);
+    }
 
     return CourseSession(
       id: CourseSession.buildId(
@@ -102,7 +122,7 @@ class XlsxParser {
       section: section,
       startAt: startAt,
       endAt: endAt,
-      teachers: _parseTeachers(row[11]),
+      teachers: teachers,
       faculty: row[3].trim(),
       semester: row[12].trim(),
       sourceFile: sourceFile,
@@ -123,8 +143,9 @@ class XlsxParser {
     return values;
   }
 
-  String _cellValue(Data cell) {
-    final value = cell.value;
+  String _cellValue(Data cell) => cellText(cell.value);
+
+  static String cellText(CellValue? value) {
     if (value == null) {
       return '';
     }
@@ -166,11 +187,17 @@ class XlsxParser {
     if (match == null) {
       throw XlsxParseException(XlsxParseErrorCode.invalidDate, detail: value);
     }
-    return DateTime(
+    final date = DateTime(
       int.parse(match.group(1)!),
       int.parse(match.group(2)!),
       int.parse(match.group(3)!),
     );
+    if (date.year != int.parse(match.group(1)!) ||
+        date.month != int.parse(match.group(2)!) ||
+        date.day != int.parse(match.group(3)!)) {
+      throw XlsxParseException(XlsxParseErrorCode.invalidDate, detail: value);
+    }
+    return date;
   }
 
   int _parseWeekday(String raw, DateTime date) {
@@ -185,6 +212,9 @@ class XlsxParser {
     final value = raw.trim();
     final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
     if (match == null) {
+      throw XlsxParseException(XlsxParseErrorCode.invalidTime, detail: value);
+    }
+    if (int.parse(match.group(1)!) > 23 || int.parse(match.group(2)!) > 59) {
       throw XlsxParseException(XlsxParseErrorCode.invalidTime, detail: value);
     }
     return DateTime(

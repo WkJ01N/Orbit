@@ -1,17 +1,25 @@
 package com.must.orbit.orbit
 
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
+import android.net.Uri
 import android.os.PowerManager
+import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private var ringtoneResult: MethodChannel.Result? = null
     private var preview: android.media.MediaPlayer? = null
     private var reminderChannel: MethodChannel? = null
     private var pendingNotificationPayload: String? = null
+    private val reminderStatusExecutor = Executors.newSingleThreadExecutor()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -21,6 +29,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        OrbitReminderDiagnostics.attach(this)
         captureNotificationPayload(intent, notifyDart = false)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -45,17 +54,35 @@ class MainActivity : FlutterActivity() {
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "runtimeStatus" -> {
-                        @Suppress("DEPRECATION")
-                        val prefs=getSharedPreferences("orbit_native_reminders",Context.MODE_PRIVATE or Context.MODE_MULTI_PROCESS)
-                        result.success(prefs.getString("schedule_failure",null) ?: prefs.getString("strong_degraded",null))
+                        val config = OrbitReminderStore.metadata(this)
+                        result.success(config["schedule_failure"] ?: config["strong_degraded"])
                     }
+                    "reminderReliabilityStatus" -> loadReminderReliabilityStatus(result)
+                    "enhancedReminderMode" ->
+                        result.success(OrbitReminderKeepAliveService.isEnabled(this))
+                    "setEnhancedReminderMode" -> {
+                        OrbitReminderKeepAliveService.setEnabled(
+                            this,
+                            call.argument<Boolean>("enabled") == true,
+                            mapOf(
+                                "channel" to call.argument<String>("channel"),
+                                "title" to call.argument<String>("title"),
+                                "body" to call.argument<String>("body"),
+                                "disable" to call.argument<String>("disable"),
+                            ),
+                        )
+                        result.success(null)
+                    }
+                    "openAutostartSettings" -> result.success(openAutostartSettings())
                     "configureDatabase" -> {
-                        val editor = getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE).edit()
-                        editor.remove("schedule_failure")
-                        editor.putString("database_path", call.argument<String>("path"))
+                        val values = mutableMapOf<String, String?>(
+                            "schedule_failure" to null,
+                            "database_path" to call.argument<String>("path"),
+                        )
                         for (key in listOf("catchup_label","catchup_notice","original_label","delivered_label","channel_name","channel_description"))
-                            editor.putString(key, call.argument<String>(key))
-                        editor.commit()
+                            values[key] = call.argument<String>(key)
+                        OrbitReminderStore.updateMetadata(this, values)
+                        OrbitReminderDiagnostics.event("configure_database")
                         result.success(null)
                     }
                     "chooseRingtone" -> {
@@ -158,6 +185,93 @@ class MainActivity : FlutterActivity() {
             )
         } catch (error: Exception) {
             result.error("schedule_failed", error.message, null)
+        }
+    }
+
+    private fun loadReminderReliabilityStatus(result: MethodChannel.Result) {
+        reminderStatusExecutor.execute {
+            try {
+                val status = reminderReliabilityStatus()
+                runOnUiThread { result.success(status) }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    result.error(
+                        "reliability_status_failed",
+                        error.message ?: error.javaClass.simpleName,
+                        null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun reminderReliabilityStatus(): Map<String, Any?> {
+        val records = OrbitReminderStore.load(this).values
+        val registered = records.count {
+            it.fireAtMillis > System.currentTimeMillis() &&
+                OrbitReminderManager.contains(this, it.alarmId)
+        }
+        val exit = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            manager.getHistoricalProcessExitReasons(packageName, 0, 8).firstOrNull()
+        } else null
+        val description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            exit?.description?.toString()
+        } else null
+        val forcedStop = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            exit?.reason == ApplicationExitInfo.REASON_USER_REQUESTED &&
+                (description?.contains("force stop", ignoreCase = true) == true ||
+                    description?.contains("single-cleaner", ignoreCase = true) == true ||
+                    description?.contains("stop ", ignoreCase = true) == true)
+        } else false
+        return mapOf(
+            "enhancedMode" to OrbitReminderKeepAliveService.isEnabled(this),
+            "storedReminderCount" to records.count { it.fireAtMillis > System.currentTimeMillis() },
+            "registeredReminderCount" to registered,
+            "forcedStopDetected" to forcedStop,
+            "exitTimestamp" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) exit?.timestamp else null,
+            "exitReason" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) exit?.reason else null,
+            "exitDescription" to description?.take(160),
+            "events" to OrbitReminderStore.diagnostics(this),
+        )
+    }
+
+    override fun onDestroy() {
+        reminderStatusExecutor.shutdownNow()
+        super.onDestroy()
+    }
+
+    private fun openAutostartSettings(): Boolean {
+        val candidates = listOf(
+            ComponentName(
+                "com.vivo.permissionmanager",
+                "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+            ),
+            ComponentName(
+                "com.iqoo.secure",
+                "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager",
+            ),
+            ComponentName(
+                "com.vivo.permissionmanager",
+                "com.vivo.permissionmanager.activity.PurviewTabActivity",
+            ),
+        )
+        for (component in candidates) {
+            try {
+                startActivity(Intent().setComponent(component))
+                return true
+            } catch (_: Exception) { }
+        }
+        return try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+            false
+        } catch (_: Exception) {
+            false
         }
     }
 

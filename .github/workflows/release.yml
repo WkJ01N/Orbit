@@ -29,7 +29,7 @@ jobs:
           printf 'storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
             "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" \
             > android/key.properties
-      - run: flutter build apk --release
+      - run: flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
       - run: cp build/app/outputs/flutter-apk/app-release.apk orbit-${{ github.ref_name }}-android.apk
       - uses: softprops/action-gh-release@v2
         with:
@@ -46,7 +46,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release
+      - run: flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
       - name: Package Windows build
         shell: pwsh
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath orbit-${{ github.ref_name }}-windows-x64.zip
