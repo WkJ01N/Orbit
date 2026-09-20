@@ -7,6 +7,9 @@
 ## 部署准备
 
 1. 在 CloudBase 控制台创建环境并开启邮箱密码认证、注册验证码和重置密码邮件。
+   随后进入“身份认证 → Token 管理”，将测试环境和生产环境的“最大会话数”都设为
+   **5**。Orbit 依赖每台设备各自持有 Refresh Token；若保持默认值 1，新设备登录会
+   使旧设备退出。超过 5 个会话时由 CloudBase 自动淘汰最早的会话。
 2. 创建 `orbit_sync_records`、`orbit_sync_changes`、`orbit_sync_state`、
    `orbit_sync_mutations` 四个文档集合。逐个将安全规则设为 `read: false`、
    `write: false`；云函数仍可通过服务端 SDK 访问。

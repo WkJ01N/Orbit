@@ -5,18 +5,36 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orbit/features/settings/avatar_crop_dialog.dart';
 import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/models/auto_sync_settings.dart';
 import 'package:orbit/providers/account_sync_providers.dart';
 import 'package:orbit/services/account_sync_service.dart';
 
-class AccountSyncPage extends ConsumerWidget {
+class AccountSyncPage extends ConsumerStatefulWidget {
   const AccountSyncPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AccountSyncPage> createState() => _AccountSyncPageState();
+}
+
+class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
+  String? _refreshedUid;
+
+  @override
+  Widget build(BuildContext context) {
     final text = _SyncText.of(context);
     final state = ref.watch(accountSyncProvider);
+    final account = state.value?.account;
+    if (account == null) _refreshedUid = null;
+    if (account != null && _refreshedUid != account.uid) {
+      _refreshedUid = account.uid;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(ref.read(accountSyncProvider.notifier).refreshProfile());
+        }
+      });
+    }
     return Scaffold(
       appBar: AppBar(title: Text(text.title)),
       body: state.when(
@@ -116,7 +134,12 @@ class _SignedInBody extends ConsumerWidget {
                 : status.account!.email,
           ),
           trailing: const Icon(Icons.edit_outlined),
-          onTap: () => _showProfileEditor(context, status.account!),
+          onTap: () async {
+            await ref.read(accountSyncProvider.notifier).refreshProfile();
+            if (!context.mounted) return;
+            final account = ref.read(accountSyncProvider).value?.account;
+            if (account != null) await _showProfileEditor(context, account);
+          },
         ),
         const Divider(),
         ListTile(
@@ -391,48 +414,74 @@ class _AccountAvatar extends ConsumerStatefulWidget {
 }
 
 class _AccountAvatarState extends ConsumerState<_AccountAvatar> {
-  Future<String?>? _url;
+  Uint8List? _bytes;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
   }
 
   @override
   void didUpdateWidget(covariant _AccountAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.account.avatarFileId != widget.account.avatarFileId) _load();
+    if (oldWidget.account.uid != widget.account.uid) _bytes = null;
+    if (oldWidget.account.uid != widget.account.uid ||
+        oldWidget.account.avatarFileId != widget.account.avatarFileId) {
+      unawaited(_load());
+    } else if (!identical(oldWidget.account, widget.account)) {
+      // A profile refresh with the same remote id retries a previously failed
+      // download without making stable avatars hit the network again.
+      unawaited(_load());
+    }
   }
 
-  void _load() {
-    _url = ref
-        .read(accountServiceProvider)
-        .avatarDownloadUrl(widget.account.avatarFileId);
+  Future<void> _load() async {
+    final account = widget.account;
+    if (account.avatarFileId == null) {
+      if (mounted) setState(() => _bytes = null);
+      try {
+        await ref.read(accountAvatarCacheProvider).clearUser(account.uid);
+      } catch (_) {
+        // A missing or unavailable cache must never break profile rendering.
+      }
+      return;
+    }
+    final bytes = await ref
+        .read(accountAvatarCacheProvider)
+        .load(
+          uid: account.uid,
+          fileId: account.avatarFileId,
+          resolveUrl: ref.read(accountServiceProvider).avatarDownloadUrl,
+        );
+    if (!mounted ||
+        account.uid != widget.account.uid ||
+        account.avatarFileId != widget.account.avatarFileId) {
+      return;
+    }
+    setState(() => _bytes = bytes);
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<String?>(
-    future: _url,
-    builder: (context, snapshot) {
-      final diameter = widget.radius * 2;
-      final fallback = CircleAvatar(
-        radius: widget.radius,
-        child: const Icon(Icons.person_outline),
-      );
-      final url = snapshot.data;
-      if (url == null || url.isEmpty) return fallback;
-      return ClipOval(
-        child: Image.network(
-          url,
-          width: diameter,
-          height: diameter,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => fallback,
-        ),
-      );
-    },
-  );
+  Widget build(BuildContext context) {
+    final diameter = widget.radius * 2;
+    final fallback = CircleAvatar(
+      radius: widget.radius,
+      child: const Icon(Icons.person_outline),
+    );
+    final bytes = _bytes;
+    if (bytes == null) return fallback;
+    return ClipOval(
+      child: Image.memory(
+        bytes,
+        width: diameter,
+        height: diameter,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
 }
 
 Future<void> _showProfileEditor(BuildContext context, SyncAccount account) =>
@@ -499,10 +548,12 @@ class _ProfileEditorDialogState extends ConsumerState<_ProfileEditorDialog> {
       setState(() => _error = _SyncText.of(context).avatarTypeInvalid);
       return;
     }
+    final cropped = await showAvatarCropDialog(context, bytes);
+    if (!mounted || cropped == null) return;
     setState(() {
-      _avatarBytes = bytes;
-      _extension = extension;
-      _contentType = contentType;
+      _avatarBytes = cropped;
+      _extension = 'png';
+      _contentType = 'image/png';
       _error = null;
     });
   }
@@ -658,7 +709,7 @@ Future<void> _showAuth(
                       : const [AutofillHints.password],
                   decoration: InputDecoration(
                     labelText: text.password,
-                    helperText: text.passwordRule,
+                    helperText: register ? text.passwordRule : null,
                     helperMaxLines: 2,
                     suffixIcon: IconButton(
                       onPressed: () => setState(() => obscure = !obscure),

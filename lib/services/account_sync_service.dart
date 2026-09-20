@@ -64,6 +64,7 @@ bool isValidOrbitUsername(String username) {
 abstract interface class AccountService {
   bool get configured;
   Future<SyncAccount?> restoreSession();
+  Future<SyncAccount> refreshAccount();
   Future<SyncAccount> signIn(String email, String password);
   Future<VerificationChallenge> signUp(
     String email,
@@ -79,6 +80,30 @@ abstract interface class AccountService {
   Future<String?> avatarDownloadUrl(String? fileId);
   Future<void> signOut();
   Future<void> deleteAccount(String password);
+}
+
+bool isAccountSessionInvalid(Object error) =>
+    error is AccountSyncException && error.code == 'session_invalid';
+
+bool isAccountNetworkError(Object error) {
+  final value = error.toString().toLowerCase();
+  return value.contains('network') ||
+      value.contains('timeout') ||
+      value.contains('socket') ||
+      value.contains('unreachable') ||
+      value.contains('connection') ||
+      value.contains('网络') ||
+      value.contains('網路') ||
+      value.contains('連線');
+}
+
+bool _isInvalidSessionResponse(Object error) {
+  final value = error.toString().toLowerCase();
+  return value.contains('invalid_refresh_token') ||
+      value.contains('refresh_token_expired') ||
+      value.contains('refresh_token_exhausted') ||
+      value.contains('refresh_token_disabled') ||
+      value.contains('user_not_found');
 }
 
 abstract interface class SyncBackend {
@@ -160,7 +185,17 @@ class CloudBaseGateway {
       SetSessionReq(refreshToken: refresh),
     );
     if (response.error != null) {
-      await clearSession();
+      final detail = '${response.error!.code} ${response.error!.message}';
+      if (isAccountNetworkError(detail)) {
+        throw AccountSyncException(
+          response.error!.code ?? 'network_error',
+          response.error!.message,
+        );
+      }
+      if (_isInvalidSessionResponse(detail)) {
+        await clearSession();
+        throw AccountSyncException('session_invalid', response.error!.message);
+      }
       throw AccountSyncException(
         response.error!.code ?? 'session_restore_failed',
         response.error!.message,
@@ -217,6 +252,22 @@ class CloudBaseAccountService implements AccountService {
     if (!configured) return null;
     final session = await _gateway.restoreSecureSession();
     return session == null ? null : _account(session.user);
+  }
+
+  @override
+  Future<SyncAccount> refreshAccount() async {
+    final app = await _gateway.app();
+    final response = await app.auth.refreshUser();
+    if (response.error != null) {
+      final detail = '${response.error!.code} ${response.error!.message}';
+      if (_isInvalidSessionResponse(detail)) {
+        await _gateway.clearSession();
+        throw AccountSyncException('session_invalid', response.error!.message);
+      }
+      _throwAuth(response.error);
+    }
+    await _gateway.scrubSdkSession();
+    return _account(response.data?.user);
   }
 
   @override

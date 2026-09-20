@@ -152,12 +152,14 @@ class _AccountSyncLifecycleHostState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(
-        ref
-            .read(accountSyncProvider.notifier)
-            .triggerSync(SyncTrigger.appResume),
-      );
+      unawaited(_refreshAndSyncOnResume());
     }
+  }
+
+  Future<void> _refreshAndSyncOnResume() async {
+    final account = ref.read(accountSyncProvider.notifier);
+    await account.refreshProfile();
+    await account.triggerSync(SyncTrigger.appResume);
   }
 
   @override

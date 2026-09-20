@@ -1,7 +1,7 @@
 name: orbit
 description: 跨平台课表提醒应用，支援 Windows 與 Android。
 publish_to: 'none'
-version: 1.5.0+19
+version: 1.5.1+20
 
 environment:
   sdk: ^3.12.1
@@ -38,6 +38,8 @@ dependencies:
   flutter_secure_storage: 9.2.4
   uuid: 4.5.3
   connectivity_plus: ^7.0.0
+  crop_your_image: ^2.0.0
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:

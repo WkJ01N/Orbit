@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/features/settings/account_sync_page.dart';
+import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/providers/account_sync_providers.dart';
 import 'package:orbit/services/account_sync_service.dart';
@@ -136,6 +137,55 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
+
+  for (final localeAndRule in const [
+    (Locale('en'), '8–20 characters with at least one letter and one number.'),
+    (
+      Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+      '密码须为 8–20 位，且必须包含字母和数字。',
+    ),
+    (
+      Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      '密碼須為 8–20 位，且必須包含字母和數字。',
+    ),
+  ]) {
+    testWidgets('password rule is registration-only in ${localeAndRule.$1}', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            accountServiceProvider.overrideWithValue(_FakeAccountService()),
+            accountSyncProvider.overrideWith(_TestAccountSyncNotifier.new),
+          ],
+          child: MaterialApp(
+            locale: localeAndRule.$1,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const AccountSyncPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      expect(find.text(localeAndRule.$2), findsNothing);
+      await tester.tap(
+        find
+            .descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byType(TextButton),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(OutlinedButton));
+      await tester.pumpAndSettle();
+      expect(find.text(localeAndRule.$2), findsOneWidget);
+    });
+  }
 }
 
 class _FakeAccountService implements AccountService {
@@ -146,6 +196,10 @@ class _FakeAccountService implements AccountService {
 
   @override
   Future<SyncAccount?> restoreSession() async => null;
+
+  @override
+  Future<SyncAccount> refreshAccount() async =>
+      const SyncAccount(uid: 'user-1', email: 'orbit@example.com');
 
   @override
   Future<SyncAccount> signIn(String email, String password) async =>

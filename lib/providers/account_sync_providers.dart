@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/models/account_sync.dart';
@@ -7,12 +8,17 @@ import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/providers/schedule_providers.dart';
 import 'package:orbit/services/account_sync_service.dart';
+import 'package:orbit/services/account_avatar_cache.dart';
 import 'package:orbit/services/schedule_sync_coordinator.dart';
 
 final cloudBaseGatewayProvider = Provider((ref) => CloudBaseGateway());
 
 final accountServiceProvider = Provider<AccountService>(
   (ref) => CloudBaseAccountService(ref.watch(cloudBaseGatewayProvider)),
+);
+
+final accountAvatarCacheProvider = Provider<AccountAvatarCache>(
+  (ref) => AccountAvatarCache(),
 );
 
 final syncBackendProvider = Provider<SyncBackend>(
@@ -70,6 +76,7 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
   Future<void>? _syncRun;
   bool _syncQueued = false;
   bool _suppressLocalTrigger = false;
+  Future<void>? _profileRefresh;
 
   @override
   Future<SyncStatus> build() async {
@@ -88,9 +95,14 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
       if (!_suppressLocalTrigger) scheduleSync();
     });
     try {
-      final account = await auth.restoreSession();
-      if (account == null) return const SyncStatus();
       final stored = await ref.read(appDatabaseProvider).activeSyncAccount();
+      final account = await auth.restoreSession();
+      if (account == null) {
+        if (stored != null) {
+          await ref.read(appDatabaseProvider).setActiveSyncAccount(null);
+        }
+        return const SyncStatus();
+      }
       if (stored?.uid != account.uid) {
         return SyncStatus(phase: SyncPhase.needsInitialMerge, account: account);
       }
@@ -107,6 +119,18 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
         _suppressLocalTrigger = false;
       }
     } catch (error) {
+      final stored = await ref.read(appDatabaseProvider).activeSyncAccount();
+      if (isAccountSessionInvalid(error)) {
+        await ref.read(appDatabaseProvider).setActiveSyncAccount(null);
+        return const SyncStatus();
+      }
+      if (stored != null && isAccountNetworkError(error)) {
+        return SyncStatus(
+          phase: SyncPhase.offline,
+          account: stored,
+          message: '$error',
+        );
+      }
       return SyncStatus(phase: SyncPhase.error, message: '$error');
     }
   }
@@ -283,7 +307,52 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
         .read(accountServiceProvider)
         .updateProfile(account, username: username, avatar: avatar);
     await ref.read(appDatabaseProvider).setActiveSyncAccount(updated);
+    if (avatar != null) {
+      final fileId = updated.avatarFileId;
+      if (fileId != null) {
+        try {
+          await ref
+              .read(accountAvatarCacheProvider)
+              .store(
+                uid: updated.uid,
+                fileId: fileId,
+                bytes: Uint8List.fromList(avatar.bytes),
+              );
+        } catch (_) {
+          // The cloud profile update succeeded; caching is best-effort.
+        }
+      }
+    }
     state = AsyncData(current.copyWith(account: updated));
+  }
+
+  Future<void> refreshProfile() {
+    final active = _profileRefresh;
+    if (active != null) return active;
+    late final Future<void> run;
+    run = _refreshProfile().whenComplete(() {
+      if (identical(_profileRefresh, run)) _profileRefresh = null;
+    });
+    _profileRefresh = run;
+    return run;
+  }
+
+  Future<void> _refreshProfile() async {
+    final current = state.value;
+    final account = current?.account;
+    if (current == null || account == null) return;
+    try {
+      final updated = await ref.read(accountServiceProvider).refreshAccount();
+      if (updated.uid != account.uid) {
+        throw const AccountSyncException('session_invalid');
+      }
+      await ref.read(appDatabaseProvider).setActiveSyncAccount(updated);
+      state = AsyncData(current.copyWith(account: updated));
+    } catch (error) {
+      if (!isAccountSessionInvalid(error)) return;
+      await ref.read(appDatabaseProvider).setActiveSyncAccount(null);
+      state = const AsyncData(SyncStatus());
+    }
   }
 
   void scheduleSync() {
@@ -320,6 +389,11 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
     await ref
         .read(appDatabaseProvider)
         .setActiveSyncAccount(null, clearBinding: true);
+    try {
+      await ref.read(accountAvatarCacheProvider).clearUser(account.uid);
+    } catch (_) {
+      // Account deletion must not be reported as failed because of local cache.
+    }
     state = const AsyncData(SyncStatus());
   }
 
