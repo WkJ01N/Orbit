@@ -4,7 +4,8 @@ $source = Join-Path $PSScriptRoot 'functions/orbit-sync-common/index.js'
 $targets = @(
   'orbit-sync-push',
   'orbit-sync-pull',
-  'orbit-sync-delete-data'
+  'orbit-sync-delete-data',
+  'orbit-api'
 )
 
 foreach ($target in $targets) {
@@ -13,4 +14,4 @@ foreach ($target in $targets) {
   ) -Force
 }
 
-Write-Host 'Prepared three self-contained CloudBase function directories.'
+Write-Host 'Prepared four self-contained CloudBase function directories.'

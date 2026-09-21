@@ -1,20 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloudbase_flutter/cloudbase_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:orbit/models/account_sync.dart';
+import 'package:orbit/services/account_errors.dart';
+import 'package:orbit/services/orbit_api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AccountSyncException implements Exception {
-  const AccountSyncException(this.code, [this.detail]);
-
-  final String code;
-  final String? detail;
-
-  @override
-  String toString() => detail == null ? code : '$code: $detail';
-}
+export 'package:orbit/services/account_errors.dart';
 
 class VerificationChallenge {
   const VerificationChallenge(
@@ -240,34 +236,31 @@ class CloudBaseGateway {
 }
 
 class CloudBaseAccountService implements AccountService {
-  CloudBaseAccountService(this._gateway);
+  CloudBaseAccountService(this._gateway, this._api);
 
   final CloudBaseGateway _gateway;
+  final OrbitApiClient _api;
 
   @override
-  bool get configured => _gateway.configured;
+  bool get configured => _gateway.configured && _api.configured;
 
   @override
   Future<SyncAccount?> restoreSession() async {
     if (!configured) return null;
-    final session = await _gateway.restoreSecureSession();
-    return session == null ? null : _account(session.user);
+    final orbit = await _api.sessions.readSession();
+    if (orbit != null) return _api.restoreAccount();
+
+    // One-time upgrade path for installations that only have the old
+    // CloudBase refresh token. The CloudBase session is discarded as soon as
+    // it has been exchanged for an Orbit device session.
+    final legacy = await _gateway.restoreSecureSession();
+    if (legacy == null) return null;
+    return _bootstrapSession();
   }
 
   @override
   Future<SyncAccount> refreshAccount() async {
-    final app = await _gateway.app();
-    final response = await app.auth.refreshUser();
-    if (response.error != null) {
-      final detail = '${response.error!.code} ${response.error!.message}';
-      if (_isInvalidSessionResponse(detail)) {
-        await _gateway.clearSession();
-        throw AccountSyncException('session_invalid', response.error!.message);
-      }
-      _throwAuth(response.error);
-    }
-    await _gateway.scrubSdkSession();
-    return _account(response.data?.user);
+    return _api.getProfile();
   }
 
   @override
@@ -281,7 +274,7 @@ class CloudBaseAccountService implements AccountService {
     );
     _throwAuth(response.error);
     await _gateway.persistAndScrub(response.data?.session);
-    return _account(response.data?.user);
+    return _bootstrapSession();
   }
 
   @override
@@ -310,9 +303,8 @@ class CloudBaseAccountService implements AccountService {
     final verify = response.data?.verifyOtp;
     if (verify == null) {
       await _gateway.persistAndScrub(response.data?.session);
-      final account = _account(response.data?.user);
       return VerificationChallenge(
-        (_) async => account,
+        (_) => _bootstrapSession(),
         resend: () async {},
         requiresCode: false,
       );
@@ -325,7 +317,7 @@ class CloudBaseAccountService implements AccountService {
         );
         _throwAuth(verified.error);
         await _gateway.persistAndScrub(verified.data?.session);
-        return _account(verified.data?.user);
+        return _bootstrapSession();
       },
       resend: () async {
         final resent = await app.auth.resend(
@@ -359,6 +351,17 @@ class CloudBaseAccountService implements AccountService {
         );
         _throwAuth(result.error);
         await _gateway.persistAndScrub(result.data?.session);
+        final revoked = await app.callFunction(
+          name: 'orbit-api',
+          data: const {'action': 'revokeAllSessions'},
+        );
+        if (revoked.code != null) {
+          throw AccountSyncException(
+            revoked.code!,
+            revoked.message?.toString(),
+          );
+        }
+        await _api.sessions.clearSession();
         await app.auth.signOut();
         await _gateway.clearSession();
       };
@@ -381,74 +384,46 @@ class CloudBaseAccountService implements AccountService {
     if (!isValidOrbitUsername(normalizedUsername)) {
       throw const AccountSyncException('invalid_username');
     }
-    final app = await _gateway.app();
-    var avatarFileId = account.avatarFileId;
     if (avatar != null) {
       if (avatar.bytes.isEmpty || avatar.bytes.length > 2 * 1024 * 1024) {
         throw const AccountSyncException('avatar_too_large');
       }
       final extension = avatar.extension.toLowerCase();
-      if (!const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension)) {
+      if (extension != 'png' || avatar.contentType != 'image/png') {
         throw const AccountSyncException('avatar_type_invalid');
       }
-      final path =
-          'orbit-user-avatars/${account.uid}/avatar-${DateTime.now().millisecondsSinceEpoch}.$extension';
-      final upload = await app.storage.from().upload(
-        path,
-        avatar.bytes,
-        options: StorageUploadOptions(
-          contentType: avatar.contentType,
-          cacheControl: 'max-age=86400',
-        ),
+      return _api.uploadAvatar(
+        Uint8List.fromList(avatar.bytes),
+        username: normalizedUsername,
       );
-      if (upload.error != null || upload.data?.id == null) {
-        throw AccountSyncException(
-          upload.error?.code ?? 'avatar_upload_failed',
-          upload.error?.message,
-        );
-      }
-      avatarFileId = upload.data!.id;
     }
-    final response = await app.auth.updateUser(
-      UpdateUserReq(
-        nickname: normalizedUsername,
-        avatarUrl: avatar == null ? null : avatarFileId,
-      ),
-    );
-    _throwAuth(response.error);
-    final updated = _account(response.data?.user);
-    if (avatar != null &&
-        account.avatarFileId != null &&
-        account.avatarFileId != updated.avatarFileId) {
-      unawaited(app.storage.from().remove([account.avatarFileId!]));
-    }
-    await _gateway.scrubSdkSession();
-    return updated;
+    return _api.updateProfile(normalizedUsername);
   }
 
   @override
   Future<String?> avatarDownloadUrl(String? fileId) async {
-    if (fileId == null || fileId.isEmpty) return null;
-    if (fileId.startsWith('http://') || fileId.startsWith('https://')) {
-      return fileId;
-    }
-    final app = await _gateway.app();
-    final response = await app.storage.from().getDownloadUrls([fileId]);
-    if (response.error != null || response.data?.isEmpty != false) return null;
-    return response.data!.first.downloadUrl;
+    return _api.avatarDownloadUrl(fileId);
   }
 
   @override
   Future<void> signOut() async {
     if (!configured) return;
-    final app = await _gateway.app();
-    await app.auth.signOut();
-    await _gateway.clearSession();
+    await _api.signOut();
   }
 
   @override
   Future<void> deleteAccount(String password) async {
+    final session = await _api.sessions.readSession();
+    if (session == null) {
+      throw const AccountSyncException('session_invalid');
+    }
     final app = await _gateway.app();
+    final signedIn = await app.auth.signInWithPassword(
+      SignInWithPasswordReq(email: session.account.email, password: password),
+    );
+    _throwAuth(signedIn.error);
+    await _gateway.persistAndScrub(signedIn.data?.session);
+    await _api.deleteAccountData();
     final response = await app.auth.deleteUser(
       DeleteUserReq(password: password),
     );
@@ -456,20 +431,42 @@ class CloudBaseAccountService implements AccountService {
     await _gateway.clearSession();
   }
 
-  static SyncAccount _account(User? user) {
-    final uid = user?.id;
-    if (uid == null || uid.isEmpty) {
-      throw const AccountSyncException('invalid_account');
+  Future<SyncAccount> _bootstrapSession() async {
+    final app = await _gateway.app();
+    try {
+      final response = await app.callFunction(
+        name: 'orbit-api',
+        data: {
+          'action': 'bootstrapSession',
+          'deviceId': await _api.sessions.deviceId(),
+          'platform': Platform.operatingSystem,
+          'appVersion': '1.5.1+21',
+        },
+      );
+      if (response.code != null) {
+        throw AccountSyncException(
+          response.code!,
+          response.message?.toString(),
+        );
+      }
+      if (response.result is! Map) {
+        throw const AccountSyncException('invalid_cloud_response');
+      }
+      var value = Map<String, dynamic>.from(response.result as Map);
+      if (value['result'] is Map) {
+        value = Map<String, dynamic>.from(value['result'] as Map);
+      }
+      final orbit = await _api.acceptBootstrap(value);
+      await app.auth.signOut();
+      await _gateway.clearSession();
+      return orbit.account;
+    } catch (error) {
+      if (!isAccountNetworkError(error)) {
+        await app.auth.signOut();
+        await _gateway.clearSession();
+      }
+      rethrow;
     }
-    final metadata = user?.userMetadata;
-    final username = metadata?.nickName ?? metadata?.username ?? metadata?.name;
-    final avatar = metadata?.avatarUrl ?? metadata?.picture;
-    return SyncAccount(
-      uid: uid,
-      email: user?.email ?? '',
-      username: username?.trim().isEmpty == true ? null : username,
-      avatarFileId: avatar?.trim().isEmpty == true ? null : avatar,
-    );
   }
 
   static void _throwAuth(AuthError? error) {
@@ -483,20 +480,21 @@ class CloudBaseAccountService implements AccountService {
 }
 
 class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
-  CloudBaseSyncBackend(this._gateway);
+  CloudBaseSyncBackend(this._api);
 
-  final CloudBaseGateway _gateway;
+  final OrbitApiClient _api;
 
   @override
-  bool get configured => _gateway.configured;
+  bool get configured => _api.configured;
 
   @override
   Future<SyncPushResult> push(List<SyncMutation> mutations, int cursor) async {
-    final result = await _call('orbit-sync-push', {
+    final batch = _limitedBatch(mutations);
+    final result = await _call('push', {
       'cursor': cursor,
-      'mutations': mutations.map((mutation) => mutation.toJson()).toList(),
+      'mutations': batch.map((mutation) => mutation.toJson()).toList(),
     });
-    return _pushResult(result, mutations, cursor);
+    return _pushResult(result, batch, cursor);
   }
 
   @override
@@ -505,14 +503,15 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
     int cursor, {
     int limit = 200,
   }) async {
-    final result = await _call('orbit-sync-push', {
+    final batch = _limitedBatch(mutations);
+    final result = await _call('exchange', {
       'cursor': cursor,
       'pullLimit': limit,
-      'mutations': mutations.map((mutation) => mutation.toJson()).toList(),
+      'mutations': batch.map((mutation) => mutation.toJson()).toList(),
     });
     final pull = Map<String, dynamic>.from(result['pull'] as Map? ?? const {});
     return SyncExchangeResult(
-      push: _pushResult(result, mutations, cursor),
+      push: _pushResult(result, batch, cursor),
       pull: _pullResult(pull, cursor),
     );
   }
@@ -555,10 +554,7 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
 
   @override
   Future<SyncPullResult> pull(int cursor, {int limit = 200}) async {
-    final result = await _call('orbit-sync-pull', {
-      'cursor': cursor,
-      'limit': limit,
-    });
+    final result = await _call('pull', {'cursor': cursor, 'limit': limit});
     return _pullResult(result, cursor);
   }
 
@@ -575,39 +571,45 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
 
   @override
   Future<List<SyncEntity>> snapshot() async {
-    final result = await _call('orbit-sync-pull', {
-      'cursor': 0,
-      'snapshot': true,
-      'limit': 10000,
-    });
-    return [
-      for (final value in result['entities'] as List? ?? const [])
-        SyncEntity.fromJson(Map<String, dynamic>.from(value as Map)),
-    ];
+    final entities = <SyncEntity>[];
+    var offset = 0;
+    while (true) {
+      final result = await _call('snapshot', {'offset': offset, 'limit': 500});
+      final page = [
+        for (final value in result['entities'] as List? ?? const [])
+          SyncEntity.fromJson(Map<String, dynamic>.from(value as Map)),
+      ];
+      entities.addAll(page);
+      if (result['hasMore'] != true) break;
+      final next = result['nextOffset'] as int?;
+      offset = next ?? (offset + page.length);
+      if (page.isEmpty) break;
+    }
+    return entities;
   }
 
   @override
-  Future<void> deleteAccountData() => _call('orbit-sync-delete-data', const {});
+  Future<void> deleteAccountData() => _api.deleteAccountData();
 
   Future<Map<String, dynamic>> _call(
     String name,
     Map<String, dynamic> data,
   ) async {
-    final app = await _gateway.app();
-    try {
-      final response = await app.callFunction(name: name, data: data);
-      if (response.code != null) {
-        throw AccountSyncException(
-          response.code!,
-          response.message?.toString(),
-        );
+    return _api.syncRequest(name, data);
+  }
+
+  List<SyncMutation> _limitedBatch(List<SyncMutation> mutations) {
+    final batch = <SyncMutation>[];
+    var encodedBytes = 0;
+    for (final mutation in mutations.take(100)) {
+      final size = utf8.encode(jsonEncode(mutation.toJson())).length;
+      if (batch.isNotEmpty && encodedBytes + size > 4 * 1024 * 1024) break;
+      if (size > 4 * 1024 * 1024) {
+        throw const AccountSyncException('sync_item_too_large');
       }
-      if (response.result is! Map) {
-        throw const AccountSyncException('invalid_cloud_response');
-      }
-      return Map<String, dynamic>.from(response.result as Map);
-    } finally {
-      await _gateway.scrubSdkSession();
+      batch.add(mutation);
+      encodedBytes += size;
     }
+    return batch;
   }
 }

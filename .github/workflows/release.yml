@@ -29,12 +29,13 @@ jobs:
           printf 'storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
             "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" \
             > android/key.properties
-      - run: flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+      - run: flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
       - run: cp build/app/outputs/flutter-apk/app-release.apk orbit-${{ github.ref_name }}-android.apk
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: orbit-${{ github.ref_name }}-android.apk
-          body_path: release/${{ github.ref_name }}/RELEASE_NOTES.md
+          name: android-release
+          path: orbit-${{ github.ref_name }}-android.apk
+          if-no-files-found: error
 
   windows:
     runs-on: windows-latest
@@ -46,11 +47,31 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+      - run: flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
       - name: Package Windows build
         shell: pwsh
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath orbit-${{ github.ref_name }}-windows-x64.zip
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: orbit-${{ github.ref_name }}-windows-x64.zip
-          body_path: release/${{ github.ref_name }}/RELEASE_NOTES.md
+          name: windows-release
+          path: orbit-${{ github.ref_name }}-windows-x64.zip
+          if-no-files-found: error
+
+  publish:
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release'
+          path: dist
+          merge-multiple: true
+      - name: Create or replace the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
+          gh release edit "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
+          gh release upload "$TAG" dist/* --clobber

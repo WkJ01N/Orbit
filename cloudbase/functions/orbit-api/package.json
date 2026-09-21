@@ -1,0 +1,15 @@
+{
+  "name": "orbit-api",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test *.test.js"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}

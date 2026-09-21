@@ -207,13 +207,14 @@ async function push(uid, event) {
 async function pull(uid, event) {
   const limit = Math.min(Math.max(Number(event.limit) || 200, 1), 10000);
   if (event.snapshot === true) {
+    const offset = Math.max(Number(event.offset) || 0, 0);
     const records = [];
     while (records.length < limit) {
       const pageSize = Math.min(100, limit - records.length);
       const result = await db
         .collection(collections.records)
         .where({ userId: uid })
-        .skip(records.length)
+        .skip(offset + records.length)
         .limit(pageSize)
         .get();
       const page = result.data || [];
@@ -227,7 +228,8 @@ async function pull(uid, event) {
     return {
       entities: records.map(recordToEntity),
       cursor: Number(documentData(state)?.cursor || 0),
-      hasMore: false,
+      hasMore: records.length === limit,
+      nextOffset: offset + records.length,
     };
   }
   const cursor = Number(event.cursor) || 0;

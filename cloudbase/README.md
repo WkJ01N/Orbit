@@ -1,46 +1,50 @@
-# Orbit CloudBase 同步后端
+# Orbit CloudBase 后端
 
-使用独立的测试环境部署 `orbit-sync-push`、`orbit-sync-pull` 和
-`orbit-sync-delete-data`。运行时必须启用身份认证，数据库集合应用
-`database.rules.json`，禁止客户端绕过云函数直接读写。
+新客户端仅使用 CloudBase 邮箱认证完成登录、注册、验证码、密码重置与注销时的身份验证。验证成功后，`orbit-api` 签发 Orbit 自有设备会话；资料、头像与课表同步均通过公开 HTTP 路由访问。旧的三个同步函数继续保留，供 v1.5.0 及更早安装包使用。
 
-## 部署准备
+CloudBase“最大会话数”可以保持默认值 **1**，无需购买更多 Refresh Token 会话额度。Orbit 自有会话最多允许 5 台设备，第 6 台设备登录时由 `orbit-api` 撤销创建时间最早的设备会话。
 
-1. 在 CloudBase 控制台创建环境并开启邮箱密码认证、注册验证码和重置密码邮件。
-   随后进入“身份认证 → Token 管理”，将测试环境和生产环境的“最大会话数”都设为
-   **5**。Orbit 依赖每台设备各自持有 Refresh Token；若保持默认值 1，新设备登录会
-   使旧设备退出。超过 5 个会话时由 CloudBase 自动淘汰最早的会话。
-2. 创建 `orbit_sync_records`、`orbit_sync_changes`、`orbit_sync_state`、
-   `orbit_sync_mutations` 四个文档集合。逐个将安全规则设为 `read: false`、
-   `write: false`；云函数仍可通过服务端 SDK 访问。
-3. 为 `orbit_sync_changes` 创建 `userId` 升序、`cursor` 升序的联合索引；为
-   `orbit_sync_records`、`orbit_sync_state`、`orbit_sync_mutations` 创建
-   `userId` 升序单字段索引。
-4. 运行 `./prepare-functions.ps1`。它将共享实现复制到三个函数目录，使每个目录都可
-   独立上传。每次修改 `orbit-sync-common/index.js` 后都要重新运行。
-5. 复制 `cloudbaserc.example.json` 为 `cloudbaserc.json`，填入测试环境 ID，然后运行
-   `tcb validate`、`tcb deploy --dry-run`，确认计划后执行 `tcb fn deploy --all`。
-6. 在“云存储 → 权限设置（安全规则）”中选择自定义安全规则，将
-   `storage.rules.json` 的内容完整粘贴并发布。该规则只允许已登录的非匿名用户读写
-   自己上传的头像，其他用户无法读取原文件。
+## 资源准备
 
-CloudBase 官方要求每个函数目录包含入口文件和自己的 `package.json`。这里的三个生成
-目录都符合该结构，可以通过 CLI 或控制台分别部署。
+1. 开启邮箱密码认证、注册验证码和密码重置邮件。
+2. 创建以下六个集合，并应用 `database.rules.json`，禁止客户端直接访问：`orbit_sync_records`、`orbit_sync_changes`、`orbit_sync_state`、`orbit_sync_mutations`、`orbit_auth_sessions`、`orbit_user_profiles`。
+3. 为 `orbit_sync_changes` 创建 `userId`、`cursor` 升序联合索引；为其余按用户查询的同步集合创建 `userId` 升序索引。
+4. 运行 `./prepare-functions.ps1`，把共享同步实现复制到四个可独立部署的函数目录。修改 `orbit-sync-common/index.js` 后必须重新运行。
+5. 安装并登录 CloudBase CLI，然后在本目录执行配置校验、部署预检和四个函数的部署。`cloudbaserc.json` 已指向当前测试环境；自行部署时从 `cloudbaserc.example.json` 创建配置。
+6. 在 HTTP 访问服务中创建公开路由：路径 `/orbit`，目标函数 `orbit-api`，关闭 CloudBase 网关鉴权，每 IP 限流 20 QPS。部署后以 CLI 返回的默认域名为准；腾讯云可能在环境 ID 后附加账号数字后缀。
 
-Flutter 构建时传入环境：
+关闭网关鉴权并不代表接口无鉴权。除会话刷新与退出外，每个 HTTP 请求都必须携带 Orbit Bearer Token；云函数还会逐次检查服务端设备会话注册表，因此退出或设备被淘汰会立即生效。
+
+## 会话与数据安全
+
+- Access Token 有效期 1 小时；Refresh Token 为 30 天滑动有效期。
+- Refresh Token 每次使用后轮换，旧令牌仅保留 60 秒并发重试窗口。
+- 服务端只保存 256 位随机令牌的 SHA-256 哈希，不保存令牌明文。
+- `orbit_auth_sessions` 每个用户只有一份设备注册表；稳定设备 ID 也只保存哈希。
+- `orbit_user_profiles` 是新客户端昵称、邮箱与头像文件 ID 的权威来源，首次签发会话时从 CloudBase 用户资料迁移。
+- 同步记录继续使用原 CloudBase UID，因此升级无需迁移课表。
+- 新头像由服务端 SDK 上传和删除；旧客户端兼容期内仍需保留现有云存储规则。
+
+## 构建参数
 
 ```text
---dart-define=ORBIT_CLOUDBASE_ENV=<测试环境 ID>
+--dart-define=ORBIT_CLOUDBASE_ENV=<环境 ID>
 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+--dart-define=ORBIT_API_BASE_URL=https://<CLI 返回的默认域名>/orbit
 ```
 
-客户端不包含腾讯云管理密钥。部署完成后先以两个邀请测试账号验证跨账号隔离、离线冲突、
-删除标记和账号注销，再为正式发布创建单独环境。生产环境需要配置邮箱认证模板、调用额度、
-异常告警、隐私政策地址和运营者联系信息。
+当前发布环境使用：
 
-一次常规同步由 `orbit-sync-push` 同时完成上传和增量下载，上传按每 15 项共用一次数据库
-事务，以减少移动网络往返与数据库调用。初期无需为此购买套餐；只有实际测试确认首次同步
-仍长期受云函数冷启动影响时，再考虑为 push/pull 函数配置预置并发。
+```text
+https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
+```
 
-参考：[云函数目录与部署](https://docs.cloudbase.net/cli-v1/functions/deploy)、
-[数据库安全规则](https://docs.cloudbase.net/database/security-rules)。
+## 验证清单
+
+- CloudBase 最大会话数保持 1，Android 与 Windows 同时登录、长期刷新并双向同步。
+- 同一安装重复登录不增加设备数；前 5 台有效，第 6 台使最早设备平稳退出。
+- 单设备退出不影响其他设备；离线退出在下次联网后补发撤销。
+- 密码重置撤销全部 Orbit 会话；普通断网不删除有效凭证或本机课表。
+- 跨账号资料、头像与课表不可访问；请求体、分页和头像限制生效。
+
+客户端不包含腾讯云管理密钥。生产环境还应配置邮件模板、额度告警、隐私政策地址与运营者联系方式。

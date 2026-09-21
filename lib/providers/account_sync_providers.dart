@@ -9,12 +9,21 @@ import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/providers/schedule_providers.dart';
 import 'package:orbit/services/account_sync_service.dart';
 import 'package:orbit/services/account_avatar_cache.dart';
+import 'package:orbit/services/orbit_api_client.dart';
 import 'package:orbit/services/schedule_sync_coordinator.dart';
 
 final cloudBaseGatewayProvider = Provider((ref) => CloudBaseGateway());
 
+final orbitApiClientProvider = Provider((ref) {
+  final gateway = ref.watch(cloudBaseGatewayProvider);
+  return OrbitApiClient(environment: gateway.environment);
+});
+
 final accountServiceProvider = Provider<AccountService>(
-  (ref) => CloudBaseAccountService(ref.watch(cloudBaseGatewayProvider)),
+  (ref) => CloudBaseAccountService(
+    ref.watch(cloudBaseGatewayProvider),
+    ref.watch(orbitApiClientProvider),
+  ),
 );
 
 final accountAvatarCacheProvider = Provider<AccountAvatarCache>(
@@ -22,7 +31,7 @@ final accountAvatarCacheProvider = Provider<AccountAvatarCache>(
 );
 
 final syncBackendProvider = Provider<SyncBackend>(
-  (ref) => CloudBaseSyncBackend(ref.watch(cloudBaseGatewayProvider)),
+  (ref) => CloudBaseSyncBackend(ref.watch(orbitApiClientProvider)),
 );
 
 final importConfigurationRefreshProvider = StateProvider<int>((ref) => 0);
@@ -273,9 +282,15 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
     state = AsyncData(current.copyWith(phase: SyncPhase.syncing));
     _suppressLocalTrigger = true;
     try {
-      state = AsyncData(
-        await ref.read(scheduleSyncCoordinatorProvider).synchronize(),
-      );
+      final synchronized = await ref
+          .read(scheduleSyncCoordinatorProvider)
+          .synchronize();
+      if (synchronized.message == 'session_invalid') {
+        await ref.read(appDatabaseProvider).setActiveSyncAccount(null);
+        state = const AsyncData(SyncStatus());
+        return;
+      }
+      state = AsyncData(synchronized);
       ref.read(importConfigurationRefreshProvider.notifier).state++;
     } catch (error) {
       final message = '$error';
@@ -383,8 +398,6 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
     if (account == null) {
       throw const AccountSyncException('invalid_account');
     }
-    await ref.read(accountServiceProvider).signIn(account.email, password);
-    await ref.read(syncBackendProvider).deleteAccountData();
     await ref.read(accountServiceProvider).deleteAccount(password);
     await ref
         .read(appDatabaseProvider)

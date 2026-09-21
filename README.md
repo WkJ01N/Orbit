@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.5.0** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.5.1（build 21）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -10,7 +10,7 @@
 |------|------|
 | 导入 | XLSX 多工作表与 CSV（UTF-8 / GBK / GB18030）；按表头识别课程列表、周网格合并格与一格多课；可视化模板、正则捕获组与测试预览；学期与作息方案、周次展开；导入前预览去重、定位错误与明确跳过；重复周导入策略选择 |
 | 导出与备份 | JSON v5 完整备份课程、批量系列、主题、提醒规则、引用音频、显示设置及识别模板、学期、作息方案，并兼容 v1–4；支持无课程时备份设置、课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出与识别模板 JSON 分享 |
-| 账号与同步 | 可选 CloudBase 邮箱账号；支持显示名称、私有头像、验证码重发与 8–20 位字母数字密码；本地优先同步课程、自定义导入模板、学期与作息方案；可按设备配置启动、回前台、本地变化、网络恢复四种自动同步事件及网络条件；首次登录预览合并、离线修改队列、删除标记和并发冲突选择；退出账号默认保留本机课表 |
+| 账号与同步 | 可选 CloudBase 邮箱账号；Orbit 自有设备会话支持最多 5 台 Android／Windows 同时登录；支持显示名称、私有头像、验证码重发与 8–20 位字母数字密码；本地优先同步课程、自定义导入模板、学期与作息方案；可按设备配置启动、回前台、本地变化、网络恢复四种自动同步事件及网络条件；首次登录预览合并、离线修改队列、删除标记和并发冲突选择；退出账号默认保留本机课表 |
 | 课表网格 | 按真实时间定位的整周时间轴；窄屏默认一屏显示完整七天，可切换经典单日/多日自适应布局，宽屏一屏展示整周；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度、50%–150% 纵向缩放及 08:00–22:00 页面自适应；支持批量删除 |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程；实时滚动进度回顶按钮，到底后在课程下方居中显示 |
 | 提醒 | 独立自定义规则支持开始／结束偏移、日期固定时刻、课程筛选、秒级间隔、文案占位符、1–100 次发送及确认后停止；强提醒可按提醒类型、独立规则、课程系列或课次配置，明确指定普通／强提醒的规则优先；最近 24 小时只补发最后一条未处理消息。课前通知、次日摘要、打卡提醒均可自定义文案模板（占位符如 `{course}`、`{room}`、`{time}`、`{minutes}`、`{count}`、`{date}`）；Android 原生 `AlarmManager` 接收器在不启动 Flutter 的情况下直接通知；IANA 时区排程；精确 / 非精确降级；开机与更新时间恢复；通知点击跳转课程详情 |
@@ -24,12 +24,12 @@
 
 ## 快速开始（用户）
 
-可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.5.0：
+可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载 v1.5.1：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.5.0-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.5.0-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+| Windows | `orbit-v1.5.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.5.1-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
 
 ## 从源码运行
 
@@ -56,15 +56,16 @@ flutter run -d android
 ```bash
 flutter run -d windows \
   --dart-define=ORBIT_CLOUDBASE_ENV=<测试环境 ID> \
-  --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+  --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai \
+  --dart-define=ORBIT_API_BASE_URL=https://<CloudBase 默认域名>/orbit
 ```
 
 ## 构建 Release
 
 ```bash
 flutter test
-flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
-flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai
+flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
+flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
 ```
 
 | 平台 | 构建输出 |
@@ -78,10 +79,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.0/orbit-v1.5.0-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.1/orbit-v1.5.1-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.0/orbit-v1.5.0-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.1/orbit-v1.5.1-android.apk -Force
 ```
 
 ## 更新日志

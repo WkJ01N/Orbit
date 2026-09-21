@@ -1,4 +1,5 @@
 {
+  "version": "2.1",
   "envId": "replace-with-your-environment-id",
   "functionRoot": "./functions",
   "functions": [
@@ -25,6 +26,31 @@
       "timeout": 60,
       "memorySize": 256,
       "installDependency": true
+    },
+    {
+      "name": "orbit-api",
+      "runtime": "Nodejs20.19",
+      "handler": "index.main",
+      "timeout": 60,
+      "memorySize": 512,
+      "installDependency": true
     }
-  ]
+  ],
+  "gateway": {
+    "routes": [
+      {
+        "path": "/orbit",
+        "target": "function:orbit-api",
+        "enableAuth": false,
+        "enablePathTransmission": true,
+        "qpsPolicy": {
+          "qpsTotal": 100,
+          "qpsPerClient": {
+            "limitBy": "ClientIP",
+            "limitValue": 20
+          }
+        }
+      }
+    ]
+  }
 }
