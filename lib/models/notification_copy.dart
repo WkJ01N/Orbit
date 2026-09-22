@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart';
 import 'package:orbit/l10n/app_localizations.dart';
+import 'package:orbit/models/deadline_text.dart';
 
 class NotificationCopy {
   const NotificationCopy({
@@ -14,6 +16,7 @@ class NotificationCopy {
     required this.nextDaySummaryBody,
     required this.nextDayNoClassTitle,
     required this.nextDayNoClassBody,
+    this.deadlineText = const DeadlineText(Locale('en')),
     this.catchUpLabel = 'Catch-up',
     this.catchUpNotice =
         'This is a catch-up message, not a real-time reminder.',
@@ -50,6 +53,7 @@ class NotificationCopy {
   final String Function(int count, String firstTime) nextDaySummaryBody;
   final String nextDayNoClassTitle;
   final String nextDayNoClassBody;
+  final DeadlineText deadlineText;
   final String catchUpLabel,
       catchUpNotice,
       originalLabel,
@@ -83,6 +87,7 @@ class NotificationCopy {
       nextDaySummaryBody: l10n.notificationNextDayBody,
       nextDayNoClassTitle: l10n.notificationNextDayNoClassTitle,
       nextDayNoClassBody: l10n.notificationNextDayNoClassBody,
+      deadlineText: DeadlineText.fromTag(l10n.localeName),
       catchUpLabel: l10n.reminderCatchUp,
       catchUpNotice: l10n.reminderCatchUpNotice,
       originalLabel: l10n.reminderOriginalTime,

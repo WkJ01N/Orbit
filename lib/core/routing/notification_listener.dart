@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
+import 'package:orbit/features/deadline/deadline_ui.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/notification_providers.dart';
@@ -182,6 +183,16 @@ class _OrbitNotificationListenerState
     // notification has a visible effect instead of silently routing.
     if (Platform.isWindows) {
       await showMainWindow();
+    }
+
+    if (payload.startsWith('deadline:')) {
+      final deadline = await ref
+          .read(appDatabaseProvider)
+          .getDeadlineById(payload.substring('deadline:'.length));
+      if (deadline != null && context.mounted) {
+        await showDeadlineDetails(context, deadline);
+      }
+      return;
     }
 
     if (payload.startsWith('next_day')) {

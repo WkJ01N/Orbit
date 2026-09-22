@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const cloudbase = require('@cloudbase/node-sdk');
+const { visibleEntity } = require('./sync-visibility');
 
 const app = cloudbase.init({ env: cloudbase.SYMBOL_CURRENT_ENV });
 const db = app.database();
@@ -42,6 +43,7 @@ function validateEntity(entity) {
     'importTemplate',
     'semesterPlan',
     'periodTimePlan',
+    'deadline',
   ]);
   if (!entity || !types.has(entity.type) || typeof entity.id !== 'string') {
     throw codedError('INVALID_ARGUMENT', 'Invalid sync entity');
@@ -226,7 +228,7 @@ async function pull(uid, event) {
       .doc(documentId(uid))
       .get();
     return {
-      entities: records.map(recordToEntity),
+      entities: records.map(recordToEntity).filter((entity) => visibleEntity(entity, event)),
       cursor: Number(documentData(state)?.cursor || 0),
       hasMore: records.length === limit,
       nextOffset: offset + records.length,
@@ -241,7 +243,7 @@ async function pull(uid, event) {
     .get();
   const rows = result.data || [];
   return {
-    entities: rows.map((row) => row.entity),
+    entities: rows.map((row) => row.entity).filter((entity) => visibleEntity(entity, event)),
     cursor: rows.length ? Number(rows[rows.length - 1].cursor) : cursor,
     hasMore: rows.length === limit,
   };

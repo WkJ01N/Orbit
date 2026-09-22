@@ -6,6 +6,7 @@ import 'package:orbit/services/reminder_audio_service.dart';
 import 'package:orbit/services/strong_reminder_resolver.dart';
 
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/portable_settings.dart';
 
 class OrbitBackup {
@@ -13,6 +14,7 @@ class OrbitBackup {
     required this.version,
     required this.exportedAt,
     required this.sessions,
+    this.deadlines = const [],
     this.settings,
     this.audio = const {},
   });
@@ -20,6 +22,7 @@ class OrbitBackup {
   final int version;
   final DateTime exportedAt;
   final List<CourseSession> sessions;
+  final List<Deadline> deadlines;
   final PortableSettings? settings;
   final Map<String, Map<String, dynamic>> audio;
 }
@@ -34,11 +37,12 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 5;
+  static const backupVersion = 6;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
     PortableSettings settings, {
+    List<Deadline> deadlines = const [],
     Map<String, String> sessionAliases = const {},
     Map<String, List<String>> seriesMemberships = const {},
   }) async {
@@ -124,6 +128,7 @@ class ScheduleBackupService {
         jsonDecode(
               encodeToJson(
                 sessions,
+                deadlines: deadlines,
                 settings: settings.withReminders(reminders),
               ),
             )
@@ -189,12 +194,14 @@ class ScheduleBackupService {
 
   String encodeToJson(
     List<CourseSession> sessions, {
+    List<Deadline> deadlines = const [],
     PortableSettings? settings,
   }) {
     final payload = {
       'version': backupVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'sessions': sessions.map(_sessionToJson).toList(),
+      'deadlines': deadlines.map((value) => value.toSyncPayload()).toList(),
       if (settings != null) 'settings': settings.toJson(),
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
@@ -231,6 +238,19 @@ class ScheduleBackupService {
       }
       return _sessionFromJson(item);
     }).toList();
+    final deadlinesRaw = decoded['deadlines'];
+    if (deadlinesRaw != null && deadlinesRaw is! List) {
+      throw ScheduleBackupException('invalid_format');
+    }
+    final List<Deadline> deadlines;
+    try {
+      deadlines = [
+        for (final value in deadlinesRaw as List? ?? const [])
+          Deadline.fromSyncPayload(Map<String, dynamic>.from(value as Map)),
+      ];
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
     final settingsRaw = decoded['settings'];
     final PortableSettings? settings;
     try {
@@ -273,6 +293,7 @@ class ScheduleBackupService {
           DateTime.tryParse(decoded['exportedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       sessions: sessions,
+      deadlines: deadlines,
       settings: settings,
       audio: audio,
     );

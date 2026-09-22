@@ -7,6 +7,7 @@ enum SyncEntityType {
   importTemplate,
   semesterPlan,
   periodTimePlan,
+  deadline,
 }
 
 enum SyncOperation { upsert, delete }

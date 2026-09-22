@@ -109,6 +109,7 @@ void main() {
 
     expect(find.byIcon(Icons.event_outlined), findsOneWidget);
     expect(find.byIcon(Icons.event_repeat_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
     await tester.tap(find.byIcon(Icons.event_outlined));
     await tester.pumpAndSettle();
 

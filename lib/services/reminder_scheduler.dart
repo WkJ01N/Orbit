@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
@@ -18,6 +19,7 @@ import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/services/android_native_reminder_service.dart';
 import 'package:orbit/services/reminder_alarm_planner.dart';
+import 'package:orbit/services/deadline_reminder_planner.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/windows_notification_worker.dart';
 
@@ -193,6 +195,7 @@ class ReminderScheduler {
   Future<void> rescheduleAll({
     required List<CourseSession> upcomingSessions,
     required List<CourseSession> allSessions,
+    List<Deadline> deadlines = const [],
     required ReminderSettings settings,
     required NotificationCopy copy,
     bool requestPermissions = true,
@@ -206,6 +209,7 @@ class ReminderScheduler {
           (_) => _rescheduleAllImpl(
             upcomingSessions: upcomingSessions,
             allSessions: allSessions,
+            deadlines: deadlines,
             settings: settings,
             copy: copy,
             requestPermissions: requestPermissions,
@@ -217,6 +221,7 @@ class ReminderScheduler {
   Future<void> _rescheduleAllImpl({
     required List<CourseSession> upcomingSessions,
     required List<CourseSession> allSessions,
+    required List<Deadline> deadlines,
     required ReminderSettings settings,
     required NotificationCopy copy,
     required bool requestPermissions,
@@ -265,6 +270,15 @@ class ReminderScheduler {
         sessionAliases: sessionAliases,
         seriesMemberships: seriesMemberships,
       ),
+      if (identityDb != null)
+        ...buildDeadlineReminderSpecs(
+          deadlines: deadlines,
+          notificationIds: await identityDb.reserveDeadlineNotificationIds(
+            deadlines,
+          ),
+          now: now,
+          text: copy.deadlineText,
+        ),
     ];
     final db = database;
     if (db != null) {

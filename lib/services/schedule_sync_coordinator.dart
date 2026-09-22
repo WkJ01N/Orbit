@@ -283,6 +283,9 @@ class ScheduleSyncCoordinator {
       ...await _database.localCourseSyncEntities(
         includeDeleted: includeLinkedChanges,
       ),
+      ...await _database.localDeadlineSyncEntities(
+        includeDeleted: includeLinkedChanges,
+      ),
       ..._configurationEntities(await _loadConfiguration()),
     ]) {
       values[_key(entity)] = entity;
@@ -327,7 +330,8 @@ class ScheduleSyncCoordinator {
       ];
 
   Future<bool> _applyRemote(SyncEntity entity) async {
-    if (entity.type == SyncEntityType.courseSession) {
+    if (entity.type == SyncEntityType.courseSession ||
+        entity.type == SyncEntityType.deadline) {
       await _database.applyRemoteEntities([entity]);
       return true;
     }
@@ -354,6 +358,7 @@ class ScheduleSyncCoordinator {
         }
         next = current.copy(periodTimes: values);
       case SyncEntityType.courseSession:
+      case SyncEntityType.deadline:
         throw StateError('Handled above');
     }
     await _saveConfiguration(next);

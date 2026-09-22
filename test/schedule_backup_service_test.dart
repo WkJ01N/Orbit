@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -50,7 +51,7 @@ void main() {
     );
   });
 
-  test('v5 backup preserves portable settings', () {
+  test('v6 backup preserves portable settings', () {
     const settings = PortableSettings(
       locale: 'en',
       themeColor: 0xFF123456,
@@ -76,7 +77,7 @@ void main() {
       service.encodeToJson(const [], settings: settings),
     );
 
-    expect(backup.version, 5);
+    expect(backup.version, 6);
     expect(backup.settings?.locale, 'en');
     expect(backup.settings?.reminders.leadMinutes, 30);
     expect(backup.settings?.scheduleDisplay.showEmptyDays, isFalse);
@@ -85,6 +86,25 @@ void main() {
       NarrowScheduleLayout.adaptive,
     );
     expect(backup.settings?.courseColorOverrides['P0721'], 0xFFABCDEF);
+  });
+
+  test('backup preserves DDL and accepts older backup without DDL', () {
+    final service = ScheduleBackupService();
+    final deadline = Deadline(
+      id: 'ddl-1',
+      subject: 'Math',
+      title: 'Report',
+      dueAt: DateTime(2026, 10, 1, 23, 59),
+      leadMinutes: const [1440, 60],
+      completedAt: DateTime(2026, 9, 30),
+    );
+    final backup = service.decodeBackup(
+      service.encodeToJson(const [], deadlines: [deadline]),
+    );
+    expect(backup.deadlines.single.title, 'Report');
+    expect(backup.deadlines.single.completed, isTrue);
+    final old = service.decodeBackup('{"version":5,"sessions":[]}');
+    expect(old.deadlines, isEmpty);
   });
 
   test('v2 backup without recurrence metadata remains supported', () {

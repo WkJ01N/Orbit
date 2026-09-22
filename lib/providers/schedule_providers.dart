@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/grid_models.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -31,6 +32,11 @@ final upcomingSessionsProvider = FutureProvider<List<CourseSession>>((
 ) async {
   ref.watch(scheduleRefreshProvider);
   return ref.read(scheduleRepositoryProvider).getUpcomingSessions();
+});
+
+final deadlinesProvider = FutureProvider<List<Deadline>>((ref) async {
+  ref.watch(scheduleRefreshProvider);
+  return ref.read(appDatabaseProvider).getDeadlines();
 });
 
 final scheduleRefreshProvider = StateProvider<int>((ref) => 0);

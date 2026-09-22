@@ -12,6 +12,7 @@ import 'package:orbit/core/widgets/error_state.dart';
 import 'package:orbit/core/widgets/section_header.dart';
 import 'package:orbit/core/widgets/skeleton_box.dart';
 import 'package:orbit/features/search/session_search_page.dart';
+import 'package:orbit/features/deadline/deadline_ui.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
 import 'package:orbit/features/session/session_add_action.dart';
 import 'package:orbit/features/session/session_countdown.dart';
@@ -20,6 +21,8 @@ import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/features/upcoming/upcoming_scroll_to_top.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
+import 'package:orbit/models/deadline_text.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/course_color_utils.dart';
@@ -33,6 +36,8 @@ class UpcomingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final upcomingAsync = ref.watch(upcomingSessionsProvider);
+    final deadlines =
+        ref.watch(deadlinesProvider).valueOrNull ?? const <Deadline>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -55,11 +60,11 @@ class UpcomingPage extends ConsumerWidget {
       ),
       body: upcomingAsync.when(
         data: (sessions) {
-          if (sessions.isEmpty) {
+          if (sessions.isEmpty && deadlines.isEmpty) {
             return const _EmptyState();
           }
           final groups = _groupSessions(sessions);
-          return _UpcomingList(groups: groups);
+          return _UpcomingList(groups: groups, deadlines: deadlines);
         },
         loading: () => const _UpcomingSkeleton(),
         error: (error, _) => ErrorState(
@@ -160,14 +165,20 @@ class _WeekHeaderItem extends _FlatItem {
   final DateTime monday;
 }
 
+class _DeadlineItem extends _FlatItem {
+  _DeadlineItem(this.deadline);
+  final Deadline deadline;
+}
+
 // ---------------------------------------------------------------------------
 // List widget — fully flat lazy sliver list with a per-minute time refresh
 // ---------------------------------------------------------------------------
 
 class _UpcomingList extends StatefulWidget {
-  const _UpcomingList({required this.groups});
+  const _UpcomingList({required this.groups, required this.deadlines});
 
   final List<_SessionGroup> groups;
+  final List<Deadline> deadlines;
 
   @override
   State<_UpcomingList> createState() => _UpcomingListState();
@@ -213,6 +224,18 @@ class _UpcomingListState extends State<_UpcomingList> {
 
     // Flatten groups into a single list so course cards remain truly lazy.
     final items = <_FlatItem>[];
+    if (widget.deadlines.isNotEmpty) {
+      items.add(_HeaderItem(DeadlineText.of(context).ddl));
+      for (final deadline in widget.deadlines.where((d) => !d.completed)) {
+        items.add(_DeadlineItem(deadline));
+      }
+      if (widget.deadlines.any((d) => d.completed)) {
+        items.add(_HeaderItem(DeadlineText.of(context).completed));
+        for (final deadline in widget.deadlines.where((d) => d.completed)) {
+          items.add(_DeadlineItem(deadline));
+        }
+      }
+    }
     final seenWeeks = <DateTime>{};
     for (final group in widget.groups) {
       items.add(_HeaderItem(_groupLabel(l10n, group)));
@@ -246,6 +269,9 @@ class _UpcomingListState extends State<_UpcomingList> {
             _SessionItem(:final session) => _SessionCard(
               session: session,
               now: _now,
+            ),
+            _DeadlineItem(:final deadline) => DeadlineListTile(
+              deadline: deadline,
             ),
           };
         },

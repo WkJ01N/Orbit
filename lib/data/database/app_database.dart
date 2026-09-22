@@ -1,4 +1,5 @@
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/account_sync.dart';
@@ -22,13 +23,14 @@ class AppDatabase {
   static Future<AppDatabase> open(String databasePath) async {
     final db = await openDatabase(
       p.join(databasePath, 'orbit.db'),
-      version: 6,
+      version: 7,
       onCreate: (database, version) async {
         await _createSchema(database);
       },
       onOpen: (database) async {
         await _createReminderSchema(database);
         await _createSyncSchema(database);
+        await _createDeadlineSchema(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -52,6 +54,7 @@ class AppDatabase {
         }
         if (oldVersion < 5) await _createReminderSchema(database);
         if (oldVersion < 6) await _createSyncSchema(database);
+        if (oldVersion < 7) await _createDeadlineSchema(database);
       },
     );
     return AppDatabase(db);
@@ -89,6 +92,120 @@ class AppDatabase {
     await _createActiveIndexes(database);
     await _createReminderSchema(database);
     await _createSyncSchema(database);
+    await _createDeadlineSchema(database);
+  }
+
+  static Future<void> _createDeadlineSchema(Database database) async {
+    await database.execute(
+      'CREATE TABLE IF NOT EXISTS deadlines ('
+      'id TEXT PRIMARY KEY, subject TEXT NOT NULL, title TEXT NOT NULL, '
+      'due_at TEXT NOT NULL, lead_minutes TEXT NOT NULL, course_key TEXT, '
+      'completed_at TEXT, deleted_at TEXT)',
+    );
+    await database.execute(
+      'CREATE INDEX IF NOT EXISTS idx_deadlines_due '
+      'ON deadlines(due_at) WHERE deleted_at IS NULL',
+    );
+    await database.execute(
+      'CREATE TABLE IF NOT EXISTS deadline_notification_ids ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, deadline_id TEXT NOT NULL, '
+      'lead_minutes INTEGER NOT NULL, UNIQUE(deadline_id, lead_minutes))',
+    );
+  }
+
+  Future<List<Deadline>> getDeadlines({bool includeDeleted = false}) async =>
+      (await _db.query(
+        'deadlines',
+        where: includeDeleted ? null : 'deleted_at IS NULL',
+        orderBy: 'due_at ASC',
+      )).map(Deadline.fromMap).toList();
+
+  Future<Deadline?> getDeadlineById(String id) async {
+    final rows = await _db.query(
+      'deadlines',
+      where: 'id=? AND deleted_at IS NULL',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : Deadline.fromMap(rows.first);
+  }
+
+  Future<void> saveDeadline(Deadline value) async {
+    await _db.transaction((txn) async {
+      await txn.insert(
+        'deadlines',
+        value.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      await _queueSyncEntity(txn, _deadlineEntity(value), SyncOperation.upsert);
+    });
+    _syncChanges.add(null);
+  }
+
+  Future<void> deleteDeadline(Deadline value) async {
+    final deleted = value.copyWith(deletedAt: DateTime.now());
+    await _db.transaction((txn) async {
+      await txn.insert(
+        'deadlines',
+        deleted.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      await _queueSyncEntity(
+        txn,
+        _deadlineEntity(deleted),
+        SyncOperation.delete,
+      );
+    });
+    _syncChanges.add(null);
+  }
+
+  Future<Map<String, int>> reserveDeadlineNotificationIds(
+    List<Deadline> values,
+  ) async {
+    final result = <String, int>{};
+    await _db.transaction((txn) async {
+      for (final deadline in values) {
+        for (final minutes in deadline.leadMinutes.toSet()) {
+          await txn.insert(
+            'deadline_notification_ids',
+            {'deadline_id': deadline.id, 'lead_minutes': minutes},
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+          final rows = await txn.query(
+            'deadline_notification_ids',
+            columns: ['id'],
+            where: 'deadline_id=? AND lead_minutes=?',
+            whereArgs: [deadline.id, minutes],
+            limit: 1,
+          );
+          result['${deadline.id}|$minutes'] =
+              4000000 + (rows.first['id'] as int);
+        }
+      }
+    });
+    return result;
+  }
+
+  static SyncEntity _deadlineEntity(Deadline value, {int revision = 0}) =>
+      SyncEntity(
+        type: SyncEntityType.deadline,
+        id: value.id,
+        revision: revision,
+        payload: value.toSyncPayload(),
+        deleted: value.deleted,
+      );
+
+  Future<List<SyncEntity>> localDeadlineSyncEntities({
+    bool includeDeleted = false,
+  }) async {
+    final revisions = await _syncRevisionMap();
+    return [
+      for (final value in await getDeadlines(includeDeleted: includeDeleted))
+        _deadlineEntity(
+          value,
+          revision: revisions['deadline|${value.id}'] ?? 0,
+        ),
+    ];
   }
 
   String get path => _db.path;
@@ -1064,6 +1181,34 @@ class AppDatabase {
             await txn.insert(
               _tableName,
               courseSessionFromSyncPayload(entity.payload).toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
+        } else if (entity.type == SyncEntityType.deadline) {
+          if (entity.deleted) {
+            final changed = await txn.update(
+              'deadlines',
+              {'deleted_at': DateTime.now().toUtc().toIso8601String()},
+              where: 'id=?',
+              whereArgs: [entity.id],
+            );
+            if (changed == 0) {
+              await txn.insert('deadlines', {
+                'id': entity.id,
+                'subject': '',
+                'title': '',
+                'due_at': DateTime.fromMillisecondsSinceEpoch(
+                  0,
+                  isUtc: true,
+                ).toIso8601String(),
+                'lead_minutes': '[]',
+                'deleted_at': DateTime.now().toUtc().toIso8601String(),
+              });
+            }
+          } else {
+            await txn.insert(
+              'deadlines',
+              Deadline.fromSyncPayload(entity.payload).toMap(),
               conflictAlgorithm: ConflictAlgorithm.replace,
             );
           }

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline_text.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 import 'package:orbit/providers/import_providers.dart';
@@ -32,6 +33,7 @@ Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
     final json = await ScheduleBackupService().encodeWithAudio(
       sessions,
       settings,
+      deadlines: await ref.read(appDatabaseProvider).getDeadlines(),
       sessionAliases: await ref
           .read(appDatabaseProvider)
           .reminderSessionAliases(),
@@ -186,7 +188,14 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
           .read(scheduleRepositoryProvider)
           .restoreBackupSessions(backup.sessions, strategy: selection.strategy);
     }
-    if (selection.restoreCourses) refreshSchedule(ref);
+    if (selection.restoreDeadlines) {
+      for (final deadline in backup.deadlines) {
+        await ref.read(appDatabaseProvider).saveDeadline(deadline);
+      }
+    }
+    if (selection.restoreCourses || selection.restoreDeadlines) {
+      refreshSchedule(ref);
+    }
     if (restoredSettings != null) {
       await ref
           .read(settingsServiceProvider)
@@ -234,11 +243,13 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
 class _RestoreSelection {
   const _RestoreSelection({
     required this.restoreCourses,
+    required this.restoreDeadlines,
     required this.restoreSettings,
     required this.strategy,
   });
 
   final bool restoreCourses;
+  final bool restoreDeadlines;
   final bool restoreSettings;
   final ImportMergeStrategy strategy;
 }
@@ -249,6 +260,7 @@ Future<_RestoreSelection?> _showRestoreOptions(
 ) {
   final l10n = AppLocalizations.of(context)!;
   var restoreCourses = backup.sessions.isNotEmpty;
+  var restoreDeadlines = backup.deadlines.isNotEmpty;
   var restoreSettings = backup.settings != null;
   var strategy = ImportMergeStrategy.mergeOverwrite;
   final dates = backup.sessions.map((session) => session.date).toList()..sort();
@@ -287,6 +299,16 @@ Future<_RestoreSelection?> _showRestoreOptions(
                     : (value) =>
                           setState(() => restoreCourses = value ?? false),
               ),
+              if (backup.deadlines.isNotEmpty)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: restoreDeadlines,
+                  title: Text(
+                    '${DeadlineText.of(context).ddl} (${backup.deadlines.length})',
+                  ),
+                  onChanged: (value) =>
+                      setState(() => restoreDeadlines = value ?? false),
+                ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: restoreSettings,
@@ -317,7 +339,7 @@ Future<_RestoreSelection?> _showRestoreOptions(
                         strategy = value ?? ImportMergeStrategy.mergeOverwrite,
                   ),
                 ),
-              if (!restoreCourses && !restoreSettings) ...[
+              if (!restoreCourses && !restoreDeadlines && !restoreSettings) ...[
                 const SizedBox(height: 12),
                 Text(
                   l10n.restoreNothingSelected,
@@ -333,12 +355,13 @@ Future<_RestoreSelection?> _showRestoreOptions(
             child: Text(l10n.actionCancel),
           ),
           FilledButton(
-            onPressed: !restoreCourses && !restoreSettings
+            onPressed: !restoreCourses && !restoreDeadlines && !restoreSettings
                 ? null
                 : () => Navigator.pop(
                     context,
                     _RestoreSelection(
                       restoreCourses: restoreCourses,
+                      restoreDeadlines: restoreDeadlines,
                       restoreSettings: restoreSettings,
                       strategy: strategy,
                     ),

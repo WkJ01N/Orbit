@@ -340,7 +340,7 @@ void main() {
         );
         final backup = service.decodeBackup(raw);
         expect(backup.audio.length, 1);
-        expect(backup.version, 5);
+        expect(backup.version, 6);
         expect(backup.settings!.reminders.customRules.single.courseKeys, [
           'new',
         ]);

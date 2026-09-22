@@ -467,10 +467,12 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
         upcoming = await repository.getUpcomingSessions();
       }
       final scheduler = ref.read(reminderSchedulerProvider);
-      scheduler.database = ref.read(appDatabaseProvider);
+      final database = ref.read(appDatabaseProvider);
+      scheduler.database = database;
       await scheduler.rescheduleAll(
         upcomingSessions: upcoming,
         allSessions: all,
+        deadlines: await database.getDeadlines(),
         settings: effectiveSettings,
         copy: copy,
       );

@@ -10,6 +10,7 @@ import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/adjacent_page_pager.dart';
 import 'package:orbit/features/grid/grid_week_picker.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
+import 'package:orbit/features/deadline/deadline_ui.dart';
 import 'package:orbit/features/session/session_action_menu.dart';
 import 'package:orbit/features/session/session_countdown.dart';
 import 'package:orbit/features/session/session_detail_sheet.dart';
@@ -862,14 +863,15 @@ class _FitLargeText extends StatelessWidget {
   }
 }
 
-class _DateHeader extends StatelessWidget {
+class _DateHeader extends ConsumerWidget {
   const _DateHeader({required this.layout, required this.now});
   final ScheduleTimelineLayout layout;
   final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final deadlines = ref.watch(deadlinesProvider).valueOrNull ?? const [];
     final colors = Theme.of(context).colorScheme;
     final locale = Localizations.localeOf(context).toString();
     final compact = layout.mode == ScheduleViewportMode.compactWeek;
@@ -948,6 +950,39 @@ class _DateHeader extends StatelessWidget {
                           l10n.scheduleCourseCount(day.events.length),
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: colors.onSurfaceVariant),
+                        ),
+                      if (deadlines
+                          .where(
+                            (d) =>
+                                !d.completed &&
+                                d.dueAt.year == day.date.year &&
+                                d.dueAt.month == day.date.month &&
+                                d.dueAt.day == day.date.day,
+                          )
+                          .isNotEmpty)
+                        InkWell(
+                          key: Key(
+                            'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
+                          ),
+                          onTap: () => showDeadlinesForDay(
+                            context,
+                            deadlines
+                                .where(
+                                  (d) =>
+                                      d.dueAt.year == day.date.year &&
+                                      d.dueAt.month == day.date.month &&
+                                      d.dueAt.day == day.date.day,
+                                )
+                                .toList(),
+                          ),
+                          child: Text(
+                            'DDL ${deadlines.where((d) => !d.completed && d.dueAt.year == day.date.year && d.dueAt.month == day.date.month && d.dueAt.day == day.date.day).length}',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: colors.error,
+                                  fontSize: compact ? 8 : null,
+                                ),
+                          ),
                         ),
                     ],
                   ),

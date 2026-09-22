@@ -27,8 +27,12 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
   bool _stretch = false;
   bool _fill = false;
   bool _ready = false;
+  Size? _cropViewport;
+  Size? _readyViewport;
   bool _busy = false;
   String? _error;
+
+  bool get _canCrop => _ready && _readyViewport == _cropViewport;
 
   void _setSquare(bool value) {
     setState(() {
@@ -59,6 +63,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
   }
 
   void _crop() {
+    if (!_canCrop || _busy) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -97,6 +102,8 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
   Widget build(BuildContext context) {
     final text = _CropText.of(context);
     final colors = Theme.of(context).colorScheme;
+    final screen = MediaQuery.sizeOf(context);
+    final controlsMaxHeight = (screen.height * 0.3).clamp(120.0, 240.0);
     final content = Column(
       children: [
         AppBar(
@@ -113,34 +120,69 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Crop(
-                image: widget.image,
-                controller: _controller,
-                aspectRatio: 1,
-                initialRectBuilder: InitialRectBuilder.withSizeAndRatio(
-                  size: 0.8,
-                  aspectRatio: 1,
-                ),
-                interactive: true,
-                baseColor: colors.surfaceContainerHighest,
-                maskColor: Colors.black.withValues(alpha: 0.55),
-                progressIndicator: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                onStatusChanged: (status) {
-                  final ready = status == CropStatus.ready;
-                  if (_ready != ready && mounted) {
-                    setState(() => _ready = ready);
-                  }
-                },
-                onCropped: _onCropped,
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final viewport = constraints.biggest;
+                if (_cropViewport != viewport) {
+                  _cropViewport = viewport;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) setState(() {});
+                  });
+                }
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: ColoredBox(
+                      color: colors.surfaceContainerHighest,
+                      child: Padding(
+                        // The crop handles extend 16 px past the image bounds.
+                        // Keep that space visible while the image stays fixed.
+                        padding: const EdgeInsets.all(16),
+                        child: Crop(
+                          // Recreate its internal geometry when the available
+                          // viewport changes (for example, a resized window).
+                          key: ValueKey(viewport),
+                          image: widget.image,
+                          controller: _controller,
+                          aspectRatio: _square ? 1 : null,
+                          initialRectBuilder:
+                              InitialRectBuilder.withSizeAndRatio(
+                                size: 0.8,
+                                aspectRatio: 1,
+                              ),
+                          clipBehavior: Clip.none,
+                          interactive: false,
+                          baseColor: colors.surfaceContainerHighest,
+                          maskColor: Colors.black.withValues(alpha: 0.55),
+                          progressIndicator: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                          onStatusChanged: (status) {
+                            if (mounted && _cropViewport == viewport) {
+                              final ready = status == CropStatus.ready;
+                              if (_ready != ready ||
+                                  _readyViewport != viewport) {
+                                setState(() {
+                                  _ready = ready;
+                                  _readyViewport = ready ? viewport : null;
+                                });
+                              }
+                            }
+                          },
+                          onCropped: _onCropped,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
-        Flexible(
+        SizedBox(
+          height: controlsMaxHeight,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Column(
@@ -150,7 +192,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
                   title: Text(text.squareCrop),
                   subtitle: Text(text.squareCropHint),
                   value: _square,
-                  onChanged: _busy || !_ready ? null : _setSquare,
+                  onChanged: _busy || !_canCrop ? null : _setSquare,
                 ),
                 if (!_square) ...[
                   SwitchListTile(
@@ -158,14 +200,14 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
                     title: Text(text.stretch),
                     subtitle: Text(text.stretchHint),
                     value: _stretch,
-                    onChanged: _busy || !_ready ? null : _setStretch,
+                    onChanged: _busy || !_canCrop ? null : _setStretch,
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(text.fill),
                     subtitle: Text(text.fillHint),
                     value: _fill,
-                    onChanged: _busy || !_ready ? null : _setFill,
+                    onChanged: _busy || !_canCrop ? null : _setFill,
                   ),
                 ],
                 if (_error != null)
@@ -187,7 +229,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
                 child: Text(text.cancel),
               ),
               FilledButton.icon(
-                onPressed: !_ready || _busy ? null : _crop,
+                onPressed: !_canCrop || _busy ? null : _crop,
                 icon: _busy
                     ? const SizedBox.square(
                         dimension: 16,
@@ -202,7 +244,6 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
       ],
     );
 
-    final screen = MediaQuery.sizeOf(context);
     if (screen.width < 600) {
       return Dialog.fullscreen(
         child: KeyedSubtree(
@@ -217,7 +258,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
       child: SizedBox(
         key: const Key('avatar-crop-desktop-panel'),
         width: 720,
-        height: screen.height.clamp(560, 760).toDouble() - 48,
+        height: (screen.height - 48).clamp(300, 712).toDouble(),
         child: content,
       ),
     );

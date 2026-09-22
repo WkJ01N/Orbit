@@ -73,7 +73,7 @@ void main() {
     final backup = ScheduleBackupService().decodeBackup(
       ScheduleBackupService().encodeToJson([], settings: portable),
     );
-    expect(backup.version, 5);
+    expect(backup.version, 6);
     expect(backup.sessions, isEmpty);
     expect(backup.settings!.importConfiguration!.toJson(), config.toJson());
     expect(

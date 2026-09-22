@@ -6,6 +6,8 @@ const cloudbase = require('@cloudbase/node-sdk');
 const sessions = require('./session-core');
 const sync = require('./sync-common');
 const validation = require('./http-validation');
+const { createCollectionBootstrap } = require('./collection-bootstrap');
+const { writableProfile, commitAvatar } = require('./profile-write');
 
 const app = cloudbase.init({ env: cloudbase.SYMBOL_CURRENT_ENV });
 const db = app.database();
@@ -13,6 +15,7 @@ const collections = {
   sessions: 'orbit_auth_sessions',
   profiles: 'orbit_user_profiles',
 };
+const ensureCollections = createCollectionBootstrap(db, Object.values(collections));
 const MAX_HTTP_BODY = 5 * 1024 * 1024;
 const MAX_AVATAR_BODY = 2 * 1024 * 1024;
 
@@ -224,9 +227,10 @@ function validateUsername(value) {
 
 async function saveProfile(uid, changes) {
   const current = await ensureProfile(uid);
-  const updated = { ...current, ...changes, userId: uid };
+  const updated = writableProfile(current, changes, uid);
   await db.collection(collections.profiles).doc(documentId(uid)).set({
     ...updated,
+    createdAt: updated.createdAt || db.serverDate(),
     updatedAt: db.serverDate(),
   });
   return updated;
@@ -243,13 +247,12 @@ async function uploadAvatar(event, uid) {
   const cloudPath = `orbit-user-avatars/${uid}/avatar-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.png`;
   const uploaded = await app.uploadFile({ cloudPath, fileContent: bytes });
   if (!uploaded?.fileID) throw sessions.codedError('AVATAR_UPLOAD_FAILED', 'Upload failed');
-  const updated = await saveProfile(uid, {
-    username,
-    avatarFileId: uploaded.fileID,
+  const updated = await commitAvatar({
+    fileId: uploaded.fileID,
+    oldFileId: current.avatarFileId,
+    persist: () => saveProfile(uid, { username, avatarFileId: uploaded.fileID }),
+    remove: (fileId) => app.deleteFile({ fileList: [fileId] }),
   });
-  if (current.avatarFileId && current.avatarFileId !== uploaded.fileID) {
-    try { await app.deleteFile({ fileList: [current.avatarFileId] }); } catch (_) { /* best effort */ }
-  }
   return publicProfile(updated);
 }
 
@@ -311,6 +314,7 @@ async function http(event) {
     const pulled = await sync.pull(identity.uid, {
       cursor: input.cursor,
       limit: input.pullLimit || 200,
+      supportsDeadline: input.supportsDeadline === true,
     });
     return jsonResponse(200, { ...pushed, pull: pulled }, { gzip: true });
   }
@@ -320,6 +324,7 @@ async function http(event) {
       snapshot: true,
       offset: input.offset,
       limit: Math.min(Number(input.limit) || 500, 500),
+      supportsDeadline: input.supportsDeadline === true,
     }), { gzip: true });
   }
   if (method === 'DELETE' && path === '/v1/account') {
@@ -339,6 +344,7 @@ function statusFor(code) {
 
 exports.main = async (event) => {
   try {
+    await ensureCollections();
     if (event?.httpMethod) return await http(event);
     return await callable(event || {});
   } catch (error) {

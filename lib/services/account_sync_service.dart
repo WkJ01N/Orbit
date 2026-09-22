@@ -583,7 +583,7 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
       if (result['hasMore'] != true) break;
       final next = result['nextOffset'] as int?;
       offset = next ?? (offset + page.length);
-      if (page.isEmpty) break;
+      if (page.isEmpty && next == null) break;
     }
     return entities;
   }
@@ -595,7 +595,7 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
     String name,
     Map<String, dynamic> data,
   ) async {
-    return _api.syncRequest(name, data);
+    return _api.syncRequest(name, {...data, 'supportsDeadline': true});
   }
 
   List<SyncMutation> _limitedBatch(List<SyncMutation> mutations) {
