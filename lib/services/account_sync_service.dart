@@ -440,7 +440,7 @@ class CloudBaseAccountService implements AccountService {
           'action': 'bootstrapSession',
           'deviceId': await _api.sessions.deviceId(),
           'platform': Platform.operatingSystem,
-          'appVersion': '1.5.1+21',
+          'appVersion': '1.5.2+22',
         },
       );
       if (response.code != null) {

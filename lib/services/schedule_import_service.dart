@@ -97,6 +97,13 @@ class RegexTestResult {
   final List<Map<String, String?>> groups;
 }
 
+class _RecognitionDraft {
+  const _RecognitionDraft(this.template, this.structuralScore, this.evidence);
+  final ScheduleImportTemplate template;
+  final double structuralScore;
+  final List<RecognitionEvidence> evidence;
+}
+
 ImportWorker<RegexTestResult> createRegexWorker(
   RegexRule rule,
   String text, {
@@ -112,10 +119,10 @@ ImportWorker<ScheduleParseResult> createSheetWorker(
 ) => ImportWorker(
   () => ScheduleImportService().parseSheet(sheet, template, context: context),
 );
-ImportWorker<List<ScheduleImportTemplate>> createCandidateWorker(
+ImportWorker<RecognitionAnalysis> createCandidateWorker(
   ImportSheet sheet,
   List<ScheduleImportTemplate> templates,
-) => ImportWorker(() => ScheduleImportService.candidates(sheet, templates));
+) => ImportWorker(() => ScheduleImportService.analyze(sheet, templates));
 ImportWorker<List<ImportSheet>> createFileWorker(
   List<int> bytes,
   String file,
@@ -260,6 +267,10 @@ class ScheduleImportService {
       '课程',
       '課程',
       '科目',
+      '课程名',
+      '課程名',
+      '教学课程',
+      '教學課程',
       'course',
       'coursename',
       'subject',
@@ -271,6 +282,10 @@ class ScheduleImportService {
       '科目編號',
       '课程代码',
       '課程代碼',
+      '课程号',
+      '課程號',
+      '课程序号',
+      '課程序號',
       '编号',
       '編號',
       'coursecode',
@@ -283,6 +298,8 @@ class ScheduleImportService {
       '班別',
       '教学班',
       '教學班',
+      '教学班名称',
+      '教學班名稱',
       '班级',
       '班級',
       'section',
@@ -294,6 +311,8 @@ class ScheduleImportService {
       '教室',
       '上课地点',
       '上課地點',
+      '上课教室',
+      '上課教室',
       '地点',
       '地點',
       'room',
@@ -306,6 +325,8 @@ class ScheduleImportService {
       '老師',
       '任课教师',
       '任課教師',
+      '授课教师',
+      '授課教師',
       'teacher',
       'teachers',
       'instructor',
@@ -315,8 +336,30 @@ class ScheduleImportService {
     ImportField.semester: ['学期', '學期', 'semester'],
     ImportField.date: ['日期', '上课日期', '上課日期', 'date'],
     ImportField.weekday: ['星期', '星期几', '星期幾', 'weekday', 'day'],
-    ImportField.weeks: ['周次', '週次', '上课周次', '上課週次', 'weeks', 'week'],
-    ImportField.periods: ['节次', '節次', '节数', '節數', 'periods', 'period'],
+    ImportField.weeks: [
+      '周次',
+      '週次',
+      '上课周次',
+      '上課週次',
+      '教学周',
+      '教學週',
+      '起止周',
+      '起止週',
+      'weeks',
+      'week',
+    ],
+    ImportField.periods: [
+      '节次',
+      '節次',
+      '节数',
+      '節數',
+      '上课节次',
+      '上課節次',
+      '上课节数',
+      '上課節數',
+      'periods',
+      'period',
+    ],
     ImportField.startTime: [
       '开始时间',
       '開始時間',
@@ -338,48 +381,187 @@ class ScheduleImportService {
       'end',
     ],
   };
-  static String normalize(String s) =>
-      s.trim().toLowerCase().replaceAll(RegExp(r'[\s_\-：:]'), '');
+  static String normalize(String value) {
+    final buffer = StringBuffer();
+    for (final rune in value.trim().toLowerCase().runes) {
+      if (rune == 0x3000) {
+        buffer.write(' ');
+      } else if (rune >= 0xff01 && rune <= 0xff5e) {
+        buffer.writeCharCode(rune - 0xfee0);
+      } else {
+        buffer.writeCharCode(rune);
+      }
+    }
+    return buffer.toString().replaceAll(
+      RegExp(r'[\s_\-:：/\\()（）\[\]【】<>《》]'),
+      '',
+    );
+  }
+
+  static ({ImportField? field, double score}) _matchHeader(String value) {
+    final header = normalize(value);
+    if (header.isEmpty) return (field: null, score: 0);
+    ImportField? best;
+    var bestScore = 0.0;
+    for (final entry in aliases.entries) {
+      for (final rawAlias in entry.value) {
+        final alias = normalize(rawAlias);
+        final score = header == alias
+            ? 1.0
+            : header.length >= 2 &&
+                  alias.length >= 2 &&
+                  (header.startsWith(alias) || alias.startsWith(header))
+            ? 0.9
+            : header.length >= 3 &&
+                  alias.length >= 3 &&
+                  (header.contains(alias) || alias.contains(header))
+            ? 0.82
+            : 0.0;
+        if (score > bestScore) {
+          best = entry.key;
+          bestScore = score;
+        }
+      }
+    }
+    return (field: best, score: bestScore);
+  }
+
+  static ({Map<ImportField, FieldMapping> fields, double score, bool ambiguous})
+  _analyzeHeader(ImportSheet sheet, int row) {
+    final fields = <ImportField, FieldMapping>{};
+    final scores = <ImportField, double>{};
+    var ambiguous = false;
+    for (var c = 0; c < sheet.columnCount.clamp(0, 100); c++) {
+      final match = _matchHeader(sheet.cell(row, c));
+      final field = match.field;
+      if (field == null || match.score < 0.8) continue;
+      if (fields.containsKey(field)) {
+        ambiguous = true;
+        if (match.score <= scores[field]!) continue;
+      }
+      fields[field] = FieldMapping(column: c);
+      scores[field] = match.score;
+    }
+    final average = scores.isEmpty
+        ? 0.0
+        : scores.values.reduce((a, b) => a + b) / scores.length;
+    return (fields: fields, score: average, ambiguous: ambiguous);
+  }
+
   static Map<ImportField, FieldMapping> headerFields(
     ImportSheet sheet,
     int row,
   ) {
-    final fields = <ImportField, FieldMapping>{};
-    for (var c = 0; c < sheet.columnCount; c++) {
-      final header = normalize(sheet.cell(row, c));
-      for (final entry in aliases.entries) {
-        if (entry.value.contains(header)) {
-          // Duplicate headers require explicit mapping rather than selecting one.
-          if (fields.containsKey(entry.key)) {
-            throw const FormatException('ambiguous');
-          }
-          fields[entry.key] = FieldMapping(column: c);
-        }
-      }
-    }
-    return fields;
+    final analysis = _analyzeHeader(sheet, row);
+    if (analysis.ambiguous) throw const FormatException('ambiguous');
+    return analysis.fields;
   }
 
-  static List<ScheduleImportTemplate> candidates(
+  static bool _validListFields(Map<ImportField, FieldMapping> fields) =>
+      fields.containsKey(ImportField.courseName) &&
+      (fields.containsKey(ImportField.date) ||
+          fields.containsKey(ImportField.weekday)) &&
+      (fields.containsKey(ImportField.periods) ||
+          (fields.containsKey(ImportField.startTime) &&
+              fields.containsKey(ImportField.endTime)));
+
+  static bool _valueMatches(ImportField field, String value) {
+    if (value.trim().isEmpty) return false;
+    try {
+      switch (field) {
+        case ImportField.date:
+          parseDate(value);
+          return true;
+        case ImportField.weekday:
+          parseWeekday(value);
+          return true;
+        case ImportField.weeks:
+          parseWeeks(value, 30);
+          return true;
+        case ImportField.periods:
+          parseNumbers(value, 'periodInvalid');
+          return true;
+        case ImportField.startTime:
+        case ImportField.endTime:
+          parseMinute(value);
+          return true;
+        case ImportField.courseName:
+          return !RegExp(r'^\d+(?:[.,]\d+)?$').hasMatch(value.trim());
+        default:
+          return true;
+      }
+    } on FormatException {
+      return false;
+    }
+  }
+
+  static double _listValueScore(
+    ImportSheet sheet,
+    int headerRow,
+    Map<ImportField, FieldMapping> fields,
+  ) {
+    final important = fields.entries.where(
+      (entry) => const {
+        ImportField.courseName,
+        ImportField.date,
+        ImportField.weekday,
+        ImportField.weeks,
+        ImportField.periods,
+        ImportField.startTime,
+        ImportField.endTime,
+      }.contains(entry.key),
+    );
+    var valid = 0, total = 0, sampled = 0;
+    for (
+      var row = headerRow + 1;
+      row < sheet.rows.length && sampled < 20;
+      row++
+    ) {
+      if (sheet.rows[row].every((cell) => cell.trim().isEmpty)) continue;
+      sampled++;
+      for (final entry in important) {
+        final value = sheet.cell(row, entry.value.column);
+        if (value.trim().isEmpty) continue;
+        total++;
+        if (_valueMatches(entry.key, value)) valid++;
+      }
+    }
+    return total == 0 ? 0 : valid / total;
+  }
+
+  static ImportContext get _recognitionContext => ImportContext(
+    confirmed: true,
+    semester: SemesterPlan(
+      id: 'recognition',
+      name: 'recognition',
+      firstWeekMonday: DateTime(2000, 1, 3),
+      totalWeeks: 30,
+    ),
+    periodTimes: PeriodTimePlan(
+      id: 'recognition',
+      name: 'recognition',
+      periods: [
+        for (var number = 1; number <= 100; number++)
+          PeriodTime(
+            number: number,
+            startMinute: (number - 1) * 10,
+            endMinute: (number - 1) * 10 + 9,
+          ),
+      ],
+    ),
+    defaultWeeks: const {1},
+  );
+
+  static RecognitionAnalysis analyze(
     ImportSheet sheet,
     List<ScheduleImportTemplate> custom,
   ) {
-    final result = <ScheduleImportTemplate>[];
-    for (var r = 0; r < sheet.rows.length && r < 20; r++) {
-      Map<ImportField, FieldMapping> fields;
-      try {
-        fields = headerFields(sheet, r);
-      } on FormatException {
-        continue;
-      }
-      final list =
-          fields.containsKey(ImportField.courseName) &&
-          (fields.containsKey(ImportField.date) ||
-              fields.containsKey(ImportField.weekday)) &&
-          (fields.containsKey(ImportField.periods) ||
-              (fields.containsKey(ImportField.startTime) &&
-                  fields.containsKey(ImportField.endTime)));
-      if (list) {
+    final drafts = <_RecognitionDraft>[];
+    final rowLimit = sheet.rows.length.clamp(0, 50);
+    for (var r = 0; r < rowLimit; r++) {
+      final header = _analyzeHeader(sheet, r);
+      final fields = header.fields;
+      if (!header.ambiguous && _validListFields(fields)) {
         final legacy =
             fields[ImportField.courseName]?.column == 6 &&
             fields[ImportField.date]?.column == 4 &&
@@ -388,15 +570,30 @@ class ScheduleImportService {
             fields[ImportField.endTime]?.column == 10 &&
             sheet.columnCount >= 13 &&
             r == 0;
-        result.add(
-          ScheduleImportTemplate(
-            id: legacy ? 'builtin-legacy' : 'builtin-list-$r',
-            name: legacy ? 'legacy' : 'list',
-            layout: legacy ? ImportLayout.legacy : ImportLayout.list,
-            builtIn: true,
-            headerRow: r,
-            firstRow: r + 1,
-            fields: fields,
+        final valueScore = _listValueScore(sheet, r, fields);
+        drafts.add(
+          _RecognitionDraft(
+            ScheduleImportTemplate(
+              id: legacy ? 'builtin-legacy' : 'builtin-list-$r',
+              name: legacy ? 'legacy' : 'list',
+              layout: legacy ? ImportLayout.legacy : ImportLayout.list,
+              builtIn: true,
+              headerRow: r,
+              firstRow: r + 1,
+              fields: fields,
+            ),
+            (0.55 +
+                    header.score * 0.2 +
+                    valueScore * 0.2 +
+                    (fields.length - 4).clamp(0, 5) * 0.01)
+                .clamp(0, 0.96),
+            [
+              const RecognitionEvidence('headers'),
+              RecognitionEvidence(
+                'values',
+                detail: '${(valueScore * 100).round()}',
+              ),
+            ],
           ),
         );
       }
@@ -409,28 +606,67 @@ class ScheduleImportService {
           /* Not a weekday header. */
         }
       }
-      if (weekdays.length >= 5 &&
+      if (weekdays.length >= 3 &&
+          weekdays.length <= 7 &&
           weekdays.values.toSet().length == weekdays.length) {
         final columns = weekdays.keys.toList()..sort();
-        final periods = <int, List<int>>{};
-        for (var rr = r + 1; rr < sheet.rows.length; rr++) {
-          try {
-            periods[rr] = parseNumbers(
-              sheet.cell(rr, columns.first - 1),
-              'periodInvalid',
-            );
-          } on FormatException {
-            /* Ignore decorative rows. */
+        Map<int, List<int>> periods = {};
+        for (
+          var labelColumn = columns.first - 1;
+          labelColumn >= 0 && labelColumn >= columns.first - 3;
+          labelColumn--
+        ) {
+          final found = <int, List<int>>{};
+          for (var rr = r + 1; rr < sheet.rows.length; rr++) {
+            try {
+              found[rr] = parseNumbers(
+                sheet.cell(rr, labelColumn),
+                'periodInvalid',
+              );
+            } on FormatException {
+              /* Ignore decorative rows. */
+            }
           }
+          if (found.length > periods.length) periods = found;
         }
         if (periods.isNotEmpty) {
-          result.add(
-            basicGrid.copyWithCoordinates(
-              firstRow: r + 1,
-              firstColumn: columns.first,
-              lastColumn: columns.last,
-              weekdayColumns: weekdays,
-              periodRows: periods,
+          final rows = periods.keys.toList()..sort();
+          final nonEmptyCourseCells = rows.fold<int>(0, (count, row) {
+            return count +
+                columns
+                    .where(
+                      (column) => sheet.cell(row, column).trim().isNotEmpty,
+                    )
+                    .length;
+          });
+          final density = nonEmptyCourseCells == 0
+              ? 0.0
+              : (nonEmptyCourseCells / (rows.length * columns.length)).clamp(
+                  0.0,
+                  1.0,
+                );
+          drafts.add(
+            _RecognitionDraft(
+              basicGrid.copyWithCoordinates(
+                headerRow: r,
+                firstRow: rows.first,
+                lastRow: rows.last,
+                firstColumn: columns.first,
+                lastColumn: columns.last,
+                weekdayColumns: weekdays,
+                periodRows: periods,
+              ),
+              (0.7 +
+                      weekdays.length / 7 * 0.1 +
+                      (periods.length / 8).clamp(0, 1) * 0.08 +
+                      (density > 0 ? 0.08 : 0))
+                  .clamp(0, 0.95),
+              [
+                RecognitionEvidence(
+                  'grid',
+                  detail: '${weekdays.length}/${periods.length}',
+                ),
+              ],
             ),
           );
         }
@@ -443,15 +679,25 @@ class ScheduleImportService {
             .where((f) => f.source == FieldSource.column)
             .map((f) => f.column);
         if (selectedColumns.any((c) => c >= sheet.columnCount)) continue;
-        // A custom list matches automatically only when mapped header aliases agree.
-        if (t.fields.entries
-            .where((e) => e.value.source == FieldSource.column)
-            .every(
-              (e) => aliases[e.key]!.contains(
-                normalize(sheet.cell(t.headerRow, e.value.column)),
-              ),
-            )) {
-          result.add(t);
+        final mapped = t.fields.entries
+            .where((entry) => entry.value.source == FieldSource.column)
+            .toList();
+        final scores = mapped.map((entry) {
+          final match = _matchHeader(
+            sheet.cell(t.headerRow, entry.value.column),
+          );
+          return match.field == entry.key ? match.score : 0.0;
+        }).toList();
+        if (scores.isNotEmpty && scores.every((score) => score >= 0.8)) {
+          final headerScore = scores.reduce((a, b) => a + b) / scores.length;
+          final valueScore = _listValueScore(sheet, t.headerRow, t.fields);
+          drafts.add(
+            _RecognitionDraft(
+              t,
+              (0.6 + headerScore * 0.2 + valueScore * 0.15).clamp(0, 0.95),
+              const [RecognitionEvidence('custom')],
+            ),
+          );
         }
       } else if (t.layout == ImportLayout.grid &&
           t.weekdayColumns.isNotEmpty &&
@@ -462,11 +708,69 @@ class ScheduleImportService {
               return false;
             }
           })) {
-        result.add(t);
+        drafts.add(
+          _RecognitionDraft(t, 0.88, const [RecognitionEvidence('custom')]),
+        );
       }
     }
-    return result;
+    final unique = <String, _RecognitionDraft>{};
+    for (final draft in drafts) {
+      final old = unique[draft.template.id];
+      if (old == null || draft.structuralScore > old.structuralScore) {
+        unique[draft.template.id] = draft;
+      }
+    }
+    final service = ScheduleImportService();
+    final candidates = unique.values.map((draft) {
+      final preview = service.parseSheet(
+        sheet,
+        draft.template,
+        context: _recognitionContext,
+      );
+      final parseQuality = preview.sessions.isEmpty
+          ? 0.0
+          : preview.diagnostics.isEmpty
+          ? 1.0
+          : (preview.sessions.length /
+                    (preview.sessions.length + preview.diagnostics.length))
+                .clamp(0.0, 1.0);
+      return RecognitionCandidate(
+        template: draft.template,
+        confidence: (draft.structuralScore * 0.85 + parseQuality * 0.15).clamp(
+          0.0,
+          1.0,
+        ),
+        preview: preview,
+        evidence: [
+          ...draft.evidence,
+          RecognitionEvidence(
+            'parse',
+            detail: '${preview.sessions.length}/${preview.diagnostics.length}',
+          ),
+        ],
+      );
+    }).toList()..sort((a, b) => b.confidence.compareTo(a.confidence));
+    RecognitionCandidate? recommended;
+    if (candidates.isNotEmpty) {
+      final top = candidates.first;
+      final runnerUp = candidates.length > 1 ? candidates[1].confidence : 0.0;
+      if (top.confidence >= 0.85 &&
+          top.confidence - runnerUp >= 0.15 &&
+          top.preview.sessions.isNotEmpty &&
+          !top.preview.hasFatal) {
+        recommended = top;
+      }
+    }
+    return RecognitionAnalysis(
+      candidates: candidates,
+      recommended: recommended,
+    );
   }
+
+  static List<ScheduleImportTemplate> candidates(
+    ImportSheet sheet,
+    List<ScheduleImportTemplate> custom,
+  ) => analyze(sheet, custom).templates;
 
   static const basicGrid = ScheduleImportTemplate(
     id: 'builtin-grid',
@@ -476,7 +780,10 @@ class ScheduleImportService {
     fields: {
       ImportField.courseName: FieldMapping(
         source: FieldSource.text,
-        regex: RegexRule(pattern: r'^(?:课程[：:]|課程[：:])?([^\r\n]+)', group: '1'),
+        regex: RegexRule(
+          pattern: r'^\s*(?:课程[：:]|課程[：:])?([^\r\n{]+)',
+          group: '1',
+        ),
       ),
       ImportField.teachers: FieldMapping(
         source: FieldSource.text,
@@ -491,12 +798,36 @@ class ScheduleImportService {
       ),
       ImportField.weeks: FieldMapping(
         source: FieldSource.text,
-        regex: RegexRule(pattern: r'(?:周次|週次)[：:]\s*([^\r\n]+)', group: '1'),
+        regex: RegexRule(
+          pattern:
+              r'(?:(?<=周次：)|(?<=周次:)|(?<=週次：)|(?<=週次:)|(?=第?[ \t]*\d+(?:[ \t]*[-~～—–至、,，][ \t]*\d+)*(?:[ \t]*(?:周|週))))[ \t]*(?<weeks>第?[ \t]*\d+(?:[ \t]*[-~～—–至、,，][ \t]*\d+)*(?:[ \t]*(?:周|週))?(?:[ \t]*[（(]?[单双單雙](?:周|週)?[）)]?)?)',
+          group: 'weeks',
+        ),
       ),
       ImportField.weekday: FieldMapping(source: FieldSource.weekday),
       ImportField.periods: FieldMapping(source: FieldSource.periods),
     },
     blockRule: RegexRule(pattern: r'\r?\n\s*\r?\n'),
+    editorHints: TemplateEditorHints(
+      blockMode: 'blankLines',
+      fields: {
+        ImportField.courseName: VisualExtractionHint(
+          kind: VisualExtractionKind.firstNonEmptyLine,
+        ),
+        ImportField.teachers: VisualExtractionHint(
+          kind: VisualExtractionKind.afterLabel,
+          label: '教师|教師|老师|老師',
+        ),
+        ImportField.room: VisualExtractionHint(
+          kind: VisualExtractionKind.afterLabel,
+          label: '教室|课室|課室',
+        ),
+        ImportField.weeks: VisualExtractionHint(
+          kind: VisualExtractionKind.afterLabel,
+          label: '周次|週次',
+        ),
+      },
+    ),
   );
 
   ScheduleParseResult parseSheet(
@@ -958,7 +1289,9 @@ class ScheduleImportService {
 
 extension GridCoordinates on ScheduleImportTemplate {
   ScheduleImportTemplate copyWithCoordinates({
+    int? headerRow,
     required int firstRow,
+    int? lastRow,
     required int firstColumn,
     required int lastColumn,
     required Map<int, int> weekdayColumns,
@@ -967,14 +1300,17 @@ extension GridCoordinates on ScheduleImportTemplate {
     id: id,
     name: name,
     layout: layout,
+    enabled: enabled,
     builtIn: builtIn,
-    headerRow: firstRow - 1,
+    headerRow: headerRow ?? firstRow - 1,
     firstRow: firstRow,
+    lastRow: lastRow,
     firstColumn: firstColumn,
     lastColumn: lastColumn,
     fields: fields,
     blockRule: blockRule,
     repeatBlocks: repeatBlocks,
+    editorHints: editorHints,
     weekdayColumns: weekdayColumns,
     periodRows: periodRows,
   );

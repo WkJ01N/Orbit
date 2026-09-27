@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -21,12 +22,13 @@ class ImportPage extends ConsumerStatefulWidget {
 }
 
 class _SelectedSheet {
-  _SelectedSheet(this.sheet, this.bytes, this.encoding, this.candidates)
-    : selected = candidates.isNotEmpty;
+  _SelectedSheet(this.sheet, this.bytes, this.encoding, this.analysis)
+    : selected = analysis.recommended != null;
   final ImportSheet sheet;
   final List<int> bytes;
   final String encoding;
-  List<ScheduleImportTemplate> candidates;
+  RecognitionAnalysis analysis;
+  List<ScheduleImportTemplate> get candidates => analysis.templates;
   bool selected;
   ScheduleImportTemplate? template;
   ScheduleParseResult? result;
@@ -61,6 +63,36 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         s.result = null;
       }
     });
+  }
+
+  Future<void> _reanalyzeTemplates(
+    List<ScheduleImportTemplate> templates,
+  ) async {
+    if (_sheets.isEmpty || _busy || _importing) return;
+    _invalidate();
+    final generation = ++_generation;
+    setState(() => _busy = true);
+    try {
+      for (final sheet in _sheets) {
+        final worker = createCandidateWorker(sheet.sheet, templates);
+        _worker = worker;
+        final analysis = await worker.run();
+        if (!mounted || generation != _generation) return;
+        sheet.analysis = analysis;
+        if (sheet.template?.builtIn == false) {
+          sheet.template = templates
+              .where((template) => template.id == sheet.template!.id)
+              .firstOrNull;
+        }
+      }
+      if (mounted && generation == _generation) setState(() {});
+    } catch (error) {
+      if (mounted && generation == _generation) {
+        setState(() => _error = importErrorMessage(importL10n(context), error));
+      }
+    } finally {
+      if (mounted && generation == _generation) setState(() => _busy = false);
+    }
   }
 
   Future<void> _pick() async {
@@ -98,9 +130,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           for (final sheet in read.sheets) {
             final worker = createCandidateWorker(sheet, config.templates);
             _worker = worker;
-            final candidates = await worker.run();
+            final analysis = await worker.run();
             if (!mounted || generation != _generation) return;
-            sheets.add(_SelectedSheet(sheet, bytes, read.encoding, candidates));
+            sheets.add(_SelectedSheet(sheet, bytes, read.encoding, analysis));
           }
         } catch (e) {
           if (!mounted || generation != _generation) return;
@@ -149,8 +181,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         final sheet = read.sheets.single;
         final worker = createCandidateWorker(sheet, config.templates);
         _worker = worker;
-        final candidates = await worker.run();
-        copies[i] = _SelectedSheet(sheet, s.bytes, read.encoding, candidates)
+        final analysis = await worker.run();
+        copies[i] = _SelectedSheet(sheet, s.bytes, read.encoding, analysis)
           ..selected = s.selected;
       }
       if (mounted && generation == _generation) {
@@ -177,15 +209,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         return;
       }
       for (final s in chosen) {
-        final template =
-            s.template ??
-            (s.candidates.length == 1 ? s.candidates.single : null);
+        final template = s.template ?? s.analysis.recommended?.template;
         ScheduleParseResult parsed;
         if (template == null) {
           parsed = ScheduleParseResult(
             diagnostics: [
               ImportDiagnostic(
-                code: s.candidates.length > 1 ? 'ambiguous' : 'templateInvalid',
+                code: s.candidates.isNotEmpty ? 'ambiguous' : 'templateInvalid',
                 file: s.sheet.file,
                 sheet: s.sheet.name,
                 fatal: true,
@@ -243,7 +273,11 @@ class _ImportPageState extends ConsumerState<ImportPage> {
 
   Future<void> _edit(_SelectedSheet s, ImportConfiguration config) async {
     _invalidate();
-    final t = s.template ?? s.candidates.firstOrNull ?? builtinListTemplate;
+    final t =
+        s.template ??
+        s.analysis.recommended?.template ??
+        s.candidates.firstOrNull ??
+        builtinListTemplate;
     final result = await Navigator.push<ScheduleImportTemplate>(
       context,
       MaterialPageRoute(
@@ -372,18 +406,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           next.valueOrNull == null) {
         return;
       }
-      _invalidate();
-      for (final s in _sheets) {
-        s.candidates = ScheduleImportService.candidates(
-          s.sheet,
-          next.requireValue.templates,
-        );
-        if (s.template?.builtIn == false) {
-          s.template = next.requireValue.templates
-              .where((t) => t.id == s.template!.id)
-              .firstOrNull;
-        }
-      }
+      unawaited(_reanalyzeTemplates(next.requireValue.templates));
     });
     final config = ref.watch(importConfigurationProvider);
     return Scaffold(
@@ -659,7 +682,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                 DropdownMenuItem(
                   value: '',
                   child: Text(
-                    '${l.importAuto}${s.candidates.length == 1 ? ' · ${templateLabel(l, s.candidates.single)}' : ''}',
+                    '${l.importAuto}${s.analysis.recommended == null ? '' : ' · ${templateLabel(l, s.analysis.recommended!.template)} · ${(s.analysis.recommended!.confidence * 100).round()}%'}',
                   ),
                 ),
                 ...options.values.map(
@@ -676,16 +699,25 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   ? null
                   : (id) {
                       _invalidate();
-                      setState(() => s.template = options[id]);
+                      setState(() {
+                        s.template = options[id];
+                        if (s.template != null) s.selected = true;
+                      });
                     },
             ),
-            if (s.candidates.length != 1 && s.template == null)
+            if (s.analysis.recommended == null && s.template == null)
               Text(
                 importErrorMessage(
                   l,
-                  s.candidates.length > 1 ? 'ambiguous' : 'templateInvalid',
+                  s.candidates.isNotEmpty ? 'ambiguous' : 'templateInvalid',
                 ),
               ),
+            if (s.template == null && s.analysis.candidates.isNotEmpty)
+              for (final candidate in s.analysis.candidates.take(3))
+                Text(
+                  '${templateLabel(l, candidate.template)} · ${(candidate.confidence * 100).round()}%\n${candidate.evidence.map((e) => recognitionEvidenceLabel(l, e)).join(' · ')}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
             TextButton.icon(
               onPressed: _busy ? null : () => _edit(s, config),
               icon: const Icon(Icons.edit_outlined),
@@ -694,7 +726,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             ImportRawTable(sheet: s.sheet),
             if (s.result != null) ...[
               Text(
-                '${l.importTemplates}: ${templateLabel(l, s.template ?? s.candidates.firstOrNull ?? builtinListTemplate)}',
+                '${l.importTemplates}: ${templateLabel(l, s.template ?? s.analysis.recommended?.template ?? s.candidates.firstOrNull ?? builtinListTemplate)}',
               ),
               ImportResultView(result: s.result!),
             ],

@@ -61,5 +61,21 @@ String templateLabel(AppLocalizations l, ScheduleImportTemplate t) => t.builtIn
         ImportLayout.grid => l.importGridLayout,
       }
     : t.name;
+
+String recognitionEvidenceLabel(
+  AppLocalizations l,
+  RecognitionEvidence evidence,
+) {
+  final label = switch (evidence.code) {
+    'headers' => l.importEvidenceHeaders,
+    'values' => l.importEvidenceValues,
+    'grid' => l.importEvidenceGrid,
+    'custom' => l.importEvidenceCustom,
+    'parse' => l.importEvidenceParse,
+    _ => evidence.code,
+  };
+  return evidence.detail.isEmpty ? label : '$label ${evidence.detail}';
+}
+
 AppLocalizations importL10n(BuildContext context) =>
     AppLocalizations.of(context)!;

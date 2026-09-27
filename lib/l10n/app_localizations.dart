@@ -190,6 +190,132 @@ abstract class AppLocalizations {
   /// **'Test & preview'**
   String get importTestStep;
 
+  /// No description provided for @importAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced settings'**
+  String get importAdvanced;
+
+  /// No description provided for @importTapCellHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a marker, then tap the corresponding cell in the table.'**
+  String get importTapCellHint;
+
+  /// No description provided for @importTapColumnHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a field, then tap a sample cell to map its column or course text.'**
+  String get importTapColumnHint;
+
+  /// No description provided for @importVisualExtraction.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual extraction'**
+  String get importVisualExtraction;
+
+  /// No description provided for @importExtractIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the original value'**
+  String get importExtractIdentity;
+
+  /// No description provided for @importExtractFirstLine.
+  ///
+  /// In en, this message translates to:
+  /// **'First non-empty line'**
+  String get importExtractFirstLine;
+
+  /// No description provided for @importExtractLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Specified line number'**
+  String get importExtractLine;
+
+  /// No description provided for @importExtractAfterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Value after a label'**
+  String get importExtractAfterLabel;
+
+  /// No description provided for @importExtractBeforeDelimiter.
+  ///
+  /// In en, this message translates to:
+  /// **'Text before a delimiter'**
+  String get importExtractBeforeDelimiter;
+
+  /// No description provided for @importExtractAfterDelimiter.
+  ///
+  /// In en, this message translates to:
+  /// **'Text after a delimiter'**
+  String get importExtractAfterDelimiter;
+
+  /// No description provided for @importExtractLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels'**
+  String get importExtractLabel;
+
+  /// No description provided for @importExtractLabelHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate alternatives with |, for example Teacher|Instructor'**
+  String get importExtractLabelHelp;
+
+  /// No description provided for @importExtractDelimiter.
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get importExtractDelimiter;
+
+  /// No description provided for @importBlockModeSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'One course per cell'**
+  String get importBlockModeSingle;
+
+  /// No description provided for @importBlockModeBlankLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate courses with blank lines'**
+  String get importBlockModeBlankLines;
+
+  /// No description provided for @importBlockModeRegex.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced regular expression'**
+  String get importBlockModeRegex;
+
+  /// No description provided for @importEvidenceHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Header fields'**
+  String get importEvidenceHeaders;
+
+  /// No description provided for @importEvidenceValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Row values'**
+  String get importEvidenceValues;
+
+  /// No description provided for @importEvidenceGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid structure'**
+  String get importEvidenceGrid;
+
+  /// No description provided for @importEvidenceCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved template'**
+  String get importEvidenceCustom;
+
+  /// No description provided for @importEvidenceParse.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview result'**
+  String get importEvidenceParse;
+
   /// No description provided for @importHeaderRow.
   ///
   /// In en, this message translates to:

@@ -54,6 +54,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importTestStep => '測試與預覽';
 
   @override
+  String get importAdvanced => '進階設定';
+
+  @override
+  String get importTapCellHint => '先選擇標記類型，再點選表格中的對應儲存格。';
+
+  @override
+  String get importTapColumnHint => '先選擇欄位，再點選範例儲存格以映射整欄或課程文字。';
+
+  @override
+  String get importVisualExtraction => '視覺化提取方式';
+
+  @override
+  String get importExtractIdentity => '使用原值';
+
+  @override
+  String get importExtractFirstLine => '第一個非空列';
+
+  @override
+  String get importExtractLine => '指定列號';
+
+  @override
+  String get importExtractAfterLabel => '提取標籤後的內容';
+
+  @override
+  String get importExtractBeforeDelimiter => '提取分隔符前的內容';
+
+  @override
+  String get importExtractAfterDelimiter => '提取分隔符後的內容';
+
+  @override
+  String get importExtractLabel => '標籤';
+
+  @override
+  String get importExtractLabelHelp => '多個標籤用 | 分隔，例如 教師|老師';
+
+  @override
+  String get importExtractDelimiter => '分隔符';
+
+  @override
+  String get importBlockModeSingle => '每格一門課程';
+
+  @override
+  String get importBlockModeBlankLines => '按空列分隔多門課程';
+
+  @override
+  String get importBlockModeRegex => '進階正規表示式';
+
+  @override
+  String get importEvidenceHeaders => '表頭欄位';
+
+  @override
+  String get importEvidenceValues => '列資料';
+
+  @override
+  String get importEvidenceGrid => '網格結構';
+
+  @override
+  String get importEvidenceCustom => '已儲存模板';
+
+  @override
+  String get importEvidenceParse => '試解析結果';
+
+  @override
   String get importHeaderRow => '表頭列（從 1 開始）';
 
   @override
@@ -2258,6 +2321,69 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get importTestStep => '测试与预览';
 
   @override
+  String get importAdvanced => '高级设置';
+
+  @override
+  String get importTapCellHint => '先选择标记类型，再点击表格中的对应单元格。';
+
+  @override
+  String get importTapColumnHint => '先选择字段，再点击示例单元格以映射整列或课程文字。';
+
+  @override
+  String get importVisualExtraction => '可视化提取方式';
+
+  @override
+  String get importExtractIdentity => '使用原值';
+
+  @override
+  String get importExtractFirstLine => '第一个非空行';
+
+  @override
+  String get importExtractLine => '指定行号';
+
+  @override
+  String get importExtractAfterLabel => '提取标签后的内容';
+
+  @override
+  String get importExtractBeforeDelimiter => '提取分隔符前的内容';
+
+  @override
+  String get importExtractAfterDelimiter => '提取分隔符后的内容';
+
+  @override
+  String get importExtractLabel => '标签';
+
+  @override
+  String get importExtractLabelHelp => '多个标签用 | 分隔，例如 教师|老师';
+
+  @override
+  String get importExtractDelimiter => '分隔符';
+
+  @override
+  String get importBlockModeSingle => '每格一门课程';
+
+  @override
+  String get importBlockModeBlankLines => '按空行分隔多门课程';
+
+  @override
+  String get importBlockModeRegex => '高级正则表达式';
+
+  @override
+  String get importEvidenceHeaders => '表头字段';
+
+  @override
+  String get importEvidenceValues => '行数据';
+
+  @override
+  String get importEvidenceGrid => '网格结构';
+
+  @override
+  String get importEvidenceCustom => '已保存模板';
+
+  @override
+  String get importEvidenceParse => '试解析结果';
+
+  @override
   String get importHeaderRow => '表头行（从 1 开始）';
 
   @override
@@ -4460,6 +4586,69 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get importTestStep => '測試與預覽';
+
+  @override
+  String get importAdvanced => '進階設定';
+
+  @override
+  String get importTapCellHint => '先選擇標記類型，再點選表格中的對應儲存格。';
+
+  @override
+  String get importTapColumnHint => '先選擇欄位，再點選範例儲存格以映射整欄或課程文字。';
+
+  @override
+  String get importVisualExtraction => '視覺化提取方式';
+
+  @override
+  String get importExtractIdentity => '使用原值';
+
+  @override
+  String get importExtractFirstLine => '第一個非空列';
+
+  @override
+  String get importExtractLine => '指定列號';
+
+  @override
+  String get importExtractAfterLabel => '提取標籤後的內容';
+
+  @override
+  String get importExtractBeforeDelimiter => '提取分隔符前的內容';
+
+  @override
+  String get importExtractAfterDelimiter => '提取分隔符後的內容';
+
+  @override
+  String get importExtractLabel => '標籤';
+
+  @override
+  String get importExtractLabelHelp => '多個標籤用 | 分隔，例如 教師|老師';
+
+  @override
+  String get importExtractDelimiter => '分隔符';
+
+  @override
+  String get importBlockModeSingle => '每格一門課程';
+
+  @override
+  String get importBlockModeBlankLines => '按空列分隔多門課程';
+
+  @override
+  String get importBlockModeRegex => '進階正規表示式';
+
+  @override
+  String get importEvidenceHeaders => '表頭欄位';
+
+  @override
+  String get importEvidenceValues => '列資料';
+
+  @override
+  String get importEvidenceGrid => '網格結構';
+
+  @override
+  String get importEvidenceCustom => '已儲存模板';
+
+  @override
+  String get importEvidenceParse => '試解析結果';
 
   @override
   String get importHeaderRow => '表頭列（從 1 開始）';

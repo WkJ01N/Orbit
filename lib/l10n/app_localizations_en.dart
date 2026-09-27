@@ -54,6 +54,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importTestStep => 'Test & preview';
 
   @override
+  String get importAdvanced => 'Advanced settings';
+
+  @override
+  String get importTapCellHint =>
+      'Choose a marker, then tap the corresponding cell in the table.';
+
+  @override
+  String get importTapColumnHint =>
+      'Choose a field, then tap a sample cell to map its column or course text.';
+
+  @override
+  String get importVisualExtraction => 'Visual extraction';
+
+  @override
+  String get importExtractIdentity => 'Use the original value';
+
+  @override
+  String get importExtractFirstLine => 'First non-empty line';
+
+  @override
+  String get importExtractLine => 'Specified line number';
+
+  @override
+  String get importExtractAfterLabel => 'Value after a label';
+
+  @override
+  String get importExtractBeforeDelimiter => 'Text before a delimiter';
+
+  @override
+  String get importExtractAfterDelimiter => 'Text after a delimiter';
+
+  @override
+  String get importExtractLabel => 'Labels';
+
+  @override
+  String get importExtractLabelHelp =>
+      'Separate alternatives with |, for example Teacher|Instructor';
+
+  @override
+  String get importExtractDelimiter => 'Delimiter';
+
+  @override
+  String get importBlockModeSingle => 'One course per cell';
+
+  @override
+  String get importBlockModeBlankLines => 'Separate courses with blank lines';
+
+  @override
+  String get importBlockModeRegex => 'Advanced regular expression';
+
+  @override
+  String get importEvidenceHeaders => 'Header fields';
+
+  @override
+  String get importEvidenceValues => 'Row values';
+
+  @override
+  String get importEvidenceGrid => 'Grid structure';
+
+  @override
+  String get importEvidenceCustom => 'Saved template';
+
+  @override
+  String get importEvidenceParse => 'Preview result';
+
+  @override
   String get importHeaderRow => 'Header row (1-based)';
 
   @override

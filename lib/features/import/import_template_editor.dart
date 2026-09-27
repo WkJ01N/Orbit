@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:orbit/features/import/import_labels.dart';
 import 'package:orbit/features/import/import_plan_editor.dart';
@@ -32,15 +34,20 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
       _periods = TextEditingController(),
       _sample = TextEditingController();
   late Map<ImportField, FieldMapping> _fields;
+  late Map<ImportField, VisualExtractionHint> _hints;
   late ImportContext _context;
   RegexRule _block = const RegexRule();
   bool _repeat = false, _busy = false;
   int _step = 0, _generation = 0;
+  _CellTool _cellTool = _CellTool.headerRow;
+  ImportField _selectedField = ImportField.courseName;
+  String _blockMode = 'single';
   String? _error;
   ScheduleParseResult? _preview;
   RegexTestResult? _regexResult;
   ImportField? _testField;
   ImportWorker<dynamic>? _worker;
+  Timer? _previewDebounce;
 
   @override
   void initState() {
@@ -66,8 +73,16 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
             .join(';') ??
         '2:1-2;3:3-4';
     _fields = Map.of(t?.fields ?? {});
+    _hints = Map.of(t?.editorHints.fields ?? {});
     _block = t?.blockRule ?? const RegexRule();
     _repeat = t?.repeatBlocks ?? false;
+    _blockMode =
+        t?.editorHints.blockMode ??
+        (_block.pattern.isEmpty
+            ? 'single'
+            : _block.pattern == r'\r?\n\s*\r?\n' && !_repeat
+            ? 'blankLines'
+            : 'regex');
     _context = widget.importContext;
     if (widget.sheet != null && _fields.isEmpty) {
       try {
@@ -98,18 +113,23 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
     if (!mounted) return;
     _generation++;
     _worker?.cancel();
+    _previewDebounce?.cancel();
     setState(() {
       _preview = null;
       _regexResult = null;
       _error = null;
       _busy = false;
     });
+    if (_step == 2 && widget.sheet != null) {
+      _previewDebounce = Timer(const Duration(milliseconds: 350), _test);
+    }
   }
 
   @override
   void dispose() {
     _generation++;
     _worker?.cancel();
+    _previewDebounce?.cancel();
     for (final c in [
       _name,
       _header,
@@ -162,13 +182,17 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
       fields: Map.of(_fields),
       blockRule: _block,
       repeatBlocks: _repeat,
+      editorHints: TemplateEditorHints(
+        fields: Map.of(_hints),
+        blockMode: _blockMode,
+      ),
     );
     t.validate();
     return t;
   }
 
   Future<void> _editField(ImportField field) async {
-    final result = await showDialog<FieldMapping>(
+    final result = await showDialog<_FieldEditResult>(
       context: context,
       builder: (_) => _FieldMappingDialog(
         field: field,
@@ -179,11 +203,21 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
                   ? FieldSource.text
                   : FieldSource.column,
             ),
+        hint:
+            _hints[field] ??
+            VisualExtractionHint(
+              kind: (_fields[field]?.regex.pattern.isNotEmpty ?? false)
+                  ? VisualExtractionKind.regex
+                  : VisualExtractionKind.identity,
+            ),
       ),
     );
     if (result == null || !mounted) return;
     _invalidate();
-    setState(() => _fields[field] = result);
+    setState(() {
+      _fields[field] = result.mapping;
+      _hints[field] = result.hint;
+    });
   }
 
   Future<void> _test() async {
@@ -251,6 +285,15 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
       if (_fields.isEmpty || !_fields.containsKey(ImportField.courseName)) {
         throw const FormatException('missingName');
       }
+      final hasDate = _fields.containsKey(ImportField.date);
+      final hasWeekday = _fields.containsKey(ImportField.weekday);
+      final hasPeriods = _fields.containsKey(ImportField.periods);
+      final hasTimes =
+          _fields.containsKey(ImportField.startTime) &&
+          _fields.containsKey(ImportField.endTime);
+      if ((!hasDate && !hasWeekday) || (!hasPeriods && !hasTimes)) {
+        throw const FormatException('templateInvalid');
+      }
       Navigator.pop(context, _template());
     } catch (e) {
       setState(() => _error = importErrorMessage(importL10n(context), e));
@@ -267,26 +310,58 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
       ),
     ),
   );
+
+  Widget _workspace({
+    required List<Widget> inspector,
+    required void Function(int row, int column) onCell,
+  }) {
+    final controls = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: inspector,
+    );
+    final sheet = widget.sheet;
+    if (sheet == null) return controls;
+    final table = ImportRawTable(
+      sheet: sheet,
+      onCell: onCell,
+      cellColor: _cellColor,
+      expanded: true,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 800) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: table),
+              const SizedBox(width: 16),
+              SizedBox(width: 380, child: controls),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [table, const SizedBox(height: 12), controls],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = importL10n(context);
-    final titles = [
-      l.importLayoutStep,
-      l.importFieldsStep,
-      l.importRegexStep,
-      l.importTestStep,
-    ];
+    final titles = [l.importLayoutStep, l.importFieldsStep, l.importTestStep];
     return Scaffold(
       appBar: AppBar(title: Text(l.importTemplates)),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+          constraints: const BoxConstraints(maxWidth: 1200),
           child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  '${_step + 1}/4 · ${titles[_step]}',
+                  '${_step + 1}/3 · ${titles[_step]}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -320,95 +395,179 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
                                   ? ScheduleImportService.basicGrid.fields
                                   : <ImportField, FieldMapping>{},
                             );
+                            _hints = Map.of(
+                              v == ImportLayout.grid
+                                  ? ScheduleImportService
+                                        .basicGrid
+                                        .editorHints
+                                        .fields
+                                  : <ImportField, VisualExtractionHint>{},
+                            );
                             _block = v == ImportLayout.grid
                                 ? ScheduleImportService.basicGrid.blockRule
                                 : const RegexRule();
+                            _blockMode = v == ImportLayout.grid
+                                ? 'blankLines'
+                                : 'single';
                           });
                         },
                       ),
                       const SizedBox(height: 16),
-                      _input(_header, l.importHeaderRow),
-                      _input(_first, l.importFirstRow),
-                      _input(_last, l.importLastRow),
-                      if (_layout == ImportLayout.grid) ...[
-                        _input(_left, l.importFirstColumn),
-                        _input(_right, l.importLastColumn),
-                        _input(_days, l.importWeekdayColumns),
-                        _input(_periods, l.importPeriodRows),
-                      ],
-                      if (widget.sheet != null)
-                        ImportRawTable(
-                          sheet: widget.sheet!,
-                          onCell: (r, c) => _coordinate(r, c),
-                        ),
+                      _workspace(
+                        onCell: _markCell,
+                        inspector: [
+                          Text(l.importTapCellHint),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _toolChip(_CellTool.headerRow, l.importHeaderRow),
+                              _toolChip(_CellTool.firstRow, l.importFirstRow),
+                              _toolChip(_CellTool.lastRow, l.importLastRow),
+                              if (_layout == ImportLayout.grid) ...[
+                                _toolChip(
+                                  _CellTool.firstColumn,
+                                  l.importFirstColumn,
+                                ),
+                                _toolChip(
+                                  _CellTool.lastColumn,
+                                  l.importLastColumn,
+                                ),
+                                _toolChip(
+                                  _CellTool.weekday,
+                                  l.importWeekdaySource,
+                                ),
+                                _toolChip(
+                                  _CellTool.period,
+                                  l.importPeriodsSource,
+                                ),
+                              ],
+                            ],
+                          ),
+                          ExpansionTile(
+                            title: Text(l.importAdvanced),
+                            children: [
+                              _input(_header, l.importHeaderRow),
+                              _input(_first, l.importFirstRow),
+                              _input(_last, l.importLastRow),
+                              if (_layout == ImportLayout.grid) ...[
+                                _input(_left, l.importFirstColumn),
+                                _input(_right, l.importLastColumn),
+                                _input(_days, l.importWeekdayColumns),
+                                _input(_periods, l.importPeriodRows),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ],
                     if (_step == 1) ...[
                       Text(l.importHelp),
-                      for (final field in ImportField.values)
-                        ListTile(
-                          title: Text(importFieldLabel(l, field)),
-                          subtitle: _fields[field] == null
-                              ? Text(l.importNone)
-                              : Text(_mappingLabel(_fields[field]!)),
-                          onTap: () => _editField(field),
-                          trailing: _fields[field] == null
-                              ? const Icon(Icons.add)
-                              : IconButton(
-                                  tooltip: l.actionDelete,
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  onPressed: () {
-                                    _invalidate();
-                                    setState(() {
-                                      _fields.remove(field);
-                                      if (_testField == field) {
-                                        _testField = null;
-                                      }
-                                    });
-                                  },
+                      const SizedBox(height: 8),
+                      _workspace(
+                        onCell: _mapSelectedField,
+                        inspector: [
+                          Text(l.importTapColumnHint),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              for (final field in ImportField.values)
+                                ChoiceChip(
+                                  label: Text(importFieldLabel(l, field)),
+                                  selected: _selectedField == field,
+                                  onSelected: (_) =>
+                                      setState(() => _selectedField = field),
                                 ),
-                        ),
-                    ],
-                    if (_step == 2) ...[
-                      for (final e in _fields.entries)
-                        ExpansionTile(
-                          title: Text(importFieldLabel(l, e.key)),
-                          children: [
+                            ],
+                          ),
+                          for (final field in ImportField.values)
+                            ListTile(
+                              selected: _selectedField == field,
+                              title: Text(importFieldLabel(l, field)),
+                              subtitle: _fields[field] == null
+                                  ? Text(l.importNone)
+                                  : Text(_mappingLabel(_fields[field]!)),
+                              onTap: () => _editField(field),
+                              trailing: _fields[field] == null
+                                  ? const Icon(Icons.add)
+                                  : IconButton(
+                                      tooltip: l.actionDelete,
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
+                                      onPressed: () {
+                                        _invalidate();
+                                        setState(() {
+                                          _fields.remove(field);
+                                          _hints.remove(field);
+                                          if (_testField == field) {
+                                            _testField = null;
+                                          }
+                                        });
+                                      },
+                                    ),
+                            ),
+                          const Divider(),
+                          DropdownButtonFormField<String>(
+                            initialValue: _blockMode,
+                            decoration: InputDecoration(
+                              labelText: l.importBlockPattern,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'single',
+                                child: Text(l.importBlockModeSingle),
+                              ),
+                              DropdownMenuItem(
+                                value: 'blankLines',
+                                child: Text(l.importBlockModeBlankLines),
+                              ),
+                              DropdownMenuItem(
+                                value: 'regex',
+                                child: Text(l.importBlockModeRegex),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) return;
+                              _invalidate();
+                              setState(() {
+                                _blockMode = value;
+                                if (value == 'single') {
+                                  _block = const RegexRule();
+                                  _repeat = false;
+                                } else if (value == 'blankLines') {
+                                  _block = const RegexRule(
+                                    pattern: r'\r?\n\s*\r?\n',
+                                  );
+                                  _repeat = false;
+                                }
+                              });
+                            },
+                          ),
+                          if (_blockMode == 'regex') ...[
                             RegexRuleEditor(
-                              key: ValueKey(e.key),
-                              initial: e.value.regex,
+                              initial: _block,
                               onChanged: (rule) {
                                 _invalidate();
-                                setState(
-                                  () => _fields[e.key] = FieldMapping(
-                                    source: e.value.source,
-                                    column: e.value.column,
-                                    value: e.value.value,
-                                    regex: rule,
-                                  ),
-                                );
+                                setState(() => _block = rule);
+                              },
+                            ),
+                            SwitchListTile(
+                              title: Text(l.importRepeatBlocks),
+                              value: _repeat,
+                              onChanged: (v) {
+                                _invalidate();
+                                setState(() => _repeat = v);
                               },
                             ),
                           ],
-                        ),
-                      const Divider(),
-                      Text(l.importBlockPattern),
-                      RegexRuleEditor(
-                        initial: _block,
-                        onChanged: (rule) {
-                          _invalidate();
-                          setState(() => _block = rule);
-                        },
-                      ),
-                      SwitchListTile(
-                        title: Text(l.importRepeatBlocks),
-                        value: _repeat,
-                        onChanged: (v) {
-                          _invalidate();
-                          setState(() => _repeat = v);
-                        },
+                        ],
                       ),
                     ],
-                    if (_step == 3) ...[
+                    if (_step == 2) ...[
                       TextField(
                         controller: _sample,
                         minLines: 4,
@@ -500,9 +659,18 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
                           child: Text(l.importBack),
                         ),
                       const Spacer(),
-                      if (_step < 3)
+                      if (_step < 2)
                         FilledButton(
-                          onPressed: () => setState(() => _step++),
+                          onPressed: () {
+                            setState(() => _step++);
+                            if (_step == 2) {
+                              _previewDebounce?.cancel();
+                              _previewDebounce = Timer(
+                                const Duration(milliseconds: 100),
+                                _test,
+                              );
+                            }
+                          },
                           child: Text(l.importNext),
                         )
                       else
@@ -532,61 +700,168 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
     };
   }
 
-  Future<void> _coordinate(int r, int c) async {
-    final l = importL10n(context);
-    final option = await showDialog<int>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text('${columnLabel(c)}${r + 1} · ${l.importChooseCoordinate}'),
-        children: [
-          for (final e in {
-            0: l.importHeaderRow,
-            1: l.importFirstRow,
-            2: l.importLastRow,
-            if (_layout == ImportLayout.grid) 3: l.importFirstColumn,
-            if (_layout == ImportLayout.grid) 4: l.importLastColumn,
-          }.entries)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, e.key),
-              child: Text(e.value),
-            ),
-          for (final f in ImportField.values)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, 10 + f.index),
-              child: Text(
-                '${l.importColumnSource} · ${importFieldLabel(l, f)}',
+  Widget _toolChip(_CellTool tool, String label) => ChoiceChip(
+    label: Text(label),
+    selected: _cellTool == tool,
+    onSelected: (_) => setState(() => _cellTool = tool),
+  );
+
+  Future<void> _markCell(int r, int c) async {
+    try {
+      switch (_cellTool) {
+        case _CellTool.headerRow:
+          _header.text = '${r + 1}';
+          return;
+        case _CellTool.firstRow:
+          _first.text = '${r + 1}';
+          return;
+        case _CellTool.lastRow:
+          _last.text = '${r + 1}';
+          return;
+        case _CellTool.firstColumn:
+          _left.text = '${c + 1}';
+          return;
+        case _CellTool.lastColumn:
+          _right.text = '${c + 1}';
+          return;
+        case _CellTool.weekday:
+          int? day;
+          try {
+            day = parseWeekday(widget.sheet!.cell(r, c));
+          } on FormatException {
+            if (!mounted) return;
+            final names = importL10n(context).reminderFilterWeekdays.split('|');
+            day = await showDialog<int>(
+              context: context,
+              builder: (dialogContext) => SimpleDialog(
+                title: Text(importL10n(context).importWeekdaySource),
+                children: [
+                  for (var index = 0; index < names.length; index++)
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(dialogContext, index + 1),
+                      child: Text(names[index]),
+                    ),
+                ],
               ),
-            ),
-        ],
-      ),
-    );
-    if (option == null || !mounted) return;
-    switch (option) {
-      case 0:
-        _header.text = '${r + 1}';
-      case 1:
-        _first.text = '${r + 1}';
-      case 2:
-        _last.text = '${r + 1}';
-      case 3:
-        _left.text = '${c + 1}';
-      case 4:
-        _right.text = '${c + 1}';
-      default:
-        _invalidate();
-        setState(
-          () => _fields[ImportField.values[option - 10]] = FieldMapping(
-            column: c,
-          ),
-        );
+            );
+            if (day == null || !mounted) return;
+          }
+          final values = <int, int>{};
+          for (final piece in _days.text.split(',')) {
+            final parts = piece.trim().split(':');
+            if (parts.length == 2) {
+              values[(int.tryParse(parts[0]) ?? 0) - 1] =
+                  int.tryParse(parts[1]) ?? 0;
+            }
+          }
+          values[c] = day;
+          _days.text = values.entries
+              .map((entry) => '${entry.key + 1}:${entry.value}')
+              .join(',');
+          _header.text = '${r + 1}';
+          return;
+        case _CellTool.period:
+          final periods = parseNumbers(
+            widget.sheet!.cell(r, c),
+            'periodInvalid',
+          );
+          final values = <int, String>{};
+          for (final piece in _periods.text.split(';')) {
+            final parts = piece.trim().split(':');
+            if (parts.length == 2) {
+              values[(int.tryParse(parts[0]) ?? 0) - 1] = parts[1];
+            }
+          }
+          values[r] = periods.join(',');
+          _periods.text = values.entries
+              .map((entry) => '${entry.key + 1}:${entry.value}')
+              .join(';');
+          return;
+      }
+    } catch (error) {
+      setState(() => _error = importErrorMessage(importL10n(context), error));
     }
+  }
+
+  void _mapSelectedField(int row, int column) {
+    _invalidate();
+    setState(() {
+      final source = _layout == ImportLayout.list
+          ? FieldSource.column
+          : _selectedField == ImportField.weekday
+          ? FieldSource.weekday
+          : _selectedField == ImportField.periods
+          ? FieldSource.periods
+          : FieldSource.text;
+      _fields[_selectedField] = FieldMapping(source: source, column: column);
+      _hints[_selectedField] = const VisualExtractionHint();
+      final text = widget.sheet!.cell(row, column);
+      if (text.trim().isNotEmpty) _sample.text = text;
+    });
+  }
+
+  Color? _cellColor(BuildContext context, int row, int column) {
+    final scheme = Theme.of(context).colorScheme;
+    final header = _number(_header);
+    final first = _number(_first);
+    final last = _last.text.trim().isEmpty
+        ? (widget.sheet?.rows.length ?? 1) - 1
+        : _number(_last);
+    final left = _number(_left), right = _number(_right);
+    if (row == header) return scheme.primaryContainer;
+    if (_layout == ImportLayout.grid &&
+        _days.text
+            .split(',')
+            .any(
+              (piece) =>
+                  int.tryParse(piece.split(':').first.trim()) == column + 1,
+            )) {
+      return scheme.tertiaryContainer;
+    }
+    if (_layout == ImportLayout.grid &&
+        _periods.text
+            .split(';')
+            .any(
+              (piece) => int.tryParse(piece.split(':').first.trim()) == row + 1,
+            )) {
+      return scheme.secondaryContainer;
+    }
+    final inRows = row >= first && row <= last;
+    final inColumns =
+        _layout == ImportLayout.list || (column >= left && column <= right);
+    if (inRows && inColumns) {
+      return scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+    }
+    if (_layout == ImportLayout.list &&
+        _fields.values.any(
+          (mapping) =>
+              mapping.source == FieldSource.column && mapping.column == column,
+        )) {
+      return scheme.secondaryContainer.withValues(alpha: 0.6);
+    }
+    return null;
   }
 }
 
+enum _CellTool {
+  headerRow,
+  firstRow,
+  lastRow,
+  firstColumn,
+  lastColumn,
+  weekday,
+  period,
+}
+
 class _FieldMappingDialog extends StatefulWidget {
-  const _FieldMappingDialog({required this.field, required this.mapping});
+  const _FieldMappingDialog({
+    required this.field,
+    required this.mapping,
+    required this.hint,
+  });
   final ImportField field;
   final FieldMapping mapping;
+  final VisualExtractionHint hint;
   @override
   State<_FieldMappingDialog> createState() => _FieldMappingDialogState();
 }
@@ -594,20 +869,28 @@ class _FieldMappingDialog extends StatefulWidget {
 class _FieldMappingDialogState extends State<_FieldMappingDialog> {
   late FieldSource _source;
   late RegexRule _regex;
-  late TextEditingController _column, _value;
+  late VisualExtractionKind _kind;
+  late TextEditingController _column, _value, _label, _line, _delimiter;
   @override
   void initState() {
     super.initState();
     _source = widget.mapping.source;
     _regex = widget.mapping.regex;
+    _kind = widget.hint.kind;
     _column = TextEditingController(text: '${widget.mapping.column + 1}');
     _value = TextEditingController(text: widget.mapping.value);
+    _label = TextEditingController(text: widget.hint.label);
+    _line = TextEditingController(text: '${widget.hint.line}');
+    _delimiter = TextEditingController(text: widget.hint.delimiter);
   }
 
   @override
   void dispose() {
     _column.dispose();
     _value.dispose();
+    _label.dispose();
+    _line.dispose();
+    _delimiter.dispose();
     super.dispose();
   }
 
@@ -620,6 +903,15 @@ class _FieldMappingDialogState extends State<_FieldMappingDialog> {
       FieldSource.fixed: l.importFixedSource,
       FieldSource.weekday: l.importWeekdaySource,
       FieldSource.periods: l.importPeriodsSource,
+    };
+    final extractionKinds = {
+      VisualExtractionKind.identity: l.importExtractIdentity,
+      VisualExtractionKind.firstNonEmptyLine: l.importExtractFirstLine,
+      VisualExtractionKind.line: l.importExtractLine,
+      VisualExtractionKind.afterLabel: l.importExtractAfterLabel,
+      VisualExtractionKind.beforeDelimiter: l.importExtractBeforeDelimiter,
+      VisualExtractionKind.afterDelimiter: l.importExtractAfterDelimiter,
+      VisualExtractionKind.regex: l.importAdvanced,
     };
     return AlertDialog(
       title: Text(importFieldLabel(l, widget.field)),
@@ -650,7 +942,51 @@ class _FieldMappingDialogState extends State<_FieldMappingDialog> {
                   controller: _value,
                   decoration: InputDecoration(labelText: l.importFixedValue),
                 ),
-              RegexRuleEditor(initial: _regex, onChanged: (r) => _regex = r),
+              if (_source == FieldSource.column || _source == FieldSource.text)
+                DropdownButtonFormField<VisualExtractionKind>(
+                  initialValue: _kind,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: l.importVisualExtraction,
+                  ),
+                  items: extractionKinds.entries
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.key,
+                          child: Text(entry.value),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => setState(() => _kind = value!),
+                ),
+              if (_kind == VisualExtractionKind.line)
+                TextField(
+                  controller: _line,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: l.importExtractLine),
+                ),
+              if (_kind == VisualExtractionKind.afterLabel)
+                TextField(
+                  controller: _label,
+                  decoration: InputDecoration(
+                    labelText: l.importExtractLabel,
+                    helperText: l.importExtractLabelHelp,
+                  ),
+                ),
+              if (_kind == VisualExtractionKind.beforeDelimiter ||
+                  _kind == VisualExtractionKind.afterDelimiter)
+                TextField(
+                  controller: _delimiter,
+                  decoration: InputDecoration(
+                    labelText: l.importExtractDelimiter,
+                  ),
+                ),
+              if (_kind == VisualExtractionKind.regex)
+                RegexRuleEditor(
+                  key: const ValueKey('advanced-regex'),
+                  initial: _regex,
+                  onChanged: (rule) => _regex = rule,
+                ),
             ],
           ),
         ),
@@ -663,22 +999,53 @@ class _FieldMappingDialogState extends State<_FieldMappingDialog> {
         FilledButton(
           onPressed: () {
             final column = int.tryParse(_column.text);
-            if (column == null || column < 1) return;
-            Navigator.pop(
-              context,
-              FieldMapping(
-                source: _source,
-                column: column - 1,
-                value: _value.text,
-                regex: _regex,
-              ),
-            );
+            if (_source == FieldSource.column &&
+                (column == null || column < 1)) {
+              return;
+            }
+            try {
+              final effectiveKind =
+                  _source == FieldSource.column || _source == FieldSource.text
+                  ? _kind
+                  : VisualExtractionKind.identity;
+              final hint = VisualExtractionHint(
+                kind: effectiveKind,
+                label: _label.text,
+                line: int.tryParse(_line.text) ?? 1,
+                delimiter: _delimiter.text,
+              );
+              final rule = buildVisualExtractionRule(hint, advanced: _regex);
+              Navigator.pop(
+                context,
+                _FieldEditResult(
+                  FieldMapping(
+                    source: _source,
+                    column: (column ?? 1) - 1,
+                    value: _value.text,
+                    regex:
+                        _source == FieldSource.column ||
+                            _source == FieldSource.text
+                        ? rule
+                        : const RegexRule(),
+                  ),
+                  hint,
+                ),
+              );
+            } on FormatException {
+              return;
+            }
           },
           child: Text(l.importSave),
         ),
       ],
     );
   }
+}
+
+class _FieldEditResult {
+  const _FieldEditResult(this.mapping, this.hint);
+  final FieldMapping mapping;
+  final VisualExtractionHint hint;
 }
 
 class RegexRuleEditor extends StatefulWidget {
@@ -787,55 +1154,95 @@ class _RegexRuleEditorState extends State<RegexRuleEditor> {
 }
 
 class ImportRawTable extends StatelessWidget {
-  const ImportRawTable({super.key, required this.sheet, this.onCell});
+  const ImportRawTable({
+    super.key,
+    required this.sheet,
+    this.onCell,
+    this.cellColor,
+    this.expanded = false,
+  });
   final ImportSheet sheet;
   final void Function(int row, int column)? onCell;
+  final Color? Function(BuildContext context, int row, int column)? cellColor;
+  final bool expanded;
+
+  MergedRegion? _mergeAt(int row, int column) {
+    for (final merge in sheet.merges) {
+      if (merge.contains(row, column)) return merge;
+    }
+    return null;
+  }
+
+  String _cellLabel(int row, int column) {
+    final merge = _mergeAt(row, column);
+    if (merge != null &&
+        (merge.firstRow != row || merge.firstColumn != column)) {
+      return '${columnLabel(column)}: ↳';
+    }
+    final span = merge == null
+        ? ''
+        : ' · ${merge.lastRow - merge.firstRow + 1}×${merge.lastColumn - merge.firstColumn + 1}';
+    return '${columnLabel(column)}: ${sheet.cell(row, column)}$span';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = importL10n(context);
-    return ExpansionTile(
-      title: Text(l.importRawTable),
-      children: [
-        SizedBox(
-          height: 300,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: sheet.columnCount.clamp(1, 100) * 140.0 + 45,
-              child: ListView.builder(
-                itemCount: sheet.rows.length,
-                itemBuilder: (context, r) => Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(width: 45, child: Text('${r + 1}')),
-                    for (var c = 0; c < sheet.columnCount.clamp(1, 100); c++)
-                      SizedBox(
-                        width: 140,
-                        child: InkWell(
-                          onTap: onCell == null ? null : () => onCell!(r, c),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).dividerColor,
-                              ),
-                            ),
-                            child: Text(
-                              '${columnLabel(c)}: ${sheet.cell(r, c)}',
-                              maxLines: 5,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+    final table = SizedBox(
+      height: 300,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: sheet.columnCount.clamp(1, 100) * 140.0 + 45,
+          child: ListView.builder(
+            itemCount: sheet.rows.length,
+            itemBuilder: (context, r) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 45, child: Text('${r + 1}')),
+                for (var c = 0; c < sheet.columnCount.clamp(1, 100); c++)
+                  SizedBox(
+                    width: 140,
+                    child: InkWell(
+                      onTap: onCell == null ? null : () => onCell!(r, c),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: cellColor?.call(context, r, c),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
                           ),
                         ),
+                        child: Text(
+                          _cellLabel(r, c),
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                  ],
-                ),
-              ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
+    if (expanded) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(l.importRawTable),
+            ),
+            table,
+          ],
+        ),
+      );
+    }
+    return ExpansionTile(title: Text(l.importRawTable), children: [table]);
   }
 }
 

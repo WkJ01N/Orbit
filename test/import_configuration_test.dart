@@ -45,6 +45,86 @@ void main() {
       );
     },
   );
+  test('visual editor hints are additive while template version stays one', () {
+    final map = custom.toJson();
+    map['editorHints'] = const TemplateEditorHints(
+      blockMode: 'blankLines',
+      fields: {
+        ImportField.courseName: VisualExtractionHint(
+          kind: VisualExtractionKind.firstNonEmptyLine,
+        ),
+      },
+    ).toJson();
+    final restored = ScheduleImportTemplate.fromJson(map);
+    expect(restored.toJson()['version'], 1);
+    expect(
+      restored.editorHints.fields[ImportField.courseName]?.kind,
+      VisualExtractionKind.firstNonEmptyLine,
+    );
+    final oldClientPayload = Map<String, dynamic>.from(restored.toJson())
+      ..remove('editorHints');
+    final oldCompatible = ScheduleImportTemplate.fromJson(oldClientPayload);
+    expect(
+      oldCompatible.fields[ImportField.courseName]?.regex.toJson(),
+      custom.fields[ImportField.courseName]?.regex.toJson(),
+    );
+    expect(restored.copy(name: 'Copy').editorHints.blockMode, 'blankLines');
+  });
+  test('visual extraction presets generate executable compatible regex', () {
+    String capture(VisualExtractionHint hint, String text) {
+      final rule = buildVisualExtractionRule(hint);
+      final match = rule.compile().firstMatch(text);
+      expect(match, isNotNull);
+      return rule.capture(match!);
+    }
+
+    expect(
+      capture(
+        const VisualExtractionHint(
+          kind: VisualExtractionKind.firstNonEmptyLine,
+        ),
+        '\n  Math\nTeacher: Alice',
+      ),
+      'Math',
+    );
+    expect(
+      capture(
+        const VisualExtractionHint(kind: VisualExtractionKind.line, line: 2),
+        'Math\nAlice\nA101',
+      ),
+      'Alice',
+    );
+    expect(
+      capture(
+        const VisualExtractionHint(
+          kind: VisualExtractionKind.afterLabel,
+          label: '教师|老师',
+        ),
+        '课程：数学\n老师：张老师',
+      ),
+      '张老师',
+    );
+    expect(
+      capture(
+        const VisualExtractionHint(
+          kind: VisualExtractionKind.beforeDelimiter,
+          delimiter: ' - ',
+        ),
+        'Math - A101',
+      ),
+      'Math',
+    );
+    expect(
+      capture(
+        const VisualExtractionHint(
+          kind: VisualExtractionKind.afterDelimiter,
+          delimiter: ' - ',
+        ),
+        'Math - A101',
+      ),
+      'A101',
+    );
+  });
   test('versioned settings persist all plans and field rules', () async {
     final service = SettingsService();
     final config = ImportConfiguration(

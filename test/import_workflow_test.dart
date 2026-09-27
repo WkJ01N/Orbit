@@ -235,9 +235,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Course name'));
+      await tester.tap(find.widgetWithText(ListTile, 'Course name'));
       await tester.pumpAndSettle();
       final pattern = find.widgetWithText(
         TextField,
@@ -252,6 +250,53 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('visual editor maps a tapped cell and offers simple extraction', (
+    tester,
+  ) async {
+    const template = ScheduleImportTemplate(
+      id: 'visual',
+      name: 'Visual',
+      layout: ImportLayout.list,
+      fields: {
+        ImportField.courseName: FieldMapping(column: 1),
+        ImportField.date: FieldMapping(column: 2),
+        ImportField.startTime: FieldMapping(column: 3),
+        ImportField.endTime: FieldMapping(column: 4),
+      },
+    );
+    const sheet = ImportSheet(
+      file: 'visual.csv',
+      name: 'CSV',
+      rows: [
+        ['course', 'date', 'start', 'end'],
+        ['Math', '2026-09-14', '08:00', '09:00'],
+      ],
+    );
+    await tester.pumpWidget(
+      app(const ImportTemplateEditor(template: template, sheet: sheet)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    final mathCell = find.text('A: Math');
+    await tester.ensureVisible(mathCell);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(of: mathCell, matching: find.byType(InkWell)).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Column A'), findsWidgets);
+    final courseTile = find.widgetWithText(ListTile, 'Course name');
+    await tester.ensureVisible(courseTile);
+    await tester.pumpAndSettle();
+    await tester.tap(courseTile);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use the original value'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('First non-empty line').last);
+    await tester.pumpAndSettle();
+    expect(find.text('First non-empty line'), findsOneWidget);
+  });
   testWidgets('context rejects unconfirmed or non-Monday dates', (
     tester,
   ) async {

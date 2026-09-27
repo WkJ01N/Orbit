@@ -23,6 +23,72 @@ enum ImportField {
 
 enum FieldSource { column, text, fixed, weekday, periods }
 
+enum VisualExtractionKind {
+  identity,
+  firstNonEmptyLine,
+  line,
+  afterLabel,
+  beforeDelimiter,
+  afterDelimiter,
+  regex,
+}
+
+class VisualExtractionHint {
+  const VisualExtractionHint({
+    this.kind = VisualExtractionKind.identity,
+    this.label = '',
+    this.line = 1,
+    this.delimiter = '',
+  });
+
+  final VisualExtractionKind kind;
+  final String label, delimiter;
+  final int line;
+
+  Map<String, dynamic> toJson() => {
+    'kind': kind.name,
+    if (label.isNotEmpty) 'label': label,
+    if (line != 1) 'line': line,
+    if (delimiter.isNotEmpty) 'delimiter': delimiter,
+  };
+
+  factory VisualExtractionHint.fromJson(Map<String, dynamic> json) =>
+      VisualExtractionHint(
+        kind: VisualExtractionKind.values.byName(json['kind'] as String),
+        label: json['label'] as String? ?? '',
+        line: json['line'] as int? ?? 1,
+        delimiter: json['delimiter'] as String? ?? '',
+      );
+}
+
+class TemplateEditorHints {
+  const TemplateEditorHints({
+    this.fields = const {},
+    this.blockMode = 'single',
+  });
+
+  final Map<ImportField, VisualExtractionHint> fields;
+  final String blockMode;
+
+  Map<String, dynamic> toJson() => {
+    'fields': fields.map((key, value) => MapEntry(key.name, value.toJson())),
+    'blockMode': blockMode,
+  };
+
+  factory TemplateEditorHints.fromJson(Map<String, dynamic> json) =>
+      TemplateEditorHints(
+        fields: (json['fields'] as Map? ?? {}).map(
+          (key, value) => MapEntry(
+            ImportField.values.byName(key as String),
+            VisualExtractionHint.fromJson(
+              Map<String, dynamic>.from(value as Map),
+            ),
+          ),
+        ),
+        blockMode: json['blockMode'] as String? ?? 'single',
+      );
+}
+
 class RegexRule {
   const RegexRule({
     this.pattern = '',
@@ -113,6 +179,59 @@ class RegexRule {
   }
 }
 
+RegexRule buildVisualExtractionRule(
+  VisualExtractionHint hint, {
+  RegexRule advanced = const RegexRule(),
+}) {
+  String alternatives(String value) => value
+      .split('|')
+      .map((part) => RegExp.escape(part.trim()))
+      .where((part) => part.isNotEmpty)
+      .join('|');
+  switch (hint.kind) {
+    case VisualExtractionKind.identity:
+      return const RegexRule();
+    case VisualExtractionKind.firstNonEmptyLine:
+      return const RegexRule(
+        pattern: r'^\s*(\S[^\r\n]*)',
+        group: '1',
+        multiLine: true,
+      );
+    case VisualExtractionKind.line:
+      if (hint.line < 1) throw const FormatException('templateInvalid');
+      return RegexRule(
+        pattern: '^(?:[^\\r\\n]*\\r?\\n){${hint.line - 1}}\\s*(.+?)\\s*\$',
+        group: '1',
+        multiLine: true,
+      );
+    case VisualExtractionKind.afterLabel:
+      final labels = alternatives(hint.label);
+      if (labels.isEmpty) throw const FormatException('templateInvalid');
+      return RegexRule(
+        pattern: '(?:$labels)\\s*[：:]\\s*([^\\r\\n]+)',
+        group: '1',
+      );
+    case VisualExtractionKind.beforeDelimiter:
+      if (hint.delimiter.isEmpty) {
+        throw const FormatException('templateInvalid');
+      }
+      return RegexRule(
+        pattern: '^([\\s\\S]*?)\\s*${RegExp.escape(hint.delimiter)}',
+        group: '1',
+      );
+    case VisualExtractionKind.afterDelimiter:
+      if (hint.delimiter.isEmpty) {
+        throw const FormatException('templateInvalid');
+      }
+      return RegexRule(
+        pattern: '${RegExp.escape(hint.delimiter)}\\s*([\\s\\S]+)\$',
+        group: '1',
+      );
+    case VisualExtractionKind.regex:
+      return advanced;
+  }
+}
+
 class FieldMapping {
   const FieldMapping({
     this.source = FieldSource.column,
@@ -157,6 +276,7 @@ class ScheduleImportTemplate {
     this.fields = const {},
     this.blockRule = const RegexRule(),
     this.repeatBlocks = false,
+    this.editorHints = const TemplateEditorHints(),
   });
   static const version = 1;
   final String id, name;
@@ -168,6 +288,7 @@ class ScheduleImportTemplate {
   final Map<int, List<int>> periodRows;
   final Map<ImportField, FieldMapping> fields;
   final RegexRule blockRule;
+  final TemplateEditorHints editorHints;
   Map<String, dynamic> toJson() => {
     'version': version,
     'id': id,
@@ -184,6 +305,8 @@ class ScheduleImportTemplate {
     'fields': fields.map((k, v) => MapEntry(k.name, v.toJson())),
     'blockRule': blockRule.toJson(),
     'repeatBlocks': repeatBlocks,
+    if (editorHints.fields.isNotEmpty || editorHints.blockMode != 'single')
+      'editorHints': editorHints.toJson(),
   };
   factory ScheduleImportTemplate.fromJson(Map<String, dynamic> j) {
     if (j['version'] != version) throw const FormatException('templateVersion');
@@ -213,6 +336,11 @@ class ScheduleImportTemplate {
         Map<String, dynamic>.from(j['blockRule'] as Map? ?? {}),
       ),
       repeatBlocks: j['repeatBlocks'] as bool? ?? false,
+      editorHints: j['editorHints'] is Map
+          ? TemplateEditorHints.fromJson(
+              Map<String, dynamic>.from(j['editorHints'] as Map),
+            )
+          : const TemplateEditorHints(),
     );
     t.validate();
     if (t.layout != ImportLayout.legacy && t.fields.isEmpty) {
@@ -235,6 +363,9 @@ class ScheduleImportTemplate {
           (e) => e.key < 0 || e.value.isEmpty || e.value.any((p) => p < 1),
         ) ||
         fields.values.any((f) => f.column < 0)) {
+      throw const FormatException('templateInvalid');
+    }
+    if (editorHints.fields.values.any((hint) => hint.line < 1)) {
       throw const FormatException('templateInvalid');
     }
     for (final rule in [blockRule, ...fields.values.map((f) => f.regex)]) {
@@ -475,6 +606,34 @@ class ScheduleParseResult {
   final List<ExtractionTrace> traces;
   final Map<String, ImportDiagnostic> locations;
   bool get hasFatal => diagnostics.any((d) => d.fatal);
+}
+
+class RecognitionEvidence {
+  const RecognitionEvidence(this.code, {this.detail = ''});
+  final String code, detail;
+}
+
+class RecognitionCandidate {
+  const RecognitionCandidate({
+    required this.template,
+    required this.confidence,
+    required this.preview,
+    this.evidence = const [],
+  });
+
+  final ScheduleImportTemplate template;
+  final double confidence;
+  final ScheduleParseResult preview;
+  final List<RecognitionEvidence> evidence;
+}
+
+class RecognitionAnalysis {
+  const RecognitionAnalysis({this.candidates = const [], this.recommended});
+
+  final List<RecognitionCandidate> candidates;
+  final RecognitionCandidate? recommended;
+  List<ScheduleImportTemplate> get templates =>
+      candidates.map((candidate) => candidate.template).toList();
 }
 
 class ExtractionTrace {

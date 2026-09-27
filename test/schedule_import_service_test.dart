@@ -42,7 +42,13 @@ void main() {
     final result = parseList(
       'Extra,Room,End Time,Course Name,Date,Start Time,Teachers\nX,A101,10:00,Physics,2026-09-20,08:00,"Alice,Bob"',
     );
-    expect(result.diagnostics, isEmpty);
+    expect(
+      result.diagnostics,
+      isEmpty,
+      reason: result.diagnostics
+          .map((diagnostic) => '${diagnostic.code}:${diagnostic.detail}')
+          .join(', '),
+    );
     expect(result.sessions, hasLength(1));
     expect(result.sessions.single.weekday, 7);
     expect(result.sessions.single.teachers, ['Alice', 'Bob']);
@@ -192,7 +198,13 @@ void main() {
       t,
       context: weeklyContext(),
     );
-    expect(result.diagnostics, isEmpty);
+    expect(
+      result.diagnostics,
+      isEmpty,
+      reason: result.diagnostics
+          .map((diagnostic) => '${diagnostic.code}:${diagnostic.detail}')
+          .join(', '),
+    );
     expect(result.sessions, hasLength(2));
     expect(result.sessions.first.endAt, DateTime(2026, 9, 14, 9, 40));
   });
@@ -222,6 +234,25 @@ void main() {
     expect(result.diagnostics, isEmpty);
     expect(result.sessions, hasLength(4));
     expect(result.sessions.map((s) => s.courseName), ['数学', '物理', '数学', '物理']);
+  });
+  test('grid cells recognize a compact braced week expression', () {
+    final sheet = ImportSheet(
+      file: 'compact.xlsx',
+      name: 'Grid',
+      rows: [
+        ['', '周一', '周二', '周三'],
+        ['1-2', '高等数学 {第1-4周(单周)}', '', ''],
+      ],
+    );
+    final analysis = ScheduleImportService.analyze(sheet, []);
+    final result = ScheduleImportService().parseSheet(
+      sheet,
+      analysis.candidates.single.template,
+      context: weeklyContext(),
+    );
+    expect(result.diagnostics, isEmpty);
+    expect(result.sessions, hasLength(2));
+    expect(result.sessions.first.courseName, '高等数学');
   });
   test('horizontal course merge produces positioned error', () {
     final sheet = ImportSheet(
@@ -285,6 +316,77 @@ void main() {
     expect(result.sessions, hasLength(3));
     expect(result.sessions.first.courseCode, 'PHYS102');
   });
+  test('recognition scores offset fuzzy list headers using row values', () {
+    final sheet = csvSheet(
+      '2026 秋季课表,,,\n'
+      '学生：示例,,,\n'
+      '课程名称（中文）,上课日期,上课开始时间,下课时间\n'
+      '高等数学,2026-09-14,08:00,09:00',
+    );
+    final analysis = ScheduleImportService.analyze(sheet, []);
+    expect(analysis.recommended, isNotNull);
+    expect(analysis.recommended!.template.layout, ImportLayout.list);
+    expect(analysis.recommended!.template.headerRow, 2);
+    expect(analysis.recommended!.confidence, greaterThanOrEqualTo(0.85));
+    expect(analysis.recommended!.preview.sessions.single.courseName, '高等数学');
+  });
+  test('recognition finds a Sunday-first three-day grid after decoration', () {
+    final sheet = ImportSheet(
+      file: 'partial.xlsx',
+      name: '课表',
+      rows: [
+        ['2026 秋季课表', '', '', ''],
+        ['', '周日', '周一', '周三'],
+        ['第1-2节', '体育\n周次：1-2', '数学\n周次：1-2', '物理\n周次：1-2'],
+      ],
+    );
+    final analysis = ScheduleImportService.analyze(sheet, []);
+    final grid = analysis.candidates.singleWhere(
+      (candidate) => candidate.template.layout == ImportLayout.grid,
+    );
+    expect(grid.template.weekdayColumns.values, containsAll([7, 1, 3]));
+    expect(grid.template.periodRows[2], [1, 2]);
+    expect(grid.preview.sessions, isNotEmpty);
+    expect(analysis.recommended?.template.layout, ImportLayout.grid);
+  });
+  test('ambiguous matching templates are never silently recommended', () {
+    final sheet = csvSheet(
+      'course,date,start,end\nMath,2026-09-14,08:00,09:00',
+    );
+    const fields = {
+      ImportField.courseName: FieldMapping(column: 0),
+      ImportField.date: FieldMapping(column: 1),
+      ImportField.startTime: FieldMapping(column: 2),
+      ImportField.endTime: FieldMapping(column: 3),
+    };
+    final analysis = ScheduleImportService.analyze(sheet, const [
+      ScheduleImportTemplate(
+        id: 'school-a',
+        name: 'A',
+        layout: ImportLayout.list,
+        fields: fields,
+      ),
+      ScheduleImportTemplate(
+        id: 'school-b',
+        name: 'B',
+        layout: ImportLayout.list,
+        fields: fields,
+      ),
+    ]);
+    expect(analysis.candidates.length, greaterThan(1));
+    expect(analysis.recommended, isNull);
+  });
+  test(
+    'invalid-looking rows keep a structural candidate but no recommendation',
+    () {
+      final sheet = csvSheet(
+        'course,date,start,end\nMath,not-a-date,morning,evening',
+      );
+      final analysis = ScheduleImportService.analyze(sheet, []);
+      expect(analysis.candidates, isNotEmpty);
+      expect(analysis.recommended, isNull);
+    },
+  );
   test('numeric and named captures and repeat rule tested in worker', () async {
     const rule = RegexRule(pattern: r'(?<name>\w+)=(\d+)', group: 'name');
     final result = await createRegexWorker(
@@ -309,10 +411,10 @@ void main() {
       't.csv',
     );
     final sheet = read.sheets.single;
-    final candidates = await createCandidateWorker(sheet, []).run();
+    final analysis = await createCandidateWorker(sheet, []).run();
     final result = await createSheetWorker(
       sheet,
-      candidates.single,
+      analysis.recommended!.template,
       const ImportContext(),
     ).run();
     expect(result.sessions, hasLength(1));
