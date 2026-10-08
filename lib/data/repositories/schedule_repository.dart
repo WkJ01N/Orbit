@@ -2,6 +2,8 @@ import 'package:orbit/core/l10n/zh_variant.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/archive_settings.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/batch_course.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/portable_settings.dart';
@@ -109,6 +111,110 @@ class ScheduleRepository {
     return a.startAt.isBefore(b.endAt) && b.startAt.isBefore(a.endAt);
   }
 
+  Future<int> archiveCourse(
+    CourseSession selected, {
+    required bool wholeCourse,
+    bool hide = true,
+    DateTime? at,
+  }) async {
+    final now = at ?? DateTime.now();
+    final all = await getAllSessions();
+    final key = CourseSeriesKey.fromSession(selected);
+    final ids = all
+        .where(
+          (s) =>
+              !s.archived &&
+              !s.endAt.isAfter(now) &&
+              (wholeCourse
+                  ? CourseSeriesKey.fromSession(s) == key &&
+                        s.semester == selected.semester
+                  : s.id == selected.id),
+        )
+        .map((s) => s.id)
+        .toList();
+    return _database.updateArchive(
+      sessionIds: ids,
+      action: ArchiveMutation.archive,
+      hide: hide,
+      at: now,
+    );
+  }
+
+  Future<List<CourseSession>> getUnarchivedEndedSessions({DateTime? at}) async {
+    final now = at ?? DateTime.now();
+    return (await getAllSessions())
+        .where((session) => !session.archived && !session.endAt.isAfter(now))
+        .toList();
+  }
+
+  /// Optional IDs keep a confirmation limited to the displayed snapshot.
+  /// The transaction rechecks eligibility in case a class was edited meanwhile.
+  Future<int> archiveEndedSessions({
+    List<String>? sessionIds,
+    bool hide = true,
+    DateTime? at,
+  }) async {
+    final now = at ?? DateTime.now();
+    final ids =
+        sessionIds ??
+        (await getUnarchivedEndedSessions(
+          at: now,
+        )).map((session) => session.id).toList();
+    return _database.updateArchive(
+      sessionIds: ids,
+      action: ArchiveMutation.archive,
+      hide: hide,
+      at: now,
+    );
+  }
+
+  Future<int> runAutoArchive(ArchiveSettings settings, {DateTime? at}) async {
+    if (!settings.autoCourses && !settings.autoDeadlines) return 0;
+    final now = at ?? DateTime.now();
+    final sessions = settings.autoCourses
+        ? await getAllSessions()
+        : <CourseSession>[];
+    final deadlines = settings.autoDeadlines
+        ? await _database.getDeadlines()
+        : <Deadline>[];
+    final courseIds = sessions
+        .where(
+          (s) =>
+              !s.archived &&
+              !s.autoArchivePaused &&
+              !s.endAt
+                  .add(Duration(days: settings.courseDelayDays))
+                  .isAfter(now),
+        )
+        .map((s) => s.id)
+        .toList();
+    final deadlineIds = deadlines
+        .where(
+          (d) =>
+              !d.archived &&
+              !d.autoArchivePaused &&
+              d.completed &&
+              !d.completedAt!
+                  .add(Duration(days: settings.deadlineDelayDays))
+                  .isAfter(now),
+        )
+        .map((d) => d.id)
+        .toList();
+    final courses = await _database.updateArchive(
+      sessionIds: courseIds,
+      action: ArchiveMutation.archive,
+      hide: settings.hideCourses,
+      at: now,
+    );
+    final ddl = await _database.updateArchive(
+      deadlineIds: deadlineIds,
+      action: ArchiveMutation.archive,
+      hide: settings.hideDeadlines,
+      at: now,
+    );
+    return courses + ddl;
+  }
+
   Future<List<CourseSession>> getAllSessions() {
     return _database.getAllSessions();
   }
@@ -125,7 +231,10 @@ class ScheduleRepository {
     final key = CourseSeriesKey.fromSession(selected);
     final sessions = await getAllSessions();
     return sessions.where((session) {
-      if (CourseSeriesKey.fromSession(session) != key) return false;
+      if (CourseSeriesKey.fromSession(session) != key ||
+          session.semester != selected.semester) {
+        return false;
+      }
       return scope != CourseOperationScope.fromSelected ||
           !session.startAt.isBefore(selected.startAt);
     }).toList();
@@ -259,7 +368,11 @@ class ScheduleRepository {
 
   Future<String> exportToJsonBackup({PortableSettings? settings}) async {
     final sessions = await getAllSessions();
-    return ScheduleBackupService().encodeToJson(sessions, settings: settings);
+    return ScheduleBackupService().encodeToJson(
+      sessions,
+      deadlines: await _database.getDeadlines(),
+      settings: settings,
+    );
   }
 
   Future<List<CourseSession>> importFromJsonBackup(String raw) async {
@@ -580,7 +693,12 @@ class ScheduleRepository {
     }
     final active = await getAllSessions();
     var targets = active
-        .where((session) => session.recurrenceSeriesId == seriesId)
+        .where(
+          (session) =>
+              CourseSeriesKey.fromSession(session) ==
+                  CourseSeriesKey.fromSession(selected) &&
+              session.semester == selected.semester,
+        )
         .where((session) {
           return switch (scope) {
             RecurringCourseEditScope.single => session.id == selected.id,

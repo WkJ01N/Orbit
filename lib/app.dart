@@ -1,4 +1,7 @@
+import 'package:orbit/features/settings/update_host.dart';
 import 'dart:async';
+import 'package:orbit/features/reminder/strong_confirmation.dart';
+import 'package:orbit/providers/archive_providers.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -39,10 +42,18 @@ class OrbitApp extends ConsumerWidget {
       navigatorObservers: [_messageRouteObserver],
       builder: (context, child) => AppScaffoldMessenger(
         routeObserver: _messageRouteObserver,
-        child: _AccountSyncLifecycleHost(
-          child: NotificationPermissionHost(
+        child: StrongReminderHost(
+          navigatorKey: _navigatorKey,
+          child: UpdateHost(
             navigatorKey: _navigatorKey,
-            child: child!,
+            child: ArchiveLifecycleHost(
+              child: _AccountSyncLifecycleHost(
+                child: NotificationPermissionHost(
+                  navigatorKey: _navigatorKey,
+                  child: child!,
+                ),
+              ),
+            ),
           ),
         ),
       ),

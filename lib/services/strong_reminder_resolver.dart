@@ -1,6 +1,7 @@
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
+import 'package:orbit/models/schedule_import.dart';
 
 List<String> normalizeReminderCourseKeys({
   required ReminderCourseScope scope,
@@ -54,10 +55,43 @@ bool matchesStrongCourse(
       );
 }
 
+bool matchesFirstClass(
+  StrongReminderSettings settings,
+  CourseSession session,
+  List<CourseSession> dailySessions,
+  List<PeriodTimePlan> plans,
+) {
+  if (!settings.onlyFirstClass) return true;
+  final minute = session.startAt.hour * 60 + session.startAt.minute;
+  if (settings.firstClassMode == FirstClassMode.firstPeriod) {
+    if (session.startPeriod != null) return session.startPeriod == 1;
+    final chosen = settings.periodTimePlanId ?? session.periodTimePlanId;
+    final candidates = plans.where((p) => chosen == null || p.id == chosen);
+    final matches = candidates
+        .expand((p) => p.periods.where((t) => t.startMinute == minute))
+        .map((p) => p.number)
+        .toSet();
+    if (matches.length == 1) return matches.first == 1;
+  }
+  if (minute >= settings.cutoffMinute) return false;
+  final eligible = (dailySessions.isEmpty ? [session] : dailySessions).where(
+    (s) =>
+        s.deletedAt == null &&
+        !s.archived &&
+        s.startAt.year == session.startAt.year &&
+        s.startAt.month == session.startAt.month &&
+        s.startAt.day == session.startAt.day &&
+        s.startAt.hour * 60 + s.startAt.minute < settings.cutoffMinute,
+  );
+  return !eligible.any((s) => s.startAt.isBefore(session.startAt));
+}
+
 StrongReminderSettings resolveStrongReminder({
   required StrongReminderSettings global,
   required StrongReminderType type,
   CourseSession? session,
+  List<CourseSession> dailySessions = const [],
+  List<PeriodTimePlan> periodPlans = const [],
   List<CourseSession> summarySessions = const [],
   CustomReminderRule? rule,
   Map<String, String> aliases = const {},
@@ -90,6 +124,15 @@ StrongReminderSettings resolveStrongReminder({
         global.enabled &&
         global.types.contains(type) &&
         matches &&
+        (type == StrongReminderType.summary ||
+            !global.onlyFirstClass ||
+            session != null &&
+                matchesFirstClass(
+                  global,
+                  session,
+                  dailySessions,
+                  periodPlans,
+                )) &&
         (rule == null ||
             global.ruleIds == null ||
             global.ruleIds!.contains(rule.id)),

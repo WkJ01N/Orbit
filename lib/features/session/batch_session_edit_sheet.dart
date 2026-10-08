@@ -6,6 +6,10 @@ import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/batch_course.dart';
+import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/course_operation.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
+import 'package:orbit/features/session/existing_course_picker.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class BatchSessionEditSheet extends ConsumerStatefulWidget {
@@ -74,6 +78,31 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
     _loadDefaults();
   }
 
+  CourseSession? _selectedCourse;
+  final _additionId = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  Future<void> _chooseCourse() async {
+    final course = await chooseExistingCourse(context);
+    if (course == null || !mounted) return;
+    setState(() {
+      _selectedCourse = course;
+      _nameController.text = course.courseName;
+      _codeController.text = course.courseCode;
+      _sectionController.text = course.section;
+      _teachersController.text = course.teachers.join(', ');
+      _facultyController.text = course.faculty;
+      for (final meeting in _meetings) {
+        meeting.roomController.text = course.room;
+      }
+    });
+  }
+
+  void _newCourse() => setState(() {
+    _selectedCourse = null;
+    _nameController.clear();
+    _codeController.clear();
+    _sectionController.text = '1';
+  });
+
   Future<void> _loadDefaults() async {
     final defaults = await ref
         .read(settingsServiceProvider)
@@ -92,9 +121,9 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
   _MeetingState _newMeeting() {
     _meetingSequence++;
     return _MeetingState(
-      id: 'meeting-$_meetingSequence',
+      id: 'meeting-$_additionId-$_meetingSequence',
       weekday: DateTime.monday,
-      roomController: TextEditingController(),
+      roomController: TextEditingController(text: _selectedCourse?.room ?? ''),
       startTime: const TimeOfDay(hour: 9, minute: 0),
       endTime: const TimeOfDay(hour: 10, minute: 0),
     );
@@ -244,7 +273,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
 
     setState(() => _saving = true);
     try {
-      final seriesId = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+      final seriesId = _selectedCourse?.recurrenceSeriesId ?? _additionId;
       final generated = generateBatchCourseSessions(
         BatchCourseDraft(
           courseName: _nameController.text,
@@ -252,8 +281,12 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
           section: _sectionController.text,
           teachers: _parseTeachers(_teachersController.text),
           faculty: _facultyController.text,
-          classType: l10n.defaultClassType,
-          semester: '',
+          periodTimePlanId: _selectedCourse?.periodTimePlanId,
+          classType: _selectedCourse?.classType ?? l10n.defaultClassType,
+          semester: _selectedCourse?.semester ?? '',
+          linkedCourseKey: _selectedCourse == null
+              ? null
+              : CourseSeriesKey.fromSession(_selectedCourse!).value,
           firstWeekMonday: _firstWeekMonday,
           totalWeeks: _totalWeeks,
           selectedWeeks: _selectedWeeks,
@@ -318,8 +351,19 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _chooseCourse,
+                    icon: const Icon(Icons.playlist_add),
+                    label: Text(OrbitFeatureText.of(context).existing),
+                  ),
+                  if (_selectedCourse != null)
+                    TextButton(
+                      onPressed: _saving ? null : _newCourse,
+                      child: Text(OrbitFeatureText.of(context).newCourse),
+                    ),
                   TextField(
                     controller: _nameController,
+                    readOnly: _selectedCourse != null,
                     decoration: InputDecoration(
                       labelText: l10n.fieldCourseName,
                       border: const OutlineInputBorder(),
@@ -331,6 +375,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
                       Expanded(
                         child: TextField(
                           controller: _codeController,
+                          readOnly: _selectedCourse != null,
                           decoration: InputDecoration(
                             labelText: l10n.fieldCourseCode,
                             border: const OutlineInputBorder(),
@@ -341,6 +386,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
                       Expanded(
                         child: TextField(
                           controller: _sectionController,
+                          readOnly: _selectedCourse != null,
                           decoration: InputDecoration(
                             labelText: l10n.fieldSection,
                             border: const OutlineInputBorder(),

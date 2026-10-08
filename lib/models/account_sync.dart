@@ -8,6 +8,7 @@ enum SyncEntityType {
   semesterPlan,
   periodTimePlan,
   deadline,
+  settingGroup,
 }
 
 enum SyncOperation { upsert, delete }
@@ -201,6 +202,7 @@ class InitialSyncPreview {
 }
 
 Map<String, dynamic> courseSessionSyncPayload(CourseSession session) => {
+  ...session.featurePayload,
   'id': session.id,
   'classType': session.classType,
   'room': session.room,
@@ -221,6 +223,14 @@ Map<String, dynamic> courseSessionSyncPayload(CourseSession session) => {
 
 CourseSession courseSessionFromSyncPayload(Map<String, dynamic> json) =>
     CourseSession(
+      archivedAt: json['archivedAt'] == null
+          ? null
+          : DateTime.parse(json['archivedAt'] as String).toLocal(),
+      archiveHidden: json['archiveHidden'] == true,
+      autoArchivePaused: json['autoArchivePaused'] == true,
+      linkedCourseKey: json['linkedCourseKey'] as String?,
+      startPeriod: json['startPeriod'] as int?,
+      periodTimePlanId: json['periodTimePlanId'] as String?,
       id: json['id'] as String,
       classType: json['classType'] as String? ?? '',
       room: json['room'] as String? ?? '',
@@ -240,6 +250,20 @@ CourseSession courseSessionFromSyncPayload(Map<String, dynamic> json) =>
     );
 
 String canonicalSyncPayload(Map<String, dynamic> payload) {
+  // Older clients omit these optional fields. Their absence has the same
+  // meaning as the new defaults and must not create first-login conflicts.
+  final comparable = {...payload};
+  for (final key in [
+    'archivedAt',
+    'linkedCourseKey',
+    'startPeriod',
+    'periodTimePlanId',
+  ]) {
+    if (comparable[key] == null) comparable.remove(key);
+  }
+  for (final key in ['archiveHidden', 'autoArchivePaused']) {
+    if (comparable[key] == false) comparable.remove(key);
+  }
   dynamic normalize(dynamic value) {
     if (value is Map) {
       final keys = value.keys.map((key) => '$key').toList()..sort();
@@ -249,5 +273,5 @@ String canonicalSyncPayload(Map<String, dynamic> payload) {
     return value;
   }
 
-  return jsonEncode(normalize(payload));
+  return jsonEncode(normalize(comparable));
 }

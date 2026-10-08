@@ -12,6 +12,8 @@ const nextDaySummaryAlarmLimit = nextDaySummaryAlarmBase + 30;
 const maintenanceAlarmId = 2000000;
 const backgroundTestNotificationId = 2000001;
 const immediateTestNotificationId = 2000002;
+const strongTestNotificationId = 2000003;
+const backgroundStrongTestNotificationId = 2000004;
 
 bool isCourseReminderNotificationId(int id) {
   return (id >= classLeadAlarmBase && id < checkInAlarmLimit) ||

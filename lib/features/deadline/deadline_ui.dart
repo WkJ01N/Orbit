@@ -7,6 +7,8 @@ import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/deadline_text.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:uuid/uuid.dart';
+import 'package:orbit/features/archive/archive_actions.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 const deadlineLeadPresets = [10080, 4320, 1440, 180, 60, 30, 5];
 
@@ -185,6 +187,9 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
               leadMinutes: leads,
               courseKey: _courseKey.isEmpty ? null : _courseKey,
               completedAt: widget.deadline?.completedAt,
+              archivedAt: widget.deadline?.archivedAt,
+              archiveHidden: widget.deadline?.archiveHidden ?? false,
+              autoArchivePaused: widget.deadline?.autoArchivePaused ?? false,
             ),
           );
       ref.read(scheduleRefreshProvider.notifier).state++;
@@ -367,6 +372,16 @@ class _DeadlineDetails extends ConsumerWidget {
       ),
       actionsOverflowButtonSpacing: 8,
       actions: [
+        if (deadline.completed && !deadline.archived)
+          TextButton(
+            onPressed: () async {
+              if (await archiveDeadlineAction(context, ref, deadline) &&
+                  context.mounted) {
+                Navigator.pop(context);
+              }
+            },
+            child: Text(OrbitFeatureText.of(context).archive),
+          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(text.cancel),
@@ -406,6 +421,7 @@ class _DeadlineDetails extends ConsumerWidget {
             deadline.copyWith(
               completedAt: deadline.completed ? null : DateTime.now(),
               clearCompleted: deadline.completed,
+              clearArchived: deadline.completed,
             ),
           ),
           child: Text(deadline.completed ? text.reopen : text.complete),

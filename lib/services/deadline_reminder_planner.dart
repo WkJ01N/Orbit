@@ -11,7 +11,8 @@ List<ReminderAlarmSpec> buildDeadlineReminderSpecs({
 }) {
   final result = <ReminderAlarmSpec>[];
   for (final deadline in deadlines) {
-    if (deadline.deleted ||
+    if (deadline.archived ||
+        deadline.deleted ||
         deadline.completed ||
         !deadline.dueAt.isAfter(now)) {
       continue;

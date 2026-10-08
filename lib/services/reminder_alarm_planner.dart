@@ -1,4 +1,5 @@
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/reminder_settings.dart';
@@ -14,6 +15,8 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   required ReminderSettings settings,
   required DateTime now,
   required NotificationCopy copy,
+  List<CourseSession>? allSessions,
+  List<PeriodTimePlan> periodPlans = const [],
   Map<String, String> sessionAliases = const {},
   Map<String, List<String>> seriesMemberships = const {},
 }) {
@@ -22,7 +25,9 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   var checkInId = checkInAlarmBase;
 
   if (settings.enabled) {
-    for (final session in upcomingSessions) {
+    for (final session in upcomingSessions.where(
+      (s) => s.deletedAt == null && !s.archived,
+    )) {
       final reminderAt = session.startAt.subtract(
         Duration(minutes: settings.leadMinutes),
       );
@@ -43,15 +48,21 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
           notificationId: id,
           title: text.title,
           body: text.body,
+          courseName: session.courseName,
+          courseStartAt: session.startAt,
+          courseEndAt: session.endAt,
           payload: session.id,
           fireAt: reminderAt,
           strong: resolveStrongReminder(
             global: settings.strong,
             type: StrongReminderType.classLead,
             session: session,
+            dailySessions: allSessions ?? upcomingSessions,
+            periodPlans: periodPlans,
             aliases: sessionAliases,
             memberships: seriesMemberships,
           ),
+          localeTag: copy.deadlineText.locale.toLanguageTag(),
           stopLabel: copy.stopLabel,
           bigText: text.bigText,
         ),
@@ -63,7 +74,9 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   }
 
   if (settings.checkInReminderEnabled) {
-    for (final session in upcomingSessions) {
+    for (final session in upcomingSessions.where(
+      (s) => s.deletedAt == null && !s.archived,
+    )) {
       if (!session.startAt.isAfter(now)) {
         continue;
       }
@@ -80,15 +93,21 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
           notificationId: id,
           title: text.title,
           body: text.body,
+          courseName: session.courseName,
+          courseStartAt: session.startAt,
+          courseEndAt: session.endAt,
           payload: 'checkin_${session.id}',
           fireAt: session.startAt,
           strong: resolveStrongReminder(
             global: settings.strong,
             type: StrongReminderType.checkIn,
             session: session,
+            dailySessions: allSessions ?? upcomingSessions,
+            periodPlans: periodPlans,
             aliases: sessionAliases,
             memberships: seriesMemberships,
           ),
+          localeTag: copy.deadlineText.locale.toLanguageTag(),
           stopLabel: copy.stopLabel,
         ),
       );
@@ -111,7 +130,9 @@ List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
   Map<String, List<String>> seriesMemberships = const {},
 }) {
   return buildNextDaySummarySlots(
-        allSessions: allSessions,
+        allSessions: allSessions
+            .where((s) => !s.archived && s.deletedAt == null)
+            .toList(),
         settings: settings,
         now: now,
         copy: copy,
@@ -138,6 +159,7 @@ List<ReminderAlarmSpec> buildNextDaySummaryAlarmSpecs({
             aliases: sessionAliases,
             memberships: seriesMemberships,
           ),
+          localeTag: copy.deadlineText.locale.toLanguageTag(),
           stopLabel: copy.stopLabel,
         ),
       )

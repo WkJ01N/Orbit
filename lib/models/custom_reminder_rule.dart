@@ -13,6 +13,10 @@ enum ReminderStrength { inherit, normal, strong }
 
 enum StrongReminderType { classLead, checkIn, summary, custom }
 
+enum StrongDismissTask { arithmetic, sequence }
+
+enum FirstClassMode { firstPeriod, beforeTime }
+
 final _reminderRandom = Random.secure();
 String newReminderId() => List.generate(
   16,
@@ -40,6 +44,9 @@ class StrongReminderSettings {
     this.soundEnabled = true,
     this.vibrationEnabled = true,
     this.durationSeconds = 30,
+    this.dismissTask = StrongDismissTask.arithmetic,
+    this.prepareSeconds = 15,
+    this.answerSeconds = 30,
     this.sound = const ReminderSound(),
     this.windowsSound = 1,
     this.types = const {
@@ -51,7 +58,18 @@ class StrongReminderSettings {
     this.ruleIds,
     this.courseScope = ReminderCourseScope.all,
     this.courseKeys = const [],
+    this.onlyFirstClass = false,
+    this.firstClassMode = FirstClassMode.firstPeriod,
+    this.cutoffMinute = 720,
+    this.periodTimePlanId,
   });
+  final StrongDismissTask dismissTask;
+  final int prepareSeconds;
+  final int answerSeconds;
+  final bool onlyFirstClass;
+  final FirstClassMode firstClassMode;
+  final int cutoffMinute;
+  final String? periodTimePlanId;
   final bool enabled;
   final bool soundEnabled;
   final bool vibrationEnabled;
@@ -69,6 +87,9 @@ class StrongReminderSettings {
     bool? soundEnabled,
     bool? vibrationEnabled,
     int? durationSeconds,
+    StrongDismissTask? dismissTask,
+    int? prepareSeconds,
+    int? answerSeconds,
     ReminderSound? sound,
     int? windowsSound,
     Set<StrongReminderType>? types,
@@ -76,7 +97,21 @@ class StrongReminderSettings {
     bool allRules = false,
     ReminderCourseScope? courseScope,
     List<String>? courseKeys,
+    bool? onlyFirstClass,
+    FirstClassMode? firstClassMode,
+    int? cutoffMinute,
+    String? periodTimePlanId,
+    bool clearPeriodPlan = false,
   }) => StrongReminderSettings(
+    dismissTask: dismissTask ?? this.dismissTask,
+    prepareSeconds: prepareSeconds ?? this.prepareSeconds,
+    answerSeconds: answerSeconds ?? this.answerSeconds,
+    onlyFirstClass: onlyFirstClass ?? this.onlyFirstClass,
+    firstClassMode: firstClassMode ?? this.firstClassMode,
+    cutoffMinute: cutoffMinute ?? this.cutoffMinute,
+    periodTimePlanId: clearPeriodPlan
+        ? null
+        : periodTimePlanId ?? this.periodTimePlanId,
     enabled: enabled ?? this.enabled,
     soundEnabled: soundEnabled ?? this.soundEnabled,
     vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
@@ -89,6 +124,13 @@ class StrongReminderSettings {
     courseKeys: courseKeys ?? this.courseKeys,
   );
   Map<String, dynamic> toJson() => {
+    'dismissTask': dismissTask.name,
+    'prepareSeconds': prepareSeconds,
+    'answerSeconds': answerSeconds,
+    'onlyFirstClass': onlyFirstClass,
+    'firstClassMode': firstClassMode.name,
+    'cutoffMinute': cutoffMinute,
+    'periodTimePlanId': periodTimePlanId,
     'enabled': enabled,
     'soundEnabled': soundEnabled,
     'vibrationEnabled': vibrationEnabled,
@@ -104,6 +146,32 @@ class StrongReminderSettings {
     final sound = json['sound'];
     final audio = json['soundEnabled'] != false;
     return StrongReminderSettings(
+      dismissTask: StrongDismissTask.values.firstWhere(
+        (v) => v.name == json['dismissTask'],
+        orElse: () => StrongDismissTask.arithmetic,
+      ),
+      prepareSeconds:
+          (json['prepareSeconds'] is num &&
+                      (json['prepareSeconds'] as num).isFinite
+                  ? (json['prepareSeconds'] as num).toInt()
+                  : 15)
+              .clamp(5, 60),
+      answerSeconds:
+          (json['answerSeconds'] is num &&
+                      (json['answerSeconds'] as num).isFinite
+                  ? (json['answerSeconds'] as num).toInt()
+                  : 30)
+              .clamp(10, 120),
+      onlyFirstClass: json['onlyFirstClass'] == true,
+      firstClassMode: FirstClassMode.values.firstWhere(
+        (m) => m.name == json['firstClassMode'],
+        orElse: () => FirstClassMode.firstPeriod,
+      ),
+      cutoffMinute: ((json['cutoffMinute'] as num?)?.toInt() ?? 720).clamp(
+        0,
+        1439,
+      ),
+      periodTimePlanId: json['periodTimePlanId'] as String?,
       enabled: json['enabled'] == true,
       types: json['types'] is List
           ? StrongReminderType.values

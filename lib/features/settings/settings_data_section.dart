@@ -12,6 +12,9 @@ import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/import/import_templates_page.dart';
 import 'package:orbit/features/import/import_plan_editor.dart';
 import 'package:orbit/features/settings/account_sync_page.dart';
+import 'package:orbit/features/archive/archive_page.dart';
+import 'package:orbit/features/archive/archive_actions.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 class SettingsDataSection extends ConsumerWidget {
   const SettingsDataSection({super.key});
@@ -70,6 +73,21 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.settingsBackupGroup,
           children: const [_ExportBackupSection()],
+        ),
+        SettingsGroup(
+          title: OrbitFeatureText.of(context).archive,
+          children: [
+            ListTile(
+              title: Text(OrbitFeatureText.of(context).archive),
+              leading: const Icon(Icons.archive_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const ArchivePage()),
+              ),
+            ),
+            const _ArchiveEndedCoursesTile(),
+          ],
         ),
         SettingsGroup(
           title: l10n.trashTitle,
@@ -196,6 +214,47 @@ String _accountSyncSubtitle(BuildContext context) {
           locale.countryCode == 'TW'
       ? '選擇性地在不同裝置間同步課表'
       : '可选地在不同设备间同步课表';
+}
+
+class _ArchiveEndedCoursesTile extends ConsumerStatefulWidget {
+  const _ArchiveEndedCoursesTile();
+
+  @override
+  ConsumerState<_ArchiveEndedCoursesTile> createState() =>
+      _ArchiveEndedCoursesTileState();
+}
+
+class _ArchiveEndedCoursesTileState
+    extends ConsumerState<_ArchiveEndedCoursesTile> {
+  bool _busy = false;
+
+  Future<void> _archive() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await archiveAllEndedCoursesAction(context, ref);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = OrbitFeatureText.of(context);
+    return ListTile(
+      title: Text(text.archiveAllEnded),
+      subtitle: Text(text.archiveAllEndedHint),
+      leading: const Icon(Icons.inventory_2_outlined),
+      trailing: _busy
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: _busy ? null : _archive,
+    );
+  }
 }
 
 class _ExportBackupSection extends ConsumerStatefulWidget {

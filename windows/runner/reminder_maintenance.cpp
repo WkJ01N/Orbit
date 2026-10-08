@@ -1,4 +1,5 @@
 #include "reminder_maintenance.h"
+#include "strong_reminders.h"
 #include <flutter/standard_method_codec.h>
 #include <taskschd.h>
 #include <comdef.h>
@@ -89,6 +90,33 @@ std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> CreateReminderM
   auto channel=std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(messenger,
     "com.must.orbit.orbit/windows_reminders",&flutter::StandardMethodCodec::GetInstance());
   channel->SetMethodCallHandler([window,finish_headless](const auto& call, auto result) {
+    if(call.method_name().rfind("strong",0)==0 || call.method_name()=="scheduleStrong" || call.method_name()=="scheduleStrongBatch" || call.method_name()=="cancelStrongScheduled" || call.method_name()=="stopStrongTests") {
+        std::string argument;
+        if(call.arguments()) {
+          if(auto text=std::get_if<std::string>(call.arguments())) argument=*text;
+          else if(auto map=std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto found=map->find(flutter::EncodableValue("answer"));if(found!=map->end()) {
+              if(auto n=std::get_if<int32_t>(&found->second))argument=std::to_string(*n);
+              else if(auto wideNumber=std::get_if<int64_t>(&found->second))argument=std::to_string(*wideNumber);
+            }
+          }
+        }
+      const auto command=call.method_name();
+      std::thread([command,argument,window,result=std::move(result)]() mutable {
+        CoInitializeEx(nullptr,COINIT_MULTITHREADED);
+        std::string state,error;
+        try { state=StrongCommand(command,argument); }
+        catch(const std::exception& e){error=e.what();}
+        catch(...){error="Strong reminder operation failed";}
+        CoUninitialize();
+        auto completion=new std::function<void()>([result=std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result)),state,error]() {
+          if(!error.empty()) result->Error("strong_native",error);
+          else if(state.empty())result->Success();else result->Success(flutter::EncodableValue(state));
+        });
+        if(!PostMessageW(window,WM_APP+51,0,reinterpret_cast<LPARAM>(completion)))delete completion;
+      }).detach();
+      return;
+    }
     if(call.method_name()=="finishHeadless") {finish_headless();result->Success();return;}
     if (call.method_name()=="registerMaintenance" || call.method_name()=="deliveredIds" || call.method_name()=="notificationsEnabled") {
       const auto operation=call.method_name();

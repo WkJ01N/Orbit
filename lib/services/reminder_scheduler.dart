@@ -1,3 +1,4 @@
+import 'package:orbit/services/strong_session_service.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -9,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:orbit/core/timezone_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/notification_copy.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
@@ -37,6 +39,7 @@ class ReminderScheduler {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  Timer? _strongTestTimer;
   Future<void>? _initializing;
   final WindowsNotificationWorker _windows;
   AppDatabase? database;
@@ -199,6 +202,7 @@ class ReminderScheduler {
     required ReminderSettings settings,
     required NotificationCopy copy,
     bool requestPermissions = true,
+    List<PeriodTimePlan> periodPlans = const [],
   }) {
     _rescheduleChain = _rescheduleChain
         .catchError((Object error, StackTrace stackTrace) {
@@ -213,6 +217,7 @@ class ReminderScheduler {
             settings: settings,
             copy: copy,
             requestPermissions: requestPermissions,
+            periodPlans: periodPlans,
           ),
         );
     return _rescheduleChain;
@@ -225,7 +230,14 @@ class ReminderScheduler {
     required ReminderSettings settings,
     required NotificationCopy copy,
     required bool requestPermissions,
+    required List<PeriodTimePlan> periodPlans,
   }) async {
+    upcomingSessions = upcomingSessions
+        .where((s) => !s.archived && s.deletedAt == null)
+        .toList();
+    allSessions = allSessions
+        .where((s) => !s.archived && s.deletedAt == null)
+        .toList();
     if (requestPermissions) {
       await initialize(copy: copy);
     } else {
@@ -256,6 +268,8 @@ class ReminderScheduler {
     final specs = <ReminderAlarmSpec>[
       ...buildReminderAlarmSpecs(
         upcomingSessions: upcomingSessions,
+        allSessions: allSessions,
+        periodPlans: periodPlans,
         settings: settings,
         now: now,
         copy: copy,
@@ -312,6 +326,7 @@ class ReminderScheduler {
       }
       final custom = planCustomReminders(
         sessions: allSessions,
+        periodPlans: periodPlans,
         rules: settings.customRules,
         strong: settings.strong,
         now: now,
@@ -323,6 +338,7 @@ class ReminderScheduler {
         originalLabel: copy.originalLabel,
         deliveredLabel: copy.deliveredLabel,
         acknowledgeLabel: copy.acknowledgeLabel,
+        localeTag: copy.deadlineText.locale.toLanguageTag(),
         stopLabel: copy.stopLabel,
         weekdayNames: copy.weekdayNames,
       );
@@ -373,6 +389,8 @@ class ReminderScheduler {
               session: allSessions
                   .where((s) => (aliases[s.id] ?? s.id) == spec.sessionId)
                   .firstOrNull,
+              dailySessions: allSessions,
+              periodPlans: periodPlans,
               aliases: aliases,
               memberships: seriesMemberships,
             ).toJson(),
@@ -415,12 +433,35 @@ class ReminderScheduler {
     final queuedCustom = <int>{};
     var failed = 0;
     var usedFallback = false;
+    final strongBatch = <int>{};
+    if (Platform.isWindows) {
+      final strongSpecs = specs.where((s) => s.strong.enabled).toList();
+      if (strongSpecs.isNotEmpty) {
+        try {
+          await StrongSessionService.windows.invokeMethod<String>(
+            'scheduleStrongBatch',
+            jsonEncode([
+              for (final spec in strongSpecs) _windowsStrongPayload(spec),
+            ]),
+          );
+          strongBatch.addAll(strongSpecs.map((s) => s.notificationId));
+        } on MissingPluginException {
+          /* Injected unit-test backends schedule each spec below. */
+        } catch (e) {
+          debugPrint(
+            'Strong reminder batch failed; retrying individual reminders: $e',
+          );
+        }
+      }
+    }
     for (final spec in specs) {
-      final attempt = await _scheduleSpec(
-        spec,
-        copy,
-        exactAlarmsEnabled: exactAlarmsEnabled,
-      );
+      final attempt = strongBatch.contains(spec.notificationId)
+          ? const _ScheduleAttempt(scheduled: true)
+          : await _scheduleSpec(
+              spec,
+              copy,
+              exactAlarmsEnabled: exactAlarmsEnabled,
+            );
       if (attempt.scheduled) {
         accepted++;
         queuedCustom.add(spec.notificationId);
@@ -452,6 +493,97 @@ class ReminderScheduler {
       failed: verifiedFailed,
       usedInexactFallback: usedFallback,
     );
+  }
+
+  Future<ReminderTestResult> testStrongReminder({
+    required String title,
+    required String body,
+    required NotificationCopy copy,
+    required StrongReminderSettings strong,
+    bool background = false,
+  }) async {
+    try {
+      await _prepare(copy);
+      final permission = await queryPermissionStatus();
+      if (!permission.notificationsEnabled) {
+        return const ReminderTestResult.failure(
+          ReminderTestFailure.notificationsDenied,
+        );
+      }
+      if (background && Platform.isAndroid && !permission.exactAlarmsEnabled) {
+        return const ReminderTestResult.failure(
+          ReminderTestFailure.exactAlarmsDenied,
+        );
+      }
+      await stopStrongTests();
+      final delay = background
+          ? const Duration(minutes: 1)
+          : const Duration(seconds: 1);
+      final at = DateTime.now().add(delay);
+      final id = background
+          ? backgroundStrongTestNotificationId
+          : strongTestNotificationId;
+      final spec = ReminderAlarmSpec(
+        alarmId: id,
+        notificationId: id,
+        title: title,
+        body: body,
+        payload: 'test_strong_reminder',
+        fireAt: at,
+        strong: strong.copyWith(enabled: true),
+        localeTag: copy.deadlineText.locale.toLanguageTag(),
+        stopLabel: copy.stopLabel,
+      );
+      final bool accepted;
+      if (Platform.isAndroid && !background) {
+        accepted = await AndroidNativeReminderService.instance.showStrongTest(
+          spec,
+          copy,
+        );
+      } else {
+        accepted = (await _scheduleSpec(
+          spec,
+          copy,
+          exactAlarmsEnabled: permission.exactAlarmsEnabled,
+          allowInexactFallback: !background,
+          rescheduleOnReboot: false,
+        )).scheduled;
+      }
+      if (!accepted) {
+        return const ReminderTestResult.failure(
+          ReminderTestFailure.schedulingFailed,
+        );
+      }
+      return ReminderTestResult.success(fireAt: background ? at : null);
+    } catch (error) {
+      debugPrint('Strong reminder test failed: $error');
+      return const ReminderTestResult.failure(
+        ReminderTestFailure.schedulingFailed,
+      );
+    }
+  }
+
+  Future<void> stopStrongTests() async {
+    _strongTestTimer?.cancel();
+    _strongTestTimer = null;
+    if (Platform.isWindows) {
+      try {
+        await StrongSessionService.windows.invokeMethod<String>(
+          'stopStrongTests',
+        );
+      } on MissingPluginException {
+        /* Mock backend. */
+      }
+    }
+    await ensurePluginInitialized();
+    for (final id in [
+      strongTestNotificationId,
+      backgroundStrongTestNotificationId,
+    ]) {
+      await _cancelNotification(id);
+      await AndroidNativeReminderService.instance.cancel(id);
+    }
+    await AndroidNativeReminderService.instance.stopStrongTests();
   }
 
   Future<ReminderTestResult> showImmediateTest({
@@ -569,6 +701,15 @@ class ReminderScheduler {
 
   Future<void> cancelScheduledCourseReminders() async {
     await ensurePluginInitialized();
+    if (Platform.isWindows) {
+      try {
+        await StrongSessionService.windows.invokeMethod<String>(
+          'cancelStrongScheduled',
+        );
+      } on MissingPluginException {
+        /* Mock backend. */
+      }
+    }
     if (Platform.isAndroid) {
       await AndroidNativeReminderService.instance.cancelCourseReminders();
     }
@@ -596,12 +737,46 @@ class ReminderScheduler {
 
   Future<void> cancelAllReminders() => cancelScheduledCourseReminders();
 
-  Future<void> _cancelNotification(int id) =>
-      Platform.isWindows ? _windows.cancel(id) : _plugin.cancel(id);
+  Future<void> _cancelNotification(int id) async {
+    if (Platform.isWindows) {
+      try {
+        await StrongSessionService.windows.invokeMethod<String>(
+          'strongCancel',
+          '$id',
+        );
+      } on MissingPluginException {
+        /* Mock backend. */
+      }
+      await _windows.cancel(id);
+    } else {
+      await _plugin.cancel(id);
+    }
+  }
 
-  Future<List<int>> _pendingNotificationIds() async => Platform.isWindows
-      ? await _windows.pendingIds()
-      : (await _plugin.pendingNotificationRequests()).map((n) => n.id).toList();
+  Future<List<int>> _pendingNotificationIds() async {
+    if (!Platform.isWindows) {
+      return (await _plugin.pendingNotificationRequests())
+          .map((n) => n.id)
+          .toList();
+    }
+    final ids = await _windows.pendingIds();
+    try {
+      final raw = await StrongSessionService.windows.invokeMethod<String>(
+        'strongPendingIds',
+      );
+      if (raw != null) ids.addAll((jsonDecode(raw) as List).cast<int>());
+    } on MissingPluginException {
+      /* Mock backend. */
+    }
+    return ids.toSet().toList();
+  }
+
+  Map<String, dynamic> _windowsStrongPayload(ReminderAlarmSpec spec) => {
+    ...spec.toJson(),
+    'fireAtMillis': spec.fireAt.millisecondsSinceEpoch,
+    'key': '${spec.alarmId}:${spec.fireAt.millisecondsSinceEpoch}',
+    'xml': windowsReminderXml(spec),
+  };
 
   Future<_ScheduleAttempt> _scheduleSpec(
     ReminderAlarmSpec spec,
@@ -626,6 +801,17 @@ class ReminderScheduler {
 
     try {
       if (Platform.isWindows) {
+        if (spec.strong.enabled) {
+          try {
+            await StrongSessionService.windows.invokeMethod<String>(
+              'scheduleStrong',
+              jsonEncode(_windowsStrongPayload(spec)),
+            );
+            return const _ScheduleAttempt(scheduled: true);
+          } on MissingPluginException {
+            /* Unit-test backends use the worker below. */
+          }
+        }
         await _windows.schedule(spec);
         return const _ScheduleAttempt(scheduled: true);
       }

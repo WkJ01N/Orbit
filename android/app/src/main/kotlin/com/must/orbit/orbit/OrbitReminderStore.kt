@@ -120,6 +120,20 @@ object OrbitReminderStore {
         } finally { db.endTransaction() }
     }
 
+    fun mutateStrong(context: Context, change: (JSONObject?) -> JSONObject?): JSONObject? = open(context).use { db ->
+        db.beginTransaction()
+        try {
+            val current = db.rawQuery("SELECT value FROM metadata WHERE key='strong_session'", null).use { c ->
+                if (c.moveToFirst()) JSONObject(c.getString(0)) else null
+            }
+            val before = current?.toString()
+            val next = change(current)
+            if (next != null && before != next.toString()) db.execSQL("INSERT OR REPLACE INTO metadata(key,value) VALUES('strong_session',?)", arrayOf(next.toString()))
+            db.setTransactionSuccessful()
+            next
+        } finally { db.endTransaction() }
+    }
+
     fun appendDiagnostic(
         context: Context,
         stage: String,

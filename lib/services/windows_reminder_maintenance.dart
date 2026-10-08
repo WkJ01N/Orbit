@@ -73,6 +73,8 @@ class WindowsReminderMaintenance {
       settings: settings,
       copy: copy,
       requestPermissions: false,
+      deadlines: await database.getDeadlines(),
+      periodPlans: (await service.loadImportConfiguration()).periodTimes,
     );
     final prefs = await SharedPreferences.getInstance();
     if (ReminderScheduler.shared.lastScheduleFailureCount > 0) {
@@ -115,6 +117,7 @@ class WindowsReminderMaintenance {
     if (payload == null) return null;
     if (payload.startsWith('{')) {
       final data = jsonDecode(payload) as Map<String, dynamic>;
+      if (data['action'] == 'strong') return payload;
       if (data['action'] == 'ack') {
         await ReminderScheduler.shared.acknowledgeOccurrence(
           database,

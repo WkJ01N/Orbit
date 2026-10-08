@@ -1,6 +1,8 @@
+import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
+import 'package:orbit/models/orbit_feature_text.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +12,7 @@ import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/services/reminder_audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/providers/import_providers.dart';
 import 'package:orbit/features/settings/reminder_course_picker.dart';
 import 'package:orbit/core/widgets/settings_group.dart';
 
@@ -149,11 +152,7 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 setState(() => _allowPop = true);
                 Navigator.pop(
                   context,
-                  _value.copyWith(
-                    durationSeconds: Platform.isAndroid
-                        ? int.parse(_duration.text)
-                        : _value.durationSeconds,
-                  ),
+                  _value.copyWith(durationSeconds: int.parse(_duration.text)),
                 );
               },
               child: Text(l.reminderSave),
@@ -166,6 +165,183 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
             padding: const EdgeInsets.all(20),
             children: [
               Text(l.reminderStrongDescription),
+              SettingsGroup(
+                title: WakeText.of(context).task,
+                children: [
+                  DropdownButtonFormField<StrongDismissTask>(
+                    initialValue: _value.dismissTask,
+                    isExpanded: true,
+                    items: [
+                      DropdownMenuItem(
+                        value: StrongDismissTask.arithmetic,
+                        child: Text(WakeText.of(context).arithmetic),
+                      ),
+                      DropdownMenuItem(
+                        value: StrongDismissTask.sequence,
+                        child: Text(WakeText.of(context).sequence),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(
+                          () => _value = _value.copyWith(dismissTask: v),
+                        );
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: '${_value.prepareSeconds}',
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: WakeText.of(context).prepare,
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      return n == null || n < 5 || n > 60 ? '5–60' : null;
+                    },
+                    onChanged: (v) {
+                      final n = int.tryParse(v);
+                      if (n != null) {
+                        setState(
+                          () => _value = _value.copyWith(
+                            prepareSeconds: n.clamp(5, 60),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: '${_value.answerSeconds}',
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: WakeText.of(context).answer,
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      return n == null || n < 10 || n > 120 ? '10–120' : null;
+                    },
+                    onChanged: (v) {
+                      final n = int.tryParse(v);
+                      if (n != null) {
+                        setState(
+                          () => _value = _value.copyWith(
+                            answerSeconds: n.clamp(10, 120),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(WakeText.of(context).timing),
+                  ),
+                ],
+              ),
+
+              if (widget.showTargets) ...[
+                SwitchListTile(
+                  title: Text(OrbitFeatureText.of(context).onlyFirst),
+                  value: _value.onlyFirstClass,
+                  onChanged: (v) => setState(
+                    () => _value = _value.copyWith(onlyFirstClass: v),
+                  ),
+                ),
+                if (_value.onlyFirstClass) ...[
+                  DropdownButtonFormField<FirstClassMode>(
+                    isExpanded: true,
+                    initialValue: _value.firstClassMode,
+                    items: [
+                      for (final m in FirstClassMode.values)
+                        DropdownMenuItem(
+                          value: m,
+                          child: Text(
+                            m == FirstClassMode.firstPeriod
+                                ? OrbitFeatureText.of(context).firstPeriod
+                                : OrbitFeatureText.of(context).beforeTime,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (m) {
+                      if (m != null) {
+                        setState(
+                          () => _value = _value.copyWith(firstClassMode: m),
+                        );
+                      }
+                    },
+                  ),
+                  ListTile(
+                    title: Text(OrbitFeatureText.of(context).cutoff),
+                    trailing: Text(
+                      TimeOfDay(
+                        hour: _value.cutoffMinute ~/ 60,
+                        minute: _value.cutoffMinute % 60,
+                      ).format(context),
+                    ),
+                    onTap: () async {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(
+                          hour: _value.cutoffMinute ~/ 60,
+                          minute: _value.cutoffMinute % 60,
+                        ),
+                      );
+                      if (time != null && mounted) {
+                        setState(
+                          () => _value = _value.copyWith(
+                            cutoffMinute: time.hour * 60 + time.minute,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  if (_value.firstClassMode == FirstClassMode.firstPeriod)
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue:
+                          (ref
+                                      .watch(importConfigurationProvider)
+                                      .valueOrNull
+                                      ?.periodTimes ??
+                                  [])
+                              .any((p) => p.id == _value.periodTimePlanId)
+                          ? _value.periodTimePlanId
+                          : '',
+                      decoration: InputDecoration(
+                        labelText: OrbitFeatureText.of(context).plan,
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: '',
+                          child: Text(OrbitFeatureText.of(context).automatic),
+                        ),
+                        for (final p
+                            in ref
+                                    .watch(importConfigurationProvider)
+                                    .valueOrNull
+                                    ?.periodTimes ??
+                                [])
+                          DropdownMenuItem(
+                            value: p.id,
+                            child: Text(
+                              p.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (id) => setState(
+                        () => _value = _value.copyWith(
+                          periodTimePlanId: id,
+                          clearPeriodPlan: id == '',
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(OrbitFeatureText.of(context).firstHint),
+                  ),
+                ],
+              ],
               if (widget.showTargets) ...[
                 SettingsGroup(
                   horizontalMargin: 0,
@@ -308,6 +484,18 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 ),
                 Text(l.strongRuleOverrideNotice),
               ],
+              if (Platform.isWindows)
+                TextFormField(
+                  controller: _duration,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: WakeText.of(context).roundDuration,
+                  ),
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    return n == null || n < 5 || n > 300 ? '5–300' : null;
+                  },
+                ),
               if (Platform.isAndroid) ...[
                 SwitchListTile(
                   title: Text(l.reminderSound),
@@ -331,7 +519,9 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 ),
                 TextFormField(
                   controller: _duration,
-                  decoration: InputDecoration(labelText: l.reminderDuration),
+                  decoration: InputDecoration(
+                    labelText: WakeText.of(context).roundDuration,
+                  ),
                   keyboardType: TextInputType.number,
                   validator: (s) {
                     final n = int.tryParse(s ?? '');

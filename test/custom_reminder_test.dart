@@ -250,7 +250,9 @@ void main() {
       final xml = windowsReminderXml(spec);
       expect(xml, contains('A&amp;B'));
       expect(xml, contains('&lt;course&gt;'));
-      expect(xml, contains('activationType="system"'));
+      expect(xml, contains('activationType="foreground"'));
+      expect(xml, contains('Open and answer'));
+      expect(xml, isNot(contains('arguments="dismiss"')));
       expect(xml, contains('loop="true"'));
     },
   );
@@ -340,7 +342,7 @@ void main() {
         );
         final backup = service.decodeBackup(raw);
         expect(backup.audio.length, 1);
-        expect(backup.version, 6);
+        expect(backup.version, ScheduleBackupService.backupVersion);
         expect(backup.settings!.reminders.customRules.single.courseKeys, [
           'new',
         ]);

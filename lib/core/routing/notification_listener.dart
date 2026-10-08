@@ -159,6 +159,10 @@ class _OrbitNotificationListenerState
   Future<void> _handlePayload(BuildContext context, String payload) async {
     if (payload.startsWith('{')) {
       final data = jsonDecode(payload) as Map<String, dynamic>;
+      if (data['action'] == 'strong') {
+        if (Platform.isWindows) await showMainWindow();
+        return;
+      }
       if (data['action'] == 'ack') {
         await ReminderScheduler.shared.acknowledgeOccurrence(
           ref.read(appDatabaseProvider),

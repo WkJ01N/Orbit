@@ -1,5 +1,6 @@
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,13 +9,18 @@ import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/android_native_reminder_service.dart';
 
-class DebugPage extends ConsumerWidget {
+class DebugPage extends ConsumerStatefulWidget {
   const DebugPage({super.key, this.showAndroidTools});
 
   final bool? showAndroidTools;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DebugPage> createState() => _DebugPageState();
+}
+
+class _DebugPageState extends ConsumerState<DebugPage> {
+  bool _testing = false;
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.debugTitle)),
@@ -22,19 +28,39 @@ class DebugPage extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           ListTile(
+            title: Text(OrbitFeatureText.of(context).strongTest),
+            subtitle: Text(OrbitFeatureText.of(context).testHint),
+            leading: const Icon(Icons.alarm),
+            enabled: !_testing,
+            onTap: () => _strongTest(context, false),
+          ),
+          if (widget.showAndroidTools ?? Platform.isAndroid)
+            ListTile(
+              title: Text(OrbitFeatureText.of(context).backgroundStrongTest),
+              leading: const Icon(Icons.alarm_on),
+              enabled: !_testing,
+              onTap: () => _strongTest(context, true),
+            ),
+          ListTile(
+            title: Text(OrbitFeatureText.of(context).stopTest),
+            leading: const Icon(Icons.stop_circle_outlined),
+            enabled: !_testing,
+            onTap: () => _stopTests(context),
+          ),
+          ListTile(
             title: Text(l10n.androidTestImmediateReminder),
             subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
             leading: const Icon(Icons.notifications_active_outlined),
             onTap: () => _showImmediateTestReminder(context, ref),
           ),
-          if (showAndroidTools ?? Platform.isAndroid)
+          if (widget.showAndroidTools ?? Platform.isAndroid)
             ListTile(
               title: Text(l10n.androidTestBackgroundReminder),
               subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
               leading: const Icon(Icons.alarm_on_outlined),
               onTap: () => _scheduleBackgroundTestReminder(context, ref),
             ),
-          if (showAndroidTools ?? Platform.isAndroid)
+          if (widget.showAndroidTools ?? Platform.isAndroid)
             ListTile(
               title: Text(l10n.androidReminderDiagnostics),
               leading: const Icon(Icons.fact_check_outlined),
@@ -44,6 +70,68 @@ class DebugPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _strongTest(BuildContext context, bool background) async {
+    if (_testing) return;
+    setState(() => _testing = true);
+    final text = OrbitFeatureText.of(context);
+    final l = AppLocalizations.of(context)!;
+    try {
+      final settings = await ref.read(reminderSettingsProvider.future);
+      final result = await ref
+          .read(reminderSchedulerProvider)
+          .testStrongReminder(
+            title: background ? text.backgroundStrongTest : text.strongTest,
+            body: text.testHint,
+            copy: notificationCopyFor(ref.read(localeProvider)),
+            strong: settings.strong,
+            background: background,
+          );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          content: Text(
+            !result.succeeded
+                ? _failureMessage(l, result.failure)
+                : background
+                ? l.androidTestBackgroundReminderScheduledAt(
+                    TimeOfDay.fromDateTime(result.fireAt!).format(context),
+                  )
+                : text.testShown,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showAppSnackBar(SnackBar(content: Text(text.failed)));
+      }
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  Future<void> _stopTests(BuildContext context) async {
+    if (_testing) return;
+    setState(() => _testing = true);
+    try {
+      await ref.read(reminderSchedulerProvider).stopStrongTests();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(OrbitFeatureText.of(context).testStopped)),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(OrbitFeatureText.of(context).failed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
   }
 
   Future<void> _showReminderDiagnostics(BuildContext context) async {

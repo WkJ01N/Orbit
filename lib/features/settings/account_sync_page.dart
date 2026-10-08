@@ -1,3 +1,6 @@
+import 'package:orbit/providers/reminder_providers.dart';
+import 'package:orbit/features/settings/sync_content_page.dart';
+import 'package:orbit/models/sync_update_text.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -193,6 +196,41 @@ class _SignedInBody extends ConsumerWidget {
             ),
           ),
         const Divider(),
+        ListTile(
+          leading: const Icon(Icons.tune),
+          title: Text(SyncUpdateText.of(context).content),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(builder: (_) => const SyncContentPage()),
+          ),
+        ),
+        FutureBuilder<Map<String, dynamic>>(
+          future: ref
+              .read(settingsServiceProvider)
+              .loadLocalJson('sync_sound_reselect'),
+          builder: (context, snapshot) => snapshot.data?['required'] == true
+              ? ListTile(
+                  leading: const Icon(Icons.volume_up_outlined),
+                  title: Text(SyncUpdateText.of(context).soundHint),
+                )
+              : const SizedBox.shrink(),
+        ),
+        FutureBuilder(
+          future: ref.read(syncScopeServiceProvider).pendingCategories(),
+          builder: (context, snapshot) => snapshot.data?.isNotEmpty == true
+              ? ListTile(
+                  leading: const Icon(Icons.merge),
+                  title: Text(SyncUpdateText.of(context).preview),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SyncContentPage(),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
         const _AutoSyncSection(),
         const Divider(),
         ListTile(

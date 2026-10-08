@@ -6,9 +6,12 @@
 #include "flutter_window.h"
 #include "single_instance.h"
 #include "utils.h"
+#include "strong_reminders.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  if (std::wstring(command_line).find(L"--strong-self-test") != std::wstring::npos) return RunStrongReminderSelfTest();
+  if (std::wstring(command_line).find(L"--strong-worker") != std::wstring::npos) return RunStrongReminderWorker();
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
@@ -21,6 +24,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments = GetCommandLineArguments();
   const bool maintenance=std::find(command_line_arguments.begin(),command_line_arguments.end(),"--reminder-maintenance")!=command_line_arguments.end();
   const bool notification_action=std::find(command_line_arguments.begin(),command_line_arguments.end(),"--notification-action")!=command_line_arguments.end();
+
+  if (!maintenance) OpenStrongReminder();
 
   if (!AcquireSingleInstanceMutex()) {
     if(maintenance) ForwardReminderMaintenance();

@@ -37,7 +37,7 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 6;
+  static const backupVersion = 8;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
@@ -301,6 +301,7 @@ class ScheduleBackupService {
 
   Map<String, dynamic> _sessionToJson(CourseSession session) {
     return {
+      ...session.featurePayload,
       'id': session.id,
       'classType': session.classType,
       'room': session.room,
@@ -328,6 +329,14 @@ class ScheduleBackupService {
         : <String>[];
 
     return CourseSession(
+      archivedAt: json['archivedAt'] == null
+          ? null
+          : DateTime.parse(json['archivedAt'] as String).toLocal(),
+      archiveHidden: json['archiveHidden'] == true,
+      autoArchivePaused: json['autoArchivePaused'] == true,
+      linkedCourseKey: json['linkedCourseKey'] as String?,
+      startPeriod: json['startPeriod'] as int?,
+      periodTimePlanId: json['periodTimePlanId'] as String?,
       id: json['id'] as String,
       classType: json['classType'] as String? ?? '',
       room: json['room'] as String,

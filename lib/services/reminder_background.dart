@@ -30,6 +30,9 @@ Future<void> reminderMaintenanceCallback() async {
       settings: settings,
       copy: copy,
       requestPermissions: false,
+      deadlines: await database.getDeadlines(),
+      periodPlans:
+          (await settingsService.loadImportConfiguration()).periodTimes,
     );
     ReminderScheduler.shared.markRescheduleSuccess();
   } catch (error, stackTrace) {

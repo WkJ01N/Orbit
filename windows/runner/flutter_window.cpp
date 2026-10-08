@@ -1,3 +1,4 @@
+#include "strong_reminders.h"
 #include "flutter_window.h"
 
 #include <optional>
@@ -57,6 +58,7 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if(message==WM_ACTIVATE && LOWORD(wparam)!=WA_INACTIVE && !reminder_headless_) OpenStrongReminder();
   if(message==GetShowExistingInstanceMessage() && reminder_headless_) {
     reminder_channel_->InvokeMethod("showAfterMaintenance",nullptr);
     return 0;

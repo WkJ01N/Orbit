@@ -1,5 +1,6 @@
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/deadline.dart';
+import 'package:orbit/models/archive_settings.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/account_sync.dart';
@@ -23,7 +24,7 @@ class AppDatabase {
   static Future<AppDatabase> open(String databasePath) async {
     final db = await openDatabase(
       p.join(databasePath, 'orbit.db'),
-      version: 7,
+      version: 9,
       onCreate: (database, version) async {
         await _createSchema(database);
       },
@@ -31,6 +32,7 @@ class AppDatabase {
         await _createReminderSchema(database);
         await _createSyncSchema(database);
         await _createDeadlineSchema(database);
+        await _createStrongSchema(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -55,6 +57,8 @@ class AppDatabase {
         if (oldVersion < 5) await _createReminderSchema(database);
         if (oldVersion < 6) await _createSyncSchema(database);
         if (oldVersion < 7) await _createDeadlineSchema(database);
+        if (oldVersion < 8) await _createArchiveSchema(database);
+        if (oldVersion < 9) await _createStrongSchema(database);
       },
     );
     return AppDatabase(db);
@@ -93,6 +97,163 @@ class AppDatabase {
     await _createReminderSchema(database);
     await _createSyncSchema(database);
     await _createDeadlineSchema(database);
+    await _createArchiveSchema(database);
+    await _createStrongSchema(database);
+  }
+
+  static Future<void> _createStrongSchema(Database database) async {
+    await database.execute(
+      'CREATE TABLE IF NOT EXISTS strong_reminder_sessions (id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, state TEXT NOT NULL)',
+    );
+    await database.execute(
+      'CREATE INDEX IF NOT EXISTS idx_strong_session_expiry ON strong_reminder_sessions(expires_at)',
+    );
+  }
+
+  Future<void> saveStrongSession(
+    String id,
+    int expiry,
+    Map<String, dynamic> state,
+  ) async {
+    await _db.insert('strong_reminder_sessions', {
+      'id': id,
+      'expires_at': expiry,
+      'state': jsonEncode(state),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<Map<String, dynamic>>> strongSessions() async =>
+      (await _db.query('strong_reminder_sessions', orderBy: 'expires_at DESC'))
+          .map(
+            (row) => Map<String, dynamic>.from(
+              jsonDecode(row['state'] as String) as Map,
+            ),
+          )
+          .toList();
+  Future<void> pruneStrongSessions(int before) async => _db.delete(
+    'strong_reminder_sessions',
+    where: 'expires_at < ?',
+    whereArgs: [before],
+  );
+
+  static Future<void> _createArchiveSchema(Database database) async {
+    for (final table in ['course_sessions', 'deadlines']) {
+      final columns = await database.rawQuery('PRAGMA table_info($table)');
+      final names = columns.map((c) => c['name']).toSet();
+      final additions = {
+        'archived_at': 'TEXT',
+        'archive_hidden': 'INTEGER NOT NULL DEFAULT 0',
+        'auto_archive_paused': 'INTEGER NOT NULL DEFAULT 0',
+        if (table == 'course_sessions') ...{
+          'linked_course_key': 'TEXT',
+          'start_period': 'INTEGER',
+          'period_time_plan_id': 'TEXT',
+        },
+      };
+      for (final entry in additions.entries) {
+        if (!names.contains(entry.key)) {
+          await database.execute(
+            'ALTER TABLE $table ADD COLUMN ${entry.key} ${entry.value}',
+          );
+        }
+      }
+      await database.execute(
+        'CREATE INDEX IF NOT EXISTS idx_${table}_archive ON $table(archived_at) WHERE deleted_at IS NULL',
+      );
+    }
+  }
+
+  /// Archive changes and their sync mutations commit together.
+  Future<int> updateArchive({
+    List<String> sessionIds = const [],
+    List<String> deadlineIds = const [],
+    required ArchiveMutation action,
+    bool hide = true,
+    DateTime? at,
+  }) async {
+    final now = at ?? DateTime.now();
+    final changed = await _db.transaction((txn) async {
+      var count = 0;
+      for (final id in sessionIds.toSet()) {
+        final rows = await txn.query(
+          _tableName,
+          where: 'id=? AND deleted_at IS NULL',
+          whereArgs: [id],
+        );
+        if (rows.isEmpty) continue;
+        final value = CourseSession.fromMap(rows.first);
+        if (action == ArchiveMutation.archive &&
+            (value.archived || value.endAt.isAfter(now))) {
+          continue;
+        }
+        if (action != ArchiveMutation.archive && !value.archived) continue;
+        final next = value.copyWith(
+          archivedAt: action == ArchiveMutation.archive ? now : null,
+          clearArchived: action == ArchiveMutation.restore,
+          archiveHidden: action == ArchiveMutation.hide
+              ? true
+              : action == ArchiveMutation.show
+              ? false
+              : hide,
+          autoArchivePaused: action == ArchiveMutation.restore ? true : null,
+        );
+        await txn.update(
+          _tableName,
+          next.toMap(),
+          where: 'id=?',
+          whereArgs: [id],
+        );
+        await _queueSyncEntity(
+          txn,
+          SyncEntity(
+            type: SyncEntityType.courseSession,
+            id: next.id,
+            payload: courseSessionSyncPayload(next),
+          ),
+          SyncOperation.upsert,
+        );
+        count++;
+      }
+      for (final id in deadlineIds.toSet()) {
+        final rows = await txn.query(
+          'deadlines',
+          where: 'id=? AND deleted_at IS NULL',
+          whereArgs: [id],
+        );
+        if (rows.isEmpty) continue;
+        final value = Deadline.fromMap(rows.first);
+        if (action == ArchiveMutation.archive &&
+            (value.archived || !value.completed)) {
+          continue;
+        }
+        if (action != ArchiveMutation.archive && !value.archived) continue;
+        final next = value.copyWith(
+          archivedAt: action == ArchiveMutation.archive ? now : null,
+          clearArchived: action == ArchiveMutation.restore,
+          archiveHidden: action == ArchiveMutation.hide
+              ? true
+              : action == ArchiveMutation.show
+              ? false
+              : hide,
+          autoArchivePaused: action == ArchiveMutation.restore ? true : null,
+        );
+        await txn.update(
+          'deadlines',
+          next.toMap(),
+          where: 'id=?',
+          whereArgs: [id],
+        );
+        await _queueSyncEntity(
+          txn,
+          _deadlineEntity(next),
+          SyncOperation.upsert,
+        );
+        count++;
+      }
+      return count;
+    });
+    if (changed > 0) _syncChanges.add(null);
+    return changed;
   }
 
   static Future<void> _createDeadlineSchema(Database database) async {
@@ -705,7 +866,8 @@ class AppDatabase {
   Future<List<CourseSession>> getUpcomingSessions(DateTime from) async {
     final rows = await _db.query(
       _tableName,
-      where: 'end_at > ? AND deleted_at IS NULL',
+      where:
+          'end_at > ? AND deleted_at IS NULL AND (archived_at IS NULL OR archive_hidden=0)',
       whereArgs: [from.toIso8601String()],
       orderBy: 'start_at ASC',
     );
@@ -1025,9 +1187,33 @@ class AppDatabase {
     conflictAlgorithm: ConflictAlgorithm.replace,
   );
 
-  Future<List<SyncMutation>> pendingSyncMutations({int limit = 100}) async {
+  Future<List<SyncMutation>> pendingSyncMutations({
+    int limit = 100,
+    List<String>? entityTypes,
+    List<String>? settingGroups,
+  }) async {
+    final clauses = <String>[];
+    final args = <Object?>[];
+    if (entityTypes != null || settingGroups != null) {
+      if (entityTypes?.isNotEmpty == true) {
+        clauses.add(
+          'entity_type IN (${List.filled(entityTypes!.length, "?").join(",")})',
+        );
+        args.addAll(entityTypes);
+      }
+      if (settingGroups?.isNotEmpty == true) {
+        clauses.add(
+          '(entity_type=? AND entity_id IN (${List.filled(settingGroups!.length, "?").join(",")}))',
+        );
+        args.add(SyncEntityType.settingGroup.name);
+        args.addAll(settingGroups);
+      }
+      if (clauses.isEmpty) return [];
+    }
     final rows = await _db.query(
       'sync_outbox',
+      where: clauses.isEmpty ? null : clauses.join(' OR '),
+      whereArgs: args.isEmpty ? null : args,
       orderBy: 'created_at ASC',
       limit: limit,
     );
@@ -1164,6 +1350,18 @@ class AppDatabase {
   }) async {
     await _db.transaction((txn) => _queueSyncEntity(txn, entity, operation));
     _syncChanges.add(null);
+  }
+
+  Future<void> discardPendingSyncEntity(SyncEntity entity) async {
+    await _db.transaction((txn) async {
+      for (final table in ['sync_outbox', 'sync_conflicts']) {
+        await txn.delete(
+          table,
+          where: 'entity_type=? AND entity_id=?',
+          whereArgs: [entity.type.name, entity.id],
+        );
+      }
+    });
   }
 
   Future<void> applyRemoteEntities(List<SyncEntity> entities) async {

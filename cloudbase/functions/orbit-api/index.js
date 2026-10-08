@@ -6,6 +6,8 @@ const cloudbase = require('@cloudbase/node-sdk');
 const sessions = require('./session-core');
 const sync = require('./sync-common');
 const validation = require('./http-validation');
+const syncPolicy = require('./sync-policy');
+const updates = require('./updates');
 const { createCollectionBootstrap } = require('./collection-bootstrap');
 const { writableProfile, commitAvatar } = require('./profile-write');
 
@@ -14,6 +16,8 @@ const db = app.database();
 const collections = {
   sessions: 'orbit_auth_sessions',
   profiles: 'orbit_user_profiles',
+  policy: 'orbit_sync_policy',
+  updates: 'orbit_update_cache',
 };
 const ensureCollections = createCollectionBootstrap(db, Object.values(collections));
 const MAX_HTTP_BODY = 5 * 1024 * 1024;
@@ -277,6 +281,7 @@ async function deleteAccountData(uid) {
   }
   await db.collection(collections.profiles).doc(documentId(uid)).remove();
   await db.collection(collections.sessions).doc(documentId(uid)).remove();
+  await db.collection(collections.policy).doc(documentId(uid)).remove();
 }
 
 async function http(event) {
@@ -285,6 +290,14 @@ async function http(event) {
   if (method === 'POST' && path === '/v1/session/refresh') return refresh(event);
   if (method === 'DELETE' && path === '/v1/session') return revoke(event);
 
+  if (method === 'GET' && path === '/v1/updates/latest') {
+    const ref = db.collection(collections.updates).doc('latest');
+    const cached = documentData(await ref.get());
+    if (cached && Date.now() - cached.cachedAt < 15 * 60 * 1000) return jsonResponse(200, cached.release);
+    const release = await updates.latest();
+    await ref.set({ cachedAt: Date.now(), release });
+    return jsonResponse(200, release);
+  }
   const identity = await authenticate(event);
   if (method === 'GET' && path === '/v1/profile') {
     return jsonResponse(200, { account: publicProfile(await ensureProfile(identity.uid)) });
@@ -302,29 +315,47 @@ async function http(event) {
     const url = await avatarUrl(identity.uid, event.queryStringParameters?.fileId);
     return jsonResponse(200, { url });
   }
+  const policyRef = db.collection(collections.policy).doc(documentId(identity.uid));
+  const policy = syncPolicy.normalize(documentData(await policyRef.get()) || {});
+  if (path === '/v1/sync/policy' && method === 'GET') return jsonResponse(200, policy);
+  if (path === '/v1/sync/policy' && method === 'PUT') {
+    const requested = syncPolicy.normalize(jsonBody(event));
+    const saved = await db.runTransaction(async (transaction) => {
+      const ref = transaction.collection(collections.policy).doc(documentId(identity.uid));
+      const current = syncPolicy.normalize(documentData(await ref.get()) || {});
+      if (requested.revision !== current.revision) throw sessions.codedError('SYNC_POLICY_CONFLICT', 'Reload scope before saving');
+      const next = { ...requested, revision: current.revision + 1 };
+      await ref.set(next); return next;
+    });
+    return jsonResponse(200, saved?.result ?? saved);
+  }
   if (method === 'POST' && path === '/v1/sync/push') {
-    return jsonResponse(200, await sync.push(identity.uid, syncBody(event)), { gzip: true });
+    return jsonResponse(200, await sync.push(identity.uid, syncPolicy.effectiveInput(syncBody(event), policy)), { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/pull') {
-    return jsonResponse(200, await sync.pull(identity.uid, jsonBody(event)), { gzip: true });
+    return jsonResponse(200, await sync.pull(identity.uid, syncPolicy.effectiveInput(jsonBody(event), policy)), { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/exchange') {
-    const input = syncBody(event);
+    const input = syncPolicy.effectiveInput(syncBody(event), policy);
     const pushed = await sync.push(identity.uid, input);
     const pulled = await sync.pull(identity.uid, {
       cursor: input.cursor,
       limit: input.pullLimit || 200,
       supportsDeadline: input.supportsDeadline === true,
+      supportsSettings: input.supportsSettings === true,
+      selection: input.selection,
     });
     return jsonResponse(200, { ...pushed, pull: pulled }, { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/snapshot') {
-    const input = jsonBody(event);
+    const input = syncPolicy.effectiveInput({ ...jsonBody(event), snapshot: true }, policy);
     return jsonResponse(200, await sync.pull(identity.uid, {
       snapshot: true,
       offset: input.offset,
       limit: Math.min(Number(input.limit) || 500, 500),
       supportsDeadline: input.supportsDeadline === true,
+      supportsSettings: input.supportsSettings === true,
+      selection: input.selection,
     }), { gzip: true });
   }
   if (method === 'DELETE' && path === '/v1/account') {

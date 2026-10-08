@@ -1,5 +1,7 @@
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
+import 'package:orbit/features/archive/archive_actions.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +15,7 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
 
-enum SessionAction { edit, note, delete }
+enum SessionAction { edit, note, archive, delete }
 
 class SessionActionMenu {
   static Future<void> show({
@@ -35,6 +37,12 @@ class SessionActionMenu {
         await SessionEditSheet.showEdit(context, session);
       case SessionAction.note:
         await SessionNoteSheet.show(context, session);
+      case SessionAction.archive:
+        await archiveCourseAction(
+          context,
+          ProviderScope.containerOf(context),
+          session,
+        );
       case SessionAction.delete:
         final container = ProviderScope.containerOf(context);
         final deleted = await _confirmDelete(context, container, session);
@@ -79,6 +87,11 @@ class SessionActionMenu {
               onTap: () => Navigator.pop(context, SessionAction.note),
             ),
             ListTile(
+              leading: const Icon(Icons.archive_outlined),
+              title: Text(OrbitFeatureText.of(context).archive),
+              onTap: () => Navigator.pop(context, SessionAction.archive),
+            ),
+            ListTile(
               leading: Icon(
                 Icons.delete_outline,
                 color: Theme.of(context).colorScheme.error,
@@ -117,6 +130,10 @@ class SessionActionMenu {
             Text(l10n.addSessionNote),
           ],
         ),
+      ),
+      PopupMenuItem(
+        value: SessionAction.archive,
+        child: Text(OrbitFeatureText.of(context).archive),
       ),
       PopupMenuItem(
         value: SessionAction.delete,

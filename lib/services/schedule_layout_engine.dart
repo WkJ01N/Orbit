@@ -68,6 +68,7 @@ List<DateTime> visibleScheduleDates({
   required int maxMultiDayCount,
   required bool showEmptyDays,
   required List<CourseSession> sessions,
+  List<DateTime> eventDates = const [],
   int weekStartDay = DateTime.monday,
 }) {
   final normalizedAnchor = dateOnly(anchor);
@@ -81,7 +82,7 @@ List<DateTime> visibleScheduleDates({
     if (showEmptyDays) {
       return dates;
     }
-    final available = courseDates(sessions).toSet();
+    final available = {...courseDates(sessions), ...eventDates.map(dateOnly)};
     return dates.where(available.contains).toList();
   }
 
@@ -94,7 +95,8 @@ List<DateTime> visibleScheduleDates({
     ];
   }
 
-  final dates = courseDates(sessions);
+  final dates = {...courseDates(sessions), ...eventDates.map(dateOnly)}.toList()
+    ..sort();
   if (dates.isEmpty) {
     return const [];
   }
@@ -112,6 +114,7 @@ DateTime navigateScheduleAnchor({
   required int visibleDayCount,
   required bool showEmptyDays,
   required List<CourseSession> sessions,
+  List<DateTime> eventDates = const [],
   int weekStartDay = DateTime.monday,
 }) {
   final normalized = dateOnly(anchor);
@@ -126,7 +129,8 @@ DateTime navigateScheduleAnchor({
     return normalized.add(Duration(days: direction * step));
   }
 
-  final dates = courseDates(sessions);
+  final dates = {...courseDates(sessions), ...eventDates.map(dateOnly)}.toList()
+    ..sort();
   if (dates.isEmpty) {
     return normalized;
   }

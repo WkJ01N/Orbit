@@ -1,3 +1,4 @@
+import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:math' as math;
 
@@ -45,14 +46,16 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   int _rangeTransitionDirection = 1;
 
   List<CourseSession> get _sessions {
-    if (widget.sessions != null) return widget.sessions!;
+    if (widget.sessions != null) {
+      return widget.sessions!.where((s) => s.visible).toList();
+    }
     final byId = <String, CourseSession>{};
     for (final cell in widget.grid.cells.values) {
       for (final session in cell) {
         byId[session.id] = session;
       }
     }
-    return byId.values.toList();
+    return byId.values.where((s) => s.visible).toList();
   }
 
   @override
@@ -128,6 +131,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   @override
   Widget build(BuildContext context) {
+    final deadlineDates = (ref.watch(deadlinesProvider).valueOrNull ?? [])
+        .where((d) => !d.completed || d.archived)
+        .map((d) => d.dueAt)
+        .toList();
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final now = ref.watch(currentTimeProvider);
     final density = ref.watch(gridDensityProvider);
@@ -148,6 +155,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           maxMultiDayCount: maxMultiDayCountForWidth(constraints.maxWidth),
           showEmptyDays: settings.showEmptyDays,
           sessions: _sessions,
+          eventDates: deadlineDates,
           weekStartDay: weekStartDay,
         );
         final layout = const ScheduleLayoutEngine().build(
@@ -165,6 +173,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             maxMultiDayCount: maxMultiDayCountForWidth(constraints.maxWidth),
             showEmptyDays: settings.showEmptyDays,
             sessions: _sessions,
+            eventDates: deadlineDates,
             weekStartDay: weekStartDay,
           );
           return _SchedulePageData(
@@ -187,6 +196,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           visibleDayCount: visibleDayCount,
           showEmptyDays: settings.showEmptyDays,
           sessions: _sessions,
+          eventDates: deadlineDates,
           weekStartDay: weekStartDay,
         );
         final nextAnchor = navigateScheduleAnchor(
@@ -196,6 +206,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           visibleDayCount: visibleDayCount,
           showEmptyDays: settings.showEmptyDays,
           sessions: _sessions,
+          eventDates: deadlineDates,
           weekStartDay: weekStartDay,
         );
         final canGoPrevious = !isSameScheduleDate(previousAnchor, anchor);
@@ -446,7 +457,7 @@ class _SchedulePageData {
   final ScheduleTimelineLayout layout;
 }
 
-class _SchedulePage extends StatelessWidget {
+class _SchedulePage extends ConsumerWidget {
   const _SchedulePage({
     required this.data,
     required this.density,
@@ -470,9 +481,14 @@ class _SchedulePage extends StatelessWidget {
   final void Function(CourseSession, Offset?)? onMenu;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasDeadlines = (ref.watch(deadlinesProvider).valueOrNull ?? []).any(
+      (d) =>
+          (!d.completed || d.archived) &&
+          data.visibleDates.contains(dateOnly(d.dueAt)),
+    );
     if (data.visibleDates.isEmpty ||
-        data.layout.days.every((day) => day.events.isEmpty)) {
+        data.layout.days.every((day) => day.events.isEmpty) && !hasDeadlines) {
       return ColoredBox(
         color: Theme.of(context).colorScheme.surface,
         child: _NoVisibleCourses(onJump: onJump ?? () {}),
@@ -954,7 +970,7 @@ class _DateHeader extends ConsumerWidget {
                       if (deadlines
                           .where(
                             (d) =>
-                                !d.completed &&
+                                (!d.completed || d.archived) &&
                                 d.dueAt.year == day.date.year &&
                                 d.dueAt.month == day.date.month &&
                                 d.dueAt.day == day.date.day,
@@ -976,7 +992,7 @@ class _DateHeader extends ConsumerWidget {
                                 .toList(),
                           ),
                           child: Text(
-                            'DDL ${deadlines.where((d) => !d.completed && d.dueAt.year == day.date.year && d.dueAt.month == day.date.month && d.dueAt.day == day.date.day).length}',
+                            'DDL ${deadlines.where((d) => (!d.completed || d.archived) && d.dueAt.year == day.date.year && d.dueAt.month == day.date.month && d.dueAt.day == day.date.day).length}',
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
                                   color: colors.error,
@@ -1225,6 +1241,9 @@ class GridSessionChip extends ConsumerWidget {
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final isSoon = isSessionStartingSoon(now, session.startAt) && !isPast;
     final time = '${_time(session.startAt)} - ${_time(session.endAt)}';
+    final strong =
+        ref.watch(strongCourseIdsProvider).valueOrNull?.contains(session.id) ??
+        false;
     final foreground = isPast
         ? colorScheme.onSurfaceVariant
         : colorScheme.onSurface;
@@ -1263,22 +1282,37 @@ class GridSessionChip extends ConsumerWidget {
                   color: isPast ? accent.withAlpha(100) : accent,
                 ),
                 Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => compact
-                        ? _CompactSessionChipContent(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) => compact
+                            ? _CompactSessionChipContent(
+                                session: session,
+                                time: time,
+                                foreground: foreground,
+                                availableHeight: constraints.maxHeight,
+                                availableWidth: constraints.maxWidth,
+                              )
+                            : _SessionChipContent(
+                                strong: strong,
+                                session: session,
+                                time: time,
+                                foreground: foreground,
+                                availableHeight: constraints.maxHeight,
+                                availableWidth: constraints.maxWidth - 11,
+                              ),
+                      ),
+                      if (compact)
+                        Positioned(
+                          right: 2,
+                          top: 2,
+                          child: StrongCourseBadge(
                             session: session,
-                            time: time,
-                            foreground: foreground,
-                            availableHeight: constraints.maxHeight,
-                            availableWidth: constraints.maxWidth,
-                          )
-                        : _SessionChipContent(
-                            session: session,
-                            time: time,
-                            foreground: foreground,
-                            availableHeight: constraints.maxHeight,
-                            availableWidth: constraints.maxWidth - 11,
+                            compact: true,
                           ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -1486,6 +1520,7 @@ class _CompactSessionChipContent extends StatelessWidget {
 
 class _SessionChipContent extends StatelessWidget {
   const _SessionChipContent({
+    this.strong = false,
     required this.session,
     required this.time,
     required this.foreground,
@@ -1493,6 +1528,7 @@ class _SessionChipContent extends StatelessWidget {
     required this.availableWidth,
   });
 
+  final bool strong;
   final CourseSession session;
   final String time;
   final Color foreground;
@@ -1530,7 +1566,10 @@ class _SessionChipContent extends StatelessWidget {
       maxLines: 1,
     );
     if (availableHeight < oneLineHeight + 10) return const SizedBox.shrink();
-    final timeHeight = _textHeight(time, detailStyle, width, scaler, direction);
+    final timeHeight = math.max(
+      strong ? 14.0 : 0.0,
+      _textHeight(time, detailStyle, width, scaler, direction),
+    );
     final roomHeight = _textHeight(
       session.room,
       detailStyle,
@@ -1561,7 +1600,7 @@ class _SessionChipContent extends StatelessWidget {
     if (requiredHeight() > availableHeight) showTime = false;
     if (requiredHeight() > availableHeight) showRoom = false;
 
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.fromLTRB(6, 5, 5, 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1579,7 +1618,25 @@ class _SessionChipContent extends StatelessWidget {
           ),
           if (showTime) ...[
             const SizedBox(height: 3),
-            Text(time, style: detailStyle),
+            if (!strong)
+              Text(time, style: detailStyle)
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      time,
+                      style: detailStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  StrongCourseBadge(
+                    session: session,
+                    compact: availableWidth < 180,
+                  ),
+                ],
+              ),
           ],
           if (showRoom) ...[
             const SizedBox(height: 2),
@@ -1591,6 +1648,17 @@ class _SessionChipContent extends StatelessWidget {
           ],
         ],
       ),
+    );
+    if (!strong || showTime) return content;
+    return Stack(
+      children: [
+        content,
+        Positioned(
+          right: 2,
+          top: 2,
+          child: StrongCourseBadge(session: session, compact: true),
+        ),
+      ],
     );
   }
 }

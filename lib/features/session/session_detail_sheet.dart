@@ -1,3 +1,4 @@
+import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,8 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/course_color_utils.dart';
+import 'package:orbit/features/archive/archive_actions.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 class SessionDetailSheet extends ConsumerWidget {
   const SessionDetailSheet({super.key, required this.session});
@@ -74,6 +77,7 @@ class SessionDetailSheet extends ConsumerWidget {
               icon: Icons.access_time,
               text: '$startLabel – $endLabel',
             ),
+            StrongCourseBadge(session: session),
             _DetailRow(icon: Icons.room, text: session.room),
             if (session.teachers.isNotEmpty)
               _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
@@ -155,6 +159,22 @@ class _SessionActionButtons extends ConsumerWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
+            if (!session.archived)
+              buildButton(
+                onPressed: () async {
+                  if (await archiveCourseAction(
+                        context,
+                        ProviderScope.containerOf(context),
+                        session,
+                      ) &&
+                      context.mounted) {
+                    Navigator.pop(context);
+                  }
+                },
+                icon: Icons.archive_outlined,
+                label: OrbitFeatureText.of(context).archive,
+                tooltip: OrbitFeatureText.of(context).archive,
+              ),
             buildButton(
               onPressed: () async {
                 // Capture the navigator's own context before popping so the

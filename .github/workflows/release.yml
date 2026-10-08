@@ -67,11 +67,18 @@ jobs:
           pattern: '*-release'
           path: dist
           merge-multiple: true
-      - name: Create or replace the GitHub Release
+      - name: Generate official package checksums and update manifest
+        run: python3 tool/generate_update_manifest.py dist
+      - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          existing=$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || true)
+          if [ "$existing" = "false" ]; then
+            echo "Release $TAG is already published; preserving its verified assets."
+            exit 0
+          fi
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
           gh release edit "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
           gh release upload "$TAG" dist/* --clobber

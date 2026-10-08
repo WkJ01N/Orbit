@@ -20,6 +20,12 @@ class CourseSession {
     this.deletedAt,
     this.recurrenceSeriesId,
     this.recurrenceMeetingId,
+    this.archivedAt,
+    this.archiveHidden = false,
+    this.autoArchivePaused = false,
+    this.linkedCourseKey,
+    this.startPeriod,
+    this.periodTimePlanId,
   });
 
   final String id;
@@ -40,6 +46,22 @@ class CourseSession {
   final DateTime? deletedAt;
   final String? recurrenceSeriesId;
   final String? recurrenceMeetingId;
+  final DateTime? archivedAt;
+  final bool archiveHidden;
+  final bool autoArchivePaused;
+  final String? linkedCourseKey;
+  final int? startPeriod;
+  final String? periodTimePlanId;
+  bool get archived => archivedAt != null;
+  bool get visible => !archived || !archiveHidden;
+  Map<String, dynamic> get featurePayload => {
+    'archivedAt': archivedAt?.toUtc().toIso8601String(),
+    'archiveHidden': archiveHidden,
+    'autoArchivePaused': autoArchivePaused,
+    'linkedCourseKey': linkedCourseKey,
+    'startPeriod': startPeriod,
+    'periodTimePlanId': periodTimePlanId,
+  };
 
   static String buildId({
     required DateTime date,
@@ -87,6 +109,14 @@ class CourseSession {
           : DateTime.parse(map['deleted_at'] as String),
       recurrenceSeriesId: map['recurrence_series_id'] as String?,
       recurrenceMeetingId: map['recurrence_meeting_id'] as String?,
+      archivedAt: map['archived_at'] == null
+          ? null
+          : DateTime.parse(map['archived_at'] as String).toLocal(),
+      archiveHidden: map['archive_hidden'] == 1,
+      autoArchivePaused: map['auto_archive_paused'] == 1,
+      linkedCourseKey: map['linked_course_key'] as String?,
+      startPeriod: map['start_period'] as int?,
+      periodTimePlanId: map['period_time_plan_id'] as String?,
     );
   }
 
@@ -110,6 +140,12 @@ class CourseSession {
       'deleted_at': deletedAt?.toIso8601String(),
       'recurrence_series_id': recurrenceSeriesId,
       'recurrence_meeting_id': recurrenceMeetingId,
+      'archived_at': archivedAt?.toUtc().toIso8601String(),
+      'archive_hidden': archiveHidden ? 1 : 0,
+      'auto_archive_paused': autoArchivePaused ? 1 : 0,
+      'linked_course_key': linkedCourseKey,
+      'start_period': startPeriod,
+      'period_time_plan_id': periodTimePlanId,
     };
   }
 
@@ -136,8 +172,33 @@ class CourseSession {
     String? recurrenceMeetingId,
     bool clearRecurrenceSeriesId = false,
     bool clearRecurrenceMeetingId = false,
+    DateTime? archivedAt,
+    bool clearArchived = false,
+    bool? archiveHidden,
+    bool? autoArchivePaused,
+    String? linkedCourseKey,
+    int? startPeriod,
+    String? periodTimePlanId,
   }) {
     return CourseSession(
+      archivedAt: clearArchived ? null : archivedAt ?? this.archivedAt,
+      archiveHidden: clearArchived
+          ? false
+          : archiveHidden ?? this.archiveHidden,
+      autoArchivePaused:
+          autoArchivePaused ??
+          (endAt != null && endAt != this.endAt
+              ? false
+              : this.autoArchivePaused),
+      linkedCourseKey: linkedCourseKey ?? this.linkedCourseKey,
+      startPeriod:
+          startPeriod ??
+          (startAt != null &&
+                  (startAt.hour != this.startAt.hour ||
+                      startAt.minute != this.startAt.minute)
+              ? null
+              : this.startPeriod),
+      periodTimePlanId: periodTimePlanId ?? this.periodTimePlanId,
       id: id ?? this.id,
       classType: classType ?? this.classType,
       room: room ?? this.room,

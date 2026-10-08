@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:orbit/models/archive_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
 
 import 'package:flutter/material.dart';
@@ -494,6 +495,24 @@ class SettingsService {
     await prefs.setString(_courseColorOverridesKey, encoded);
   }
 
+  Future<ArchiveSettings> loadArchiveSettings() async {
+    final prefs = await _prefsInstance();
+    try {
+      return ArchiveSettings.fromJson(
+        Map<String, dynamic>.from(
+          jsonDecode(prefs.getString('archive_settings') ?? '{}') as Map,
+        ),
+      );
+    } catch (_) {
+      return const ArchiveSettings();
+    }
+  }
+
+  Future<void> saveArchiveSettings(ArchiveSettings settings) async {
+    final prefs = await _prefsInstance();
+    await prefs.setString('archive_settings', jsonEncode(settings.toJson()));
+  }
+
   Future<PortableSettings> exportPortableSettings() async {
     final locale = await loadLocale();
     final themeColor = await loadThemeColor();
@@ -521,10 +540,12 @@ class SettingsService {
       ),
       importConfiguration: await loadImportConfiguration(),
       autoSyncSettings: await loadAutoSyncSettings(),
+      archive: await loadArchiveSettings(),
     );
   }
 
   Future<void> importPortableSettings(PortableSettings snapshot) async {
+    await saveArchiveSettings(snapshot.archive);
     if (snapshot.importConfiguration != null) {
       await saveImportConfiguration(snapshot.importConfiguration!);
     }
@@ -583,6 +604,21 @@ class SettingsService {
         (key, value) => MapEntry(key, Color(value)),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> loadLocalJson(String key) async {
+    final prefs = await _prefsInstance();
+    try {
+      return Map<String, dynamic>.from(
+        jsonDecode(prefs.getString(key) ?? '{}') as Map,
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveLocalJson(String key, Map<String, dynamic> value) async {
+    await (await _prefsInstance()).setString(key, jsonEncode(value));
   }
 
   Future<void> _saveOptionalString(

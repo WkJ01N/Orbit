@@ -6,6 +6,8 @@ import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/features/session/course_scope_dialog.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/features/session/existing_course_picker.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
 
@@ -140,6 +142,31 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     super.dispose();
   }
 
+  CourseSession? _selectedCourse;
+  Future<void> _chooseCourse() async {
+    final course = await chooseExistingCourse(context);
+    if (course == null || !mounted) return;
+    setState(() {
+      _selectedCourse = course;
+      _nameController.text = course.courseName;
+      _courseCodeController.text = course.courseCode;
+      _sectionController.text = course.section;
+      _roomController.text = course.room;
+      _teachersController.text = course.teachers.join(', ');
+      _facultyController.text = course.faculty;
+      _semesterController.text = course.semester;
+      _classTypeController.text = course.classType;
+    });
+  }
+
+  void _newCourse() => setState(() {
+    _selectedCourse = null;
+    _nameController.clear();
+    _courseCodeController.clear();
+    _sectionController.text = '1';
+    _semesterController.clear();
+  });
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -189,7 +216,8 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final startAt = _combineDateTime(_date, _startTime);
     final endAt = _combineDateTime(_date, _endTime);
     final name = _nameController.text.trim();
-    final courseCode = _courseCodeController.text.trim().isEmpty
+    final courseCode =
+        _selectedCourse == null && _courseCodeController.text.trim().isEmpty
         ? 'MANUAL|${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}'
         : _courseCodeController.text.trim();
     final section = _sectionController.text.trim().isEmpty
@@ -213,6 +241,27 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       teachers: _parseTeachers(_teachersController.text),
       faculty: _facultyController.text.trim(),
       semester: _semesterController.text.trim(),
+      archivedAt: base?.archivedAt,
+      archiveHidden: base?.archiveHidden ?? false,
+      autoArchivePaused: base != null && base.endAt == endAt
+          ? base.autoArchivePaused
+          : false,
+      linkedCourseKey: _selectedCourse == null
+          ? base?.linkedCourseKey
+          : CourseSeriesKey.fromSession(_selectedCourse!).value,
+      recurrenceSeriesId:
+          _selectedCourse?.recurrenceSeriesId ?? base?.recurrenceSeriesId,
+      recurrenceMeetingId: _selectedCourse?.recurrenceSeriesId == null
+          ? base?.recurrenceMeetingId
+          : 'extra-${DateTime.now().microsecondsSinceEpoch}',
+      startPeriod:
+          base != null &&
+              base.startAt.hour == startAt.hour &&
+              base.startAt.minute == startAt.minute
+          ? base.startPeriod
+          : null,
+      periodTimePlanId:
+          _selectedCourse?.periodTimePlanId ?? base?.periodTimePlanId,
       sourceFile: base?.sourceFile,
       note: base?.note,
     );
@@ -399,6 +448,18 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
+            if (widget.isCreateMode) ...[
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _chooseCourse,
+                icon: const Icon(Icons.playlist_add),
+                label: Text(OrbitFeatureText.of(context).existing),
+              ),
+              if (_selectedCourse != null)
+                TextButton(
+                  onPressed: _saving ? null : _newCourse,
+                  child: Text(OrbitFeatureText.of(context).newCourse),
+                ),
+            ],
             if (widget.isCreateMode)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -410,6 +471,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               ),
             TextField(
               controller: _nameController,
+              readOnly: _selectedCourse != null,
               decoration: InputDecoration(
                 labelText: l10n.fieldCourseName,
                 border: const OutlineInputBorder(),
@@ -427,6 +489,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _courseCodeController,
+                readOnly: _selectedCourse != null,
                 decoration: InputDecoration(
                   labelText: l10n.fieldCourseCode,
                   border: const OutlineInputBorder(),
@@ -435,6 +498,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _sectionController,
+                readOnly: _selectedCourse != null,
                 decoration: InputDecoration(
                   labelText: l10n.fieldSection,
                   border: const OutlineInputBorder(),

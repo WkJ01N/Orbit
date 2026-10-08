@@ -267,6 +267,15 @@ final reminderSettingsProvider =
       ReminderSettingsNotifier.new,
     );
 
+/// Presentation reads persisted settings without starting platform maintenance.
+final reminderConfigurationRevisionProvider = StateProvider<int>((ref) => 0);
+final effectiveReminderSettingsProvider = FutureProvider<ReminderSettings>((
+  ref,
+) async {
+  ref.watch(reminderConfigurationRevisionProvider);
+  return ref.read(settingsServiceProvider).load();
+});
+
 final lastRescheduleErrorProvider = StateProvider<String?>((ref) => null);
 
 /// Number of reminders the OS reports as actually queued after the last
@@ -299,6 +308,9 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
       _deferredResync?.cancel();
     });
     final settings = await ref.read(settingsServiceProvider).load();
+    if (!_disposed) {
+      ref.read(reminderConfigurationRevisionProvider.notifier).state++;
+    }
     if (!_disposed && Platform.isAndroid) {
       await _rescheduleReminders(settings: settings);
     } else if (!_disposed && Platform.isWindows) {
@@ -319,6 +331,7 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
         })
         .then((_) => service.save(updated));
     await _saveQueue;
+    ref.read(reminderConfigurationRevisionProvider.notifier).state++;
     return _rescheduleReminders();
   }
 
@@ -339,9 +352,15 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
     );
   }
 
-  Future<int> setStrong(StrongReminderSettings strong) => _saveAndReschedule(
-    (state.value ?? const ReminderSettings()).copyWith(strong: strong),
-  );
+  Future<int> setStrong(StrongReminderSettings strong) async {
+    await ref.read(settingsServiceProvider).saveLocalJson(
+      'sync_sound_reselect',
+      {'required': false},
+    );
+    return _saveAndReschedule(
+      (state.value ?? const ReminderSettings()).copyWith(strong: strong),
+    );
+  }
 
   Future<int> updateLeadMinutes(int minutes) async {
     final current = state.value ?? const ReminderSettings();
@@ -475,6 +494,9 @@ class ReminderSettingsNotifier extends AsyncNotifier<ReminderSettings> {
         deadlines: await database.getDeadlines(),
         settings: effectiveSettings,
         copy: copy,
+        periodPlans:
+            (await ref.read(settingsServiceProvider).loadImportConfiguration())
+                .periodTimes,
       );
       if (_disposed) return 0;
       final failures = scheduler.lastScheduleFailureCount;

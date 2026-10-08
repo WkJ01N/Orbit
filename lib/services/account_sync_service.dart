@@ -1,3 +1,4 @@
+import 'package:orbit/services/sync_scope_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -440,7 +441,7 @@ class CloudBaseAccountService implements AccountService {
           'action': 'bootstrapSession',
           'deviceId': await _api.sessions.deviceId(),
           'platform': Platform.operatingSystem,
-          'appVersion': '1.5.2+22',
+          'appVersion': '1.5.3+24',
         },
       );
       if (response.code != null) {
@@ -480,7 +481,10 @@ class CloudBaseAccountService implements AccountService {
 }
 
 class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
-  CloudBaseSyncBackend(this._api);
+  CloudBaseSyncBackend(this._api, {this.scope});
+
+  final SyncScopeService? scope;
+  bool previewAll = false;
 
   final OrbitApiClient _api;
 
@@ -595,7 +599,14 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
     String name,
     Map<String, dynamic> data,
   ) async {
-    return _api.syncRequest(name, {...data, 'supportsDeadline': true});
+    return _api.syncRequest(name, {
+      ...data,
+      'supportsDeadline': true,
+      'supportsSettings': true,
+      if (scope != null && !(previewAll && name == 'snapshot'))
+        'selection': (await scope!.selection()).toJson(),
+      if (previewAll && name == 'snapshot') 'previewAll': true,
+    });
   }
 
   List<SyncMutation> _limitedBatch(List<SyncMutation> mutations) {

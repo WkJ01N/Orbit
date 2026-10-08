@@ -31,8 +31,12 @@ class BatchCourseDraft {
     required this.totalWeeks,
     required this.selectedWeeks,
     required this.meetings,
+    this.linkedCourseKey,
+    this.periodTimePlanId,
   });
 
+  final String? linkedCourseKey;
+  final String? periodTimePlanId;
   final String courseName;
   final String courseCode;
   final String section;
@@ -83,7 +87,8 @@ List<CourseSession> generateBatchCourseSessions(
     draft.firstWeekMonday.month,
     draft.firstWeekMonday.day,
   );
-  final courseCode = draft.courseCode.trim().isEmpty
+  final courseCode =
+      draft.linkedCourseKey == null && draft.courseCode.trim().isEmpty
       ? 'MANUAL|$seriesId'
       : draft.courseCode.trim();
   final section = draft.section.trim().isEmpty ? '1' : draft.section.trim();
@@ -132,6 +137,8 @@ List<CourseSession> generateBatchCourseSessions(
         teachers: draft.teachers,
         faculty: draft.faculty.trim(),
         semester: draft.semester.trim(),
+        linkedCourseKey: draft.linkedCourseKey,
+        periodTimePlanId: draft.periodTimePlanId,
         recurrenceSeriesId: seriesId,
         recurrenceMeetingId: meeting.id,
       );

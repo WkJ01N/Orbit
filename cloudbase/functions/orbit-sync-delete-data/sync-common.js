@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const cloudbase = require('@cloudbase/node-sdk');
-const { visibleEntity } = require('./sync-visibility');
+const { visibleEntity, mergeFeaturePayload } = require('./sync-visibility');
 
 const app = cloudbase.init({ env: cloudbase.SYMBOL_CURRENT_ENV });
 const db = app.database();
@@ -44,12 +44,16 @@ function validateEntity(entity) {
     'semesterPlan',
     'periodTimePlan',
     'deadline',
+    'settingGroup',
   ]);
   if (!entity || !types.has(entity.type) || typeof entity.id !== 'string') {
     throw codedError('INVALID_ARGUMENT', 'Invalid sync entity');
   }
   if (entity.id.length < 1 || entity.id.length > 512) {
     throw codedError('INVALID_ARGUMENT', 'Invalid entity id');
+  }
+  if (entity.type === 'settingGroup' && !['appearance','colors','display','reminders','strong','archive'].includes(entity.id)) {
+    throw codedError('INVALID_ARGUMENT', 'Unknown settings group');
   }
   const payload = JSON.stringify(entity.payload || {});
   if (Buffer.byteLength(payload, 'utf8') > 256 * 1024) {
@@ -70,6 +74,7 @@ function recordToEntity(record) {
 
 async function push(uid, event) {
   const mutations = Array.isArray(event.mutations) ? event.mutations : [];
+  if (mutations.some((m) => !visibleEntity(m.entity, { ...event, supportsDeadline: true, supportsSettings: true }))) throw codedError('SYNC_CATEGORY_DISABLED', 'Category disabled');
   if (mutations.length > 100) {
     throw codedError('BATCH_TOO_LARGE', 'At most 100 mutations per request');
   }
@@ -156,7 +161,7 @@ async function push(uid, event) {
           schemaVersion: Number(entity.schemaVersion || 1),
           revision,
           deleted: mutation.operation === 'delete',
-          payload: mutation.operation === 'delete' ? {} : entity.payload || {},
+          payload: mutation.operation === 'delete' ? {} : mergeFeaturePayload(entity.type, entity.payload || {}, current?.payload || {}),
           updatedAt: db.serverDate(),
         };
         await transaction.collection(collections.records).doc(recordId).set(record);

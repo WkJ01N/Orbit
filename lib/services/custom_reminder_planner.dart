@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/services/strong_reminder_resolver.dart';
@@ -91,6 +92,7 @@ List<ReminderAlarmSpec> planCustomReminders({
   required List<CustomReminderRule> rules,
   required StrongReminderSettings strong,
   required DateTime now,
+  List<PeriodTimePlan> periodPlans = const [],
   List<Map<String, Object?>> states = const [],
   Map<String, String> sessionAliases = const {},
   Map<String, List<String>> seriesMemberships = const {},
@@ -101,6 +103,7 @@ List<ReminderAlarmSpec> planCustomReminders({
   String deliveredLabel = 'Delivered',
   String acknowledgeLabel = 'Acknowledge',
   String stopLabel = 'Stop',
+  String? localeTag,
   List<String> weekdayNames = const [
     'Monday',
     'Tuesday',
@@ -117,12 +120,15 @@ List<ReminderAlarmSpec> planCustomReminders({
   final result = <ReminderAlarmSpec>[];
   for (final rule in rules.where((r) => r.enabled)) {
     for (final session in sessions.where(
-      (session) => matchesCustomReminder(
-        rule,
-        session,
-        sessionAliases: sessionAliases,
-        seriesMemberships: seriesMemberships,
-      ),
+      (session) =>
+          !session.archived &&
+          session.deletedAt == null &&
+          matchesCustomReminder(
+            rule,
+            session,
+            sessionAliases: sessionAliases,
+            seriesMemberships: seriesMemberships,
+          ),
     )) {
       final sessionId = sessionAliases[session.id] ?? session.id;
       final state = ledger['${rule.id}|$sessionId'];
@@ -183,6 +189,9 @@ List<ReminderAlarmSpec> planCustomReminders({
             fireAt: missed ? now.add(const Duration(seconds: 1)) : at,
             originalFireAt: at,
             catchUp: missed,
+            courseName: session.courseName,
+            courseStartAt: session.startAt,
+            courseEndAt: session.endAt,
             ruleId: rule.id,
             sessionId: sessionId,
             sendIndex: i,
@@ -190,6 +199,8 @@ List<ReminderAlarmSpec> planCustomReminders({
               global: strong,
               type: StrongReminderType.custom,
               session: session,
+              dailySessions: sessions,
+              periodPlans: periodPlans,
               rule: rule,
               aliases: sessionAliases,
               memberships: seriesMemberships,
@@ -198,6 +209,7 @@ List<ReminderAlarmSpec> planCustomReminders({
                 rule.repeatMode == ReminderRepeatMode.untilAcknowledged
                 ? acknowledgeLabel
                 : '',
+            localeTag: localeTag,
             stopLabel: stopLabel,
           ),
         );

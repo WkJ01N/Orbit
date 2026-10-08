@@ -11,6 +11,7 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/deadline_text.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/providers/archive_providers.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 import 'package:orbit/providers/import_providers.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
@@ -216,6 +217,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       ref.invalidate(weekStartDayProvider);
       ref.invalidate(gridDensityProvider);
       ref.invalidate(scheduleDisplaySettingsProvider);
+      ref.invalidate(archiveSettingsProvider);
       ref.invalidate(importConfigurationProvider);
       ref.invalidate(reminderSettingsProvider);
       await ref.read(reminderSettingsProvider.future);

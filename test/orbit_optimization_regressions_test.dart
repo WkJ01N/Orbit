@@ -499,23 +499,58 @@ void main() {
       );
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Before class'),
+        240,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.tap(find.text('Before class'));
-      await tester.ensureVisible(
+      await tester.scrollUntilVisible(
         find.text('All inherited rules, including future rules'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.pumpAndSettle();
       await tester.tap(
         find.text('All inherited rules, including future rules'),
       );
       final scope = find.byType(DropdownButtonFormField<ReminderCourseScope>);
-      await tester.ensureVisible(scope);
+      await tester.scrollUntilVisible(
+        scope,
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(scope);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Individual sessions').last);
       await tester.pumpAndSettle();
       final chooseCourses = find.widgetWithText(ListTile, 'Course range');
-      await tester.ensureVisible(chooseCourses);
+      await tester.scrollUntilVisible(
+        chooseCourses,
+        150,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(chooseCourses);
       await tester.pumpAndSettle();

@@ -8,7 +8,8 @@ enum _ButtonLocation { hidden, floating, footer }
 /// Adds scroll progress and a return action without rebuilding course cards
 /// on each scroll tick. The footer measures overflow before its own extent.
 class UpcomingScrollToTop extends StatefulWidget {
-  const UpcomingScrollToTop({super.key, required this.sliver});
+  const UpcomingScrollToTop({super.key, required this.sliver, this.onRefresh});
+  final Future<void> Function()? onRefresh;
 
   final Widget sliver;
 
@@ -204,39 +205,45 @@ class _UpcomingScrollToTopState extends State<UpcomingScrollToTop>
           if (notification.depth == 0) _scheduleRefresh();
           return false;
         },
-        child: Stack(
-          children: [
-            CustomScrollView(
-              key: const Key('upcoming-scroll-view'),
-              controller: _scrollController,
-              slivers: [
-                widget.sliver,
-                SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    // Excluding the footer avoids manufacturing overflow for
-                    // short lists or toggling its height during transitions.
-                    _hasOverflow =
-                        constraints.precedingScrollExtent + 16 >
-                        constraints.viewportMainAxisExtent + 0.5;
-                    return SliverToBoxAdapter(
-                      child: SizedBox(
-                        key: const Key('upcoming-back-to-top-footer-space'),
-                        height: _hasOverflow ? 88 : 16,
-                        child: _hasOverflow
-                            ? Center(child: _button(_ButtonLocation.footer))
-                            : null,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: _button(_ButtonLocation.floating),
-            ),
-          ],
+        child: RefreshIndicator(
+          onRefresh: widget.onRefresh ?? () async {},
+          child: Stack(
+            children: [
+              CustomScrollView(
+                key: const Key('upcoming-scroll-view'),
+                physics: widget.onRefresh == null
+                    ? null
+                    : const AlwaysScrollableScrollPhysics(),
+                controller: _scrollController,
+                slivers: [
+                  widget.sliver,
+                  SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      // Excluding the footer avoids manufacturing overflow for
+                      // short lists or toggling its height during transitions.
+                      _hasOverflow =
+                          constraints.precedingScrollExtent + 16 >
+                          constraints.viewportMainAxisExtent + 0.5;
+                      return SliverToBoxAdapter(
+                        child: SizedBox(
+                          key: const Key('upcoming-back-to-top-footer-space'),
+                          height: _hasOverflow ? 88 : 16,
+                          child: _hasOverflow
+                              ? Center(child: _button(_ButtonLocation.footer))
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: _button(_ButtonLocation.floating),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/update_page.dart';
+import 'package:orbit/models/sync_update_text.dart';
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
 import 'dart:io';
 
@@ -129,6 +131,17 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
               padding: const EdgeInsets.only(bottom: 24),
               children: [
                 if (_selectedCategory == 0) ...[
+                  ListTile(
+                    leading: const Icon(Icons.system_update),
+                    title: Text(SyncUpdateText.of(context).check),
+                    subtitle: const Text('$kAppVersion ($kAppBuildNumber)'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const UpdatePage(),
+                      ),
+                    ),
+                  ),
                   SettingsGroup(
                     title: l10n.sectionLanguage,
                     children: [
@@ -1068,9 +1081,7 @@ class _AndroidBackgroundSectionState
 
   Future<void> _performStatusRefresh() async {
     final values = await Future.wait<Object?>([
-      _readStatus(
-        AndroidReminderGuard.instance.isIgnoringBatteryOptimizations,
-      ),
+      _readStatus(AndroidReminderGuard.instance.isIgnoringBatteryOptimizations),
       _readStatus(AndroidReminderGuard.instance.queryPermissionStatus),
       _readStatus(AndroidNativeReminderService.instance.reliabilityStatus),
     ]);

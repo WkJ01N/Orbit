@@ -541,7 +541,7 @@ void main() {
       final backup = backupService.decodeBackup(
         backupService.encodeToJson(const [], settings: snapshot),
       );
-      expect(backup.version, 6);
+      expect(backup.version, ScheduleBackupService.backupVersion);
       expect(backup.settings!.scheduleDisplay.verticalScalePercent, 65);
       await service.saveScheduleDisplaySettings(
         const ScheduleDisplaySettings(),

@@ -21,10 +21,26 @@ class MainActivity : FlutterActivity() {
     private var pendingNotificationPayload: String? = null
     private val reminderStatusExecutor = Executors.newSingleThreadExecutor()
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        openStrongSession()
+        super.onCreate(savedInstanceState)
+    }
+    override fun onResume() { super.onResume(); openStrongSession() }
+
     override fun onNewIntent(intent: Intent) {
+        openStrongSession()
         super.onNewIntent(intent)
         setIntent(intent)
         captureNotificationPayload(intent, notifyDart = true)
+    }
+
+    private fun openStrongSession(): org.json.JSONObject? {
+        val state=OrbitStrongSession.open(this)
+        if(OrbitStrongSession.isActive(state)) {
+            val records=state!!.optJSONArray("records")
+            if(records!=null && records.length()>0) OrbitStrongReminderService.start(this,OrbitReminderRecord.fromJson(records.getJSONObject(0)),opened=true)
+        }
+        return state
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -120,9 +136,55 @@ class MainActivity : FlutterActivity() {
                         }catch(e: Exception){result.error("audio_type",e.message,null)}
                         finally { retriever.release() }
                     }
+                    "resolveReminderSound" -> {
+                        try {
+                            val name=call.argument<String>("name") ?: ""
+                            val manager=android.media.RingtoneManager(this).apply { setType(android.media.RingtoneManager.TYPE_ALARM) }
+                            val matches=mutableListOf<android.net.Uri>()
+                            manager.cursor.use { cursor ->
+                                while(cursor.moveToNext()) {
+                                    val uri=manager.getRingtoneUri(cursor.position)
+                                    if(android.media.RingtoneManager.getRingtone(this,uri)?.getTitle(this)==name) matches.add(uri)
+                                }
+                            }
+                            result.success(if(matches.size==1) mapOf("kind" to "system", "value" to matches[0].toString(), "name" to name) else null)
+                        } catch(e: Exception) { result.success(null) }
+                    }
+                    "updateDirectory" -> result.success(java.io.File(getExternalFilesDir(null), "updates").absolutePath)
+                    "installUpdate" -> {
+                        try {
+                            val directory=java.io.File(getExternalFilesDir(null),"updates").canonicalFile
+                            val file=java.io.File(call.argument<String>("path") ?: "").canonicalFile
+                            require(file.parentFile==directory && file.extension=="apk" && file.isFile) { "Invalid update package" }
+                            if(Build.VERSION.SDK_INT>=26 && !packageManager.canRequestPackageInstalls()) {
+                                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                                result.error("install_permission", "Allow Orbit to install apps, then return and tap Install again.", null)
+                            } else {
+                                val uri=androidx.core.content.FileProvider.getUriForFile(this,"$packageName.updates",file)
+                                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                                result.success(null)
+                            }
+                        } catch(e: Exception) { result.error("install_update",e.message,null) }
+                    }
+                    "strongLeave" -> result.success(OrbitStrongSession.leave(this)?.toString())
+                    "strongState" -> result.success(OrbitStrongSession.state(this)?.toString())
+                    "strongOpen" -> result.success(openStrongSession()?.toString())
+                    "strongBegin" -> result.success(OrbitStrongSession.begin(this)?.toString())
+                    "strongAnswer" -> result.success(OrbitStrongSession.answer(this,call.argument<Int>("answer") ?: -999)?.toString())
+                    "strongEmergency" -> result.success(OrbitStrongSession.emergency(this)?.toString())
                     "stopPreview" -> { preview?.release(); preview = null; result.success(null) }
                     "initialize", "ensureMaintenanceAlarm" -> {
                         OrbitReminderManager.ensureMaintenanceAlarm(this)
+                        result.success(null)
+                    }
+                    "showStrongTest" -> {
+                        try {
+                            val record = OrbitReminderRecord.fromJson(org.json.JSONObject(call.arguments as Map<*, *>))
+                            result.success(OrbitReminderManager.postNotification(this, record))
+                        } catch (error: Exception) { result.error("strong_test", error.message, null) }
+                    }
+                    "stopStrongTests" -> {
+                        OrbitStrongReminderService.stopTests(this)
                         result.success(null)
                     }
                     "scheduleReminder" -> scheduleReminder(call.arguments, result)

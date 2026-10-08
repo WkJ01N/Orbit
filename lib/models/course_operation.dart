@@ -13,6 +13,9 @@ final class CourseSeriesKey {
   const CourseSeriesKey(this.value);
 
   factory CourseSeriesKey.fromSession(CourseSession session) {
+    if (session.linkedCourseKey != null) {
+      return CourseSeriesKey(session.linkedCourseKey!);
+    }
     final recurrenceSeriesId = session.recurrenceSeriesId;
     if (recurrenceSeriesId != null && recurrenceSeriesId.isNotEmpty) {
       return CourseSeriesKey('recurrence:$recurrenceSeriesId');

@@ -51,7 +51,7 @@ void main() {
     );
   });
 
-  test('v6 backup preserves portable settings', () {
+  test('current backup preserves portable settings', () {
     const settings = PortableSettings(
       locale: 'en',
       themeColor: 0xFF123456,
@@ -77,7 +77,7 @@ void main() {
       service.encodeToJson(const [], settings: settings),
     );
 
-    expect(backup.version, 6);
+    expect(backup.version, ScheduleBackupService.backupVersion);
     expect(backup.settings?.locale, 'en');
     expect(backup.settings?.reminders.leadMinutes, 30);
     expect(backup.settings?.scheduleDisplay.showEmptyDays, isFalse);

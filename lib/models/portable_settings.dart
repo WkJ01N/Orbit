@@ -1,4 +1,5 @@
 import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/archive_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -22,8 +23,10 @@ class PortableSettings {
     this.multicolor,
     this.importConfiguration,
     this.autoSyncSettings,
+    this.archive = const ArchiveSettings(),
   });
 
+  final ArchiveSettings archive;
   final String locale;
   final ImportConfiguration? importConfiguration;
   final AutoSyncSettings? autoSyncSettings;
@@ -55,9 +58,11 @@ class PortableSettings {
     courseColorOverrides: courseColorOverrides,
     importConfiguration: importConfiguration,
     autoSyncSettings: autoSyncSettings,
+    archive: archive,
   );
 
   Map<String, dynamic> toJson() => {
+    'archive': archive.toJson(),
     'locale': locale,
     if (importConfiguration != null)
       'importConfiguration': importConfiguration!.toJson(),
@@ -98,6 +103,9 @@ class PortableSettings {
       throw const FormatException('Invalid portable settings');
     }
     return PortableSettings(
+      archive: ArchiveSettings.fromJson(
+        Map<String, dynamic>.from(json['archive'] as Map? ?? {}),
+      ),
       importConfiguration: json['importConfiguration'] == null
           ? null
           : ImportConfiguration.fromJson(

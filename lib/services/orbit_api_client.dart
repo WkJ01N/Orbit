@@ -236,6 +236,13 @@ class OrbitApiClient {
     return result['url'] as String?;
   }
 
+  Future<Map<String, dynamic>> syncPolicy({Map<String, dynamic>? body}) =>
+      _authorizedJson(
+        body == null ? 'GET' : 'PUT',
+        '/v1/sync/policy',
+        body: body,
+      );
+
   Future<Map<String, dynamic>> syncRequest(
     String operation,
     Map<String, dynamic> body,

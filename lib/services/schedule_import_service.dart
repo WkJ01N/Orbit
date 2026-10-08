@@ -1120,6 +1120,7 @@ class ScheduleImportService {
     final name = get(ImportField.courseName);
     if (name.isEmpty) throw const FormatException('missingName');
     int start, end;
+    int? startPeriod;
     if (get(ImportField.startTime).isEmpty &&
         get(ImportField.endTime).isEmpty &&
         get(ImportField.periods).isNotEmpty) {
@@ -1139,6 +1140,7 @@ class ScheduleImportService {
       if (times.any((t) => t == null)) {
         throw const FormatException('unknownPeriod');
       }
+      startPeriod = numbers.first;
       start = times.first!.startMinute;
       end = times.last!.endMinute;
     } else {
@@ -1222,6 +1224,8 @@ class ScheduleImportService {
           startAt: startAt,
           section: get(ImportField.section),
         ),
+        startPeriod: startPeriod,
+        periodTimePlanId: context.periodTimes?.id,
         classType: get(ImportField.classType),
         room: get(ImportField.room),
         date: date,

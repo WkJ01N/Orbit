@@ -14,5 +14,10 @@ void main() {
     ).firstMatch(pubspec);
     expect(match, isNotNull, reason: 'pubspec.yaml version line not found');
     expect(kAppVersion, match!.group(1));
+    final build = RegExp(
+      r'^version:\s*\d+\.\d+\.\d+\+(\d+)',
+      multiLine: true,
+    ).firstMatch(pubspec);
+    expect(kAppBuildNumber, int.parse(build!.group(1)!));
   });
 }

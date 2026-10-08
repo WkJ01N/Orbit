@@ -1,5 +1,8 @@
+import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:async';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/models/orbit_feature_text.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,15 +32,67 @@ import 'package:orbit/services/course_color_utils.dart';
 
 enum SessionGroupKind { today, tomorrow, thisWeek, later }
 
-class UpcomingPage extends ConsumerWidget {
+class UpcomingPage extends ConsumerStatefulWidget {
   const UpcomingPage({super.key});
+  @override
+  ConsumerState<UpcomingPage> createState() => _UpcomingPageState();
+}
+
+class _UpcomingPageState extends ConsumerState<UpcomingPage> {
+  List<CourseSession>? _lastSessions;
+  List<Deadline> _lastDeadlines = [];
+  Future<void>? _refreshing;
+
+  Future<void> _refresh() =>
+      _refreshing ??= _refreshData().whenComplete(() => _refreshing = null);
+  Future<void> _refreshData() async {
+    try {
+      await Future.wait([
+        ref.refresh(upcomingSessionsProvider.future),
+        ref.refresh(deadlinesProvider.future),
+      ]);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(OrbitFeatureText.of(context).refreshFailed)),
+        );
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    ref.listen(appNavIndexProvider, (old, next) {
+      if (next == AppTab.upcoming.index && old != next) unawaited(_refresh());
+    });
     final l10n = AppLocalizations.of(context)!;
     final upcomingAsync = ref.watch(upcomingSessionsProvider);
-    final deadlines =
-        ref.watch(deadlinesProvider).valueOrNull ?? const <Deadline>[];
+    final ddlAsync = ref.watch(deadlinesProvider);
+    if (ddlAsync.hasValue && !ddlAsync.hasError) {
+      _lastDeadlines = ddlAsync.value!;
+    }
+    final deadlines = _lastDeadlines;
+    if (upcomingAsync.hasValue && !upcomingAsync.hasError) {
+      _lastSessions = upcomingAsync.value!;
+    }
+    Widget list(List<CourseSession> sessions) {
+      if (sessions.isEmpty && deadlines.isEmpty) {
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: const [
+              SliverFillRemaining(hasScrollBody: false, child: _EmptyState()),
+            ],
+          ),
+        );
+      }
+      return _UpcomingList(
+        groups: _groupSessions(sessions),
+        deadlines: deadlines,
+        onRefresh: _refresh,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -52,27 +107,30 @@ class UpcomingPage extends ConsumerWidget {
         title: Text(l10n.upcomingTitle),
         actions: [
           IconButton(
+            tooltip: OrbitFeatureText.of(context).refresh,
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
             tooltip: l10n.searchSessions,
             onPressed: () => SessionSearchPage.show(context),
           ),
         ],
       ),
-      body: upcomingAsync.when(
-        data: (sessions) {
-          if (sessions.isEmpty && deadlines.isEmpty) {
-            return const _EmptyState();
-          }
-          final groups = _groupSessions(sessions);
-          return _UpcomingList(groups: groups, deadlines: deadlines);
-        },
-        loading: () => const _UpcomingSkeleton(),
-        error: (error, _) => ErrorState(
-          message: l10n.upcomingLoadFailed('$error'),
-          retryLabel: l10n.actionRetry,
-          onRetry: () => ref.invalidate(upcomingSessionsProvider),
-        ),
-      ),
+      body: _lastSessions != null
+          ? list(_lastSessions!)
+          : upcomingAsync.when(
+              data: (sessions) {
+                return list(sessions);
+              },
+              loading: () => const _UpcomingSkeleton(),
+              error: (error, _) => ErrorState(
+                message: l10n.upcomingLoadFailed('$error'),
+                retryLabel: l10n.actionRetry,
+                onRetry: () => ref.invalidate(upcomingSessionsProvider),
+              ),
+            ),
     );
   }
 
@@ -175,7 +233,12 @@ class _DeadlineItem extends _FlatItem {
 // ---------------------------------------------------------------------------
 
 class _UpcomingList extends StatefulWidget {
-  const _UpcomingList({required this.groups, required this.deadlines});
+  const _UpcomingList({
+    required this.groups,
+    required this.deadlines,
+    required this.onRefresh,
+  });
+  final Future<void> Function() onRefresh;
 
   final List<_SessionGroup> groups;
   final List<Deadline> deadlines;
@@ -254,6 +317,7 @@ class _UpcomingListState extends State<_UpcomingList> {
     }
 
     return UpcomingScrollToTop(
+      onRefresh: widget.onRefresh,
       sliver: SliverList.builder(
         itemCount: items.length,
         itemBuilder: (context, index) {
@@ -418,6 +482,7 @@ class _SessionCard extends ConsumerWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      StrongCourseBadge(session: session),
                       if (session.teachers.isNotEmpty)
                         Text(
                           session.teachers.join('、'),

@@ -10,6 +10,9 @@ class Deadline {
     this.courseKey,
     this.completedAt,
     this.deletedAt,
+    this.archivedAt,
+    this.archiveHidden = false,
+    this.autoArchivePaused = false,
   });
 
   final String id;
@@ -20,6 +23,11 @@ class Deadline {
   final String? courseKey;
   final DateTime? completedAt;
   final DateTime? deletedAt;
+  final DateTime? archivedAt;
+  final bool archiveHidden;
+  final bool autoArchivePaused;
+  bool get archived => archivedAt != null;
+  bool get visible => !archived || !archiveHidden;
 
   bool get completed => completedAt != null;
   bool get deleted => deletedAt != null;
@@ -29,7 +37,18 @@ class Deadline {
     bool clearCompleted = false,
     DateTime? deletedAt,
     bool clearDeleted = false,
+    DateTime? archivedAt,
+    bool clearArchived = false,
+    bool? archiveHidden,
+    bool? autoArchivePaused,
   }) => Deadline(
+    archivedAt: clearArchived ? null : archivedAt ?? this.archivedAt,
+    archiveHidden: clearArchived ? false : archiveHidden ?? this.archiveHidden,
+    autoArchivePaused:
+        autoArchivePaused ??
+        (completedAt != null && completedAt != this.completedAt
+            ? false
+            : this.autoArchivePaused),
     id: id,
     subject: subject,
     title: title,
@@ -49,9 +68,17 @@ class Deadline {
     'course_key': courseKey,
     'completed_at': completedAt?.toUtc().toIso8601String(),
     'deleted_at': deletedAt?.toUtc().toIso8601String(),
+    'archived_at': archivedAt?.toUtc().toIso8601String(),
+    'archive_hidden': archiveHidden ? 1 : 0,
+    'auto_archive_paused': autoArchivePaused ? 1 : 0,
   };
 
   factory Deadline.fromMap(Map<String, Object?> value) => Deadline(
+    archivedAt: value['archived_at'] == null
+        ? null
+        : DateTime.parse(value['archived_at'] as String).toLocal(),
+    archiveHidden: value['archive_hidden'] == 1,
+    autoArchivePaused: value['auto_archive_paused'] == 1,
     id: value['id'] as String,
     subject: value['subject'] as String,
     title: value['title'] as String,
@@ -69,6 +96,9 @@ class Deadline {
   );
 
   Map<String, dynamic> toSyncPayload() => {
+    'archivedAt': archivedAt?.toUtc().toIso8601String(),
+    'archiveHidden': archiveHidden,
+    'autoArchivePaused': autoArchivePaused,
     'id': id,
     'subject': subject,
     'title': title,
@@ -79,6 +109,11 @@ class Deadline {
   };
 
   factory Deadline.fromSyncPayload(Map<String, dynamic> value) => Deadline(
+    archivedAt: value['archivedAt'] == null
+        ? null
+        : DateTime.parse(value['archivedAt'] as String).toLocal(),
+    archiveHidden: value['archiveHidden'] == true,
+    autoArchivePaused: value['autoArchivePaused'] == true,
     id: value['id'] as String,
     subject: value['subject'] as String,
     title: value['title'] as String,

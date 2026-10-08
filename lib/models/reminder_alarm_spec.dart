@@ -10,6 +10,10 @@ class ReminderAlarmSpec {
     required this.payload,
     required this.fireAt,
     this.bigText,
+    this.localeTag,
+    this.courseName,
+    this.courseStartAt,
+    this.courseEndAt,
     this.ruleId,
     this.sessionId,
     this.sendIndex = 1,
@@ -30,6 +34,10 @@ class ReminderAlarmSpec {
 
   /// Optional expanded notification body for class-lead reminders.
   final String? bigText;
+  final String? localeTag;
+  final String? courseName;
+  final DateTime? courseStartAt;
+  final DateTime? courseEndAt;
   final String? ruleId;
   final String? sessionId;
   final int sendIndex;
@@ -48,6 +56,11 @@ class ReminderAlarmSpec {
       'payload': payload,
       'fireAt': fireAt.toIso8601String(),
       if (bigText != null) 'bigText': bigText,
+      if (localeTag != null) 'localeTag': localeTag,
+      if (courseName != null) 'courseName': courseName,
+      if (courseStartAt != null)
+        'courseStartAt': courseStartAt!.toIso8601String(),
+      if (courseEndAt != null) 'courseEndAt': courseEndAt!.toIso8601String(),
       'ruleId': ruleId,
       'sessionId': sessionId,
       'sendIndex': sendIndex,
@@ -68,6 +81,10 @@ class ReminderAlarmSpec {
       payload: json['payload'] as String,
       fireAt: DateTime.parse(json['fireAt'] as String),
       bigText: json['bigText'] as String?,
+      localeTag: json['localeTag'] as String?,
+      courseName: json['courseName'] as String?,
+      courseStartAt: DateTime.tryParse(json['courseStartAt'] as String? ?? ''),
+      courseEndAt: DateTime.tryParse(json['courseEndAt'] as String? ?? ''),
       ruleId: json['ruleId'] as String?,
       sessionId: json['sessionId'] as String?,
       sendIndex: json['sendIndex'] as int? ?? 1,

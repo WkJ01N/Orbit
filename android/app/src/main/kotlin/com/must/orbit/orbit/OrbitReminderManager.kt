@@ -177,8 +177,19 @@ object OrbitReminderManager {
             builder.addAction(Notification.Action.Builder(null, label, pending).build())
         }
         val acknowledge = meta.optString("acknowledgeLabel")
-        if (rule.isNotEmpty() && rule != "null" && acknowledge.isNotEmpty()) action("ack", acknowledge)
-        if (meta.optJSONObject("strong")?.optBoolean("enabled") == true) action("stop", meta.optString("stopLabel", "Stop"))
+        if (meta.optJSONObject("strong")?.optBoolean("enabled") != true && rule.isNotEmpty() && rule != "null" && acknowledge.isNotEmpty()) action("ack", acknowledge)
+        if (meta.optJSONObject("strong")?.optBoolean("enabled") == true) {
+            val label=meta.optString("stopLabel","Stop")
+            val locale=meta.optString("localeTag")
+            val english=if(locale.isNotEmpty()) locale.startsWith("en") else label=="Stop"
+            val traditional=if(locale.isNotEmpty()) locale.contains("Hant") || locale=="zh" || locale.contains("TW") else label.contains("停") && record.body.contains("課")
+            val guide=if(english) "Strong reminder: open Orbit and finish the task to stop" else if(traditional) "強提醒：點擊開啟 Orbit，完成答題後結束提醒" else "强提醒：点击打开 Orbit，完成答题后结束提醒"
+            builder.setContentText("${record.body} · $guide").setStyle(Notification.BigTextStyle().bigText("${record.body}\n$guide"))
+            builder.addAction(Notification.Action.Builder(null,if(english) "Open and answer" else if(traditional) "開啟並答題" else "打开并答题",contentPendingIntent(context,record)).build())
+            val dismiss=Intent(context,OrbitReminderActionReceiver::class.java).setAction("strong_dismiss")
+            dismiss.data=android.net.Uri.parse("orbit://reminder/${record.notificationId}/dismiss")
+            builder.setDeleteIntent(PendingIntent.getBroadcast(context,record.notificationId,dismiss,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+        }
         return builder.build()
     }
 

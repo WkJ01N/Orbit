@@ -42,7 +42,10 @@ class GridPage extends ConsumerWidget {
           if (grid == null) {
             return _EmptyState(onImport: () => _goToImport(ref));
           }
-          return WeekGridView(grid: grid, sessions: sessions);
+          return WeekGridView(
+            grid: grid,
+            sessions: sessions.where((s) => s.visible).toList(),
+          );
         },
         loading: () => const _GridSkeleton(),
         error: (error, _) => ErrorState(

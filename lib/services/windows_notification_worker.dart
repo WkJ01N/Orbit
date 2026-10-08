@@ -197,18 +197,44 @@ String windowsReminderXml(ReminderAlarmSpec spec) {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&apos;');
   final strong = spec.strong.enabled;
+  final open = jsonEncode({
+    'action': 'strong',
+    'session': spec.sessionId,
+    'payload': spec.payload,
+  });
+  final english =
+      spec.localeTag?.startsWith('en') ?? (spec.stopLabel == 'Stop');
+  final traditional = spec.localeTag != null
+      ? spec.localeTag!.contains('Hant') ||
+            spec.localeTag == 'zh' ||
+            spec.localeTag!.contains('TW')
+      : spec.stopLabel != 'Stop' &&
+            (spec.body.contains('課') || spec.body.contains('彙'));
+  final guide = english
+      ? 'Strong reminder: open Orbit and finish the task to stop.'
+      : traditional
+      ? '強提醒：點擊開啟 Orbit，完成答題後結束提醒。'
+      : '强提醒：点击打开 Orbit，完成答题后结束提醒。';
   final ack = jsonEncode({
     'action': 'ack',
     'rule': spec.ruleId,
     'session': spec.sessionId,
   });
-  return '<toast launch="${escape(spec.payload)}" ${strong ? 'scenario="alarm" duration="long"' : ''}>'
+  return '<toast launch="${escape(strong ? open : spec.payload)}" ${strong ? 'scenario="alarm" duration="long"' : ''}>'
       '<visual><binding template="ToastGeneric"><text>${escape(spec.title)}</text>'
-      '<text>${escape(spec.body)}</text></binding></visual>'
-      '${strong ? '<audio src="ms-winsoundevent:Notification.Looping.Alarm${spec.strong.windowsSound.clamp(1, 10)}" loop="true"/>' : ''}'
-      '<actions>${spec.ruleId != null && spec.acknowledgeLabel.isNotEmpty ? '<action content="${escape(spec.acknowledgeLabel)}" '
+      '<text>${escape(strong ? "${spec.body} · $guide" : spec.body)}</text></binding></visual>'
+      '${strong && spec.strong.soundEnabled
+          ? '<audio src="ms-winsoundevent:Notification.Looping.Alarm${spec.strong.windowsSound.clamp(1, 10)}" loop="true"/>'
+          : strong
+          ? '<audio silent="true"/>'
+          : ''}'
+      '<actions>${!strong && spec.ruleId != null && spec.acknowledgeLabel.isNotEmpty ? '<action content="${escape(spec.acknowledgeLabel)}" '
                 'arguments="${escape(ack)}" activationType="foreground"/>' : ''}'
-      '${strong ? '<action content="${escape(spec.stopLabel)}" arguments="dismiss" activationType="system"/>' : ''}'
+      '${strong ? '<action content="${escape(english
+                ? 'Open and answer'
+                : traditional
+                ? '開啟並答題'
+                : '打开并答题')}" arguments="${escape(open)}" activationType="foreground"/>' : ''}'
       '</actions></toast>';
 }
 

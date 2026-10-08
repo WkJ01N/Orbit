@@ -62,10 +62,13 @@ class OrbitCustomReminderTest {
         assertNull(OrbitReminderStore.get(context,3_000_001))
         db.rawQuery("SELECT session_id FROM reminder_schedule",null).use {assertEquals(1,it.count);it.moveToFirst();assertEquals("another",it.getString(0))}
     }
-    @Test fun notificationContainsSeparateAcknowledgementAndStopActions() {
+    @Test fun strongNotificationRequiresOpeningAndAnsweringRatherThanDirectAcknowledgement() {
         val notification=OrbitReminderManager.buildNotification(context,record())!!
-        assertEquals(listOf("Acknowledge","Stop"),notification.actions.map {it.title.toString()})
-        assertEquals(record().body,notification.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT).toString())
+        assertEquals(listOf("Open and answer"),notification.actions.map {it.title.toString()})
+        assertTrue(notification.extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT).toString().contains("finish the task"))
+        assertNotNull(notification.deleteIntent)
+        val ordinary=record().let { it.copy(metadata=JSONObject(it.metadata).put("strong",JSONObject().put("enabled",false)).toString()) }
+        assertEquals(listOf("Acknowledge"),OrbitReminderManager.buildNotification(context,ordinary)!!.actions.map {it.title.toString()})
     }
     @Test fun repeatsRegisterOnlyNextSequenceAndRecoveryKeepsLatestMissedOne() {
         fun spec(index: Int, offset: Long): JSONObject {

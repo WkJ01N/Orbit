@@ -36,7 +36,9 @@ final upcomingSessionsProvider = FutureProvider<List<CourseSession>>((
 
 final deadlinesProvider = FutureProvider<List<Deadline>>((ref) async {
   ref.watch(scheduleRefreshProvider);
-  return ref.read(appDatabaseProvider).getDeadlines();
+  return (await ref.read(appDatabaseProvider).getDeadlines())
+      .where((d) => d.visible)
+      .toList();
 });
 
 final scheduleRefreshProvider = StateProvider<int>((ref) => 0);
@@ -222,22 +224,28 @@ final gridDensityMetricsProvider = Provider<GridDensityMetrics>((ref) {
 });
 
 final weekGridProvider = Provider<WeekGrid?>((ref) {
-  final sessions = ref.watch(sessionsProvider).valueOrNull;
+  final sessions = ref
+      .watch(sessionsProvider)
+      .valueOrNull
+      ?.where((s) => s.visible)
+      .toList();
   if (sessions == null) {
     return null;
   }
-  if (sessions.isEmpty) {
+  final deadlines = ref.watch(deadlinesProvider).valueOrNull ?? <Deadline>[];
+  final displayedDeadlines = deadlines
+      .where((d) => !d.completed || d.archived)
+      .toList();
+  if (sessions.isEmpty && displayedDeadlines.isEmpty) {
     return null;
   }
 
   final mode = ref.watch(gridDefaultWeekModeProvider);
   final startWeekday = ref.watch(weekStartDayProvider);
   var weekStart = ref.watch(selectedWeekStartProvider);
-  weekStart ??= resolveDefaultWeekStart(
-    sessions,
-    mode,
-    startWeekday: startWeekday,
-  );
+  weekStart ??= sessions.isEmpty
+      ? weekStartFor(displayedDeadlines.first.dueAt, startWeekday: startWeekday)
+      : resolveDefaultWeekStart(sessions, mode, startWeekday: startWeekday);
   if (weekStart == null) {
     return null;
   }

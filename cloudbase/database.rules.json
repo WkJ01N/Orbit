@@ -1,8 +1,34 @@
 {
-  "orbit_sync_records": { "read": false, "write": false },
-  "orbit_sync_changes": { "read": false, "write": false },
-  "orbit_sync_state": { "read": false, "write": false },
-  "orbit_sync_mutations": { "read": false, "write": false },
-  "orbit_auth_sessions": { "read": false, "write": false },
-  "orbit_user_profiles": { "read": false, "write": false }
+  "orbit_sync_records": {
+    "read": false,
+    "write": false
+  },
+  "orbit_sync_changes": {
+    "read": false,
+    "write": false
+  },
+  "orbit_sync_state": {
+    "read": false,
+    "write": false
+  },
+  "orbit_sync_mutations": {
+    "read": false,
+    "write": false
+  },
+  "orbit_auth_sessions": {
+    "read": false,
+    "write": false
+  },
+  "orbit_user_profiles": {
+    "read": false,
+    "write": false
+  },
+  "orbit_sync_policy": {
+    "read": false,
+    "write": false
+  },
+  "orbit_update_cache": {
+    "read": false,
+    "write": false
+  }
 }

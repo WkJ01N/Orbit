@@ -220,6 +220,31 @@ class AndroidNativeReminderService {
     };
   }
 
+  Future<bool> showStrongTest(
+    ReminderAlarmSpec spec,
+    NotificationCopy copy,
+  ) async {
+    if (!Platform.isAndroid) return false;
+    await initialize();
+    return await _channel.invokeMethod<bool>(
+          'showStrongTest',
+          buildScheduleArguments(
+            spec,
+            copy: copy,
+            exactPreferred: false,
+            allowInexactFallback: true,
+            restoreOnReboot: false,
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> stopStrongTests() async {
+    if (!Platform.isAndroid) return;
+    await initialize();
+    await _channel.invokeMethod<void>('stopStrongTests');
+  }
+
   Future<void> cancel(int alarmId) async {
     if (!Platform.isAndroid) return;
     await initialize();

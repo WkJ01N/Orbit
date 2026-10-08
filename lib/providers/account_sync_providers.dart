@@ -1,3 +1,5 @@
+import 'package:orbit/providers/archive_providers.dart';
+import 'package:orbit/services/sync_scope_service.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -30,8 +32,18 @@ final accountAvatarCacheProvider = Provider<AccountAvatarCache>(
   (ref) => AccountAvatarCache(),
 );
 
+final syncScopeServiceProvider = Provider(
+  (ref) => SyncScopeService(
+    ref.watch(settingsServiceProvider),
+    ref.watch(orbitApiClientProvider),
+  ),
+);
+
 final syncBackendProvider = Provider<SyncBackend>(
-  (ref) => CloudBaseSyncBackend(ref.watch(orbitApiClientProvider)),
+  (ref) => CloudBaseSyncBackend(
+    ref.watch(orbitApiClientProvider),
+    scope: ref.watch(syncScopeServiceProvider),
+  ),
 );
 
 final importConfigurationRefreshProvider = StateProvider<int>((ref) => 0);
@@ -63,12 +75,33 @@ final scheduleSyncCoordinatorProvider = Provider<ScheduleSyncCoordinator>((
 ) {
   final settings = ref.watch(settingsServiceProvider);
   return ScheduleSyncCoordinator(
+    settings: settings,
+    scope: ref.watch(syncScopeServiceProvider),
     database: ref.watch(appDatabaseProvider),
     backend: ref.watch(syncBackendProvider),
     loadConfiguration: settings.loadImportConfiguration,
     saveConfiguration: settings.saveImportConfiguration,
     onCoursesChanged: () async {
       ref.read(scheduleRefreshProvider.notifier).state++;
+      ref.read(importConfigurationRefreshProvider.notifier).state++;
+      for (final p in [
+        localeProvider,
+        themeColorProvider,
+        themeModeProvider,
+        themeStyleProvider,
+        courseColorOverridesProvider,
+        colorSchemeProvider,
+        multicolorSettingsProvider,
+        scheduleDisplaySettingsProvider,
+      ]) {
+        ref.invalidate(p);
+      }
+      ref.invalidate(archiveSettingsProvider);
+      ref.invalidate(gridDefaultWeekModeProvider);
+      ref.invalidate(weekStartDayProvider);
+      ref.invalidate(gridDensityProvider);
+      ref.invalidate(effectiveReminderSettingsProvider);
+      ref.invalidate(reminderSettingsProvider);
       await ref.read(reminderSettingsProvider.notifier).resyncReminders();
     },
   );
@@ -99,6 +132,25 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
         phase: SyncPhase.disabled,
         message: 'cloud_not_configured',
       );
+    }
+    for (final provider in <ProviderListenable<Object?>>[
+      reminderSettingsProvider,
+      localeProvider,
+      themeColorProvider,
+      themeModeProvider,
+      themeStyleProvider,
+      courseColorOverridesProvider,
+      colorSchemeProvider,
+      multicolorSettingsProvider,
+      scheduleDisplaySettingsProvider,
+      archiveSettingsProvider,
+      gridDefaultWeekModeProvider,
+      weekStartDayProvider,
+      gridDensityProvider,
+    ]) {
+      ref.listen(provider, (_, _) {
+        if (!_suppressLocalTrigger) scheduleSync();
+      });
     }
     _changes = ref.read(appDatabaseProvider).syncChanges.listen((_) {
       if (!_suppressLocalTrigger) scheduleSync();

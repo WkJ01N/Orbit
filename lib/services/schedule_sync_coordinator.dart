@@ -1,3 +1,7 @@
+import 'package:orbit/services/settings_service.dart';
+import 'package:orbit/services/settings_sync_codec.dart';
+import 'package:orbit/models/sync_content.dart';
+import 'package:orbit/services/sync_scope_service.dart';
 import 'dart:async';
 
 import 'package:orbit/data/database/app_database.dart';
@@ -7,6 +11,8 @@ import 'package:orbit/services/account_sync_service.dart';
 
 class ScheduleSyncCoordinator {
   ScheduleSyncCoordinator({
+    SettingsService? settings,
+    SyncScopeService? scope,
     required AppDatabase database,
     required SyncBackend backend,
     required Future<ImportConfiguration> Function() loadConfiguration,
@@ -18,6 +24,8 @@ class ScheduleSyncCoordinator {
          loadConfiguration,
          saveConfiguration,
          onCoursesChanged,
+         settings,
+         scope,
        );
 
   ScheduleSyncCoordinator._(
@@ -26,6 +34,8 @@ class ScheduleSyncCoordinator {
     this._loadConfiguration,
     this._saveConfiguration,
     this._onCoursesChanged,
+    this._settings,
+    this._scope,
   );
 
   final AppDatabase _database;
@@ -33,6 +43,10 @@ class ScheduleSyncCoordinator {
   final Future<ImportConfiguration> Function() _loadConfiguration;
   final Future<void> Function(ImportConfiguration) _saveConfiguration;
   final Future<void> Function() _onCoursesChanged;
+  final SettingsService? _settings;
+  final SyncScopeService? _scope;
+  SyncSelection _selection = SyncSelection.defaults;
+  bool _allows(SyncEntity e) => _scope == null || _selection.allows(e);
   Future<SyncStatus>? _running;
 
   Future<SyncStatus> status() async {
@@ -54,8 +68,16 @@ class ScheduleSyncCoordinator {
       throw const AccountSyncException('cloud_not_configured');
     }
     final sameAccount = await _database.boundSyncAccountUid() == account.uid;
-    final local = await _localEntities(includeLinkedChanges: sameAccount);
-    final remote = await _backend.snapshot();
+    if (sameAccount) await captureSettingsChanges(account.uid);
+    if (_scope != null) {
+      _scope.accountUid = account.uid;
+      await _scope.refresh();
+      _selection = await _scope.selection();
+    }
+    final local = (await _localEntities(
+      includeLinkedChanges: sameAccount,
+    )).where(_allows).toList();
+    final remote = (await _backend.snapshot()).where(_allows).toList();
     final localByKey = {for (final item in local) _key(item): item};
     final remoteByKey = {for (final item in remote) _key(item): item};
     final localOnly = <SyncEntity>[];
@@ -107,13 +129,17 @@ class ScheduleSyncCoordinator {
     required SyncAccount account,
     required InitialSyncPreview preview,
     required Map<String, bool> useLocalForConflict,
+    bool resetState = true,
+    bool synchronizeAfter = true,
   }) async {
     if (preview.conflicts.any(
       (conflict) => !useLocalForConflict.containsKey(conflict.id),
     )) {
       throw const AccountSyncException('unresolved_conflicts');
     }
-    await _database.setActiveSyncAccount(account, resetState: true);
+    if (resetState) {
+      await _database.setActiveSyncAccount(account, resetState: true);
+    }
     var coursesChanged = false;
     for (final entity in preview.localOnly) {
       await _database.enqueueSyncEntity(
@@ -132,11 +158,15 @@ class ScheduleSyncCoordinator {
         await _database.storeSyncConflicts([conflict]);
         await _database.resolveSyncConflict(conflict, useLocal: true);
       } else {
+        await _database.discardPendingSyncEntity(conflict.remote);
         coursesChanged |= await _applyRemote(conflict.remote);
       }
     }
+    if (resetState && _scope != null) {
+      await _scope.markApplied(await _scope.selection());
+    }
     if (coursesChanged) await _onCoursesChanged();
-    await synchronize();
+    if (synchronizeAfter) await synchronize();
   }
 
   Future<SyncStatus> synchronize() {
@@ -159,6 +189,12 @@ class ScheduleSyncCoordinator {
       );
     }
     try {
+      if (_scope != null) {
+        _scope.accountUid = account.uid;
+        await _scope.refresh();
+        _selection = await _scope.safeSelection();
+      }
+      await captureSettingsChanges(account.uid);
       var cursor = await _database.syncCursor(account.uid);
       var coursesChanged = false;
       var receivedPull = false;
@@ -170,7 +206,7 @@ class ScheduleSyncCoordinator {
             _key(conflict.remote),
         };
         for (final entity in pulled.entities) {
-          if (conflicts.contains(_key(entity))) continue;
+          if (!_allows(entity) || conflicts.contains(_key(entity))) continue;
           coursesChanged |= await _applyRemote(entity);
         }
         cursor = pulled.cursor;
@@ -179,7 +215,25 @@ class ScheduleSyncCoordinator {
       }
 
       while (true) {
-        final pending = await _database.pendingSyncMutations();
+        final pending = await _database.pendingSyncMutations(
+          limit: 100,
+          entityTypes: _scope == null
+              ? null
+              : [
+                  for (final t in SyncEntityType.values)
+                    if (t != SyncEntityType.settingGroup &&
+                        _selection.allows(
+                          SyncEntity(type: t, id: '', payload: {}),
+                        ))
+                      t.name,
+                ],
+          settingGroups: _scope == null
+              ? null
+              : _selection.enabled
+                    .where((c) => c.index >= 5)
+                    .map((c) => c.name)
+                    .toList(),
+        );
         if (pending.isEmpty) break;
         final SyncPushResult pushed;
         final backend = _backend;
@@ -287,6 +341,16 @@ class ScheduleSyncCoordinator {
         includeDeleted: includeLinkedChanges,
       ),
       ..._configurationEntities(await _loadConfiguration()),
+      if (_settings != null) ...[
+        for (final e in SettingsSyncCodec.groups(
+          await _settings.exportPortableSettings(),
+        ).entries)
+          SyncEntity(
+            type: SyncEntityType.settingGroup,
+            id: e.key,
+            payload: e.value,
+          ),
+      ],
     ]) {
       values[_key(entity)] = entity;
     }
@@ -330,6 +394,40 @@ class ScheduleSyncCoordinator {
       ];
 
   Future<bool> _applyRemote(SyncEntity entity) async {
+    if (entity.type == SyncEntityType.settingGroup) {
+      if (_settings != null && !entity.deleted) {
+        var incoming = entity;
+        if (entity.id == 'strong') {
+          final audio = await SettingsSyncCodec.restoreAudio(entity.payload);
+          if (audio.fallback) {
+            await _settings.saveLocalJson('sync_sound_reselect', {
+              'required': true,
+            });
+          }
+          incoming = SyncEntity(
+            type: entity.type,
+            id: entity.id,
+            revision: entity.revision,
+            payload: audio.payload,
+          );
+        }
+        final value = SettingsSyncCodec.merge(
+          await _settings.exportPortableSettings(),
+          incoming,
+        );
+        await _settings.importPortableSettings(value);
+        final uid = (await _database.activeSyncAccount())?.uid;
+        if (uid != null) {
+          final hashes = await _settings.loadLocalJson('sync_settings_$uid');
+          hashes[entity.id] = canonicalSyncPayload(
+            SettingsSyncCodec.groups(value)[entity.id] ?? {},
+          );
+          await _settings.saveLocalJson('sync_settings_$uid', hashes);
+        }
+      }
+      await _database.applyRemoteEntities([entity]);
+      return true;
+    }
     if (entity.type == SyncEntityType.courseSession ||
         entity.type == SyncEntityType.deadline) {
       await _database.applyRemoteEntities([entity]);
@@ -359,11 +457,90 @@ class ScheduleSyncCoordinator {
         next = current.copy(periodTimes: values);
       case SyncEntityType.courseSession:
       case SyncEntityType.deadline:
+      case SyncEntityType.settingGroup:
         throw StateError('Handled above');
     }
     await _saveConfiguration(next);
     await _database.applyRemoteEntities([entity]);
     return false;
+  }
+
+  Future<void> captureSettingsChanges(String uid) async {
+    if (_settings == null) return;
+    final saved = await _settings.loadLocalJson('sync_settings_$uid');
+    for (final e in SettingsSyncCodec.groups(
+      await _settings.exportPortableSettings(),
+    ).entries) {
+      final hash = canonicalSyncPayload(e.value);
+      if (saved[e.key] != hash) {
+        await _database.enqueueSyncEntity(
+          SyncEntity(
+            type: SyncEntityType.settingGroup,
+            id: e.key,
+            payload: e.value,
+          ),
+        );
+        saved[e.key] = hash;
+      }
+    }
+    await _settings.saveLocalJson('sync_settings_$uid', saved);
+  }
+
+  Future<InitialSyncPreview> previewCategories(SyncSelection target) async {
+    final account = await _database.activeSyncAccount();
+    if (account == null) throw const AccountSyncException('invalid_account');
+    await captureSettingsChanges(account.uid);
+    final backend = _backend;
+    if (backend is CloudBaseSyncBackend) backend.previewAll = true;
+    final previous = _selection;
+    _selection = target;
+    try {
+      // Avoid refreshing policy while previewing a not-yet-enabled range.
+      final local = await _localEntities(includeLinkedChanges: true);
+      final remote = await _backend.snapshot();
+      final byKey = {for (final e in local.where(target.allows)) _key(e): e};
+      final clouds = {for (final e in remote.where(target.allows)) _key(e): e};
+      final conflicts = <SyncConflict>[];
+      final identical = <SyncEntity>[];
+      final localOnly = <SyncEntity>[];
+      for (final e in byKey.values) {
+        final r = clouds[_key(e)];
+        if (r == null) {
+          localOnly.add(e);
+        } else if (r.deleted == e.deleted &&
+            canonicalSyncPayload(r.payload) ==
+                canonicalSyncPayload(e.payload)) {
+          identical.add(r);
+        } else {
+          conflicts.add(
+            SyncConflict(
+              id: 'range:${_key(e)}',
+              local: SyncMutation(
+                mutationId: 'range:${_key(e)}',
+                entity: e,
+                operation: e.deleted
+                    ? SyncOperation.delete
+                    : SyncOperation.upsert,
+                baseRevision: r.revision,
+              ),
+              remote: r,
+              createdAt: DateTime.now(),
+            ),
+          );
+        }
+      }
+      return InitialSyncPreview(
+        localOnly: localOnly,
+        remoteOnly: clouds.values
+            .where((r) => !byKey.containsKey(_key(r)))
+            .toList(),
+        identical: identical,
+        conflicts: conflicts,
+      );
+    } finally {
+      _selection = previous;
+      if (backend is CloudBaseSyncBackend) backend.previewAll = false;
+    }
   }
 
   static String _key(SyncEntity entity) => '${entity.type.name}|${entity.id}';
