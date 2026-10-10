@@ -8,6 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/core/widgets/reminder_template_field.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
+import 'package:orbit/features/grid/strong_grid_decoration.dart';
+import 'package:orbit/features/reminder/strong_badge.dart';
+import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/features/settings/theme_scheme_page.dart';
 import 'package:orbit/features/settings/strong_reminder_page.dart';
 import 'package:orbit/models/custom_reminder_rule.dart';
@@ -21,9 +24,11 @@ import 'package:orbit/services/course_color_utils.dart';
 import 'package:orbit/services/grid_builder.dart';
 
 class _FitSettings extends ScheduleDisplaySettingsNotifier {
+  _FitSettings([this.gradient = StrongCardGradient.upperHalf]);
+  final StrongCardGradient gradient;
   @override
   ScheduleDisplaySettings build() =>
-      const ScheduleDisplaySettings(fitToPage: true);
+      ScheduleDisplaySettings(fitToPage: true, strongCardGradient: gradient);
 }
 
 class _EmptyOverrides extends CourseColorOverridesNotifier {
@@ -77,6 +82,8 @@ Future<void> pumpPreview(
   Widget child, {
   double width = 320,
   Brightness brightness = Brightness.light,
+  bool strong = false,
+  StrongCardGradient gradient = StrongCardGradient.upperHalf,
   Locale locale = const Locale.fromSubtags(
     languageCode: 'zh',
     scriptCode: 'Hans',
@@ -99,7 +106,12 @@ Future<void> pumpPreview(
     ProviderScope(
       overrides: [
         sessionsProvider.overrideWith((ref) async => sessions),
-        scheduleDisplaySettingsProvider.overrideWith(_FitSettings.new),
+        strongCourseIdsProvider.overrideWith(
+          (_) async => strong ? sessions.map((s) => s.id).toSet() : <String>{},
+        ),
+        scheduleDisplaySettingsProvider.overrideWith(
+          () => _FitSettings(gradient),
+        ),
         selectedScheduleDateProvider.overrideWith(
           (ref) => DateTime(2026, 8, 24),
         ),
@@ -335,4 +347,185 @@ void main() {
     },
     skip: !Platform.isWindows,
   );
+  for (final width in [320.0, 1100.0]) {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        'strong colorful preview $width ${brightness.name}',
+        (tester) async {
+          final sessions = courses();
+          await pumpPreview(
+            tester,
+            Scaffold(
+              body: WeekGridView(
+                grid: GridBuilder().buildWeekGrid(
+                  weekStart: DateTime(2026, 8, 24),
+                  sessions: sessions,
+                ),
+                sessions: sessions,
+              ),
+            ),
+            width: width,
+            brightness: brightness,
+            strong: true,
+          );
+          await expectLater(
+            find.byKey(const Key('preview')),
+            matchesGoldenFile(
+              'goldens/strong_colorful_${width.toInt()}_${brightness.name}.png',
+            ),
+          );
+          // The indicator and background resolve the same automatic palette as
+          // the course's own colored strip, rather than introducing a new color.
+          final chip = find.byType(GridSessionChip).first;
+          final strip = tester.widget<Container>(
+            find
+                .descendant(
+                  of: chip,
+                  matching: find.byWidgetPredicate(
+                    (w) => w is Container && w.color != null,
+                  ),
+                )
+                .first,
+          );
+          final accent = strip.color!.withAlpha(255);
+          final ink = tester.widget<Ink>(
+            find.descendant(of: chip, matching: find.byType(Ink)).first,
+          );
+          final gradient =
+              (ink.decoration! as BoxDecoration).gradient! as LinearGradient;
+          final material = tester.widget<Material>(
+            find.descendant(of: chip, matching: find.byType(Material)).first,
+          );
+          expect(
+            gradient.colors.first,
+            Color.alphaBlend(
+              strongGridHighlight(accent).withValues(alpha: .25),
+              material.color!,
+            ),
+          );
+          final session = tester.widget<GridSessionChip>(chip).session;
+          final bell = find.byKey(ValueKey('grid-strong-bell-${session.id}'));
+          final icon = tester.widget<Icon>(
+            find.descendant(of: bell, matching: find.byType(Icon)),
+          );
+          expect(icon.color, strongGridHighlight(accent));
+          expect(
+            find.descendant(
+              of: chip,
+              matching: find.byWidgetPredicate(
+                (w) => w is Container && w.color == accent.withAlpha(100),
+              ),
+            ),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+        skip: !Platform.isWindows,
+      );
+    }
+  }
+
+  for (final locale in [
+    const Locale('en'),
+    const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+    const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  ]) {
+    testWidgets(
+      'selected ongoing strong card retains its border and ${locale.toLanguageTag()} semantics',
+      (tester) async {
+        final session = courses().first.copyWith(
+          startAt: DateTime(2026, 8, 24, 11),
+          endAt: DateTime(2026, 8, 24, 13),
+        );
+        await pumpPreview(
+          tester,
+          Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 170,
+                height: 100,
+                child: Builder(
+                  builder: (context) => GridSessionChip(
+                    session: session,
+                    colorScheme: Theme.of(context).colorScheme,
+                    l10n: AppLocalizations.of(context)!,
+                    isSelected: true,
+                    onTap: () {},
+                    onMenu: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+          strong: true,
+          locale: locale,
+        );
+        final chip = find.byType(GridSessionChip);
+        final shape =
+            tester
+                    .widget<Material>(
+                      find
+                          .descendant(of: chip, matching: find.byType(Material))
+                          .first,
+                    )
+                    .shape!
+                as RoundedRectangleBorder;
+        expect(shape.side.width, 2);
+        expect(
+          shape.side.color,
+          Theme.of(tester.element(chip)).colorScheme.primary,
+        );
+        final semantics = tester.widget<Semantics>(
+          find.descendant(of: chip, matching: find.byType(Semantics)).first,
+        );
+        expect(
+          semantics.properties.label,
+          contains(WakeText.of(tester.element(chip)).strong),
+        );
+        expect(find.text('11:00 - 13:00'), findsOneWidget);
+        expect(
+          find.descendant(of: chip, matching: find.byType(StrongCourseBadge)),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+  for (final extent in [
+    StrongCardGradient.fullCard,
+    StrongCardGradient.topQuarter,
+  ]) {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        'strong gradient extent ${extent.name} ${brightness.name}',
+        (tester) async {
+          final sessions = courses();
+          await pumpPreview(
+            tester,
+            Scaffold(
+              body: WeekGridView(
+                grid: GridBuilder().buildWeekGrid(
+                  weekStart: DateTime(2026, 8, 24),
+                  sessions: sessions,
+                ),
+                sessions: sessions,
+              ),
+            ),
+            width: 320,
+            brightness: brightness,
+            strong: true,
+            gradient: extent,
+          );
+          await expectLater(
+            find.byKey(const Key('preview')),
+            matchesGoldenFile(
+              'goldens/strong_gradient_${extent.name}_${brightness.name}.png',
+            ),
+          );
+          expect(tester.takeException(), isNull);
+        },
+        skip: !Platform.isWindows,
+      );
+    }
+  }
 }

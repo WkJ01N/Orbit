@@ -79,6 +79,7 @@ jobs:
             echo "Release $TAG is already published; preserving its verified assets."
             exit 0
           fi
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
-          gh release edit "$TAG" --title "Orbit $TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
+          gh release edit "$TAG" --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
           gh release upload "$TAG" dist/* --clobber
+          gh release edit "$TAG" --draft=false

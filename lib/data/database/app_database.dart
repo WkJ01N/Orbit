@@ -967,27 +967,37 @@ class AppDatabase {
   }
 
   Future<int> restoreDeletedSessionIds(List<String> ids) async {
-    if (ids.isEmpty) return 0;
-    final placeholders = List.filled(ids.length, '?').join(',');
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return 0;
     final count = await _db.transaction((txn) async {
-      final count = await txn.rawUpdate(
-        'UPDATE $_tableName SET deleted_at = NULL '
-        'WHERE id IN ($placeholders) AND deleted_at IS NOT NULL',
-        ids,
-      );
-      final restored = await txn.rawQuery(
-        'SELECT * FROM $_tableName WHERE id IN ($placeholders) '
-        'AND deleted_at IS NULL',
-        ids,
-      );
-      for (final row in restored) {
-        await _queueCourseMutation(
-          txn,
-          CourseSession.fromMap(row),
-          SyncOperation.upsert,
+      var total = 0;
+      for (var offset = 0; offset < unique.length; offset += 400) {
+        final chunk = unique.sublist(
+          offset,
+          offset + 400 < unique.length ? offset + 400 : unique.length,
         );
+        final where =
+            'id IN (${List.filled(chunk.length, '?').join(',')}) AND deleted_at IS NOT NULL';
+        final rows = await txn.query(
+          _tableName,
+          where: where,
+          whereArgs: chunk,
+        );
+        total += await txn.update(
+          _tableName,
+          {'deleted_at': null},
+          where: where,
+          whereArgs: chunk,
+        );
+        for (final row in rows) {
+          await _queueCourseMutation(
+            txn,
+            CourseSession.fromMap({...row, 'deleted_at': null}),
+            SyncOperation.upsert,
+          );
+        }
       }
-      return count;
+      return total;
     });
     _syncChanges.add(null);
     return count;
@@ -1006,12 +1016,41 @@ class AppDatabase {
   }
 
   Future<int> softDeleteSessionIds(List<String> ids) async {
-    if (ids.isEmpty) return 0;
-    final placeholders = List.filled(ids.length, '?').join(',');
-    return _softDeleteWhere(
-      'id IN ($placeholders) AND deleted_at IS NULL',
-      ids,
-    );
+    final unique = ids.toSet().toList();
+    if (unique.isEmpty) return 0;
+    final count = await _db.transaction((txn) async {
+      var total = 0;
+      final deletedAt = DateTime.now().toIso8601String();
+      for (var offset = 0; offset < unique.length; offset += 400) {
+        final chunk = unique.sublist(
+          offset,
+          offset + 400 < unique.length ? offset + 400 : unique.length,
+        );
+        final where =
+            'id IN (${List.filled(chunk.length, '?').join(',')}) AND deleted_at IS NULL';
+        final rows = await txn.query(
+          _tableName,
+          where: where,
+          whereArgs: chunk,
+        );
+        total += await txn.update(
+          _tableName,
+          {'deleted_at': deletedAt},
+          where: where,
+          whereArgs: chunk,
+        );
+        for (final row in rows) {
+          await _queueCourseMutation(
+            txn,
+            CourseSession.fromMap(row),
+            SyncOperation.delete,
+          );
+        }
+      }
+      return total;
+    });
+    _syncChanges.add(null);
+    return count;
   }
 
   Future<int> _softDeleteWhere(String where, List<Object?> whereArgs) async {

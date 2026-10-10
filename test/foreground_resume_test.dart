@@ -89,6 +89,7 @@ void main() {
     final reminders = _Reminders();
     final container = ProviderContainer(
       overrides: [
+        foregroundReminderMaintenanceSupportedProvider.overrideWithValue(true),
         reminderSchedulerProvider.overrideWithValue(scheduler),
         reminderSettingsProvider.overrideWith(() => reminders),
       ],
@@ -136,4 +137,42 @@ void main() {
     expect(tester.takeException(), isNull);
     container.dispose();
   });
+
+  testWidgets(
+    'unsupported platforms restore without native reminder maintenance',
+    (tester) async {
+      final scheduler = _Scheduler();
+      final reminders = _Reminders();
+      final container = ProviderContainer(
+        overrides: [
+          foregroundReminderMaintenanceSupportedProvider.overrideWithValue(
+            false,
+          ),
+          reminderSchedulerProvider.overrideWithValue(scheduler),
+          reminderSettingsProvider.overrideWith(() => reminders),
+        ],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: OrbitNotificationListener(
+              child: Scaffold(body: Text('ready')),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('ready'), findsOneWidget);
+      expect(scheduler.checks, 0);
+      expect(reminders.syncs, 0);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

@@ -6,6 +6,7 @@ import 'package:orbit/data/repositories/schedule_repository.dart';
 import 'package:orbit/features/grid/session_range_utils.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/services/xlsx_parser.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -181,6 +182,48 @@ void main() {
 
       final remaining = await repository.getAllSessions();
       expect(remaining.map((s) => s.id).toSet(), {'partial', 'outside'});
+    },
+  );
+  test(
+    'ID deletion deduplicates, chunks large selections, preserves others and supports restore',
+    () async {
+      final start = DateTime(2026, 6, 3, 9);
+      await database.setActiveSyncAccount(
+        const SyncAccount(uid: 'batch-user', email: 'batch@example.com'),
+      );
+      await database.upsertSessions([
+        for (var i = 0; i < 1205; i++)
+          _session(
+            id: 'large-$i',
+            startAt: start,
+            endAt: start.add(const Duration(hours: 1)),
+          ),
+        _session(
+          id: 'keep',
+          startAt: start.add(const Duration(days: 1)),
+          endAt: start.add(const Duration(days: 1, hours: 1)),
+        ),
+      ]);
+      final ids = [for (var i = 0; i < 1205; i++) 'large-$i'];
+      expect(
+        await repository.deleteSessionIds([...ids, ids.first, 'missing']),
+        1205,
+      );
+      expect((await repository.getAllSessions()).map((s) => s.id), ['keep']);
+      expect(await repository.deleteSessionIds(ids), 0);
+      expect((await database.getDeletedSessions()).length, 1205);
+      final deletes = (await database.pendingSyncMutations(
+        limit: 2000,
+      )).where((m) => m.operation == SyncOperation.delete).toList();
+      expect(deletes.map((m) => m.entity.id).toSet(), ids.toSet());
+      final restored = await repository.restoreDeletedSessions(ids);
+      expect(restored.restored, 1205);
+      expect(restored.skipped, 0);
+      expect((await repository.getAllSessions()).length, 1206);
+      expect(await database.restoreDeletedSessionIds(ids), 0);
+      final pending = await database.pendingSyncMutations(limit: 2000);
+      expect(pending.length, 1206);
+      expect(pending.every((m) => m.operation == SyncOperation.upsert), isTrue);
     },
   );
 }

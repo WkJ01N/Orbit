@@ -1,4 +1,9 @@
 import 'package:orbit/features/reminder/strong_badge.dart';
+import 'package:orbit/features/grid/strong_grid_decoration.dart';
+import 'package:orbit/models/wake_text.dart';
+import 'package:orbit/features/grid/grid_selection.dart';
+import 'package:orbit/core/routing/app_tab.dart';
+import 'package:orbit/models/grid_action_text.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:math' as math;
 
@@ -79,7 +84,27 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     return currentWeek == displayed ? dateOnly(now) : displayed;
   }
 
+  void _clearSelection() {
+    if (mounted && _selectedSessionId != null) {
+      setState(() => _selectedSessionId = null);
+    }
+  }
+
+  Future<void> _openSession(CourseSession session) async {
+    if (ref.read(gridSelectionProvider).active) {
+      ref.read(gridSelectionProvider.notifier).toggle(session.id);
+      return;
+    }
+    setState(() => _selectedSessionId = session.id);
+    try {
+      await SessionDetailSheet.show(context, session);
+    } finally {
+      if (mounted && _selectedSessionId == session.id) _clearSelection();
+    }
+  }
+
   void _setAnchor(DateTime value, int weekStartDay) {
+    _clearSelection();
     final scrollOffset = _scrollController.hasClients
         ? _scrollController.offset
         : null;
@@ -131,6 +156,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(appNavIndexProvider, (_, next) {
+      if (next != AppTab.grid.index) _clearSelection();
+    });
+    final selection = ref.watch(gridSelectionProvider);
     final deadlineDates = (ref.watch(deadlinesProvider).valueOrNull ?? [])
         .where((d) => !d.completed || d.archived)
         .map((d) => d.dueAt)
@@ -253,10 +282,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               : () => _lastAutoScrollKey = '${mode.name}|${visibleDates.first}',
           selectedSessionId: _selectedSessionId,
           onJump: () => selectAnchor(nearestCourseDate(anchor, _sessions)),
-          onSelectSession: (session) {
-            setState(() => _selectedSessionId = session.id);
-            SessionDetailSheet.show(context, session);
-          },
+          onSelectSession: _openSession,
           onMenu: (session, position) => SessionActionMenu.show(
             context: context,
             ref: ref,
@@ -289,10 +315,13 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                     '${mode.name}|${dateOnly(anchor)}|${visibleDates.length}',
                 controller: _pagerController,
                 reduceMotion: reduceMotion,
-                onInteractionStart: () => _syncAdjacentScrollPositions(
-                  previousPage?.layout,
-                  nextPage?.layout,
-                ),
+                onInteractionStart: () {
+                  _clearSelection();
+                  _syncAdjacentScrollPositions(
+                    previousPage?.layout,
+                    nextPage?.layout,
+                  );
+                },
                 canSwipePrevious: () => canGoPrevious,
                 canSwipeNext: () => canGoNext,
                 onSwipeToPrevious: () => commitNavigation(-1),
@@ -303,6 +332,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                         data: previousPage,
                         density: density,
                         scrollController: _previousScrollController,
+                        onSelectSession: selection.active ? _openSession : null,
                       ),
                 nextChild: nextPage == null
                     ? null
@@ -310,6 +340,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                         data: nextPage,
                         density: density,
                         scrollController: _nextScrollController,
+                        onSelectSession: selection.active ? _openSession : null,
                       ),
                 child: currentSchedulePage,
               ),
@@ -334,7 +365,11 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             }
             return KeyEventResult.ignored;
           },
-          child: content,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _clearSelection,
+            child: content,
+          ),
         );
       },
     );
@@ -589,6 +624,8 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
     final colorScheme = Theme.of(context).colorScheme;
     final now = ref.watch(currentTimeProvider);
     final settings = ref.watch(scheduleDisplaySettingsProvider);
+    final strongIds =
+        ref.watch(strongCourseIdsProvider).valueOrNull ?? <String>{};
     final scalePercent = ScheduleDisplaySettings.normalizeVerticalScalePercent(
       settings.verticalScalePercent,
     );
@@ -616,6 +653,26 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
           constraints.maxHeight - 58,
           timelineHeight + inset * 2,
         );
+        final placements = [
+          for (var dayIndex = 0; dayIndex < layout.days.length; dayIndex++)
+            for (final event in layout.days[dayIndex].events)
+              (
+                event: event,
+                dayIndex: dayIndex,
+                rect: scheduleCardRect(
+                  event: event,
+                  dayIndex: dayIndex,
+                  dayWidth: dayWidth,
+                  startMinute: layout.startMinute,
+                  pixelsPerMinute: pixelsPerMinute,
+                  topInset: inset,
+                ),
+              ),
+        ];
+        final strongIndices = {
+          for (var i = 0; i < placements.length; i++)
+            if (strongIds.contains(placements[i].event.session.id)) i,
+        };
         _preserveScrollTime(pixelsPerMinute, inset, settings.fitToPage);
         if (!settings.fitToPage) {
           _scheduleInitialScroll(now, pixelsPerMinute, constraints.maxHeight);
@@ -644,21 +701,15 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                             topInset: inset,
                             colorScheme: colorScheme,
                           ),
-                          for (
-                            var dayIndex = 0;
-                            dayIndex < layout.days.length;
-                            dayIndex++
-                          )
-                            for (final event in layout.days[dayIndex].events)
-                              _eventWidget(
-                                event,
-                                dayIndex,
-                                dayWidth,
-                                pixelsPerMinute,
-                                inset,
-                                colorScheme,
-                                l10n,
-                              ),
+                          for (final placement in placements)
+                            _eventWidget(
+                              placement.event,
+                              placement.dayIndex,
+                              placement.rect,
+                              pixelsPerMinute,
+                              colorScheme,
+                              l10n,
+                            ),
                           if (settings.fitToPage)
                             for (
                               var dayIndex = 0;
@@ -690,6 +741,18 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                       label:
                                           '${event.session.courseName}, ${_time(event.session.startAt)}, ${event.session.room}',
                                       child: InkWell(
+                                        key: ValueKey(
+                                          'grid-fit-target-${event.session.id}',
+                                        ),
+                                        onLongPress:
+                                            ref
+                                                .watch(gridSelectionProvider)
+                                                .active
+                                            ? () {}
+                                            : () => widget.onMenu(
+                                                event.session,
+                                                null,
+                                              ),
                                         onTap: () => _selectAtEvent(
                                           event,
                                           dayIndex,
@@ -698,6 +761,48 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                       ),
                                     ),
                                   ),
+                          if (strongIndices.isNotEmpty)
+                            Positioned.fill(
+                              child: AnimatedBuilder(
+                                animation: scrollController,
+                                builder: (context, child) {
+                                  final offset = scrollController.hasClients
+                                      ? scrollController.offset
+                                      : 0.0;
+                                  final visible = visibleStrongGridBells(
+                                    cards: [for (final p in placements) p.rect],
+                                    strongIndices: strongIndices,
+                                    bounds: Rect.fromLTRB(
+                                      kScheduleTimeRailWidth,
+                                      math.max(0, offset),
+                                      constraints.maxWidth,
+                                      math.min(
+                                        bodyHeight,
+                                        offset + constraints.maxHeight - 58,
+                                      ),
+                                    ),
+                                  );
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      for (final index in visible)
+                                        Positioned.fromRect(
+                                          rect: strongGridBellRect(
+                                            placements[index].rect,
+                                          ),
+                                          child: _GridStrongBell(
+                                            key: ValueKey(
+                                              'grid-strong-bell-${placements[index].event.session.id}',
+                                            ),
+                                            session:
+                                                placements[index].event.session,
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
                           _CurrentTimeLine(
                             key: ValueKey(
                               '${now.year}-${now.month}-${now.day}|$pixelsPerMinute',
@@ -830,27 +935,15 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   Widget _eventWidget(
     ScheduleEventLayout event,
     int dayIndex,
-    double dayWidth,
+    Rect rect,
     double pixelsPerMinute,
-    double topInset,
     ColorScheme colorScheme,
     AppLocalizations l10n,
   ) {
-    const gap = 2.0;
-    final laneWidth = dayWidth / event.laneCount;
-    return Positioned(
-      left:
-          kScheduleTimeRailWidth +
-          dayIndex * dayWidth +
-          event.lane * laneWidth +
-          gap,
-      top:
-          topInset +
-          (event.startMinute - layout.startMinute) * pixelsPerMinute +
-          gap,
-      width: math.max(1, laneWidth - gap * 2),
-      height: math.max(1, event.durationMinutes * pixelsPerMinute - gap * 2),
+    return Positioned.fromRect(
+      rect: rect,
       child: GridSessionChip(
+        key: ValueKey(event.session.id),
         session: event.session,
         colorScheme: colorScheme,
         l10n: l10n,
@@ -1200,6 +1293,41 @@ class _CurrentTimeLine extends StatelessWidget {
   }
 }
 
+Color _gridCourseAccent(
+  BuildContext context,
+  WidgetRef ref,
+  CourseSession session,
+) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final overrides = ref.watch(courseColorOverridesProvider);
+  final themeStyle = appThemeStyleOf(context);
+  final multi = ref.watch(multicolorSettingsProvider);
+  return resolvedCourseColor(
+    palette: multi.enabled ? multi.palette : const [],
+    session: session,
+    automaticColorId: themeStyle == AppThemeStyle.colorful
+        ? ref.watch(
+            resolvedAutomaticCourseColorIdsProvider,
+          )[automaticCourseColorKey(session)]
+        : null,
+    colorScheme: colorScheme,
+    themeStyle: themeStyle,
+    override: overrides[courseColorKey(session)],
+  );
+}
+
+class _GridStrongBell extends ConsumerWidget {
+  const _GridStrongBell({super.key, required this.session});
+  final CourseSession session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => StrongCourseBadge(
+    session: session,
+    compact: true,
+    color: strongGridHighlight(_gridCourseAccent(context, ref, session)),
+  );
+}
+
 class GridSessionChip extends ConsumerWidget {
   const GridSessionChip({
     super.key,
@@ -1222,21 +1350,8 @@ class GridSessionChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = ref.watch(currentTimeProvider);
-    final overrides = ref.watch(courseColorOverridesProvider);
     final themeStyle = appThemeStyleOf(context);
-    final multi = ref.watch(multicolorSettingsProvider);
-    final accent = resolvedCourseColor(
-      palette: multi.enabled ? multi.palette : const [],
-      session: session,
-      automaticColorId: themeStyle == AppThemeStyle.colorful
-          ? ref.watch(
-              resolvedAutomaticCourseColorIdsProvider,
-            )[automaticCourseColorKey(session)]
-          : null,
-      colorScheme: colorScheme,
-      themeStyle: themeStyle,
-      override: overrides[courseColorKey(session)],
-    );
+    final accent = _gridCourseAccent(context, ref, session);
     final isPast = isSessionPast(now, session.endAt);
     final isOngoing = isSessionOngoing(now, session.startAt, session.endAt);
     final isSoon = isSessionStartingSoon(now, session.startAt) && !isPast;
@@ -1244,78 +1359,86 @@ class GridSessionChip extends ConsumerWidget {
     final strong =
         ref.watch(strongCourseIdsProvider).valueOrNull?.contains(session.id) ??
         false;
+    final selection = ref.watch(gridSelectionProvider);
+    final selected = selection.active
+        ? selection.ids.contains(session.id)
+        : isSelected;
+    final framed = selected || (isOngoing && !selection.active);
+    final surface = courseCardSurface(
+      accent: accent,
+      colorScheme: colorScheme,
+      themeStyle: themeStyle,
+      highlighted: isOngoing || isSoon,
+      isPast: isPast,
+    );
+    final gradient = ref
+        .watch(scheduleDisplaySettingsProvider)
+        .strongCardGradient;
     final foreground = isPast
         ? colorScheme.onSurfaceVariant
         : colorScheme.onSurface;
     return Semantics(
       button: true,
+      selected: selection.active ? selected : null,
       label:
-          '${session.courseName}, $time, ${session.room}, ${session.teachers.join('、')}',
+          '${session.courseName}, $time, ${session.room}, ${session.teachers.join('、')}'
+          '${strong ? ', ${WakeText.of(context).strong}' : ''}'
+          '${selection.active && selected ? ', ${GridActionText.of(context).selectedHint}' : ''}',
       child: GestureDetector(
-        onLongPress: () => onMenu(null),
-        onSecondaryTapDown: (details) => onMenu(details.globalPosition),
+        onLongPress: selection.active ? () {} : () => onMenu(null),
+        onSecondaryTapDown: selection.active
+            ? null
+            : (details) => onMenu(details.globalPosition),
         child: Material(
-          color: courseCardSurface(
-            accent: accent,
-            colorScheme: colorScheme,
-            themeStyle: themeStyle,
-            highlighted: isOngoing || isSoon,
-            isPast: isPast,
-          ),
+          color: surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(
-              color: isSelected || isOngoing
-                  ? colorScheme.primary
-                  : colorScheme.outlineVariant,
-              width: isSelected || isOngoing ? 2 : 1,
+              color: framed ? colorScheme.primary : colorScheme.outlineVariant,
+              width: framed ? 2 : 1,
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: compact ? 2 : 4,
-                  color: isPast ? accent.withAlpha(100) : accent,
-                ),
-                Expanded(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) => compact
-                            ? _CompactSessionChipContent(
-                                session: session,
-                                time: time,
-                                foreground: foreground,
-                                availableHeight: constraints.maxHeight,
-                                availableWidth: constraints.maxWidth,
-                              )
-                            : _SessionChipContent(
-                                strong: strong,
-                                session: session,
-                                time: time,
-                                foreground: foreground,
-                                availableHeight: constraints.maxHeight,
-                                availableWidth: constraints.maxWidth - 11,
-                              ),
-                      ),
-                      if (compact)
-                        Positioned(
-                          right: 2,
-                          top: 2,
-                          child: StrongCourseBadge(
-                            session: session,
-                            compact: true,
-                          ),
-                        ),
-                    ],
+          child: Ink(
+            decoration: strong
+                ? BoxDecoration(
+                    gradient: strongGridBackground(
+                      accent: accent,
+                      surface: surface,
+                      extent: gradient,
+                    ),
+                  )
+                : null,
+            child: InkWell(
+              onTap: onTap,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: compact ? 2 : 4,
+                    color: isPast ? accent.withAlpha(100) : accent,
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => compact
+                          ? _CompactSessionChipContent(
+                              session: session,
+                              time: time,
+                              foreground: foreground,
+                              availableHeight: constraints.maxHeight,
+                              availableWidth: constraints.maxWidth,
+                            )
+                          : _SessionChipContent(
+                              session: session,
+                              time: time,
+                              foreground: foreground,
+                              availableHeight: constraints.maxHeight,
+                              availableWidth: constraints.maxWidth - 11,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1520,7 +1643,6 @@ class _CompactSessionChipContent extends StatelessWidget {
 
 class _SessionChipContent extends StatelessWidget {
   const _SessionChipContent({
-    this.strong = false,
     required this.session,
     required this.time,
     required this.foreground,
@@ -1528,7 +1650,6 @@ class _SessionChipContent extends StatelessWidget {
     required this.availableWidth,
   });
 
-  final bool strong;
   final CourseSession session;
   final String time;
   final Color foreground;
@@ -1566,10 +1687,7 @@ class _SessionChipContent extends StatelessWidget {
       maxLines: 1,
     );
     if (availableHeight < oneLineHeight + 10) return const SizedBox.shrink();
-    final timeHeight = math.max(
-      strong ? 14.0 : 0.0,
-      _textHeight(time, detailStyle, width, scaler, direction),
-    );
+    final timeHeight = _textHeight(time, detailStyle, width, scaler, direction);
     final roomHeight = _textHeight(
       session.room,
       detailStyle,
@@ -1618,25 +1736,7 @@ class _SessionChipContent extends StatelessWidget {
           ),
           if (showTime) ...[
             const SizedBox(height: 3),
-            if (!strong)
-              Text(time, style: detailStyle)
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      time,
-                      style: detailStyle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  StrongCourseBadge(
-                    session: session,
-                    compact: availableWidth < 180,
-                  ),
-                ],
-              ),
+            Text(time, style: detailStyle),
           ],
           if (showRoom) ...[
             const SizedBox(height: 2),
@@ -1649,17 +1749,7 @@ class _SessionChipContent extends StatelessWidget {
         ],
       ),
     );
-    if (!strong || showTime) return content;
-    return Stack(
-      children: [
-        content,
-        Positioned(
-          right: 2,
-          top: 2,
-          child: StrongCourseBadge(session: session, compact: true),
-        ),
-      ],
-    );
+    return content;
   }
 }
 

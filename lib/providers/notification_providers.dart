@@ -1,4 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final foregroundReminderMaintenanceSupportedProvider = Provider<bool>(
+  (ref) => Platform.isAndroid || Platform.isWindows,
+);
 
 final pendingNotificationPayloadProvider = StateProvider<String?>(
   (ref) => null,

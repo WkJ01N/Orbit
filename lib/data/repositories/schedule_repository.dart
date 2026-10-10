@@ -559,6 +559,9 @@ class ScheduleRepository {
     return _database.clearAllSessions();
   }
 
+  Future<int> deleteSessionIds(Iterable<String> ids) =>
+      _database.softDeleteSessionIds(ids.toSet().toList());
+
   Future<int> deleteSession(String id) {
     return _database.deleteSessionById(id);
   }

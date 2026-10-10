@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:cloudbase_flutter/cloudbase_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:orbit/core/app_info.dart';
 import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/services/account_errors.dart';
 import 'package:orbit/services/orbit_api_client.dart';
@@ -441,7 +442,7 @@ class CloudBaseAccountService implements AccountService {
           'action': 'bootstrapSession',
           'deviceId': await _api.sessions.deviceId(),
           'platform': Platform.operatingSystem,
-          'appVersion': '1.5.3+24',
+          'appVersion': '$kAppVersion+$kAppBuildNumber',
         },
       );
       if (response.code != null) {

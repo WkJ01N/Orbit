@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/features/grid/grid_page.dart';
+import 'package:orbit/features/grid/grid_selection.dart';
 import 'package:orbit/features/import/import_page.dart';
 import 'package:orbit/features/settings/settings_page.dart';
 import 'package:orbit/features/upcoming/upcoming_page.dart';
@@ -65,7 +66,9 @@ class AppShell extends ConsumerWidget {
     final selectedIndex = ref.watch(appNavIndexProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    void onDestinationSelected(int index) {
+    Future<void> onDestinationSelected(int index) async {
+      if (index == selectedIndex) return;
+      if (!await cancelGridSelection(context, ref) || !context.mounted) return;
       ref.read(appNavIndexProvider.notifier).state = index;
     }
 

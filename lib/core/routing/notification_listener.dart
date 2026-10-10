@@ -80,7 +80,7 @@ class _OrbitNotificationListenerState
   Future<void> _maybeResyncOnForeground() async {
     if (!mounted ||
         _resyncRunning ||
-        (!Platform.isAndroid && !Platform.isWindows)) {
+        !ref.read(foregroundReminderMaintenanceSupportedProvider)) {
       return;
     }
     _resyncRunning = true;

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/features/grid/grid_selection.dart';
+import 'package:orbit/features/grid/grid_delete_confirmation.dart';
+import 'package:orbit/models/grid_action_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/core/widgets/empty_state.dart';
@@ -19,42 +24,110 @@ class GridPage extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final sessionsAsync = ref.watch(sessionsProvider);
     final grid = ref.watch(weekGridProvider);
+    final selection = ref.watch(gridSelectionProvider);
+    final interceptBack =
+        selection.active && ref.watch(appNavIndexProvider) == AppTab.grid.index;
 
     // Only enable batch-delete when data is loaded and a grid is displayed.
     final canBatchDelete = sessionsAsync.hasValue && grid != null;
 
-    return Scaffold(
-      appBar: _GridAppBar(
-        onAdd: sessionsAsync.hasValue
-            ? () => showSessionAddAction(context)
-            : null,
-        onBatchDelete: canBatchDelete
-            ? () => showGridBatchDeleteDialog(
-                context,
-                ref,
-                displayedWeekStart: grid.weekStart,
-              )
-            : null,
-        onSearch: () => SessionSearchPage.show(context),
-      ),
-      body: sessionsAsync.when(
-        data: (sessions) {
-          if (grid == null) {
-            return _EmptyState(onImport: () => _goToImport(ref));
+    return PopScope(
+      canPop: !interceptBack,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && interceptBack) cancelGridSelection(context, ref);
+      },
+      child: Focus(
+        onKeyEvent: (_, event) {
+          if (selection.active &&
+              event is KeyDownEvent &&
+              event.logicalKey == LogicalKeyboardKey.escape) {
+            cancelGridSelection(context, ref);
+            return KeyEventResult.handled;
           }
-          return WeekGridView(
-            grid: grid,
-            sessions: sessions.where((s) => s.visible).toList(),
-          );
+          return KeyEventResult.ignored;
         },
-        loading: () => const _GridSkeleton(),
-        error: (error, _) => ErrorState(
-          message: l10n.gridLoadFailed('$error'),
-          retryLabel: l10n.actionRetry,
-          onRetry: () => ref.invalidate(sessionsProvider),
+        child: Scaffold(
+          appBar: _GridAppBar(
+            selection: selection,
+            onCancel: () => cancelGridSelection(context, ref),
+            onSubmit: () => _submitManual(context, ref),
+            onAdd: sessionsAsync.hasValue
+                ? () => showSessionAddAction(context)
+                : null,
+            onBatchDelete: canBatchDelete
+                ? () async {
+                    final manual = await showGridBatchDeleteDialog(
+                      context,
+                      ref,
+                      displayedWeekStart: grid.weekStart,
+                    );
+                    if (manual && context.mounted) {
+                      ref.read(gridSelectionProvider.notifier).enter();
+                    }
+                  }
+                : null,
+            onSearch: () => SessionSearchPage.show(context),
+          ),
+          body: sessionsAsync.when(
+            data: (sessions) {
+              if (grid == null) {
+                return _EmptyState(onImport: () => _goToImport(ref));
+              }
+              return WeekGridView(
+                grid: grid,
+                sessions: sessions.where((s) => s.visible).toList(),
+              );
+            },
+            loading: () => const _GridSkeleton(),
+            error: (error, _) => ErrorState(
+              message: l10n.gridLoadFailed('$error'),
+              retryLabel: l10n.actionRetry,
+              onRetry: () => ref.invalidate(sessionsProvider),
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _submitManual(BuildContext context, WidgetRef ref) async {
+    final selection = ref.read(gridSelectionProvider);
+    if (selection.busy || selection.ids.isEmpty) return;
+    final notifier = ref.read(gridSelectionProvider.notifier);
+    notifier.setBusy(true);
+    try {
+      final targets =
+          (await ref.read(scheduleRepositoryProvider).getAllSessions())
+              .where((s) => selection.ids.contains(s.id))
+              .toList();
+      if (!context.mounted) return;
+      notifier.replace(targets.map((s) => s.id).toSet());
+      notifier.setBusy(false);
+      if (targets.length != selection.ids.length) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(GridActionText.of(context).changed)),
+        );
+      }
+      if (targets.isEmpty) return;
+      final deleted = await confirmGridDeletion(
+        context,
+        targets: targets,
+        onSelectionChanged: notifier.replace,
+      );
+      if (deleted) notifier.exit();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.gridBatchDeleteFailed('$e'),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (context.mounted) notifier.setBusy(false);
+    }
   }
 
   void _goToImport(WidgetRef ref) {
@@ -67,7 +140,17 @@ class GridPage extends ConsumerWidget {
 /// Implements [PreferredSizeWidget] so it can be used directly as
 /// [Scaffold.appBar] without a [PreferredSize] wrapper.
 class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _GridAppBar({this.onAdd, this.onBatchDelete, this.onSearch});
+  const _GridAppBar({
+    this.onAdd,
+    this.onBatchDelete,
+    this.onSearch,
+    this.selection = const GridSelection(),
+    this.onCancel,
+    this.onSubmit,
+  });
+  final GridSelection selection;
+  final VoidCallback? onCancel;
+  final VoidCallback? onSubmit;
 
   final VoidCallback? onAdd;
   final VoidCallback? onBatchDelete;
@@ -79,6 +162,46 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    if (selection.active) {
+      final text = GridActionText.of(context);
+      final colors = Theme.of(context).colorScheme;
+      return AppBar(
+        leading: IconButton(
+          key: const Key('grid-selection-cancel'),
+          icon: const Icon(Icons.close),
+          color: colors.primary,
+          tooltip: text.cancelSelection,
+          onPressed: selection.busy ? null : onCancel,
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(text.chooseCourses),
+            Text(
+              text.selected(selection.ids.length),
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filled(
+              key: const Key('grid-selection-submit'),
+              style: IconButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
+              ),
+              tooltip: text.preview,
+              icon: const Icon(Icons.check),
+              onPressed: selection.busy || selection.ids.isEmpty
+                  ? null
+                  : onSubmit,
+            ),
+          ),
+        ],
+      );
+    }
     return AppBar(
       leading: onAdd == null
           ? null
@@ -113,7 +236,7 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
                       color: Theme.of(context).colorScheme.error,
                     ),
                     const SizedBox(width: 12),
-                    Text(l10n.gridBatchDelete),
+                    Expanded(child: Text(l10n.gridBatchDelete)),
                   ],
                 ),
               ),

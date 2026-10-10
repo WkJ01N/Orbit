@@ -34,5 +34,5 @@ jobs:
           cache: true
       - run: flutter pub get
       # Golden baselines are generated on Windows to keep font rendering stable.
-      - run: flutter test test/schedule_responsive_golden_test.dart
+      - run: flutter test test/schedule_responsive_golden_test.dart test/foreground_resume_test.dart test/grid_delete_flow_test.dart test/grid_delete_targets_test.dart test/strong_grid_decoration_test.dart
       - run: flutter build windows --release

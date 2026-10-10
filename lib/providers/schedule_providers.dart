@@ -107,6 +107,9 @@ class ScheduleDisplaySettingsNotifier
     await _save(next);
   }
 
+  Future<void> setStrongCardGradient(StrongCardGradient value) =>
+      _save(state.copyWith(strongCardGradient: value));
+
   Future<void> setFitToPage(bool value) =>
       _save(state.copyWith(fitToPage: value));
 

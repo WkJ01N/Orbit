@@ -23,6 +23,7 @@ import 'package:orbit/features/settings/settings_data_section.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
+import 'package:orbit/models/grid_action_text.dart';
 import 'package:orbit/models/reminder_permission_status.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/features/settings/custom_reminders_page.dart';
@@ -211,6 +212,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                       _ScheduleNarrowLayoutTile(),
                       _ScheduleMultiDayCountTile(),
                       _ScheduleShowEmptyDaysTile(),
+                      _StrongCardGradientTile(),
                     ],
                   ),
                   SettingsGroup(
@@ -1305,6 +1307,32 @@ class _SettingsFooter extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(l10n.appTagline, style: mutedStyle, textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+}
+
+class _StrongCardGradientTile extends ConsumerWidget {
+  const _StrongCardGradientTile();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = GridActionText.of(context);
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    return SettingsChoiceTile(
+      title: Text(text.gradient),
+      trailing: _SettingsDropdown<StrongCardGradient>(
+        value: settings.strongCardGradient,
+        onChanged: (v) {
+          if (v != null) {
+            ref
+                .read(scheduleDisplaySettingsProvider.notifier)
+                .setStrongCardGradient(v);
+          }
+        },
+        items: [
+          for (final v in StrongCardGradient.values)
+            DropdownMenuItem(value: v, child: Text(text.gradientName(v))),
         ],
       ),
     );

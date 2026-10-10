@@ -397,6 +397,10 @@ class SettingsService {
     final prefs = await _prefsInstance();
     return ScheduleDisplaySettings(
       fitToPage: prefs.getBool('schedule_fit_to_page') ?? false,
+      strongCardGradient: StrongCardGradient.values.firstWhere(
+        (v) => v.name == prefs.getString('schedule_strong_card_gradient'),
+        orElse: () => StrongCardGradient.upperHalf,
+      ),
       verticalScalePercent:
           ScheduleDisplaySettings.normalizeVerticalScalePercent(
             prefs.get(_scheduleVerticalScaleKey),
@@ -421,6 +425,10 @@ class SettingsService {
   ) async {
     final prefs = await _prefsInstance();
     await prefs.setBool('schedule_fit_to_page', settings.fitToPage);
+    await prefs.setString(
+      'schedule_strong_card_gradient',
+      settings.strongCardGradient.name,
+    );
     await prefs.setString(_scheduleNarrowLayoutKey, settings.narrowLayout.name);
     await prefs.setInt(
       _scheduleVerticalScaleKey,

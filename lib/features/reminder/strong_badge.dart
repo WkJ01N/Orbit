@@ -71,9 +71,11 @@ class StrongCourseBadge extends ConsumerWidget {
     super.key,
     required this.session,
     this.compact = false,
+    this.color,
   });
   final CourseSession session;
   final bool compact;
+  final Color? color;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!(ref
@@ -92,7 +94,7 @@ class StrongCourseBadge extends ConsumerWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.notifications_active_outlined, size: 14),
+            Icon(Icons.notifications_active_outlined, size: 14, color: color),
             if (!compact) ...[
               const SizedBox(width: 4),
               Text(label, style: Theme.of(context).textTheme.labelSmall),

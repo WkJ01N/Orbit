@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -7,6 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
+import 'package:orbit/features/grid/strong_grid_decoration.dart';
+import 'package:orbit/features/reminder/strong_badge.dart';
+import 'package:orbit/models/wake_text.dart';
+import 'package:orbit/services/course_color_utils.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/grid_density.dart';
@@ -16,8 +21,10 @@ import 'package:orbit/services/grid_builder.dart';
 import 'test_providers.dart';
 
 class _GoldenScheduleSettingsNotifier extends ScheduleDisplaySettingsNotifier {
+  _GoldenScheduleSettingsNotifier(this.initial);
+  final ScheduleDisplaySettings initial;
   @override
-  ScheduleDisplaySettings build() => const ScheduleDisplaySettings();
+  ScheduleDisplaySettings build() => initial;
 }
 
 class _GoldenDensityNotifier extends GridDensityNotifier {
@@ -31,8 +38,10 @@ class _GoldenWeekStartNotifier extends WeekStartDayNotifier {
 }
 
 class _GoldenCourseColorsNotifier extends CourseColorOverridesNotifier {
+  _GoldenCourseColorsNotifier(this.initial);
+  final Map<String, Color> initial;
   @override
-  Map<String, Color> build() => const {};
+  Map<String, Color> build() => initial;
 }
 
 class _GoldenCurrentTimeNotifier extends CurrentTimeNotifier {
@@ -152,8 +161,12 @@ Future<void> _pumpSchedule(
   String? golden,
   TextScaler textScaler = TextScaler.noScaling,
   Brightness brightness = Brightness.light,
+  bool strong = false,
+  bool variedColors = false,
+  ScheduleDisplaySettings settings = const ScheduleDisplaySettings(),
+  List<CourseSession>? courseSessions,
 }) async {
-  final sessions = _sessions();
+  final sessions = courseSessions ?? _sessions();
   final weekStart = DateTime(2026, 8, 24);
   final grid = GridBuilder().buildWeekGrid(
     weekStart: weekStart,
@@ -167,14 +180,26 @@ Future<void> _pumpSchedule(
         ...testProviderOverrides(),
         selectedScheduleDateProvider.overrideWith((ref) => weekStart),
         scheduleDisplaySettingsProvider.overrideWith(
-          _GoldenScheduleSettingsNotifier.new,
+          () => _GoldenScheduleSettingsNotifier(settings),
         ),
         gridDensityProvider.overrideWith(_GoldenDensityNotifier.new),
         weekStartDayProvider.overrideWith(_GoldenWeekStartNotifier.new),
         courseColorOverridesProvider.overrideWith(
-          _GoldenCourseColorsNotifier.new,
+          () => _GoldenCourseColorsNotifier({
+            if (variedColors)
+              for (var i = 0; i < sessions.length; i++)
+                courseColorKey(sessions[i]): [
+                  Colors.teal,
+                  Colors.blue,
+                  Colors.pink,
+                  Colors.orange,
+                ][i % 4],
+          }),
         ),
         currentTimeProvider.overrideWith(_GoldenCurrentTimeNotifier.new),
+        strongCourseIdsProvider.overrideWith(
+          (_) async => strong ? sessions.map((s) => s.id).toSet() : <String>{},
+        ),
       ],
       child: MaterialApp(
         theme: ThemeData(brightness: brightness),
@@ -277,4 +302,218 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+  for (final width in [320.0, 900.0]) {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        'strong grid visual baseline ${width.toInt()} ${brightness.name}',
+        (tester) async {
+          await _pumpSchedule(
+            tester,
+            width: width,
+            strong: true,
+            variedColors: true,
+            brightness: brightness,
+            golden:
+                'goldens/schedule_strong_${width.toInt()}_${brightness.name}.png',
+          );
+          expect(find.byType(StrongCourseBadge), findsWidgets);
+          expect(tester.takeException(), isNull);
+        },
+        skip: !Platform.isWindows,
+      );
+    }
+  }
+
+  testWidgets(
+    'strong bells sit outside cards and tapping shows guidance only',
+    (tester) async {
+      await _pumpSchedule(tester, width: 900, strong: true, variedColors: true);
+      final chip = find.byType(GridSessionChip).first;
+      final session = tester.widget<GridSessionChip>(chip).session;
+      final bell = find.byKey(ValueKey('grid-strong-bell-${session.id}'));
+      final cardRect = tester.getRect(chip);
+      final bellRect = tester.getRect(bell);
+      expect(bellRect.size, const Size(14, 14));
+      expect(bellRect.center.dx, closeTo(cardRect.center.dx, .001));
+      expect(bellRect.bottom, closeTo(cardRect.top - 2, .001));
+      expect(
+        find.descendant(of: chip, matching: find.byType(StrongCourseBadge)),
+        findsNothing,
+      );
+      final ink = tester.widget<Ink>(
+        find.descendant(of: chip, matching: find.byType(Ink)).first,
+      );
+      final gradient =
+          (ink.decoration! as BoxDecoration).gradient! as LinearGradient;
+      final material = tester.widget<Material>(
+        find.descendant(of: chip, matching: find.byType(Material)).first,
+      );
+      expect(
+        gradient.colors.first,
+        Color.alphaBlend(
+          strongGridHighlight(Colors.teal).withValues(alpha: .25),
+          material.color!,
+        ),
+      );
+      final icon = tester.widget<Icon>(
+        find.descendant(of: bell, matching: find.byType(Icon)),
+      );
+      expect(icon.color, strongGridHighlight(Colors.teal));
+      await tester.tap(bell);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        find.textContaining(WakeText.of(tester.element(chip)).guide),
+        findsOneWidget,
+      );
+      expect(tester.widget<GridSessionChip>(chip).isSelected, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'hidden bell retains the gradient and strong reminder semantics',
+    (tester) async {
+      final courses = _sessions().take(1).toList();
+      final first = courses.first;
+      courses.add(
+        first.copyWith(
+          id: 'next',
+          startAt: first.endAt,
+          endAt: first.endAt.add(const Duration(minutes: 45)),
+        ),
+      );
+      await _pumpSchedule(
+        tester,
+        width: 900,
+        strong: true,
+        courseSessions: courses,
+      );
+      final next = find.byWidgetPredicate(
+        (w) => w is GridSessionChip && w.session.id == 'next',
+      );
+      expect(find.byKey(const ValueKey('grid-strong-bell-next')), findsNothing);
+      expect(
+        find.descendant(
+          of: next,
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is Ink && (w.decoration as BoxDecoration?)?.gradient != null,
+          ),
+        ),
+        findsOneWidget,
+      );
+      final label = WakeText.of(tester.element(next)).strong;
+      final semantics = tester.widget<Semantics>(
+        find.descendant(of: next, matching: find.byType(Semantics)).first,
+      );
+      expect(semantics.properties.label, contains(label));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final width in [320.0, 500.0, 900.0]) {
+    for (final fit in [false, true]) {
+      testWidgets(
+        'strong adaptive $width fit=$fit preserves card text geometry',
+        (tester) async {
+          final settings = ScheduleDisplaySettings(
+            narrowLayout: NarrowScheduleLayout.adaptive,
+            fitToPage: fit,
+          );
+          Future<void> pump(bool strong) => _pumpSchedule(
+            tester,
+            width: width,
+            strong: strong,
+            settings: settings,
+            textScaler: const TextScaler.linear(2),
+          );
+          await pump(false);
+          final chip = find.byType(GridSessionChip).first;
+          final before = tester.getRect(chip);
+          final texts = find.descendant(of: chip, matching: find.byType(Text));
+          final beforeText = [
+            for (final element in texts.evaluate())
+              tester.getRect(find.byWidget(element.widget)),
+          ];
+          await pump(true);
+          expect(tester.getRect(chip), before);
+          expect([
+            for (final element in texts.evaluate())
+              tester.getRect(find.byWidget(element.widget)),
+          ], beforeText);
+          expect(
+            find.descendant(of: chip, matching: find.byType(StrongCourseBadge)),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+  testWidgets('hover guidance and scrolling never leave a partial bell', (
+    tester,
+  ) async {
+    await _pumpSchedule(tester, width: 900, strong: true);
+    final chip = find.byType(GridSessionChip).first;
+    final session = tester.widget<GridSessionChip>(chip).session;
+    final bell = find.byKey(ValueKey('grid-strong-bell-${session.id}'));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: tester.getCenter(bell));
+    await tester.pump(const Duration(seconds: 1));
+    final label = WakeText.of(tester.element(chip)).guide;
+    expect(find.textContaining(label), findsOneWidget);
+    await mouse.removePointer();
+    await tester.pump(const Duration(seconds: 1));
+    final body = find.byKey(const Key('schedule-timeline-body'));
+    final localTop = tester.getRect(bell).top - tester.getRect(body).top;
+    final scrollable = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byKey(const Key('schedule-vertical-body')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    scrollable.position.jumpTo(localTop + 1);
+    await tester.pump();
+    expect(bell, findsNothing);
+    expect(
+      find.descendant(
+        of: chip,
+        matching: find.byWidgetPredicate(
+          (w) => w is Ink && (w.decoration as BoxDecoration?)?.gradient != null,
+        ),
+      ),
+      findsOneWidget,
+    );
+    scrollable.position.jumpTo(0);
+    await tester.pump();
+    expect(bell, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'compact large text and short fit cards keep their full text area',
+    (tester) async {
+      for (final fit in [false, true]) {
+        await _pumpSchedule(
+          tester,
+          width: 320,
+          strong: true,
+          settings: ScheduleDisplaySettings(fitToPage: fit),
+          textScaler: const TextScaler.linear(2),
+        );
+        for (final chip in find.byType(GridSessionChip).evaluate()) {
+          expect(
+            find.descendant(
+              of: find.byWidget(chip.widget),
+              matching: find.byType(StrongCourseBadge),
+            ),
+            findsNothing,
+          );
+        }
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
 }

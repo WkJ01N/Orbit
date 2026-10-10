@@ -1,5 +1,7 @@
 enum UpcomingDateDisplay { dateAndWeekday, dateOnly, weekdayOnly }
 
+enum StrongCardGradient { upperHalf, fullCard, topQuarter }
+
 enum NarrowScheduleLayout { compactWeek, adaptive }
 
 class ScheduleDisplaySettings {
@@ -15,6 +17,7 @@ class ScheduleDisplaySettings {
     this.upcomingDateDisplay = UpcomingDateDisplay.dateAndWeekday,
     this.verticalScalePercent = 100,
     this.fitToPage = false,
+    this.strongCardGradient = StrongCardGradient.upperHalf,
   });
 
   final NarrowScheduleLayout narrowLayout;
@@ -24,6 +27,7 @@ class ScheduleDisplaySettings {
   final UpcomingDateDisplay upcomingDateDisplay;
   final int verticalScalePercent;
   final bool fitToPage;
+  final StrongCardGradient strongCardGradient;
 
   static int normalizeVerticalScalePercent(Object? value) {
     if (value is! num || !value.isFinite) return 100;
@@ -42,9 +46,11 @@ class ScheduleDisplaySettings {
     UpcomingDateDisplay? upcomingDateDisplay,
     int? verticalScalePercent,
     bool? fitToPage,
+    StrongCardGradient? strongCardGradient,
   }) {
     return ScheduleDisplaySettings(
       fitToPage: fitToPage ?? this.fitToPage,
+      strongCardGradient: strongCardGradient ?? this.strongCardGradient,
       narrowLayout: narrowLayout ?? this.narrowLayout,
       preferredMultiDayCount:
           preferredMultiDayCount ?? this.preferredMultiDayCount,

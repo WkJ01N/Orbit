@@ -80,6 +80,7 @@ class PortableSettings {
     'reminders': _remindersToJson(reminders),
     'scheduleDisplay': {
       'fitToPage': scheduleDisplay.fitToPage,
+      'strongCardGradient': scheduleDisplay.strongCardGradient.name,
       'narrowLayout': scheduleDisplay.narrowLayout.name,
       'preferredMultiDayCount': scheduleDisplay.preferredMultiDayCount,
       'showEmptyDays': scheduleDisplay.showEmptyDays,
@@ -141,6 +142,10 @@ class PortableSettings {
       reminders: _remindersFromJson(reminders),
       scheduleDisplay: ScheduleDisplaySettings(
         fitToPage: display['fitToPage'] == true,
+        strongCardGradient: StrongCardGradient.values.firstWhere(
+          (v) => v.name == display['strongCardGradient'],
+          orElse: () => StrongCardGradient.upperHalf,
+        ),
         verticalScalePercent:
             ScheduleDisplaySettings.normalizeVerticalScalePercent(
               display['verticalScalePercent'],
