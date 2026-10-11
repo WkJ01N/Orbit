@@ -5,9 +5,11 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.util.Random
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [32])
 class OrbitStrongTasksTest {
     @Test fun difficultyAndChoicesAreValidAndStable() {
         for (difficulty in listOf("simple", "medium", "hard")) for (mode in listOf("input", "choice3", "choice6")) {
