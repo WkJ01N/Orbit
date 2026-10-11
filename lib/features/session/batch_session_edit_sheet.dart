@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,7 +194,9 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
     setState(() => _selectedWeeks = weeks.toSet());
   }
 
+  bool _deleteStatistics = false;
   Future<BatchConflictStrategy?> _confirmPreview(BatchCoursePreview preview) {
+    _deleteStatistics = false;
     final l10n = AppLocalizations.of(context)!;
     return showDialog<BatchConflictStrategy>(
       context: context,
@@ -209,6 +212,13 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
               ),
             ),
           ),
+          if (preview.conflictCount > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: StatisticsDeletionChoice(
+                onChanged: (v) => _deleteStatistics = v,
+              ),
+            ),
           if (preview.conflictCount > 0)
             SimpleDialogOption(
               onPressed: () =>
@@ -302,6 +312,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
       final result = await repository.saveBatchSessions(
         generated,
         strategy: strategy,
+        deleteStatistics: _deleteStatistics,
       );
       await ref
           .read(settingsServiceProvider)

@@ -250,8 +250,9 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
 
   Future<void> confirmInitialMerge(
     InitialSyncPreview preview,
-    Map<String, bool> conflictChoices,
-  ) async {
+    Map<String, bool> conflictChoices, {
+    bool mergeGuestStatistics = false,
+  }) async {
     final account = state.value?.account;
     if (account == null) {
       throw const AccountSyncException('invalid_account');
@@ -265,6 +266,7 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
             account: account,
             preview: preview,
             useLocalForConflict: conflictChoices,
+            mergeGuestStatistics: mergeGuestStatistics,
           );
       ref.read(importConfigurationRefreshProvider.notifier).state++;
       state = AsyncData(

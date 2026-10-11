@@ -1151,7 +1151,7 @@
   "androidEnhancedReminderNotificationTitle": "Enhanced reminders enabled",
   "androidEnhancedReminderNotificationBody": "Orbit is protecting future course reminders.",
   "androidEnhancedReminderDisable": "Turn off",
-  "androidOriginOsSettings": "OriginOS background settings",
+  "androidOriginOsSettings": "System background settings",
   "androidOriginOsSettingsSubtitle": "Enable autostart and background high power usage, remove battery restrictions, then lock Orbit in Recents.",
   "androidOpenAutostartSettings": "Open settings",
   "androidForcedStopDetected": "Orbit was force-stopped",

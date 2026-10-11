@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -16,7 +17,8 @@ import 'package:orbit/providers/import_providers.dart';
 import 'package:orbit/services/schedule_import_service.dart';
 
 class ImportPage extends ConsumerStatefulWidget {
-  const ImportPage({super.key});
+  const ImportPage({super.key, this.showBackButton = false});
+  final bool showBackButton;
   @override
   ConsumerState<ImportPage> createState() => _ImportPageState();
 }
@@ -330,6 +332,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       );
       if (!mounted) return;
       var strategy = ImportMergeStrategy.mergeOverwrite;
+      var deleteStatistics = false;
       if (overlapping.isNotEmpty) {
         final chosen = await showDialog<ImportMergeStrategy>(
           context: context,
@@ -339,6 +342,9 @@ class _ImportPageState extends ConsumerState<ImportPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(l.importStrategyMessage(overlapping.length)),
+                StatisticsDeletionChoice(
+                  onChanged: (v) => deleteStatistics = v,
+                ),
                 ListTile(
                   title: Text(l.importStrategyReplaceWeek),
                   subtitle: Text(l.importStrategyReplaceWeekDesc),
@@ -367,6 +373,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       await repository.importParsedSessionsWithStrategy(
         result.sessions,
         strategy,
+        deleteStatistics: deleteStatistics,
       );
       final failures = await ref
           .read(reminderSettingsProvider.notifier)
@@ -385,7 +392,8 @@ class _ImportPageState extends ConsumerState<ImportPage> {
           ),
           action: SnackBarAction(
             label: l.importViewGrid,
-            onPressed: () => navigateToAppTab(ref, AppTab.grid),
+            onPressed: () =>
+                navigateToAppTab(ref, AppTab.grid, context: context),
           ),
         ),
       );
@@ -410,7 +418,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     });
     final config = ref.watch(importConfigurationProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(l.importTitle)),
+      appBar: AppBar(
+        leading: widget.showBackButton ? const BackButton() : null,
+        title: Text(l.importTitle),
+      ),
       body: config.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

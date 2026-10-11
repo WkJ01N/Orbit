@@ -26,6 +26,7 @@ class SessionDetailSheet extends ConsumerWidget {
     return showAdaptiveBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      maxDialogWidth: 760,
       builder: (context) => SessionDetailSheet(session: session),
     );
   }
@@ -134,15 +135,25 @@ class _SessionActionButtons extends ConsumerWidget {
           required String label,
           required String tooltip,
           Color? foregroundColor,
+          bool danger = false,
         }) {
           return SizedBox(
-            width: buttonWidth,
+            width: danger ? width : buttonWidth,
             child: Tooltip(
               message: tooltip,
               child: OutlinedButton.icon(
                 onPressed: onPressed,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: foregroundColor,
+                  backgroundColor: danger
+                      ? colorScheme.error.withValues(alpha: 0.06)
+                      : null,
+                  side: danger
+                      ? BorderSide(
+                          color: colorScheme.error.withValues(alpha: 0.35),
+                        )
+                      : null,
+                  minimumSize: const Size(0, 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 12,
@@ -155,89 +166,92 @@ class _SessionActionButtons extends ConsumerWidget {
           );
         }
 
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (!session.archived)
-              buildButton(
-                onPressed: () async {
-                  if (await archiveCourseAction(
-                        context,
-                        ProviderScope.containerOf(context),
-                        session,
-                      ) &&
-                      context.mounted) {
-                    Navigator.pop(context);
-                  }
-                },
-                icon: Icons.archive_outlined,
-                label: OrbitFeatureText.of(context).archive,
-                tooltip: OrbitFeatureText.of(context).archive,
-              ),
+        final regular = <Widget>[
+          if (!session.archived)
             buildButton(
               onPressed: () async {
-                // Capture the navigator's own context before popping so the
-                // follow-up sheet/dialog is shown on a context that stays
-                // mounted after this bottom sheet is removed.
-                final navigatorContext = Navigator.of(context).context;
-                Navigator.pop(context);
-                await SessionEditSheet.showEdit(navigatorContext, session);
-              },
-              icon: Icons.edit_outlined,
-              label: editLabel,
-              tooltip: l10n.editSession,
-            ),
-            buildButton(
-              onPressed: () async {
-                final key = courseColorKey(session);
-                final overrides = ref.read(courseColorOverridesProvider);
-                final themeStyle = appThemeStyleOf(context);
-                final colorScheme = Theme.of(context).colorScheme;
-                final multi = ref.read(multicolorSettingsProvider);
-                final defaultColor = resolvedCourseColor(
-                  palette: multi.enabled ? multi.palette : const [],
-                  session: session,
-                  automaticColorId: themeStyle == AppThemeStyle.colorful
-                      ? ref.read(
-                          resolvedAutomaticCourseColorIdsProvider,
-                        )[automaticCourseColorKey(session)]
-                      : null,
-                  colorScheme: colorScheme,
-                  themeStyle: themeStyle,
-                );
-                final current = overrides[key] ?? defaultColor;
-                var useDefault = false;
-                final picked = await showColorPickerDialog(
-                  context,
-                  initialColor: current,
-                  defaultColor: defaultColor,
-                  onUseDefault: () => useDefault = true,
-                );
-                if (useDefault) {
-                  await ref
-                      .read(courseColorOverridesProvider.notifier)
-                      .clearColor(key);
-                } else if (picked != null && context.mounted) {
-                  await ref
-                      .read(courseColorOverridesProvider.notifier)
-                      .setColor(key, picked);
+                if (await archiveCourseAction(
+                      context,
+                      ProviderScope.containerOf(context),
+                      session,
+                    ) &&
+                    context.mounted) {
+                  Navigator.pop(context);
                 }
               },
-              icon: Icons.palette_outlined,
-              label: colorLabel,
-              tooltip: l10n.sessionColor,
+              icon: Icons.archive_outlined,
+              label: OrbitFeatureText.of(context).archive,
+              tooltip: OrbitFeatureText.of(context).archive,
             ),
-            buildButton(
-              onPressed: () async {
-                final navigatorContext = Navigator.of(context).context;
-                Navigator.pop(context);
-                await SessionNoteSheet.show(navigatorContext, session);
-              },
-              icon: Icons.sticky_note_2_outlined,
-              label: noteLabel,
-              tooltip: l10n.addSessionNote,
-            ),
+          buildButton(
+            onPressed: () async {
+              // Capture the navigator's own context before popping so the
+              // follow-up sheet/dialog is shown on a context that stays
+              // mounted after this bottom sheet is removed.
+              final navigatorContext = Navigator.of(context).context;
+              Navigator.pop(context);
+              await SessionEditSheet.showEdit(navigatorContext, session);
+            },
+            icon: Icons.edit_outlined,
+            label: editLabel,
+            tooltip: l10n.editSession,
+          ),
+          buildButton(
+            onPressed: () async {
+              final key = courseColorKey(session);
+              final overrides = ref.read(courseColorOverridesProvider);
+              final themeStyle = appThemeStyleOf(context);
+              final colorScheme = Theme.of(context).colorScheme;
+              final multi = ref.read(multicolorSettingsProvider);
+              final defaultColor = resolvedCourseColor(
+                palette: multi.enabled ? multi.palette : const [],
+                session: session,
+                automaticColorId: themeStyle == AppThemeStyle.colorful
+                    ? ref.read(
+                        resolvedAutomaticCourseColorIdsProvider,
+                      )[automaticCourseColorKey(session)]
+                    : null,
+                colorScheme: colorScheme,
+                themeStyle: themeStyle,
+              );
+              final current = overrides[key] ?? defaultColor;
+              var useDefault = false;
+              final picked = await showColorPickerDialog(
+                context,
+                initialColor: current,
+                defaultColor: defaultColor,
+                onUseDefault: () => useDefault = true,
+              );
+              if (useDefault) {
+                await ref
+                    .read(courseColorOverridesProvider.notifier)
+                    .clearColor(key);
+              } else if (picked != null && context.mounted) {
+                await ref
+                    .read(courseColorOverridesProvider.notifier)
+                    .setColor(key, picked);
+              }
+            },
+            icon: Icons.palette_outlined,
+            label: colorLabel,
+            tooltip: l10n.sessionColor,
+          ),
+          buildButton(
+            onPressed: () async {
+              final navigatorContext = Navigator.of(context).context;
+              Navigator.pop(context);
+              await SessionNoteSheet.show(navigatorContext, session);
+            },
+            icon: Icons.sticky_note_2_outlined,
+            label: noteLabel,
+            tooltip: l10n.addSessionNote,
+          ),
+        ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(spacing: 8, runSpacing: 8, children: regular),
+            const SizedBox(height: 12),
             buildButton(
               onPressed: () async {
                 final container = ProviderScope.containerOf(context);
@@ -253,6 +267,7 @@ class _SessionActionButtons extends ConsumerWidget {
               label: deleteLabel,
               tooltip: l10n.deleteSession,
               foregroundColor: colorScheme.error,
+              danger: true,
             ),
           ],
         );

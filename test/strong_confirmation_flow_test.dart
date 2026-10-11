@@ -17,6 +17,8 @@ void main() {
       final old = StrongReminderSettings.fromJson({});
       expect(old.prepareSeconds, 15);
       expect(old.answerSeconds, 30);
+      expect(old.arithmeticRounds, 2);
+      expect(old.sequenceRounds, 2);
       final bad = StrongReminderSettings.fromJson({
         'prepareSeconds': 'bad',
         'answerSeconds': double.nan,
@@ -29,6 +31,29 @@ void main() {
       });
       expect(bounds.prepareSeconds, 60);
       expect(bounds.answerSeconds, 10);
+      for (final rounds in [1, 2, 10]) {
+        final configured = old.copyWith(
+          arithmeticRounds: rounds,
+          sequenceRounds: rounds,
+        );
+        final restored = StrongReminderSettings.fromJson(configured.toJson());
+        expect(restored.arithmeticRounds, rounds);
+        expect(restored.sequenceRounds, rounds);
+      }
+      expect(
+        StrongReminderSettings.fromJson({
+          'arithmeticRounds': 99,
+          'sequenceRounds': 0,
+        }).arithmeticRounds,
+        10,
+      );
+      expect(
+        StrongReminderSettings.fromJson({
+          'arithmeticRounds': 'bad',
+          'sequenceRounds': double.nan,
+        }).sequenceRounds,
+        2,
+      );
       final value = old.copyWith(
         dismissTask: StrongDismissTask.sequence,
         prepareSeconds: 20,

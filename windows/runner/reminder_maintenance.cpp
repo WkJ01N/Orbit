@@ -1,4 +1,6 @@
+#include <winrt/Windows.Data.Json.h>
 #include "reminder_maintenance.h"
+#include "reminder_audio.h"
 #include "strong_reminders.h"
 #include <flutter/standard_method_codec.h>
 #include <taskschd.h>
@@ -86,15 +88,43 @@ HRESULT RegisterMaintenance() {
 }
 }
 
+winrt::Windows::Data::Json::IJsonValue AudioArgument(const flutter::EncodableValue& value) {
+  using namespace winrt::Windows::Data::Json;
+  if(auto text=std::get_if<std::string>(&value))return JsonValue::CreateStringValue(winrt::to_hstring(*text));
+  if(auto number=std::get_if<int32_t>(&value))return JsonValue::CreateNumberValue(*number);
+  if(auto number=std::get_if<int64_t>(&value))return JsonValue::CreateNumberValue(static_cast<double>(*number));
+  if(auto flag=std::get_if<bool>(&value))return JsonValue::CreateBooleanValue(*flag);
+  if(auto map=std::get_if<flutter::EncodableMap>(&value)){JsonObject result;for(auto& entry:*map)if(auto key=std::get_if<std::string>(&entry.first))result.SetNamedValue(winrt::to_hstring(*key),AudioArgument(entry.second));return result;}
+  return JsonValue::CreateNullValue();
+}
 std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> CreateReminderMaintenanceChannel(flutter::BinaryMessenger* messenger,HWND window,std::function<void()> finish_headless) {
   auto channel=std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(messenger,
     "com.must.orbit.orbit/windows_reminders",&flutter::StandardMethodCodec::GetInstance());
   channel->SetMethodCallHandler([window,finish_headless](const auto& call, auto result) {
-    if(call.method_name().rfind("strong",0)==0 || call.method_name()=="scheduleStrong" || call.method_name()=="scheduleStrongBatch" || call.method_name()=="cancelStrongScheduled" || call.method_name()=="stopStrongTests") {
+    if(call.method_name()=="validateAudio"||call.method_name()=="previewSound"||call.method_name()=="stopPreview") {
+      auto operation=call.method_name();auto argument=call.arguments()?AudioArgument(*call.arguments()).Stringify():winrt::hstring(L"{}");
+      std::thread([operation,argument,window,result=std::move(result)]() mutable {
+        CoInitializeEx(nullptr,COINIT_MULTITHREADED);HRESULT hr=S_OK;
+        try{auto data=winrt::Windows::Data::Json::JsonObject::Parse(argument);
+          if(operation=="validateAudio")hr=ValidateReminderAudio(data.GetNamedString(L"path").c_str());
+          else if(operation=="previewSound")hr=PreviewReminderAudio(data);else StopReminderPreview();
+        }catch(const winrt::hresult_error& error){hr=error.code();}catch(...){hr=E_FAIL;}CoUninitialize();
+        auto completion=new std::function<void()>([result=std::shared_ptr<flutter::MethodResult<flutter::EncodableValue>>(std::move(result)),hr](){if(FAILED(hr))result->Error("audio_invalid",std::to_string(hr));else result->Success();});
+        if(!PostMessageW(window,WM_APP+51,0,reinterpret_cast<LPARAM>(completion)))delete completion;
+      }).detach();return;
+    }
+
+    if(call.method_name().rfind("deadlineStrong",0)==0 || call.method_name().rfind("strong",0)==0 || call.method_name()=="scheduleStrong" || call.method_name()=="scheduleStrongBatch" || call.method_name()=="cancelStrongScheduled" || call.method_name()=="stopStrongTests") {
         std::string argument;
         if(call.arguments()) {
           if(auto text=std::get_if<std::string>(call.arguments())) argument=*text;
           else if(auto map=std::get_if<flutter::EncodableMap>(call.arguments())) {
+            auto ids=map->find(flutter::EncodableValue("ids"));
+            if(ids!=map->end())if(auto list=std::get_if<flutter::EncodableList>(&ids->second)){
+              winrt::Windows::Data::Json::JsonArray values;
+              for(auto value:*list)if(auto eventId=std::get_if<std::string>(&value))values.Append(winrt::Windows::Data::Json::JsonValue::CreateStringValue(winrt::to_hstring(*eventId)));
+              argument=winrt::to_string(values.Stringify());
+            }
             auto found=map->find(flutter::EncodableValue("answer"));if(found!=map->end()) {
               if(auto n=std::get_if<int32_t>(&found->second))argument=std::to_string(*n);
               else if(auto wideNumber=std::get_if<int64_t>(&found->second))argument=std::to_string(*wideNumber);

@@ -9,6 +9,7 @@ enum SyncEntityType {
   periodTimePlan,
   deadline,
   settingGroup,
+  statistic,
 }
 
 enum SyncOperation { upsert, delete }
@@ -258,11 +259,25 @@ String canonicalSyncPayload(Map<String, dynamic> payload) {
     'linkedCourseKey',
     'startPeriod',
     'periodTimePlanId',
+    'batchId',
+    'deletedAt',
+    'strongLeadMinutes',
   ]) {
     if (comparable[key] == null) comparable.remove(key);
   }
-  for (final key in ['archiveHidden', 'autoArchivePaused']) {
+  for (final key in [
+    'archiveHidden',
+    'autoArchivePaused',
+    'strongReminderEnabled',
+  ]) {
     if (comparable[key] == false) comparable.remove(key);
+  }
+  if (comparable['countsTowardStatistics'] == true) {
+    comparable.remove('countsTowardStatistics');
+  }
+  if (comparable['disabledReminderLeadMinutes'] is List &&
+      (comparable['disabledReminderLeadMinutes'] as List).isEmpty) {
+    comparable.remove('disabledReminderLeadMinutes');
   }
   dynamic normalize(dynamic value) {
     if (value is Map) {

@@ -1,3 +1,7 @@
+import 'package:orbit/models/deadline_strong_text.dart';
+import 'package:orbit/models/deadline_recurrence.dart';
+import 'package:orbit/models/deadline_batch_text.dart';
+import 'package:orbit/models/statistics_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,7 +69,14 @@ class DeadlineListTile extends StatelessWidget {
         : null;
     return ListTile(
       key: Key('deadline-${deadline.id}'),
-      leading: Icon(deadline.completed ? Icons.task_alt : Icons.flag_outlined),
+      leading: Icon(
+        deadline.hasStrongReminder
+            ? Icons.notifications_active_outlined
+            : deadline.completed
+            ? Icons.task_alt
+            : Icons.flag_outlined,
+        color: deadline.hasStrongReminder ? theme.colorScheme.primary : null,
+      ),
       title: Text(deadline.title, maxLines: 2),
       subtitle: Text(
         '${deadline.subject} · ${_dateTime(context, deadline.dueAt)}'
@@ -96,7 +107,17 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
   final TextEditingController _customMinutes = TextEditingController();
   late DateTime _dueAt;
   late Set<int> _leads;
+  bool _strongEnabled = false;
+  final Map<int, bool> _strongChoices = {};
+  final Set<int> _disabledLeads = {};
   String _courseKey = '';
+  bool _batch = false, _reused = false, _counts = true, _useCount = true;
+  DeadlineFrequency _frequency = DeadlineFrequency.weekly;
+  final _interval = TextEditingController(text: '1');
+  final _count = TextEditingController(text: '12');
+  final Set<int> _weekdays = {};
+  final Map<String, int> _monthDates = {};
+  late DateTime _until;
   bool _saving = false;
   String? _error;
 
@@ -112,11 +133,22 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
             .add(const Duration(days: 1))
             .copyWith(hour: 23, minute: 59);
     _leads = value?.leadMinutes.toSet() ?? {1440, 60};
+    _strongEnabled = value?.strongReminderEnabled ?? false;
+    for (final m in _leads) {
+      _strongChoices[m] =
+          value?.effectiveStrongLeadMinutes.contains(m) ?? (m <= 180);
+    }
+    _disabledLeads.addAll(value?.disabledReminderLeadMinutes ?? const []);
     _courseKey = value?.courseKey ?? '';
+    _counts = value?.countsTowardStatistics ?? true;
+    _until = DateTime(_dueAt.year, _dueAt.month + 3, _dueAt.day);
+    _weekdays.add(_dueAt.weekday);
   }
 
   @override
   void dispose() {
+    _interval.dispose();
+    _count.dispose();
     _subject.dispose();
     _title.dispose();
     _customMinutes.dispose();
@@ -156,6 +188,7 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
     }
     setState(() {
       _leads.add(value);
+      _strongChoices.putIfAbsent(value, () => value <= 180);
       _error = null;
       _customMinutes.clear();
     });
@@ -176,22 +209,48 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
       _error = null;
     });
     try {
-      await ref
-          .read(appDatabaseProvider)
-          .saveDeadline(
-            Deadline(
-              id: widget.deadline?.id ?? const Uuid().v4(),
-              subject: _subject.text.trim(),
-              title: _title.text.trim(),
-              dueAt: _dueAt,
-              leadMinutes: leads,
-              courseKey: _courseKey.isEmpty ? null : _courseKey,
-              completedAt: widget.deadline?.completedAt,
-              archivedAt: widget.deadline?.archivedAt,
-              archiveHidden: widget.deadline?.archiveHidden ?? false,
-              autoArchivePaused: widget.deadline?.autoArchivePaused ?? false,
-            ),
-          );
+      List<DateTime> dates = [_dueAt];
+      if (_batch) {
+        final generated = await _generateDates();
+        if (generated == null || !mounted) {
+          if (mounted) setState(() => _saving = false);
+          return;
+        }
+        dates = generated;
+      }
+      if (_batch || _reused) {
+        final selected = await _previewDates(dates);
+        if (selected == null || !mounted) {
+          if (mounted) setState(() => _saving = false);
+          return;
+        }
+        dates = selected;
+      }
+      final batchId = _batch ? const Uuid().v4() : widget.deadline?.batchId;
+      await ref.read(appDatabaseProvider).saveDeadlines([
+        for (final date in dates)
+          Deadline(
+            id: widget.deadline?.id ?? const Uuid().v4(),
+            subject: _subject.text.trim(),
+            title: _title.text.trim(),
+            dueAt: date,
+            leadMinutes: leads,
+            courseKey: _courseKey.isEmpty ? null : _courseKey,
+            completedAt: widget.deadline?.completedAt,
+            archivedAt: widget.deadline?.archivedAt,
+            archiveHidden: widget.deadline?.archiveHidden ?? false,
+            autoArchivePaused: widget.deadline?.autoArchivePaused ?? false,
+            countsTowardStatistics: _counts,
+            batchId: batchId,
+            strongReminderEnabled: _strongEnabled,
+            strongLeadMinutes: leads
+                .where((m) => _strongChoices[m] == true)
+                .toList(),
+            disabledReminderLeadMinutes: leads
+                .where(_disabledLeads.contains)
+                .toList(),
+          ),
+      ]);
       ref.read(scheduleRefreshProvider.notifier).state++;
       ref.read(reminderSettingsProvider.notifier).scheduleResync();
       if (mounted) Navigator.pop(context);
@@ -203,6 +262,277 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
         });
       }
     }
+  }
+
+  Future<void> _reuse() async {
+    final values = await ref.read(appDatabaseProvider).getDeadlines();
+    if (!mounted) return;
+    final selected = await showDialog<Deadline>(
+      context: context,
+      builder: (c) => SimpleDialog(
+        title: Text(DeadlineBatchText.of(c).reuse),
+        children: [
+          for (final value in values)
+            ListTile(
+              title: Text(value.title),
+              subtitle: Text('${value.subject} · ${_dateTime(c, value.dueAt)}'),
+              onTap: () => Navigator.pop(c, value),
+            ),
+          if (values.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(DeadlineBatchText.of(c).none),
+            ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _subject.text = selected.subject;
+      _title.text = selected.title;
+      _courseKey = selected.courseKey ?? '';
+      _leads = selected.leadMinutes.toSet();
+      _strongEnabled = selected.strongReminderEnabled;
+      _strongChoices.clear();
+      for (final m in _leads) {
+        _strongChoices[m] = selected.effectiveStrongLeadMinutes.contains(m);
+      }
+      _disabledLeads.clear();
+      _counts = true;
+      _reused = true;
+    });
+  }
+
+  Widget _recurrenceFields() {
+    final t = DeadlineBatchText.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<DeadlineFrequency>(
+          initialValue: _frequency,
+          decoration: InputDecoration(labelText: t.every),
+          items: [
+            for (final f in DeadlineFrequency.values)
+              DropdownMenuItem(
+                value: f,
+                child: Text([t.daily, t.weekly, t.monthly][f.index]),
+              ),
+          ],
+          onChanged: _saving ? null : (v) => setState(() => _frequency = v!),
+        ),
+        TextField(
+          controller: _interval,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(labelText: t.interval),
+        ),
+        if (_frequency == DeadlineFrequency.weekly)
+          Wrap(
+            spacing: 4,
+            children: [
+              for (var d = 1; d <= 7; d++)
+                FilterChip(
+                  label: Text(
+                    MaterialLocalizations.of(context).narrowWeekdays[d % 7],
+                  ),
+                  selected: _weekdays.contains(d),
+                  onSelected: _saving
+                      ? null
+                      : (v) => setState(() {
+                          if (v) {
+                            _weekdays.add(d);
+                          } else {
+                            _weekdays.remove(d);
+                          }
+                        }),
+                ),
+            ],
+          ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(t.useCount),
+          value: _useCount,
+          onChanged: _saving ? null : (v) => setState(() => _useCount = v),
+        ),
+        if (_useCount)
+          TextField(
+            controller: _count,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(labelText: t.taskCount),
+          )
+        else
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(t.until),
+            subtitle: Text(_dateTime(context, _until)),
+            onTap: _saving
+                ? null
+                : () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _until.isBefore(_dueAt) ? _dueAt : _until,
+                      firstDate: DateTime(
+                        _dueAt.year,
+                        _dueAt.month,
+                        _dueAt.day,
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (date != null && mounted) setState(() => _until = date);
+                  },
+          ),
+      ],
+    );
+  }
+
+  Future<List<DateTime>?> _generateDates() async {
+    final t = DeadlineBatchText.of(context);
+    try {
+      _monthDates.clear();
+      if (_frequency == DeadlineFrequency.weekly && _weekdays.isEmpty) {
+        throw ArgumentError('Weekdays required');
+      }
+      DeadlineRecurrenceResult generate() => DeadlineRecurrence(
+        start: _dueAt,
+        frequency: _frequency,
+        interval: int.tryParse(_interval.text) ?? 0,
+        weekdays: _weekdays,
+        count: _useCount ? int.tryParse(_count.text) ?? 0 : null,
+        until: _useCount ? null : _until,
+        monthDates: _monthDates,
+      ).generate();
+      var result = generate();
+      if (result.missingMonths.isNotEmpty) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: Text(t.monthly),
+            content: Text(
+              '${t.missing}\n${result.missingMonths.map(DeadlineRecurrence.monthKey).join(', ')}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: Text(DeadlineText.of(c).cancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: Text(DeadlineText.of(c).save),
+              ),
+            ],
+          ),
+        );
+        if (proceed != true || !mounted) return null;
+        for (final month in result.missingMonths) {
+          final last = DateTime(month.year, month.month + 1, 0);
+          final date = await showDatePicker(
+            context: context,
+            helpText: '${t.monthly} · ${DeadlineRecurrence.monthKey(month)}',
+            initialDate: last,
+            firstDate: month,
+            lastDate: last,
+          );
+          if (date == null || !mounted) return null;
+          _monthDates[DeadlineRecurrence.monthKey(month)] = date.day;
+        }
+        result = generate();
+      }
+      if (result.dates.isEmpty ||
+          result.missingMonths.isNotEmpty ||
+          result.dates.any((d) => !d.isAfter(DateTime.now()))) {
+        throw ArgumentError('Invalid dates');
+      }
+      return result.dates;
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = t.invalid;
+          _saving = false;
+        });
+      }
+      return null;
+    }
+  }
+
+  Future<List<DateTime>?> _previewDates(List<DateTime> dates) async {
+    final existing = await ref.read(appDatabaseProvider).getDeadlines();
+    if (!mounted) return null;
+    final duplicates = dates
+        .where(
+          (date) => existing.any(
+            (d) =>
+                d.subject == _subject.text.trim() &&
+                d.title == _title.text.trim() &&
+                d.dueAt.isAtSameMomentAs(date),
+          ),
+        )
+        .toSet();
+    final chosen = dates.toSet()..removeAll(duplicates);
+    return showDialog<List<DateTime>>(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (c, change) {
+          final t = DeadlineBatchText.of(c);
+          return AlertDialog(
+            title: Text(t.preview),
+            content: SizedBox(
+              width: 420,
+              height: MediaQuery.sizeOf(c).height * .5,
+              child: Column(
+                children: [
+                  Text(t.previewCount(chosen.length)),
+                  if (_strongEnabled)
+                    Text(
+                      '${DeadlineStrongText.of(c).strong}: ${_leads.where((m) => _strongChoices[m] == true).map(DeadlineText.of(c).leadLabel).join(" · ")}',
+                    ),
+                  if (_reused)
+                    Text(
+                      '${StatisticsText.of(c).include}: ${_counts ? MaterialLocalizations.of(c).okButtonLabel : "—"}',
+                    ),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        for (final date in dates)
+                          CheckboxListTile(
+                            value: chosen.contains(date),
+                            title: Text(_dateTime(c, date)),
+                            subtitle: duplicates.contains(date)
+                                ? Text(t.duplicate)
+                                : null,
+                            onChanged: (v) => change(() {
+                              if (v == true) {
+                                chosen.add(date);
+                              } else {
+                                chosen.remove(date);
+                              }
+                            }),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(DeadlineText.of(c).cancel),
+              ),
+              FilledButton(
+                onPressed: chosen.isEmpty
+                    ? null
+                    : () => Navigator.pop(
+                        c,
+                        dates.where(chosen.contains).toList(),
+                      ),
+                child: Text(DeadlineText.of(c).save),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -228,7 +558,40 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (widget.deadline == null) ...[
+                SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(
+                      value: false,
+                      label: Text(DeadlineBatchText.of(context).single),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text(DeadlineBatchText.of(context).batch),
+                    ),
+                  ],
+                  selected: {_batch},
+                  onSelectionChanged: _saving
+                      ? null
+                      : (v) => setState(() => _batch = v.first),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.copy_outlined),
+                  label: Text(DeadlineBatchText.of(context).reuse),
+                  onPressed: _saving ? null : _reuse,
+                ),
+              ],
+              if (_reused)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _counts,
+                  title: Text(StatisticsText.of(context).include),
+                  onChanged: _saving
+                      ? null
+                      : (v) => setState(() => _counts = v ?? true),
+                ),
               DropdownButtonFormField<String>(
+                key: ValueKey(_courseKey),
                 initialValue: selected,
                 isExpanded: true,
                 decoration: InputDecoration(labelText: text.chooseSubject),
@@ -270,6 +633,7 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                 subtitle: Text(_dateTime(context, _dueAt)),
                 onTap: _saving ? null : _pickDueAt,
               ),
+              if (_batch) _recurrenceFields(),
               const SizedBox(height: 8),
               Text(
                 text.reminders,
@@ -288,6 +652,10 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                           : (selected) => setState(() {
                               if (selected && _leads.length < 8) {
                                 _leads.add(minutes);
+                                _strongChoices.putIfAbsent(
+                                  minutes,
+                                  () => minutes <= 180,
+                                );
                               }
                               if (!selected) _leads.remove(minutes);
                             }),
@@ -322,6 +690,71 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _DeadlineReminderSwitch(
+                      switchKey: const Key('deadline-strong-enabled'),
+                      title: DeadlineStrongText.of(context).enable,
+                      description: DeadlineStrongText.of(context).hint,
+                      value: _strongEnabled,
+                      onChanged: _saving
+                          ? null
+                          : (v) => setState(() => _strongEnabled = v),
+                    ),
+                    AnimatedSize(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      child: _strongEnabled
+                          ? Column(
+                              children: [
+                                for (final m
+                                    in (_leads.toList()
+                                      ..sort((a, b) => b.compareTo(a))))
+                                  _DeadlineReminderSwitch(
+                                    switchKey: ValueKey(
+                                      'deadline-strong-lead-$m',
+                                    ),
+                                    icon: _strongChoices[m] == true
+                                        ? Icons.notifications_active_outlined
+                                        : Icons.notifications_none,
+                                    title: text.leadLabel(m),
+                                    description: _disabledLeads.contains(m)
+                                        ? DeadlineStrongText.of(
+                                            context,
+                                          ).disabled
+                                        : _strongChoices[m] == true
+                                        ? DeadlineStrongText.of(context).strong
+                                        : DeadlineStrongText.of(context).normal,
+                                    value: _strongChoices[m] == true,
+                                    onChanged: _saving
+                                        ? null
+                                        : (v) => setState(
+                                            () => _strongChoices[m] = v,
+                                          ),
+                                  ),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    if (_disabledLeads.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: TextButton.icon(
+                          key: const Key('deadline-restore-reminders'),
+                          icon: const Icon(Icons.restore),
+                          label: Text(DeadlineStrongText.of(context).restore),
+                          onPressed: _saving
+                              ? null
+                              : () => setState(() => _disabledLeads.clear()),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               if (_error != null)
                 Text(
                   _error!,
@@ -336,7 +769,12 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
           onPressed: _saving ? null : () => Navigator.pop(context),
           child: Text(text.cancel),
         ),
-        FilledButton(onPressed: _saving ? null : _save, child: Text(text.save)),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: Text(
+            _batch ? DeadlineBatchText.of(context).preview : text.save,
+          ),
+        ),
       ],
     );
   }
@@ -361,14 +799,43 @@ class _DeadlineDetails extends ConsumerWidget {
     }
 
     return AlertDialog(
+      scrollable: true,
       title: Text(deadline.title),
-      content: Text(
-        '${deadline.subject}\n${text.due}: ${_dateTime(context, deadline.dueAt)}'
-        '${deadline.completed
-            ? '\n${text.completed}'
-            : deadline.dueAt.isBefore(DateTime.now())
-            ? '\n${text.overdue}'
-            : ''}',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(deadline.subject),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('${text.due}: ${_dateTime(context, deadline.dueAt)}'),
+              if (deadline.hasStrongReminder)
+                Tooltip(
+                  message: DeadlineStrongText.of(context).strong,
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+            ],
+          ),
+          if (deadline.hasStrongReminder)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                DeadlineStrongText.of(context).openHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          if (deadline.completed)
+            Text(text.completed)
+          else if (deadline.dueAt.isBefore(DateTime.now()))
+            Text(text.overdue),
+        ],
       ),
       actionsOverflowButtonSpacing: 8,
       actions: [
@@ -429,4 +896,49 @@ class _DeadlineDetails extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Keep descriptions full width instead of squeezing them beside the switch.
+class _DeadlineReminderSwitch extends StatelessWidget {
+  const _DeadlineReminderSwitch({
+    required this.switchKey,
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+    this.icon,
+  });
+  final Key switchKey;
+  final String title;
+  final String description;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) => MergeSemantics(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(child: Text(title)),
+                Switch(key: switchKey, value: value, onChanged: onChanged),
+              ],
+            ),
+            Text(description, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    ),
+  );
 }

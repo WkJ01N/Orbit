@@ -1,3 +1,5 @@
+import 'package:orbit/features/deadline/deadline_strong_host.dart';
+import 'package:orbit/features/statistics/statistics_page.dart';
 import 'package:orbit/features/settings/update_host.dart';
 import 'dart:async';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
@@ -42,15 +44,20 @@ class OrbitApp extends ConsumerWidget {
       navigatorObservers: [_messageRouteObserver],
       builder: (context, child) => AppScaffoldMessenger(
         routeObserver: _messageRouteObserver,
-        child: StrongReminderHost(
+        child: DeadlineStrongHost(
           navigatorKey: _navigatorKey,
-          child: UpdateHost(
+          child: StrongReminderHost(
             navigatorKey: _navigatorKey,
-            child: ArchiveLifecycleHost(
-              child: _AccountSyncLifecycleHost(
-                child: NotificationPermissionHost(
-                  navigatorKey: _navigatorKey,
-                  child: child!,
+            child: UpdateHost(
+              navigatorKey: _navigatorKey,
+              child: ArchiveLifecycleHost(
+                child: StatisticsLifecycleHost(
+                  child: _AccountSyncLifecycleHost(
+                    child: NotificationPermissionHost(
+                      navigatorKey: _navigatorKey,
+                      child: child!,
+                    ),
+                  ),
                 ),
               ),
             ),

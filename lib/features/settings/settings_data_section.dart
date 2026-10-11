@@ -1,3 +1,6 @@
+import 'package:orbit/features/statistics/statistics_page.dart';
+import 'package:orbit/models/statistics_text.dart';
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +29,20 @@ class SettingsDataSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SettingsGroup(
+          title: StatisticsText.of(context).title,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.insights_outlined),
+              title: Text(StatisticsText.of(context).title),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const StatisticsPage()),
+              ),
+            ),
+          ],
+        ),
         SettingsGroup(
           title: _accountSyncLabel(context),
           children: [
@@ -143,11 +160,18 @@ class SettingsDataSection extends ConsumerWidget {
 
   Future<void> _confirmClearAll(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
+    var deleteStatistics = false;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.confirmClearTitle),
-        content: Text(l10n.confirmClearContent),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.confirmClearContent),
+            StatisticsDeletionChoice(onChanged: (v) => deleteStatistics = v),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -171,7 +195,7 @@ class SettingsDataSection extends ConsumerWidget {
       final deletedIds = (await repository.getAllSessions())
           .map((session) => session.id)
           .toList();
-      await repository.clearAll();
+      await repository.clearAll(deleteStatistics: deleteStatistics);
       await ref.read(reminderSchedulerProvider).cancelAllReminders();
       ref.read(selectedWeekStartProvider.notifier).state = null;
       refreshSchedule(ref);

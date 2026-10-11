@@ -10,6 +10,7 @@ Future<T?> showAdaptiveBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool isScrollControlled = false,
+  double maxDialogWidth = 480,
 }) {
   final width = MediaQuery.sizeOf(context).width;
   if (width >= kNarrowDialogBreakpoint) {
@@ -19,7 +20,7 @@ Future<T?> showAdaptiveBottomSheet<T>({
         insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
+          constraints: BoxConstraints(maxWidth: maxDialogWidth),
           child: builder(dialogContext),
         ),
       ),

@@ -174,7 +174,12 @@ class SettingsSyncCodec {
       json['reminders'] = current;
     } else if (entity.id == 'strong') {
       final current = Map<String, dynamic>.from(json['reminders']);
-      if (incoming['strong'] is Map) current['strong'] = incoming['strong'];
+      if (incoming['strong'] is Map) {
+        current['strong'] = {
+          ...current['strong'] as Map,
+          ...incoming['strong'] as Map,
+        };
+      }
       final overrides = incoming['ruleOverrides'] as Map? ?? {};
       current['customRules'] = [
         for (final raw in current['customRules'] as List)
@@ -185,7 +190,12 @@ class SettingsSyncCodec {
                 overrides[raw['id']],
               ).entries)
                 if (['strength', 'strongOverride'].contains(e.key))
-                  e.key: e.value,
+                  e.key: e.key == 'strongOverride' && e.value is Map
+                      ? {
+                          ...raw['strongOverride'] as Map? ?? {},
+                          ...e.value as Map,
+                        }
+                      : e.value,
             },
           },
       ];

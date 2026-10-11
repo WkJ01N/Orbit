@@ -2,14 +2,14 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.5.3（build 24）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.5.5（build 27）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
 | 模块 | 说明 |
 |------|------|
 | 导入 | XLSX 多工作表与 CSV（UTF-8 / GBK / GB18030）；通过表头、行数据和网格结构评分识别课程列表及三至七天周网格，仅高置信候选自动选中；可在原表中直接标记区域和字段，普通提取方式与高级正则并存；支持合并格、一格多课、学期与作息方案、周次展开、预览去重、错误定位与重复周导入策略 |
-| 导出与备份 | JSON v5 完整备份课程、批量系列、主题、提醒规则、引用音频、显示设置及识别模板、学期、作息方案，并兼容 v1–4；支持无课程时备份设置、课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出与识别模板 JSON 分享 |
+| 导出与备份 | JSON v9 完整备份课程、批量系列、主题、提醒规则、引用音频、显示设置及识别模板、学期、作息方案，并兼容 v1–8；支持无课程时备份设置、课程和设置分项恢复、合并覆盖或替换课表；支持 xlsx 导出与识别模板 JSON 分享 |
 | 账号与同步 | 可选 CloudBase 邮箱账号；Orbit 自有设备会话支持最多 5 台 Android／Windows 同时登录；支持显示名称、私有头像、验证码重发与 8–20 位字母数字密码；本地优先同步课程、自定义导入模板、学期与作息方案；可按设备配置启动、回前台、本地变化、网络恢复四种自动同步事件及网络条件；首次登录预览合并、离线修改队列、删除标记和并发冲突选择；退出账号默认保留本机课表 |
 | 课表网格 | 按真实时间定位的整周时间轴；窄屏默认一屏显示完整七天，可切换经典单日/多日自适应布局，宽屏一屏展示整周；冲突课程自动分栏；当前时间线仅显示在今天列；支持隐藏无课日期、周选择、显示密度、50%–150% 纵向缩放及 08:00–22:00 页面自适应；支持批量删除 |
 | 接下来 | 未来课程按今天 / 明天 / 本周 / 更晚分组；扁平化懒加载列表；「即将开始」与倒计时两行显示；骨架屏加载；标题栏快速添加课程；实时滚动进度回顶按钮，到底后在课程下方居中显示 |
@@ -24,12 +24,12 @@
 
 ## 快速开始（用户）
 
-v1.5.3 构建产物位于 `release/v1.5.3/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
+v1.5.5 构建产物位于 `release/v1.5.5/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.5.3-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.5.3-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+| Windows | `orbit-v1.5.5-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.5.5-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
 
 ## 从源码运行
 
@@ -79,10 +79,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.3/orbit-v1.5.3-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.5/orbit-v1.5.5-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.3/orbit-v1.5.3-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.5/orbit-v1.5.5-android.apk -Force
 ```
 
 ## 更新日志
@@ -316,4 +316,16 @@ test/                单元测试与 Widget 测试（含程序化 xlsx 夹具）
 
 本项目采用 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html)（GPL-3.0）开源。完整许可文本见仓库根目录 [LICENSE.md](LICENSE.md)。
 
-本次强提醒确认、同步内容和更新功能说明及云端部署要求见 [实现与验收说明](docs/orbit-strong-sync-updates.md)。当前 SQLite v9、完整备份 v8。
+本次强提醒确认、同步内容和更新功能说明及云端部署要求见 [实现与验收说明](docs/orbit-strong-sync-updates.md)。当前 SQLite v11、完整备份 v9。
+
+## 统计与 DDL 更新
+
+设置中的统计信息按实际打开日期累计使用天数，支持手动修改首次使用日期；课程结束后自动累计课次与课表时长，按学期展示学完的课程。游客统计在登录时可选择合并，账号分别存档。所有课程删除和冲突覆盖入口可选择同时删除统计，默认保留；撤销和回收站恢复会恢复对应统计。
+
+DDL 支持按日、周、月有限批量生成，缺失的月日期需要逐月手动选择。可复用现有 DDL，并选择新任务完成后是否计入统计（默认勾选）。JSON v9 包含归档、回收站、统计、设置与引用音频，支持分项合并或替换；不包含登录凭据、系统权限与运行中的闹钟。
+
+强提醒的算术和数字任务分别支持 1–10 轮，默认 2 轮。紧急停止条支持完整区域持续按压 5 秒，显示进度与剩余时间。
+
+DDL 可逐条启用强提醒，并逐个提前时间选择普通或强提醒（默认 180 分钟及以内为强提醒）。打开 Orbit 即可停止当前 DDL 响铃，后续提醒默认保留，可按任务及时间关闭。课表日期栏保留原有布局，点击整个日期格子可展开 DDL，强提醒 DDL 用粗体与铃铛区分。设置中可独立隐藏接下来／导入导航入口。数据与人工验收要求见 [DDL 强提醒说明](docs/ddl-strong-reminders.md)。
+
+Windows 强提醒支持导入 MP3／M4A／WAV 与独立后台播放，课程前台提醒由用户主动打开答题；原生测试、诊断与人工验收范围见 [Windows 强提醒验收说明](docs/windows-strong-reminder-validation.md)。

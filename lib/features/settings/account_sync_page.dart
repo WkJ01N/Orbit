@@ -1,3 +1,6 @@
+import 'package:orbit/providers/database_providers.dart';
+import 'package:orbit/data/database/app_database.dart';
+import 'package:orbit/models/statistics_text.dart';
 import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/features/settings/sync_content_page.dart';
 import 'package:orbit/models/sync_update_text.dart';
@@ -1000,6 +1003,11 @@ Future<void> _showMergePreview(
 ) async {
   final text = _SyncText.of(context);
   final choices = <String, bool>{};
+  var mergeGuestStatistics = false;
+  final hasGuestStatistics = await ref
+      .read(appDatabaseProvider)
+      .hasGuestStatistics();
+  if (!context.mounted) return;
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
@@ -1025,6 +1033,13 @@ Future<void> _showMergePreview(
                       preview.conflicts.length,
                     ),
                   ),
+                  if (hasGuestStatistics)
+                    CheckboxListTile(
+                      value: mergeGuestStatistics,
+                      title: Text(StatisticsText.of(context).mergeGuest),
+                      onChanged: (v) =>
+                          setState(() => mergeGuestStatistics = v ?? false),
+                    ),
                   for (final conflict in preview.conflicts) ...[
                     const Divider(),
                     Text(_entityTitle(conflict.local.entity)),
@@ -1070,7 +1085,11 @@ Future<void> _showMergePreview(
   if (confirmed == true) {
     await ref
         .read(accountSyncProvider.notifier)
-        .confirmInitialMerge(preview, choices);
+        .confirmInitialMerge(
+          preview,
+          choices,
+          mergeGuestStatistics: mergeGuestStatistics,
+        );
   }
 }
 

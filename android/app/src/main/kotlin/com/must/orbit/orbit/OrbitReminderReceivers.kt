@@ -70,6 +70,10 @@ class OrbitReminderActionReceiver : BroadcastReceiver() {
                 OrbitReminderProcess.lifecycle.beginTask()
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     try {
+                        for(s in OrbitDeadlineStrongSession.states(context).filter(OrbitDeadlineStrongSession::active)) {
+                            val record=OrbitReminderRecord.fromJson(s.getJSONObject("record"))
+                            OrbitReminderManager.buildNotification(context,record)?.let { (context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager).notify(record.notificationId,it) }
+                        }
                         val state=OrbitStrongSession.state(context)
                         if(OrbitStrongSession.isActive(state)) {
                             val records=state!!.getJSONArray("records")

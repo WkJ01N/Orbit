@@ -17,8 +17,14 @@ class OrbitBackup {
     this.deadlines = const [],
     this.settings,
     this.audio = const {},
+    this.statistics = const [],
+    this.sessionAliases = const {},
+    this.seriesMemberships = const {},
   });
 
+  final List<Map<String, dynamic>> statistics;
+  final Map<String, String> sessionAliases;
+  final Map<String, List<String>> seriesMemberships;
   final int version;
   final DateTime exportedAt;
   final List<CourseSession> sessions;
@@ -37,12 +43,13 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 8;
+  static const backupVersion = 9;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
     PortableSettings settings, {
     List<Deadline> deadlines = const [],
+    List<Map<String, dynamic>> statistics = const [],
     Map<String, String> sessionAliases = const {},
     Map<String, List<String>> seriesMemberships = const {},
   }) async {
@@ -129,30 +136,43 @@ class ScheduleBackupService {
               encodeToJson(
                 sessions,
                 deadlines: deadlines,
+                statistics: statistics,
                 settings: settings.withReminders(reminders),
               ),
             )
             as Map<String, dynamic>;
     json['audio'] = audio;
+    json['sessionAliases'] = sessionAliases;
+    json['seriesMemberships'] = seriesMemberships;
     return const JsonEncoder.withIndent('  ').convert(json);
   }
 
-  Future<({PortableSettings settings, bool soundFallback})> restoreAudio(
-    OrbitBackup backup,
-  ) async {
+  Future<
+    ({
+      PortableSettings settings,
+      bool soundFallback,
+      List<String> importedFiles,
+    })
+  >
+  restoreAudio(OrbitBackup backup) async {
     var fallback = false;
     final refs = <String, ReminderSound>{};
-    for (final entry in backup.audio.entries) {
-      final info = entry.value;
-      final imported = await ReminderAudioService.importBytes(
-        info['name'] as String,
-        base64Decode(info['data'] as String),
-      );
-      refs[entry.key] = ReminderSound(
-        kind: imported.kind,
-        value: imported.value,
-        name: info['displayName'] as String? ?? imported.name,
-      );
+    try {
+      for (final entry in backup.audio.entries) {
+        final info = entry.value;
+        final imported = await ReminderAudioService.importBytes(
+          info['name'] as String,
+          base64Decode(info['data'] as String),
+        );
+        refs[entry.key] = ReminderSound(
+          kind: imported.kind,
+          value: imported.value,
+          name: info['displayName'] as String? ?? imported.name,
+        );
+      }
+    } catch (_) {
+      await discardImportedAudio(refs.values.map((s) => s.value).toList());
+      rethrow;
     }
     ReminderSound restore(ReminderSound sound) {
       if (sound.kind == 'file') {
@@ -189,16 +209,35 @@ class ScheduleBackupService {
         ],
       ),
     );
-    return (settings: settings, soundFallback: fallback);
+    return (
+      settings: settings,
+      soundFallback: fallback,
+      importedFiles: refs.values.map((s) => s.value).toList(),
+    );
+  }
+
+  Future<void> discardImportedAudio(List<String> paths) async {
+    final root = p.normalize(
+      p.absolute((await ReminderAudioService.audioDirectory()).path),
+    );
+    for (final path in paths) {
+      final target = p.normalize(p.absolute(path));
+      if (p.isWithin(root, target)) {
+        final file = File(target);
+        if (await file.exists()) await file.delete();
+      }
+    }
   }
 
   String encodeToJson(
     List<CourseSession> sessions, {
     List<Deadline> deadlines = const [],
+    List<Map<String, dynamic>> statistics = const [],
     PortableSettings? settings,
   }) {
     final payload = {
       'version': backupVersion,
+      'statistics': statistics,
       'exportedAt': DateTime.now().toIso8601String(),
       'sessions': sessions.map(_sessionToJson).toList(),
       'deadlines': deadlines.map((value) => value.toSyncPayload()).toList(),
@@ -232,28 +271,70 @@ class ScheduleBackupService {
       throw ScheduleBackupException('invalid_format');
     }
 
-    final sessions = sessionsRaw.map((item) {
-      if (item is! Map<String, dynamic>) {
-        throw ScheduleBackupException('invalid_format');
-      }
-      return _sessionFromJson(item);
-    }).toList();
+    final List<CourseSession> sessions;
+    try {
+      final ids = <String>{};
+      sessions = sessionsRaw.map((item) {
+        if (item is! Map<String, dynamic>) {
+          throw const FormatException('session');
+        }
+        final session = _sessionFromJson(item);
+        if (session.id.isEmpty ||
+            !ids.add(session.id) ||
+            !session.endAt.isAfter(session.startAt) ||
+            session.weekday < 1 ||
+            session.weekday > 7 ||
+            !_validDate(item['date'])) {
+          throw const FormatException('session');
+        }
+        return session;
+      }).toList();
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
     final deadlinesRaw = decoded['deadlines'];
     if (deadlinesRaw != null && deadlinesRaw is! List) {
       throw ScheduleBackupException('invalid_format');
     }
     final List<Deadline> deadlines;
     try {
+      final ids = <String>{};
       deadlines = [
         for (final value in deadlinesRaw as List? ?? const [])
           Deadline.fromSyncPayload(Map<String, dynamic>.from(value as Map)),
       ];
+      for (final value in deadlinesRaw ?? const []) {
+        if (value['countsTowardStatistics'] != null &&
+            value['countsTowardStatistics'] is! bool) {
+          throw const FormatException('deadline statistics choice');
+        }
+        if (value['strongReminderEnabled'] != null &&
+            value['strongReminderEnabled'] is! bool) {
+          throw const FormatException('deadline strong choice');
+        }
+      }
+      for (final deadline in deadlines) {
+        if (deadline.id.isEmpty ||
+            !ids.add(deadline.id) ||
+            deadline.leadMinutes.any((lead) => lead < 0) ||
+            (deadline.strongLeadMinutes ?? const <int>[]).any(
+              (m) => m <= 0 || !deadline.leadMinutes.contains(m),
+            ) ||
+            deadline.disabledReminderLeadMinutes.any(
+              (m) => m <= 0 || !deadline.leadMinutes.contains(m),
+            )) {
+          throw const FormatException('deadline');
+        }
+      }
     } catch (_) {
       throw ScheduleBackupException('invalid_format');
     }
     final settingsRaw = decoded['settings'];
     final PortableSettings? settings;
     try {
+      if (settingsRaw != null && settingsRaw is! Map<String, dynamic>) {
+        throw const FormatException('settings');
+      }
       settings = settingsRaw is Map<String, dynamic>
           ? PortableSettings.fromJson(settingsRaw)
           : null;
@@ -272,6 +353,9 @@ class ScheduleBackupService {
           final item = Map<String, dynamic>.from(entry.value as Map);
           final name = item['name'] as String;
           final data = item['data'] as String;
+          if (item['displayName'] != null && item['displayName'] is! String) {
+            throw const FormatException('audio name');
+          }
           if (data.length > 7 * 1024 * 1024) {
             throw const FormatException('audio_size');
           }
@@ -287,7 +371,65 @@ class ScheduleBackupService {
     } catch (_) {
       throw ScheduleBackupException('invalid_format');
     }
+    final List<Map<String, dynamic>> statistics;
+    final Map<String, String> aliases;
+    final Map<String, List<String>> memberships;
+    try {
+      statistics = [
+        for (final value in decoded['statistics'] as List? ?? [])
+          Map<String, dynamic>.from(value as Map),
+      ];
+      for (final value in statistics) {
+        if (value['id'] is! String ||
+            (value['id'] as String).isEmpty ||
+            (value['id'] as String).length > 512 ||
+            !['day', 'course', 'ddl', 'profile'].contains(value['kind']) ||
+            DateTime.tryParse('${value['updatedAt']}') == null) {
+          throw const FormatException('statistics');
+        }
+        if (value['kind'] == 'day' &&
+            (!_validDate(value['date']) ||
+                value['id'] != 'day|${value['date']}')) {
+          throw const FormatException('statistics date');
+        }
+        if (value['kind'] == 'profile' &&
+            (!_validDate(value['firstUsedDate']) || value['id'] != 'profile')) {
+          throw const FormatException('first date');
+        }
+        if (value['kind'] == 'course' &&
+            (!(value['id'] as String).startsWith('course|') ||
+                value['courseKey'] is! String ||
+                value['name'] is! String ||
+                value['semester'] is! String ||
+                value['minutes'] is! int ||
+                value['minutes'] < 0 ||
+                value['counted'] is! bool)) {
+          throw const FormatException('course statistics');
+        }
+        if (value['kind'] == 'ddl' &&
+            !(value['id'] as String).startsWith('ddl|')) {
+          throw const FormatException('DDL statistics');
+        }
+        for (final key in ['excluded', 'withdrawn', 'firstUsedDateAutomatic']) {
+          if (value[key] != null && value[key] is! bool) {
+            throw const FormatException('statistics flag');
+          }
+        }
+      }
+      aliases = Map<String, String>.from(
+        decoded['sessionAliases'] as Map? ?? {},
+      );
+      memberships = {
+        for (final e in (decoded['seriesMemberships'] as Map? ?? {}).entries)
+          e.key as String: List<String>.from(e.value as List),
+      };
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
     return OrbitBackup(
+      statistics: statistics,
+      sessionAliases: aliases,
+      seriesMemberships: memberships,
       version: version,
       exportedAt:
           DateTime.tryParse(decoded['exportedAt'] as String? ?? '') ??
@@ -303,6 +445,7 @@ class ScheduleBackupService {
     return {
       ...session.featurePayload,
       'id': session.id,
+      'deletedAt': session.deletedAt?.toUtc().toIso8601String(),
       'classType': session.classType,
       'room': session.room,
       'date': _dateKey(session.date),
@@ -329,6 +472,9 @@ class ScheduleBackupService {
         : <String>[];
 
     return CourseSession(
+      deletedAt: json['deletedAt'] == null
+          ? null
+          : DateTime.parse(json['deletedAt'] as String).toLocal(),
       archivedAt: json['archivedAt'] == null
           ? null
           : DateTime.parse(json['archivedAt'] as String).toLocal(),
@@ -360,5 +506,13 @@ class ScheduleBackupService {
   static String _dateKey(DateTime value) {
     return '${value.year}-${value.month.toString().padLeft(2, '0')}-'
         '${value.day.toString().padLeft(2, '0')}';
+  }
+
+  static bool _validDate(Object? value) {
+    if (value is! String || !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
+      return false;
+    }
+    final date = DateTime.tryParse(value);
+    return date != null && _dateKey(date) == value;
   }
 }

@@ -33,7 +33,8 @@ import 'package:orbit/services/course_color_utils.dart';
 enum SessionGroupKind { today, tomorrow, thisWeek, later }
 
 class UpcomingPage extends ConsumerStatefulWidget {
-  const UpcomingPage({super.key});
+  const UpcomingPage({super.key, this.showBackButton = false});
+  final bool showBackButton;
   @override
   ConsumerState<UpcomingPage> createState() => _UpcomingPageState();
 }
@@ -96,7 +97,9 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: upcomingAsync.hasValue
+        leading: widget.showBackButton
+            ? const BackButton()
+            : upcomingAsync.hasValue
             ? IconButton(
                 key: const Key('upcoming-add-session'),
                 icon: const Icon(Icons.add, size: 21),
@@ -568,7 +571,7 @@ class _EmptyState extends ConsumerWidget {
       title: l10n.upcomingEmptyTitle,
       subtitle: l10n.upcomingEmptySubtitle,
       action: OutlinedButton(
-        onPressed: () => navigateToAppTab(ref, AppTab.grid),
+        onPressed: () => navigateToAppTab(ref, AppTab.grid, context: context),
         child: Text(l10n.upcomingGoToGrid),
       ),
     );

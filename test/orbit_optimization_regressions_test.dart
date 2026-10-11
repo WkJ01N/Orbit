@@ -509,6 +509,7 @@ void main() {
             )
             .first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Before class'));
       await tester.scrollUntilVisible(
         find.text('All inherited rules, including future rules'),

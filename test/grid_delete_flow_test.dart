@@ -36,7 +36,10 @@ class _Repository implements ScheduleRepository {
   @override
   Future<List<CourseSession>> getUpcomingSessions({DateTime? from}) async => [];
   @override
-  Future<int> deleteSessionIds(Iterable<String> ids) async {
+  Future<int> deleteSessionIds(
+    Iterable<String> ids, {
+    bool deleteStatistics = false,
+  }) async {
     submissions++;
     if (gate != null) await gate!.future;
     if (fail) throw StateError('delete failed');

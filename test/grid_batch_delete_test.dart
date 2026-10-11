@@ -214,6 +214,7 @@ void main() {
       expect((await database.getDeletedSessions()).length, 1205);
       final deletes = (await database.pendingSyncMutations(
         limit: 2000,
+        entityTypes: [SyncEntityType.courseSession.name],
       )).where((m) => m.operation == SyncOperation.delete).toList();
       expect(deletes.map((m) => m.entity.id).toSet(), ids.toSet());
       final restored = await repository.restoreDeletedSessions(ids);
@@ -221,7 +222,10 @@ void main() {
       expect(restored.skipped, 0);
       expect((await repository.getAllSessions()).length, 1206);
       expect(await database.restoreDeletedSessionIds(ids), 0);
-      final pending = await database.pendingSyncMutations(limit: 2000);
+      final pending = await database.pendingSyncMutations(
+        limit: 2000,
+        entityTypes: [SyncEntityType.courseSession.name],
+      );
       expect(pending.length, 1206);
       expect(pending.every((m) => m.operation == SyncOperation.upsert), isTrue);
     },

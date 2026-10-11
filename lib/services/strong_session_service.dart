@@ -14,7 +14,10 @@ class StrongSessionService {
   ]) async {
     if (!Platform.isAndroid && !Platform.isWindows) return null;
     try {
-      final raw = await channel.invokeMethod<String>(action, args);
+      final pending = channel.invokeMethod<String>(action, args);
+      final raw = await (action.startsWith('deadlineStrong')
+          ? pending.timeout(const Duration(seconds: 10))
+          : pending);
       return raw == null
           ? null
           : Map<String, dynamic>.from(jsonDecode(raw) as Map);

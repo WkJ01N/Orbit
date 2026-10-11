@@ -1,3 +1,4 @@
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/features/grid/strong_grid_decoration.dart';
 import 'package:orbit/models/wake_text.dart';
@@ -626,6 +627,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final strongIds =
         ref.watch(strongCourseIdsProvider).valueOrNull ?? <String>{};
+    const headerHeight = 58.0;
     final scalePercent = ScheduleDisplaySettings.normalizeVerticalScalePercent(
       settings.verticalScalePercent,
     );
@@ -634,7 +636,9 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
         final dayWidth =
             (constraints.maxWidth - kScheduleTimeRailWidth) /
             layout.days.length;
-        final fitGeometry = ScheduleFitGeometry(constraints.maxHeight - 58);
+        final fitGeometry = ScheduleFitGeometry(
+          constraints.maxHeight - headerHeight,
+        );
         final inset = settings.fitToPage
             ? fitGeometry.inset
             : kScheduleTimelineTopInset;
@@ -650,7 +654,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
         final timelineHeight =
             (layout.endMinute - layout.startMinute) * pixelsPerMinute;
         final bodyHeight = math.max(
-          constraints.maxHeight - 58,
+          constraints.maxHeight - headerHeight,
           timelineHeight + inset * 2,
         );
         final placements = [
@@ -778,7 +782,9 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                       constraints.maxWidth,
                                       math.min(
                                         bodyHeight,
-                                        offset + constraints.maxHeight - 58,
+                                        offset +
+                                            constraints.maxHeight -
+                                            headerHeight,
                                       ),
                                     ),
                                   );
@@ -980,7 +986,8 @@ class _DateHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final deadlines = ref.watch(deadlinesProvider).valueOrNull ?? const [];
+    final deadlines =
+        ref.watch(deadlinesProvider).valueOrNull ?? const <Deadline>[];
     final colors = Theme.of(context).colorScheme;
     final locale = Localizations.localeOf(context).toString();
     final compact = layout.mode == ScheduleViewportMode.compactWeek;
@@ -1005,97 +1012,115 @@ class _DateHeader extends ConsumerWidget {
           ),
           for (final day in layout.days)
             Expanded(
-              child: Container(
-                key: Key(
-                  'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
-                ),
-                decoration: BoxDecoration(
-                  color: isSameScheduleDate(day.date, now)
-                      ? colors.primaryContainer.withAlpha(90)
-                      : null,
-                  border: Border(
-                    left: BorderSide(color: colors.outlineVariant),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
-                child: _FitLargeText(
-                  child: Column(
-                    mainAxisSize:
-                        MediaQuery.textScalerOf(context).scale(12) > 12
-                        ? MainAxisSize.min
-                        : MainAxisSize.max,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        compact
-                            ? weekdayLabel(l10n, day.date.weekday)
-                            : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
-                        textAlign: TextAlign.center,
-                        maxLines: compact ? 1 : null,
-                        overflow: compact ? TextOverflow.clip : null,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              fontSize: compact ? 10 : null,
-                              height: compact ? 1.1 : null,
-                              fontWeight: FontWeight.w700,
-                              color: isSameScheduleDate(day.date, now)
-                                  ? colors.primary
-                                  : colors.onSurface,
-                            ),
+              child: Builder(
+                builder: (context) {
+                  final entries = deadlines
+                      .where((d) => isSameScheduleDate(d.dueAt, day.date))
+                      .toList();
+                  final counted = entries
+                      .where((d) => !d.completed || d.archived)
+                      .toList();
+                  final today = isSameScheduleDate(day.date, now);
+                  final strong = counted.any((d) => d.hasStrongReminder);
+                  return Container(
+                    key: Key(
+                      'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
+                    ),
+                    decoration: BoxDecoration(
+                      color: today
+                          ? colors.primaryContainer.withAlpha(90)
+                          : null,
+                      border: Border(
+                        left: BorderSide(color: colors.outlineVariant),
                       ),
-                      if (compact)
-                        Text(
-                          DateFormat.Md(locale).format(day.date),
-                          maxLines: 1,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                fontSize: 8,
-                                height: 1.1,
-                                color: colors.onSurfaceVariant,
+                    ),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        key: counted.isEmpty
+                            ? null
+                            : Key(
+                                'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
                               ),
-                        )
-                      else
-                        Text(
-                          l10n.scheduleCourseCount(day.events.length),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: colors.onSurfaceVariant),
-                        ),
-                      if (deadlines
-                          .where(
-                            (d) =>
-                                (!d.completed || d.archived) &&
-                                d.dueAt.year == day.date.year &&
-                                d.dueAt.month == day.date.month &&
-                                d.dueAt.day == day.date.day,
-                          )
-                          .isNotEmpty)
-                        InkWell(
-                          key: Key(
-                            'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
+                        onTap: counted.isEmpty
+                            ? null
+                            : () => showDeadlinesForDay(context, entries),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3,
+                            vertical: 5,
                           ),
-                          onTap: () => showDeadlinesForDay(
-                            context,
-                            deadlines
-                                .where(
-                                  (d) =>
-                                      d.dueAt.year == day.date.year &&
-                                      d.dueAt.month == day.date.month &&
-                                      d.dueAt.day == day.date.day,
-                                )
-                                .toList(),
-                          ),
-                          child: Text(
-                            'DDL ${deadlines.where((d) => (!d.completed || d.archived) && d.dueAt.year == day.date.year && d.dueAt.month == day.date.month && d.dueAt.day == day.date.day).length}',
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: colors.error,
-                                  fontSize: compact ? 8 : null,
+                          child: _FitLargeText(
+                            child: Column(
+                              mainAxisSize:
+                                  MediaQuery.textScalerOf(context).scale(12) >
+                                      12
+                                  ? MainAxisSize.min
+                                  : MainAxisSize.max,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  compact
+                                      ? weekdayLabel(l10n, day.date.weekday)
+                                      : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
+                                  textAlign: TextAlign.center,
+                                  maxLines: compact ? 1 : null,
+                                  overflow: compact ? TextOverflow.clip : null,
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        fontSize: compact ? 10 : null,
+                                        height: compact ? 1.1 : null,
+                                        fontWeight: FontWeight.w700,
+                                        color: today
+                                            ? colors.primary
+                                            : colors.onSurface,
+                                      ),
                                 ),
+                                if (compact)
+                                  Text(
+                                    DateFormat.Md(locale).format(day.date),
+                                    maxLines: 1,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          fontSize: 8,
+                                          height: 1.1,
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                  )
+                                else
+                                  Text(
+                                    l10n.scheduleCourseCount(day.events.length),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                  ),
+                                if (counted.isNotEmpty)
+                                  Text(
+                                    'DDL ${counted.length}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: colors.error,
+                                          fontSize: compact ? 8 : null,
+                                          fontWeight: strong
+                                              ? FontWeight.w700
+                                              : FontWeight.w400,
+                                        ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
         ],

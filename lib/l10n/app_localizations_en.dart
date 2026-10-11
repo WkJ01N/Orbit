@@ -2342,7 +2342,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get androidEnhancedReminderDisable => 'Turn off';
 
   @override
-  String get androidOriginOsSettings => 'OriginOS background settings';
+  String get androidOriginOsSettings => 'System background settings';
 
   @override
   String get androidOriginOsSettingsSubtitle =>

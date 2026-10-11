@@ -7,9 +7,14 @@
 #include "single_instance.h"
 #include "utils.h"
 #include "strong_reminders.h"
+#include "reminder_audio.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  auto arguments=std::wstring(command_line);auto testPath=[&](size_t length){auto path=arguments.substr(length);if(path.size()>1&&path.front()==L'"'&&path.back()==L'"')path=path.substr(1,path.size()-2);return path;};
+  if(arguments.rfind(L"--strong-os-self-test ",0)==0)return RunStrongReminderOSSelfTest(testPath(std::wstring(L"--strong-os-self-test ").size()));
+  if(arguments.rfind(L"--strong-worker-test ",0)==0){SetStrongReminderTestState(testPath(std::wstring(L"--strong-worker-test ").size()));return RunStrongReminderWorker();}
+  auto audioTest=std::wstring(command_line);if(audioTest.rfind(L"--audio-self-test ",0)==0){auto path=audioTest.substr(18);if(path.size()>1&&path.front()==L'"'&&path.back()==L'"')path=path.substr(1,path.size()-2);return RunReminderAudioSelfTest(path);}
   if (std::wstring(command_line).find(L"--strong-self-test") != std::wstring::npos) return RunStrongReminderSelfTest();
   if (std::wstring(command_line).find(L"--strong-worker") != std::wstring::npos) return RunStrongReminderWorker();
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -25,7 +30,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   const bool maintenance=std::find(command_line_arguments.begin(),command_line_arguments.end(),"--reminder-maintenance")!=command_line_arguments.end();
   const bool notification_action=std::find(command_line_arguments.begin(),command_line_arguments.end(),"--notification-action")!=command_line_arguments.end();
 
-  if (!maintenance) OpenStrongReminder();
+  const bool startup=std::find(command_line_arguments.begin(),command_line_arguments.end(),"--startup")!=command_line_arguments.end();
+  if (!maintenance && !notification_action && !startup) OpenStrongReminder();
 
   if (!AcquireSingleInstanceMutex()) {
     if(maintenance) ForwardReminderMaintenance();

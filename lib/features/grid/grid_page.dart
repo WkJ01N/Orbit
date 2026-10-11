@@ -71,7 +71,7 @@ class GridPage extends ConsumerWidget {
           body: sessionsAsync.when(
             data: (sessions) {
               if (grid == null) {
-                return _EmptyState(onImport: () => _goToImport(ref));
+                return _EmptyState(onImport: () => _goToImport(context, ref));
               }
               return WeekGridView(
                 grid: grid,
@@ -130,8 +130,8 @@ class GridPage extends ConsumerWidget {
     }
   }
 
-  void _goToImport(WidgetRef ref) {
-    navigateToAppTab(ref, AppTab.import);
+  void _goToImport(BuildContext context, WidgetRef ref) {
+    navigateToAppTab(ref, AppTab.import, context: context);
   }
 }
 

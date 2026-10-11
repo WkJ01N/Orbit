@@ -176,6 +176,28 @@ class ReminderScheduler {
   }
 
   Future<ReminderPermissionStatus> queryPermissionStatus() async {
+    if (Platform.isWindows) {
+      try {
+        final enabled = await StrongSessionService.windows.invokeMethod<bool>(
+          'notificationsEnabled',
+        );
+        return ReminderPermissionStatus(
+          notificationsEnabled: enabled ?? false,
+          exactAlarmsEnabled: true,
+        );
+      } on MissingPluginException {
+        return const ReminderPermissionStatus(
+          notificationsEnabled: true,
+          exactAlarmsEnabled: true,
+        );
+      } on PlatformException {
+        return const ReminderPermissionStatus(
+          notificationsEnabled: false,
+          exactAlarmsEnabled: true,
+        );
+      }
+    }
+
     if (!Platform.isAndroid) {
       return const ReminderPermissionStatus(
         notificationsEnabled: true,
@@ -255,6 +277,23 @@ class ReminderScheduler {
         }
       }
     }
+    if (Platform.isAndroid || Platform.isWindows) {
+      final valid = <String>[
+        for (final d in deadlines)
+          if (!d.completed && !d.deleted && !d.archived)
+            for (final m in d.leadMinutes)
+              if (d.usesStrongReminderAt(m) && d.reminderEnabledAt(m))
+                '${d.id}:$m:${d.dueAt.subtract(Duration(minutes: m)).millisecondsSinceEpoch}',
+      ];
+      try {
+        await StrongSessionService.channel.invokeMethod<void>(
+          'deadlineStrongReconcile',
+          jsonEncode(valid),
+        );
+      } on MissingPluginException {
+        /* Test backends. */
+      }
+    }
     await cancelScheduledCourseReminders();
 
     final now = DateTime.now();
@@ -286,6 +325,7 @@ class ReminderScheduler {
       ),
       if (identityDb != null)
         ...buildDeadlineReminderSpecs(
+          strongSettings: settings.strong,
           deadlines: deadlines,
           notificationIds: await identityDb.reserveDeadlineNotificationIds(
             deadlines,
@@ -505,7 +545,14 @@ class ReminderScheduler {
     try {
       await _prepare(copy);
       final permission = await queryPermissionStatus();
-      if (!permission.notificationsEnabled) {
+      if (!permission.notificationsEnabled && !Platform.isWindows) {
+        return const ReminderTestResult.failure(
+          ReminderTestFailure.notificationsDenied,
+        );
+      }
+      if (Platform.isWindows &&
+          !permission.notificationsEnabled &&
+          !strong.soundEnabled) {
         return const ReminderTestResult.failure(
           ReminderTestFailure.notificationsDenied,
         );
@@ -553,6 +600,41 @@ class ReminderScheduler {
         return const ReminderTestResult.failure(
           ReminderTestFailure.schedulingFailed,
         );
+      }
+      if (Platform.isWindows && !background) {
+        try {
+          final key = '${spec.alarmId}:${spec.fireAt.millisecondsSinceEpoch}';
+          final until = DateTime.now().add(const Duration(seconds: 8));
+          while (DateTime.now().isBefore(until)) {
+            final raw = await StrongSessionService.windows.invokeMethod<String>(
+              'strongDiagnostics',
+            );
+            if (raw == null) {
+              throw MissingPluginException('No native diagnostics');
+            }
+            final status = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+            final receipt =
+                (status['instances'] as Map?)?[key] as Map? ?? status;
+            final toast = receipt['toast'] as Map?;
+            final audio = receipt['audio'] as Map?;
+            final triggered = (receipt['trigger'] as Map?)?['key'] == key;
+            final sounded =
+                !strong.soundEnabled ||
+                (audio?['key'] == key && audio?['ok'] == true);
+            if (triggered &&
+                sounded &&
+                (toast?['key'] == key && toast?['ok'] == true ||
+                    !permission.notificationsEnabled)) {
+              return ReminderTestResult.success();
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 150));
+          }
+          return const ReminderTestResult.failure(
+            ReminderTestFailure.schedulingFailed,
+          );
+        } on MissingPluginException {
+          /* Mock notification backends have no native worker. */
+        }
       }
       return ReminderTestResult.success(fireAt: background ? at : null);
     } catch (error) {

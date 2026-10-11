@@ -57,6 +57,21 @@ void main() {
     },
   );
 
+  test('legacy DDL defaults remain identical in sync previews', () {
+    final current = sample().toSyncPayload();
+    final legacy = {...current}
+      ..remove('countsTowardStatistics')
+      ..remove('batchId')
+      ..remove('deletedAt');
+    expect(canonicalSyncPayload(current), canonicalSyncPayload(legacy));
+    expect(Deadline.fromSyncPayload(legacy).countsTowardStatistics, isTrue);
+    expect(
+      canonicalSyncPayload(
+        sample().copyWith(countsTowardStatistics: false).toSyncPayload(),
+      ),
+      isNot(canonicalSyncPayload(legacy)),
+    );
+  });
   test('remote DDL can be applied and completion syncs', () async {
     final directory = await Directory.systemTemp.createTemp(
       'orbit_ddl_remote_',

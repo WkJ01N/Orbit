@@ -1,4 +1,5 @@
 #include "strong_reminders.h"
+#include "reminder_audio.h"
 #include "flutter_window.h"
 
 #include <optional>
@@ -17,6 +18,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
 
+  if (!reminder_headless_) RegisterStrongReminderWindow(GetHandle());
   RECT frame = GetClientArea();
 
   // The size here must match the window dimensions to avoid unnecessary surface
@@ -46,6 +48,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  StopReminderPreview();
   reminder_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
@@ -58,7 +61,7 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  if(message==WM_ACTIVATE && LOWORD(wparam)!=WA_INACTIVE && !reminder_headless_) OpenStrongReminder();
+  if(message==WM_ACTIVATE && LOWORD(wparam)!=WA_INACTIVE && !reminder_headless_) { RegisterStrongReminderWindow(hwnd); OpenStrongReminder(); }
   if(message==GetShowExistingInstanceMessage() && reminder_headless_) {
     reminder_channel_->InvokeMethod("showAfterMaintenance",nullptr);
     return 0;

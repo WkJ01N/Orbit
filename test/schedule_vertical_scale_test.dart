@@ -752,7 +752,14 @@ void main() {
       final sliderFinder = find.byKey(
         const Key('schedule-vertical-scale-slider'),
       );
-      await tester.ensureVisible(sliderFinder);
+      await tester.scrollUntilVisible(
+        sliderFinder,
+        150,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('settings-category-content-1')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       await tester.pumpAndSettle();
       final slider = tester.widget<Slider>(sliderFinder);
       expect(slider.min, 50);

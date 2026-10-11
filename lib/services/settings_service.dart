@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:orbit/models/archive_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
@@ -49,6 +50,14 @@ class SettingsService {
   static const _batchTotalWeeksKey = 'batch_total_weeks';
   static const _autoSyncSettingsKey = 'auto_sync_settings_v1';
 
+  static const _backupPreferenceKeys = {
+    'launch_at_startup',
+    'notification_warning_ignored',
+    'batch_first_week_monday',
+    'batch_total_weeks',
+    'update_preferences',
+    'sync_scope_local_device',
+  };
   SharedPreferences? _prefs;
   Future<void> _importSaveTail = Future.value();
 
@@ -149,26 +158,48 @@ class SettingsService {
 
   Future<void> save(ReminderSettings settings) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(
+    if (!await prefs.setString(
       'custom_reminder_rules',
       jsonEncode(settings.customRules.map((r) => r.toJson()).toList()),
-    );
-    await prefs.setString(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setString(
       'strong_reminder_settings',
       jsonEncode(settings.strong.toJson()),
-    );
-    await prefs.setInt(_leadMinutesKey, settings.leadMinutes);
-    await prefs.setBool(_enabledKey, settings.enabled);
-    await prefs.setBool(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(_leadMinutesKey, settings.leadMinutes)) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setBool(_enabledKey, settings.enabled)) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setBool(
       _nextDaySummaryEnabledKey,
       settings.nextDaySummaryEnabled,
-    );
-    await prefs.setInt(_nextDaySummaryHourKey, settings.nextDaySummaryHour);
-    await prefs.setInt(_nextDaySummaryMinuteKey, settings.nextDaySummaryMinute);
-    await prefs.setBool(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(
+      _nextDaySummaryHourKey,
+      settings.nextDaySummaryHour,
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(
+      _nextDaySummaryMinuteKey,
+      settings.nextDaySummaryMinute,
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setBool(
       _nextDayRemindWhenNoClassKey,
       settings.nextDayRemindWhenNoClass,
-    );
+    )) {
+      throw StateError("Could not save settings");
+    }
     await _saveOptionalString(
       prefs,
       _nextDayWithClassTitleKey,
@@ -209,10 +240,12 @@ class SettingsService {
       _checkInBodyKey,
       settings.checkInBodyTemplate,
     );
-    await prefs.setBool(
+    if (!await prefs.setBool(
       _checkInReminderEnabledKey,
       settings.checkInReminderEnabled,
-    );
+    )) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<Locale> loadLocale() async {
@@ -222,7 +255,9 @@ class SettingsService {
 
   Future<void> saveLocale(Locale locale) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(_localeKey, localeStorageKey(locale));
+    if (!await prefs.setString(_localeKey, localeStorageKey(locale))) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<Color> loadThemeColor() async {
@@ -236,7 +271,9 @@ class SettingsService {
 
   Future<void> saveThemeColor(Color color) async {
     final prefs = await _prefsInstance();
-    await prefs.setInt(_themeColorKey, color.toARGB32());
+    if (!await prefs.setInt(_themeColorKey, color.toARGB32())) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<ThemeMode> loadThemeMode() async {
@@ -256,7 +293,9 @@ class SettingsService {
       ThemeMode.dark => 'dark',
       ThemeMode.system => 'system',
     };
-    await prefs.setString(_themeModeKey, value);
+    if (!await prefs.setString(_themeModeKey, value)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<AppThemeStyle> loadThemeStyle() async {
@@ -270,7 +309,9 @@ class SettingsService {
 
   Future<void> saveThemeStyle(AppThemeStyle style) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(_themeStyleKey, style.name);
+    if (!await prefs.setString(_themeStyleKey, style.name)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<AppColorScheme> loadColorScheme() async {
@@ -283,7 +324,9 @@ class SettingsService {
 
   Future<void> saveColorScheme(AppColorScheme scheme) async {
     final prefs = await _prefsInstance();
-    await prefs.setString('color_scheme', scheme.name);
+    if (!await prefs.setString('color_scheme', scheme.name)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<MulticolorSettings> loadMulticolorSettings() async {
@@ -338,7 +381,9 @@ class SettingsService {
 
   Future<void> saveAutomaticCourseColorIds(Map<String, int> ids) async {
     final prefs = await _prefsInstance();
-    await prefs.setString('automatic_course_color_ids', jsonEncode(ids));
+    if (!await prefs.setString('automatic_course_color_ids', jsonEncode(ids))) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<bool> loadLaunchAtStartup() async {
@@ -348,7 +393,9 @@ class SettingsService {
 
   Future<void> saveLaunchAtStartup(bool enabled) async {
     final prefs = await _prefsInstance();
-    await prefs.setBool(_launchAtStartupKey, enabled);
+    if (!await prefs.setBool(_launchAtStartupKey, enabled)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<GridDefaultWeekMode> loadGridDefaultWeekMode() async {
@@ -362,7 +409,9 @@ class SettingsService {
 
   Future<void> saveGridDefaultWeekMode(GridDefaultWeekMode mode) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(_gridDefaultWeekModeKey, mode.name);
+    if (!await prefs.setString(_gridDefaultWeekModeKey, mode.name)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<int> loadWeekStartDay() async {
@@ -376,7 +425,9 @@ class SettingsService {
 
   Future<void> saveWeekStartDay(int weekday) async {
     final prefs = await _prefsInstance();
-    await prefs.setInt(_weekStartDayKey, weekday);
+    if (!await prefs.setInt(_weekStartDayKey, weekday)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<GridDensity> loadGridDensity() async {
@@ -390,13 +441,17 @@ class SettingsService {
 
   Future<void> saveGridDensity(GridDensity density) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(_gridDensityKey, density.name);
+    if (!await prefs.setString(_gridDensityKey, density.name)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<ScheduleDisplaySettings> loadScheduleDisplaySettings() async {
     final prefs = await _prefsInstance();
     return ScheduleDisplaySettings(
       fitToPage: prefs.getBool('schedule_fit_to_page') ?? false,
+      hideUpcomingPage: prefs.getBool('schedule_hide_upcoming') ?? false,
+      hideImportPage: prefs.getBool('schedule_hide_import') ?? false,
       strongCardGradient: StrongCardGradient.values.firstWhere(
         (v) => v.name == prefs.getString('schedule_strong_card_gradient'),
         orElse: () => StrongCardGradient.upperHalf,
@@ -424,31 +479,60 @@ class SettingsService {
     ScheduleDisplaySettings settings,
   ) async {
     final prefs = await _prefsInstance();
-    await prefs.setBool('schedule_fit_to_page', settings.fitToPage);
-    await prefs.setString(
+    if (!await prefs.setBool(
+          'schedule_hide_upcoming',
+          settings.hideUpcomingPage,
+        ) ||
+        !await prefs.setBool('schedule_hide_import', settings.hideImportPage)) {
+      throw StateError('Could not save navigation settings');
+    }
+    if (!await prefs.setBool('schedule_fit_to_page', settings.fitToPage)) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setString(
       'schedule_strong_card_gradient',
       settings.strongCardGradient.name,
-    );
-    await prefs.setString(_scheduleNarrowLayoutKey, settings.narrowLayout.name);
-    await prefs.setInt(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setString(
+      _scheduleNarrowLayoutKey,
+      settings.narrowLayout.name,
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(
       _scheduleVerticalScaleKey,
       ScheduleDisplaySettings.normalizeVerticalScalePercent(
         settings.verticalScalePercent,
       ),
-    );
-    await prefs.setInt(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(
       _scheduleMultiDayCountKey,
       settings.preferredMultiDayCount.clamp(1, 6),
-    );
-    await prefs.setBool(_scheduleShowEmptyDaysKey, settings.showEmptyDays);
-    await prefs.setBool(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setBool(
+      _scheduleShowEmptyDaysKey,
+      settings.showEmptyDays,
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setBool(
       _upcomingShowCourseDateKey,
       settings.showUpcomingCourseDate,
-    );
-    await prefs.setString(
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setString(
       _upcomingDateDisplayKey,
       settings.upcomingDateDisplay.name,
-    );
+    )) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<({DateTime? firstWeekMonday, int totalWeeks})>
@@ -466,15 +550,19 @@ class SettingsService {
     required int totalWeeks,
   }) async {
     final prefs = await _prefsInstance();
-    await prefs.setString(
+    if (!await prefs.setString(
       _batchFirstWeekMondayKey,
       DateTime(
         firstWeekMonday.year,
         firstWeekMonday.month,
         firstWeekMonday.day,
       ).toIso8601String(),
-    );
-    await prefs.setInt(_batchTotalWeeksKey, totalWeeks.clamp(1, 30));
+    )) {
+      throw StateError("Could not save settings");
+    }
+    if (!await prefs.setInt(_batchTotalWeeksKey, totalWeeks.clamp(1, 30))) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<Map<String, Color>> loadCourseColorOverrides() async {
@@ -500,7 +588,9 @@ class SettingsService {
     final encoded = jsonEncode(
       overrides.map((key, value) => MapEntry(key, value.toARGB32())),
     );
-    await prefs.setString(_courseColorOverridesKey, encoded);
+    if (!await prefs.setString(_courseColorOverridesKey, encoded)) {
+      throw StateError("Could not save settings");
+    }
   }
 
   Future<ArchiveSettings> loadArchiveSettings() async {
@@ -518,10 +608,15 @@ class SettingsService {
 
   Future<void> saveArchiveSettings(ArchiveSettings settings) async {
     final prefs = await _prefsInstance();
-    await prefs.setString('archive_settings', jsonEncode(settings.toJson()));
+    if (!await prefs.setString(
+      'archive_settings',
+      jsonEncode(settings.toJson()),
+    )) {
+      throw StateError("Could not save settings");
+    }
   }
 
-  Future<PortableSettings> exportPortableSettings() async {
+  Future<PortableSettings> exportPortableSettings({String? accountUid}) async {
     final locale = await loadLocale();
     final themeColor = await loadThemeColor();
     final themeMode = await loadThemeMode();
@@ -530,7 +625,16 @@ class SettingsService {
     final weekStart = await loadWeekStartDay();
     final density = await loadGridDensity();
     final colors = await loadCourseColorOverrides();
+    final prefs = await _prefsInstance();
     return PortableSettings(
+      sourcePlatform: Platform.operatingSystem,
+      localPreferences: {
+        'syncSelection': await loadLocalJson(
+          'sync_scope_${accountUid ?? "local"}_device',
+        ),
+        for (final key in _backupPreferenceKeys)
+          if (prefs.containsKey(key)) key: prefs.get(key),
+      },
       locale: localeStorageKey(locale),
       themeColor: themeColor.toARGB32(),
       themeMode: themeMode.name,
@@ -552,7 +656,41 @@ class SettingsService {
     );
   }
 
-  Future<void> importPortableSettings(PortableSettings snapshot) async {
+  Future<void> importPortableSettings(
+    PortableSettings snapshot, {
+    String? accountUid,
+  }) async {
+    final prefs = await _prefsInstance();
+    for (final e in snapshot.localPreferences.entries) {
+      if (e.key == 'syncSelection') {
+        await saveLocalJson(
+          'sync_scope_${accountUid ?? "local"}_device',
+          Map<String, dynamic>.from(e.value as Map),
+        );
+        continue;
+      }
+      if (!_backupPreferenceKeys.contains(e.key)) continue;
+      if (e.key == 'launch_at_startup' &&
+          (!Platform.isWindows || snapshot.sourcePlatform != 'windows')) {
+        continue;
+      }
+      final value = e.value;
+      if (value is bool) {
+        if (!await prefs.setBool(e.key, value)) {
+          throw StateError('Could not save ${e.key}');
+        }
+      } else if (value is int) {
+        if (!await prefs.setInt(e.key, value)) {
+          throw StateError('Could not save ${e.key}');
+        }
+      } else if (value is String) {
+        if (!await prefs.setString(e.key, value)) {
+          throw StateError('Could not save ${e.key}');
+        }
+      } else {
+        throw FormatException('Invalid preference ${e.key}');
+      }
+    }
     await saveArchiveSettings(snapshot.archive);
     if (snapshot.importConfiguration != null) {
       await saveImportConfiguration(snapshot.importConfiguration!);
@@ -614,6 +752,45 @@ class SettingsService {
     );
   }
 
+  Future<Map<String, Object>> snapshotPreferences() async {
+    final prefs = await _prefsInstance();
+    return {
+      for (final key in prefs.getKeys())
+        if (prefs.get(key) != null) key: prefs.get(key)!,
+    };
+  }
+
+  Future<void> restorePreferences(Map<String, Object> snapshot) async {
+    final prefs = await _prefsInstance();
+    for (final key in prefs.getKeys().difference(snapshot.keys.toSet())) {
+      await prefs.remove(key);
+    }
+    for (final e in snapshot.entries) {
+      final v = e.value;
+      if (v is bool) {
+        if (!await prefs.setBool(e.key, v)) {
+          throw StateError("Could not save settings");
+        }
+      } else if (v is int) {
+        if (!await prefs.setInt(e.key, v)) {
+          throw StateError("Could not save settings");
+        }
+      } else if (v is double) {
+        if (!await prefs.setDouble(e.key, v)) {
+          throw StateError("Could not save settings");
+        }
+      } else if (v is String) {
+        if (!await prefs.setString(e.key, v)) {
+          throw StateError("Could not save settings");
+        }
+      } else if (v is List<String>) {
+        if (!await prefs.setStringList(e.key, v)) {
+          throw StateError("Could not save settings");
+        }
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> loadLocalJson(String key) async {
     final prefs = await _prefsInstance();
     try {
@@ -626,7 +803,9 @@ class SettingsService {
   }
 
   Future<void> saveLocalJson(String key, Map<String, dynamic> value) async {
-    await (await _prefsInstance()).setString(key, jsonEncode(value));
+    if (!await (await _prefsInstance()).setString(key, jsonEncode(value))) {
+      throw StateError('Could not save $key');
+    }
   }
 
   Future<void> _saveOptionalString(
@@ -637,7 +816,9 @@ class SettingsService {
     if (value == null || value.trim().isEmpty) {
       await prefs.remove(key);
     } else {
-      await prefs.setString(key, value);
+      if (!await prefs.setString(key, value)) {
+        throw StateError("Could not save settings");
+      }
     }
   }
 }

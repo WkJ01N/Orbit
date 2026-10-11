@@ -76,6 +76,7 @@ class ScheduleSyncCoordinator {
     }
     final local = (await _localEntities(
       includeLinkedChanges: sameAccount,
+      statisticsOwner: account.uid,
     )).where(_allows).toList();
     final remote = (await _backend.snapshot()).where(_allows).toList();
     final localByKey = {for (final item in local) _key(item): item};
@@ -129,6 +130,7 @@ class ScheduleSyncCoordinator {
     required SyncAccount account,
     required InitialSyncPreview preview,
     required Map<String, bool> useLocalForConflict,
+    bool mergeGuestStatistics = false,
     bool resetState = true,
     bool synchronizeAfter = true,
   }) async {
@@ -139,6 +141,9 @@ class ScheduleSyncCoordinator {
     }
     if (resetState) {
       await _database.setActiveSyncAccount(account, resetState: true);
+      if (mergeGuestStatistics) {
+        await _database.mergeGuestStatistics(account.uid);
+      }
     }
     var coursesChanged = false;
     for (final entity in preview.localOnly) {
@@ -331,6 +336,7 @@ class ScheduleSyncCoordinator {
 
   Future<List<SyncEntity>> _localEntities({
     bool includeLinkedChanges = false,
+    String? statisticsOwner,
   }) async {
     final values = <String, SyncEntity>{};
     for (final entity in [
@@ -340,6 +346,7 @@ class ScheduleSyncCoordinator {
       ...await _database.localDeadlineSyncEntities(
         includeDeleted: includeLinkedChanges,
       ),
+      ...await _database.localStatisticsSyncEntities(owner: statisticsOwner),
       ..._configurationEntities(await _loadConfiguration()),
       if (_settings != null) ...[
         for (final e in SettingsSyncCodec.groups(
@@ -428,7 +435,8 @@ class ScheduleSyncCoordinator {
       await _database.applyRemoteEntities([entity]);
       return true;
     }
-    if (entity.type == SyncEntityType.courseSession ||
+    if (entity.type == SyncEntityType.statistic ||
+        entity.type == SyncEntityType.courseSession ||
         entity.type == SyncEntityType.deadline) {
       await _database.applyRemoteEntities([entity]);
       return true;
@@ -455,6 +463,7 @@ class ScheduleSyncCoordinator {
           values.add(PeriodTimePlan.fromJson(entity.payload));
         }
         next = current.copy(periodTimes: values);
+      case SyncEntityType.statistic:
       case SyncEntityType.courseSession:
       case SyncEntityType.deadline:
       case SyncEntityType.settingGroup:

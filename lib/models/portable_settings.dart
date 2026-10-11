@@ -24,8 +24,12 @@ class PortableSettings {
     this.importConfiguration,
     this.autoSyncSettings,
     this.archive = const ArchiveSettings(),
+    this.localPreferences = const {},
+    this.sourcePlatform,
   });
 
+  final Map<String, dynamic> localPreferences;
+  final String? sourcePlatform;
   final ArchiveSettings archive;
   final String locale;
   final ImportConfiguration? importConfiguration;
@@ -42,7 +46,55 @@ class PortableSettings {
   final ReminderSettings reminders;
   final ScheduleDisplaySettings scheduleDisplay;
   final Map<String, int> courseColorOverrides;
+
+  /// Merge collections by ID, keeping unrelated local templates and rules.
+  /// Scalar settings and matching IDs use the values selected from the backup.
+  PortableSettings mergeWith(PortableSettings local) {
+    List<T> union<T>(
+      List<T> previous,
+      List<T> incoming,
+      String Function(T) id,
+    ) => {
+      for (final item in [...previous, ...incoming]) id(item): item,
+    }.values.toList();
+    final data = toJson();
+    final imported = importConfiguration ?? const ImportConfiguration();
+    final previous = local.importConfiguration ?? const ImportConfiguration();
+    if (importConfiguration != null || local.importConfiguration != null) {
+      data['importConfiguration'] = ImportConfiguration(
+        templates: union(previous.templates, imported.templates, (t) => t.id),
+        semesters: union(previous.semesters, imported.semesters, (p) => p.id),
+        periodTimes: union(
+          previous.periodTimes,
+          imported.periodTimes,
+          (p) => p.id,
+        ),
+      ).toJson();
+    }
+    data['reminders'] = _remindersToJson(
+      reminders.copyWith(
+        customRules: union(
+          local.reminders.customRules,
+          reminders.customRules,
+          (r) => r.id,
+        ),
+      ),
+    );
+    data['courseColorOverrides'] = {
+      ...local.courseColorOverrides,
+      ...courseColorOverrides,
+    };
+    data['automaticCourseColorIds'] = {
+      ...local.automaticCourseColorIds,
+      ...automaticCourseColorIds,
+    };
+    data['localPreferences'] = {...local.localPreferences, ...localPreferences};
+    return PortableSettings.fromJson(data);
+  }
+
   PortableSettings withReminders(ReminderSettings value) => PortableSettings(
+    localPreferences: localPreferences,
+    sourcePlatform: sourcePlatform,
     locale: locale,
     themeColor: themeColor,
     themeMode: themeMode,
@@ -62,6 +114,8 @@ class PortableSettings {
   );
 
   Map<String, dynamic> toJson() => {
+    'localPreferences': localPreferences,
+    'sourcePlatform': sourcePlatform,
     'archive': archive.toJson(),
     'locale': locale,
     if (importConfiguration != null)
@@ -80,6 +134,8 @@ class PortableSettings {
     'reminders': _remindersToJson(reminders),
     'scheduleDisplay': {
       'fitToPage': scheduleDisplay.fitToPage,
+      'hideUpcomingPage': scheduleDisplay.hideUpcomingPage,
+      'hideImportPage': scheduleDisplay.hideImportPage,
       'strongCardGradient': scheduleDisplay.strongCardGradient.name,
       'narrowLayout': scheduleDisplay.narrowLayout.name,
       'preferredMultiDayCount': scheduleDisplay.preferredMultiDayCount,
@@ -103,7 +159,38 @@ class PortableSettings {
         colors is! Map<String, dynamic>) {
       throw const FormatException('Invalid portable settings');
     }
+    final preferences = Map<String, dynamic>.from(
+      json['localPreferences'] as Map? ?? {},
+    );
+    if (preferences.containsKey('syncSelection') &&
+        (preferences['syncSelection'] is! Map ||
+            (preferences['syncSelection'] as Map).values.any(
+              (v) => v is! bool,
+            ))) {
+      throw const FormatException('Invalid sync selection');
+    }
+    for (final e in preferences.entries) {
+      if ([
+            'launch_at_startup',
+            'notification_warning_ignored',
+          ].contains(e.key) &&
+          e.value is! bool) {
+        throw const FormatException('Invalid boolean preference');
+      }
+      if (e.key == 'batch_total_weeks' &&
+          (e.value is! int || e.value < 1 || e.value > 30)) {
+        throw const FormatException('Invalid batch weeks');
+      }
+      if (e.key == 'batch_first_week_monday' &&
+          (e.value is! String || DateTime.tryParse(e.value) == null)) {
+        throw const FormatException('Invalid first week');
+      }
+    }
     return PortableSettings(
+      localPreferences: Map<String, dynamic>.from(
+        json['localPreferences'] as Map? ?? {},
+      ),
+      sourcePlatform: json['sourcePlatform'] as String?,
       archive: ArchiveSettings.fromJson(
         Map<String, dynamic>.from(json['archive'] as Map? ?? {}),
       ),
@@ -141,6 +228,8 @@ class PortableSettings {
       gridDensity: json['gridDensity'] as String? ?? 'standard',
       reminders: _remindersFromJson(reminders),
       scheduleDisplay: ScheduleDisplaySettings(
+        hideUpcomingPage: display['hideUpcomingPage'] as bool? ?? false,
+        hideImportPage: display['hideImportPage'] as bool? ?? false,
         fitToPage: display['fitToPage'] == true,
         strongCardGradient: StrongCardGradient.values.firstWhere(
           (v) => v.name == display['strongCardGradient'],

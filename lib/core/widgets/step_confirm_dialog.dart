@@ -5,6 +5,7 @@ Future<bool> confirmWithSteps(
   BuildContext context, {
   required List<(String title, String content)> steps,
   String? finalDeleteLabel,
+  Widget? finalContent,
 }) async {
   final l10n = AppLocalizations.of(context)!;
 
@@ -15,7 +16,13 @@ Future<bool> confirmWithSteps(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(step.$1),
-        content: Text(step.$2),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(step.$2),
+            if (isLast && finalContent != null) finalContent,
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

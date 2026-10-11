@@ -18,14 +18,21 @@ class OrbitStrongReminderService : Service() {
         private val occurrences = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
         fun acknowledge(context: Context, rule: String, session: String): Boolean {
             if (!occurrences.remove("$rule|$session") || occurrences.isNotEmpty()) return false
-            stop(context)
+            if (!OrbitDeadlineStrongSession.anyActive(context)) stop(context)
             return true
         }
         fun stopTests(context: Context) { OrbitStrongSession.stopTests(context) }
         fun stop(context: Context) {
-            if (context.stopService(Intent(context, OrbitStrongReminderService::class.java))) {
-                OrbitReminderProcess.lifecycle.cancelServiceStarts()
-                OrbitReminderDiagnostics.event("strong_stop_requested")
+            // Re-evaluate both states in the service rather than stopping a
+            // player that may now belong to a simultaneous course or DDL.
+            OrbitReminderProcess.lifecycle.beginServiceStart()
+            try {
+                if (context.startService(Intent(context, OrbitStrongReminderService::class.java).setAction("refresh")) == null)
+                    throw IllegalStateException("Cannot refresh strong reminders")
+                OrbitReminderDiagnostics.event("strong_refresh_requested")
+            } catch(e: Exception) {
+                OrbitReminderProcess.lifecycle.endServiceStart()
+                throw e
             }
         }
         fun start(context: Context, record: OrbitReminderRecord, opened: Boolean = false): Boolean {
@@ -48,7 +55,10 @@ class OrbitStrongReminderService : Service() {
     private var player: MediaPlayer? = null
     private var vibration: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
-    private var attemptedRound = -1
+    private var attemptedKey = ""
+    private var foregroundId = -1
+    private var latestStartId = 0
+    private val reportedFinals = mutableSetOf<String>()
     private var wasMuted = true
     private val finalNotices = mutableListOf<Pair<Int,Notification>>()
     override fun onCreate() {
@@ -57,13 +67,17 @@ class OrbitStrongReminderService : Service() {
     }
     override fun onBind(intent: Intent?) = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        latestStartId = startId
         if(intent!=null) OrbitReminderProcess.lifecycle.endServiceStart()
+        if(intent?.action == "refresh" && active) { handler.removeCallbacksAndMessages(null); tick(); return START_STICKY }
         if(intent?.getBooleanExtra("opened",false)==true) { mute(); wasMuted=true }
         return try {
-            val resumeIntent=if(intent==null) {
+            val resumeIntent=if(intent==null || intent.action=="refresh") {
                 val state=OrbitStrongSession.state(this)
-                if(!OrbitStrongSession.isActive(state)) { stopSelf(); return START_NOT_STICKY }
-                Intent(this,OrbitStrongReminderService::class.java).putExtra("record",state!!.getJSONArray("records").getJSONObject(0).toString())
+                val record = if (OrbitStrongSession.isActive(state)) state!!.getJSONArray("records").getJSONObject(0)
+                    else OrbitDeadlineStrongSession.states(this).firstOrNull(OrbitDeadlineStrongSession::active)?.getJSONObject("record")
+                if(record == null) { stopSelfResult(startId); return START_NOT_STICKY }
+                Intent(this,OrbitStrongReminderService::class.java).putExtra("record",record.toString())
             } else intent
             startReminder(resumeIntent)
         } catch (error: Exception) {
@@ -86,13 +100,15 @@ class OrbitStrongReminderService : Service() {
             if(!active) stopSelf()
             return START_NOT_STICKY
         }
-        val meta = JSONObject(record.metadata)
-        val key = if (meta.optString("ruleId").isNotEmpty() && meta.optString("ruleId") != "null")
-            "${meta.optString("ruleId")}|${meta.optString("sessionId")}" else "@builtin|${record.payload}"
-        val session = OrbitStrongSession.start(this, record)
-        if (!OrbitStrongSession.isActive(session)) { if (!active) stopSelf(); return START_NOT_STICKY }
-        occurrences.add(key)
-        if (active) { if(!OrbitStrongSession.shouldPlay(session!!)) mute(); return START_STICKY }
+        val deadline = OrbitDeadlineStrongSession.isDeadline(record)
+        val session = if (deadline) OrbitDeadlineStrongSession.start(this,record) else OrbitStrongSession.start(this,record)
+        val sessionActive = if (deadline) OrbitDeadlineStrongSession.active(session!!) else OrbitStrongSession.isActive(session)
+        if (!sessionActive) { if (!active) stopSelf(); return START_NOT_STICKY }
+        if (!deadline) {
+            val meta=JSONObject(record.metadata)
+            occurrences.add(if(meta.optString("ruleId").isNotEmpty() && meta.optString("ruleId")!="null") "${meta.optString("ruleId")}|${meta.optString("sessionId")}" else "@builtin|${record.payload}")
+        }
+        if (active) return START_STICKY
         val notification = OrbitReminderManager.buildNotification(this, record) ?: run { stopSelf(); return START_NOT_STICKY }
         try { startForeground(record.notificationId, notification) }
         catch(e: Exception) {
@@ -101,47 +117,63 @@ class OrbitStrongReminderService : Service() {
             stopSelf();return START_NOT_STICKY
         }
         active = true
+        foregroundId=record.notificationId
         OrbitReminderStore.updateMetadata(this, mapOf("strong_degraded" to null))
-        OrbitReminderDiagnostics.event("strong_active", record.alarmId)
-        val remaining = session!!.getLong("expiresAt")-System.currentTimeMillis()
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Orbit:StrongReminder")
-            .also { it.acquire(remaining.coerceAtLeast(1)+1000) }
-        var foregroundId=record.notificationId
-        fun tick() {
-            val state=OrbitStrongSession.state(this)
-            if(!OrbitStrongSession.isActive(state)) {
-                mute()
-                if(state?.optString("phase")=="unconfirmed") {
-                    val records=state.getJSONArray("records")
-                    for(i in 0 until records.length()) {
-                        val r=OrbitReminderRecord.fromJson(records.getJSONObject(i))
-                        OrbitReminderManager.buildNotification(this,r)?.let {
-                            val locale=JSONObject(r.metadata).optString("localeTag","en")
-                            val label=if(locale.startsWith("en")) "Not confirmed" else if(locale.contains("Hans")) "未确认" else "未確認"
-                            val notice=android.app.Notification.Builder.recoverBuilder(this,it)
-                                .setContentTitle("${r.title} · $label").setContentText(r.body)
-                                .setStyle(Notification.BigTextStyle().bigText(r.body)).setDeleteIntent(null)
-                                .setActions(*emptyArray<Notification.Action>()).setSound(null).setVibrate(null).build()
-                            finalNotices.add(r.notificationId to notice)
-                        }
-                    }
-                }
-                stopSelf(); return
-            }
-            val currentRecords=state!!.getJSONArray("records")
-            val effectiveRecord=if(currentRecords.length()>0) OrbitReminderRecord.fromJson(currentRecords.getJSONObject(0)) else record
-            if(effectiveRecord.notificationId!=foregroundId) {
-                foregroundId=effectiveRecord.notificationId
-                OrbitReminderManager.buildNotification(this,effectiveRecord)?.let { startForeground(foregroundId,it) }
-            }
-            if(OrbitStrongSession.shouldPlay(state)) {
-                val round=state.getInt("round")
-                if(attemptedRound!=round || wasMuted) { attemptedRound=round; wasMuted=false; play(effectiveRecord) }
-            } else { mute(); wasMuted=true }
-            handler.postDelayed({ tick() },250)
-        }
         tick()
         return START_STICKY
+    }
+    private fun terminalNotice(record: OrbitReminderRecord, identity: String) {
+        if (!reportedFinals.add(identity)) return
+        OrbitReminderManager.buildNotification(this,record)?.let {
+            val locale=JSONObject(record.metadata).optString("localeTag","en")
+            val label=if(locale.startsWith("en")) "Not confirmed" else if(locale.contains("Hans")) "未确认" else "未確認"
+            val notice=Notification.Builder.recoverBuilder(this,it)
+                .setContentTitle("${record.title} · $label").setContentText(record.body)
+                .setStyle(Notification.BigTextStyle().bigText(record.body)).setDeleteIntent(null)
+                .setActions(*emptyArray<Notification.Action>()).setSound(null).setVibrate(null).build()
+            finalNotices.add(record.notificationId to notice)
+        }
+    }
+    private fun tick() {
+        try {
+            // Native foreground detection also covers a delivery racing onResume.
+            if (OrbitDeadlineStrongSession.foreground(this)) OrbitDeadlineStrongSession.open(this, refreshPlayer=false)
+            val course=OrbitStrongSession.state(this)
+            val deadlines=OrbitDeadlineStrongSession.states(this)
+            val courseActive=OrbitStrongSession.isActive(course)
+            val ddlActive=deadlines.filter(OrbitDeadlineStrongSession::active)
+            if(course?.optString("phase")=="unconfirmed") {
+                val records=course.getJSONArray("records")
+                for(i in 0 until records.length()) terminalNotice(OrbitReminderRecord.fromJson(records.getJSONObject(i)), "course:${course.getString("id")}:$i")
+            }
+            for(s in deadlines.filter { it.optString("phase")=="unconfirmed" }) terminalNotice(OrbitReminderRecord.fromJson(s.getJSONObject("record")),s.getString("id"))
+            if (!courseActive && ddlActive.isEmpty()) { mute(); stopSelfResult(latestStartId); return }
+            val courseRecord=if(courseActive) OrbitReminderRecord.fromJson(course!!.getJSONArray("records").getJSONObject(0)) else null
+            val playingDeadline=ddlActive.firstOrNull(OrbitDeadlineStrongSession::shouldPlay)
+            val coursePlaying=courseActive && OrbitStrongSession.shouldPlay(course!!)
+            val effective=if(coursePlaying) courseRecord!! else if(playingDeadline!=null) OrbitReminderRecord.fromJson(playingDeadline.getJSONObject("record")) else courseRecord ?: OrbitReminderRecord.fromJson(ddlActive.first().getJSONObject("record"))
+            val round=if(coursePlaying) course!!.getInt("round") else playingDeadline?.getInt("round") ?: 0
+            val playing=coursePlaying || playingDeadline!=null
+            val identity="${effective.alarmId}:${effective.fireAtMillis}:$round"
+            if(effective.notificationId!=foregroundId) {
+                val oldForeground=foregroundId
+                foregroundId=effective.notificationId
+                OrbitReminderManager.buildNotification(this,effective)?.let { startForeground(foregroundId,it) }
+                // Foreground notification replacement must not remove a live course.
+                if(courseRecord?.notificationId!=oldForeground && ddlActive.none { it.getJSONObject("record").getInt("notificationId")==oldForeground })
+                    (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(oldForeground)
+            }
+            if(playing && (attemptedKey!=identity || wasMuted)) {
+                mute(); attemptedKey=identity;wasMuted=false;play(effective)
+            } else if(!playing) { mute();wasMuted=true }
+            // A new DDL can extend the service's wake lock, never another occurrence's deadline.
+            if(wakeLock?.isHeld!=true) wakeLock?.acquire(2000)
+        } catch(e: Exception) {
+            OrbitReminderDiagnostics.failure(this,"strong_tick",error=e)
+            mute();wasMuted=true
+        }
+        handler.postDelayed({ tick() },250)
     }
     private fun mute() { player?.release(); player=null; vibration?.cancel(); vibration=null }
     private fun play(record: OrbitReminderRecord) {

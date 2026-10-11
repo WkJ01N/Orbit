@@ -11,9 +11,6 @@ object OrbitStrongSession {
     private val random = SecureRandom()
     private val terminal = setOf("completed", "unconfirmed", "emergency")
     fun isActive(s: JSONObject?): Boolean = s != null && s.optString("phase") !in terminal && System.currentTimeMillis() < s.optLong("expiresAt")
-    private fun questions(): JSONArray = JSONArray().apply {
-        repeat(2) { put(JSONObject().apply { put("a", 10 + random.nextInt(80)); put("b", 1 + random.nextInt(9)); put("subtract", random.nextBoolean()) }) }
-    }
     private fun numbers(): JSONArray { val list=(1..6).toMutableList(); java.util.Collections.shuffle(list,random); return JSONArray(list) }
     fun start(context: Context, record: OrbitReminderRecord): JSONObject? = OrbitReminderStore.mutateStrong(context) { old ->
         val key = "${record.alarmId}:${record.fireAtMillis}"
@@ -27,7 +24,7 @@ object OrbitStrongSession {
             put("id",key); put("startedAt",now); put("expiresAt",now+length*3+30000)
             put("duration",length); put("round",1); put("roundEnd",now+length); put("nextRoundAt",0)
             put("settings",settings); put("records",JSONArray().put(record.toJson()))
-            put("phase","ringing"); put("opened",false); put("progress",0); put("questions",questions()); put("numbers",numbers())
+            put("phase","ringing"); put("opened",false); put("progress",0); OrbitStrongTasks.initialize(this,OrbitStrongTasks.create(settings))
         }
     }
     private fun advance(s: JSONObject, now: Long): JSONObject {
@@ -74,7 +71,7 @@ object OrbitStrongSession {
             if(retained.length()==0) s.put("phase","emergency")
             s
         }
-        if(result?.optString("phase")=="emergency") OrbitStrongReminderService.stop(context)
+        if(result?.optString("phase")=="emergency" && !OrbitDeadlineStrongSession.anyActive(context)) OrbitStrongReminderService.stop(context)
     }
     fun begin(context: Context): JSONObject? = OrbitReminderStore.mutateStrong(context) { value ->
         val s=value?.let { advance(it,System.currentTimeMillis()) } ?: return@mutateStrong null
@@ -86,15 +83,16 @@ object OrbitStrongSession {
     fun answer(context: Context, input: Int): JSONObject? {
         val result=OrbitReminderStore.mutateStrong(context) { value ->
             val s=value?.let { advance(it,System.currentTimeMillis()) } ?: return@mutateStrong null
-            if(s.optString("phase")!="task") return@mutateStrong s
+            if(!isActive(s) || s.optString("phase")!="task") return@mutateStrong s
+            if(s.optJSONArray("tasks")!=null) { OrbitStrongTasks.answer(s,input); return@mutateStrong s }
             val progress=s.getInt("progress")
             val sequence=s.getJSONObject("settings").optString("dismissTask")=="sequence"
             val expected=if(sequence) progress%6+1 else s.getJSONArray("questions").getJSONObject(progress).let { if(it.getBoolean("subtract")) it.getInt("a")-it.getInt("b") else it.getInt("a")+it.getInt("b") }
             s.put("wrong",input!=expected)
             if(input==expected) {
                 s.put("progress",progress+1)
-                if(sequence && progress==5) s.put("numbers",numbers())
-                if(progress+1>=if(sequence) 12 else 2) s.put("phase","completed")
+                if(sequence && (progress+1)%6==0) s.put("numbers",numbers())
+                if(progress+1>=if(sequence) s.getJSONObject("settings").optInt("sequenceRounds",2).coerceIn(1,10)*6 else s.getJSONArray("questions").length()) s.put("phase","completed")
             }
             s
         }
@@ -114,7 +112,7 @@ object OrbitStrongSession {
             if(rule.isNotEmpty() && rule!="null") OrbitReminderLedger.acknowledge(context,rule,meta.optString("sessionId"))
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(record.notificationId)
         }
-        OrbitStrongReminderService.stop(context)
+        if (!OrbitDeadlineStrongSession.anyActive(context)) OrbitStrongReminderService.stop(context)
     }
     fun shouldPlay(s: JSONObject): Boolean = isActive(s) && s.optString("phase") !in setOf("ready","task") && System.currentTimeMillis()<s.getLong("roundEnd")
 }

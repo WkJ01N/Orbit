@@ -52,7 +52,7 @@ class OrbitStrongSessionTest {
         assertTrue(wrong.getBoolean("wrong"));assertEquals(0,wrong.getInt("progress"));assertEquals(deadline,wrong.getLong("answerDeadline"))
         for(i in 0..1) {
             val q=task.getJSONArray("questions").getJSONObject(i)
-            OrbitStrongSession.answer(context,q.getInt("a")+if(q.getBoolean("subtract")) -q.getInt("b") else q.getInt("b"))
+            OrbitStrongSession.answer(context,OrbitStrongTasks.arithmeticAnswer(q))
         }
         assertEquals("completed",OrbitStrongSession.state(context)!!.getString("phase"))
     }

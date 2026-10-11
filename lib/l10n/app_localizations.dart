@@ -4229,7 +4229,7 @@ abstract class AppLocalizations {
   /// No description provided for @androidOriginOsSettings.
   ///
   /// In en, this message translates to:
-  /// **'OriginOS background settings'**
+  /// **'System background settings'**
   String get androidOriginOsSettings;
 
   /// No description provided for @androidOriginOsSettingsSubtitle.

@@ -17,6 +17,8 @@ class ScheduleDisplaySettings {
     this.upcomingDateDisplay = UpcomingDateDisplay.dateAndWeekday,
     this.verticalScalePercent = 100,
     this.fitToPage = false,
+    this.hideUpcomingPage = false,
+    this.hideImportPage = false,
     this.strongCardGradient = StrongCardGradient.upperHalf,
   });
 
@@ -27,6 +29,8 @@ class ScheduleDisplaySettings {
   final UpcomingDateDisplay upcomingDateDisplay;
   final int verticalScalePercent;
   final bool fitToPage;
+  final bool hideUpcomingPage;
+  final bool hideImportPage;
   final StrongCardGradient strongCardGradient;
 
   static int normalizeVerticalScalePercent(Object? value) {
@@ -46,10 +50,14 @@ class ScheduleDisplaySettings {
     UpcomingDateDisplay? upcomingDateDisplay,
     int? verticalScalePercent,
     bool? fitToPage,
+    bool? hideUpcomingPage,
+    bool? hideImportPage,
     StrongCardGradient? strongCardGradient,
   }) {
     return ScheduleDisplaySettings(
       fitToPage: fitToPage ?? this.fitToPage,
+      hideUpcomingPage: hideUpcomingPage ?? this.hideUpcomingPage,
+      hideImportPage: hideImportPage ?? this.hideImportPage,
       strongCardGradient: strongCardGradient ?? this.strongCardGradient,
       narrowLayout: narrowLayout ?? this.narrowLayout,
       preferredMultiDayCount:

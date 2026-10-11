@@ -13,7 +13,11 @@ enum ReminderStrength { inherit, normal, strong }
 
 enum StrongReminderType { classLead, checkIn, summary, custom }
 
-enum StrongDismissTask { arithmetic, sequence }
+enum StrongDismissTask { arithmetic, sequence, mixed }
+
+enum ArithmeticDifficulty { simple, medium, hard }
+
+enum ArithmeticAnswerMode { input, choice3, choice6 }
 
 enum FirstClassMode { firstPeriod, beforeTime }
 
@@ -38,6 +42,9 @@ class ReminderSound {
   );
 }
 
+int _taskRounds(dynamic value) =>
+    (value is num && value.isFinite ? value.toInt() : 2).clamp(1, 10);
+
 class StrongReminderSettings {
   const StrongReminderSettings({
     this.enabled = false,
@@ -47,6 +54,12 @@ class StrongReminderSettings {
     this.dismissTask = StrongDismissTask.arithmetic,
     this.prepareSeconds = 15,
     this.answerSeconds = 30,
+    this.arithmeticRounds = 2,
+    this.sequenceRounds = 2,
+    this.mixedRounds = 2,
+    this.sequenceNumberCount = 6,
+    this.arithmeticDifficulty = ArithmeticDifficulty.medium,
+    this.arithmeticAnswerMode = ArithmeticAnswerMode.input,
     this.sound = const ReminderSound(),
     this.windowsSound = 1,
     this.types = const {
@@ -66,6 +79,12 @@ class StrongReminderSettings {
   final StrongDismissTask dismissTask;
   final int prepareSeconds;
   final int answerSeconds;
+  final int arithmeticRounds;
+  final int sequenceRounds;
+  final int mixedRounds;
+  final int sequenceNumberCount;
+  final ArithmeticDifficulty arithmeticDifficulty;
+  final ArithmeticAnswerMode arithmeticAnswerMode;
   final bool onlyFirstClass;
   final FirstClassMode firstClassMode;
   final int cutoffMinute;
@@ -90,6 +109,12 @@ class StrongReminderSettings {
     StrongDismissTask? dismissTask,
     int? prepareSeconds,
     int? answerSeconds,
+    int? arithmeticRounds,
+    int? sequenceRounds,
+    int? mixedRounds,
+    int? sequenceNumberCount,
+    ArithmeticDifficulty? arithmeticDifficulty,
+    ArithmeticAnswerMode? arithmeticAnswerMode,
     ReminderSound? sound,
     int? windowsSound,
     Set<StrongReminderType>? types,
@@ -106,6 +131,13 @@ class StrongReminderSettings {
     dismissTask: dismissTask ?? this.dismissTask,
     prepareSeconds: prepareSeconds ?? this.prepareSeconds,
     answerSeconds: answerSeconds ?? this.answerSeconds,
+    arithmeticRounds: (arithmeticRounds ?? this.arithmeticRounds).clamp(1, 10),
+    sequenceRounds: (sequenceRounds ?? this.sequenceRounds).clamp(1, 10),
+    mixedRounds: (mixedRounds ?? this.mixedRounds).clamp(1, 10),
+    sequenceNumberCount: (sequenceNumberCount ?? this.sequenceNumberCount)
+        .clamp(4, 25),
+    arithmeticDifficulty: arithmeticDifficulty ?? this.arithmeticDifficulty,
+    arithmeticAnswerMode: arithmeticAnswerMode ?? this.arithmeticAnswerMode,
     onlyFirstClass: onlyFirstClass ?? this.onlyFirstClass,
     firstClassMode: firstClassMode ?? this.firstClassMode,
     cutoffMinute: cutoffMinute ?? this.cutoffMinute,
@@ -127,6 +159,12 @@ class StrongReminderSettings {
     'dismissTask': dismissTask.name,
     'prepareSeconds': prepareSeconds,
     'answerSeconds': answerSeconds,
+    'arithmeticRounds': arithmeticRounds.clamp(1, 10),
+    'sequenceRounds': sequenceRounds.clamp(1, 10),
+    'mixedRounds': mixedRounds.clamp(1, 10),
+    'sequenceNumberCount': sequenceNumberCount.clamp(4, 25),
+    'arithmeticDifficulty': arithmeticDifficulty.name,
+    'arithmeticAnswerMode': arithmeticAnswerMode.name,
     'onlyFirstClass': onlyFirstClass,
     'firstClassMode': firstClassMode.name,
     'cutoffMinute': cutoffMinute,
@@ -149,6 +187,23 @@ class StrongReminderSettings {
       dismissTask: StrongDismissTask.values.firstWhere(
         (v) => v.name == json['dismissTask'],
         orElse: () => StrongDismissTask.arithmetic,
+      ),
+      arithmeticRounds: _taskRounds(json['arithmeticRounds']),
+      sequenceRounds: _taskRounds(json['sequenceRounds']),
+      mixedRounds: _taskRounds(json['mixedRounds']),
+      sequenceNumberCount:
+          (json['sequenceNumberCount'] is num &&
+                      (json['sequenceNumberCount'] as num).isFinite
+                  ? (json['sequenceNumberCount'] as num).toInt()
+                  : 6)
+              .clamp(4, 25),
+      arithmeticDifficulty: ArithmeticDifficulty.values.firstWhere(
+        (v) => v.name == json['arithmeticDifficulty'],
+        orElse: () => ArithmeticDifficulty.medium,
+      ),
+      arithmeticAnswerMode: ArithmeticAnswerMode.values.firstWhere(
+        (v) => v.name == json['arithmeticAnswerMode'],
+        orElse: () => ArithmeticAnswerMode.input,
       ),
       prepareSeconds:
           (json['prepareSeconds'] is num &&

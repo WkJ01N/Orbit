@@ -87,13 +87,17 @@ void main() {
     await database.updateSession(_session(room: 'A102'));
     await database.updateSession(_session(room: 'A103'));
 
-    var pending = await database.pendingSyncMutations();
+    var pending = await database.pendingSyncMutations(
+      entityTypes: [SyncEntityType.courseSession.name],
+    );
     expect(pending, hasLength(1));
     expect(pending.single.baseRevision, 0);
     expect(pending.single.entity.payload['room'], 'A103');
 
     await database.deleteSessionById('course-1');
-    pending = await database.pendingSyncMutations();
+    pending = (await database.pendingSyncMutations(
+      entityTypes: [SyncEntityType.courseSession.name],
+    )).where((m) => m.entity.type == SyncEntityType.courseSession).toList();
     expect(pending, hasLength(1));
     expect(pending.single.operation, SyncOperation.delete);
   });
@@ -116,7 +120,9 @@ void main() {
       expect((await database.getSessionById('course-1'))!.room, 'Cloud');
 
       await database.updateSession(_session(room: 'Local'));
-      final pending = await database.pendingSyncMutations();
+      final pending = await database.pendingSyncMutations(
+        entityTypes: [SyncEntityType.courseSession.name],
+      );
       expect(pending.single.baseRevision, 7);
     },
   );
@@ -137,13 +143,17 @@ void main() {
       ]);
 
       await database.updateSession(_session(room: 'First edit'));
-      final sent = await database.pendingSyncMutations();
+      final sent = await database.pendingSyncMutations(
+        entityTypes: [SyncEntityType.courseSession.name],
+      );
       await database.updateSession(_session(room: 'Second edit'));
       await database.acknowledgeSyncMutations({
         sent.single.mutationId: 8,
       }, sent: sent);
 
-      final pending = await database.pendingSyncMutations();
+      final pending = await database.pendingSyncMutations(
+        entityTypes: [SyncEntityType.courseSession.name],
+      );
       expect(pending, hasLength(1));
       expect(pending.single.entity.payload['room'], 'Second edit');
       expect(pending.single.baseRevision, 8);
@@ -155,7 +165,9 @@ void main() {
       const SyncAccount(uid: 'user-1', email: 'one@example.com'),
     );
     await database.upsertSessions([_session()]);
-    final mutation = (await database.pendingSyncMutations()).single;
+    final mutation = (await database.pendingSyncMutations(
+      entityTypes: [SyncEntityType.courseSession.name],
+    )).single;
 
     await database.storeSyncConflicts([
       SyncConflict(
@@ -330,7 +342,9 @@ void main() {
       await database.setActiveSyncAccount(null);
       await database.deleteSessionById(cloud.id);
       expect(
-        (await database.pendingSyncMutations()).single.operation,
+        (await database.pendingSyncMutations(
+          entityTypes: [SyncEntityType.courseSession.name],
+        )).single.operation,
         SyncOperation.delete,
       );
       final backend = _MemoryBackend(

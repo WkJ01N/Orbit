@@ -2,6 +2,9 @@ import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
+import 'dart:async';
+import 'package:orbit/models/windows_reminder_text.dart';
+import 'package:orbit/services/strong_session_service.dart';
 import 'package:orbit/models/orbit_feature_text.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
@@ -29,7 +32,9 @@ class StrongReminderPage extends ConsumerStatefulWidget {
 }
 
 class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
-  static const _channel = MethodChannel('com.must.orbit.orbit/reminders');
+  static MethodChannel get _channel => StrongSessionService.channel;
+  Timer? _previewTimer;
+  bool _previewBusy = false;
   late StrongReminderSettings _value;
   late TextEditingController _duration;
   final _form = GlobalKey<FormState>();
@@ -96,7 +101,12 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
   @override
   void dispose() {
     _duration.dispose();
-    if (Platform.isAndroid) _channel.invokeMethod<void>('stopPreview');
+    _previewTimer?.cancel();
+    if (Platform.isAndroid || Platform.isWindows) {
+      unawaited(
+        _channel.invokeMethod<void>('stopPreview').catchError((Object _) {}),
+      );
+    }
     super.dispose();
   }
 
@@ -119,17 +129,57 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
         }
       }
       if (sound != null && mounted) {
-        setState(() => _value = _value.copyWith(sound: sound));
+        setState(
+          () => _value = _value.copyWith(
+            sound: sound,
+            soundEnabled: Platform.isWindows ? true : _value.soundEnabled,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
             duration: const Duration(seconds: 6),
-            content: Text(AppLocalizations.of(context)!.reminderInvalid),
+            content: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
           ),
         );
       }
+    }
+  }
+
+  Future<void> _preview() async {
+    if (_previewBusy) return;
+    setState(() => _previewBusy = true);
+    try {
+      final wasPlaying = _playing;
+      await _channel.invokeMethod<void>(
+        wasPlaying ? 'stopPreview' : 'previewSound',
+        Platform.isWindows
+            ? {
+                'sound': _value.sound.toJson(),
+                'windowsSound': _value.windowsSound,
+              }
+            : _value.sound.toJson(),
+      );
+      _previewTimer?.cancel();
+      if (mounted) setState(() => _playing = !wasPlaying);
+      if (Platform.isWindows && !wasPlaying) {
+        _previewTimer = Timer(const Duration(seconds: 10), () {
+          if (mounted) setState(() => _playing = false);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _playing = false);
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _previewBusy = false);
     }
   }
 
@@ -167,73 +217,250 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
               Text(l.reminderStrongDescription),
               SettingsGroup(
                 title: WakeText.of(context).task,
+                horizontalMargin: 0,
                 children: [
-                  DropdownButtonFormField<StrongDismissTask>(
-                    initialValue: _value.dismissTask,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: StrongDismissTask.arithmetic,
-                        child: Text(WakeText.of(context).arithmetic),
-                      ),
-                      DropdownMenuItem(
-                        value: StrongDismissTask.sequence,
-                        child: Text(WakeText.of(context).sequence),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(
-                          () => _value = _value.copyWith(dismissTask: v),
-                        );
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    initialValue: '${_value.prepareSeconds}',
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: WakeText.of(context).prepare,
-                    ),
-                    validator: (v) {
-                      final n = int.tryParse(v ?? '');
-                      return n == null || n < 5 || n > 60 ? '5–60' : null;
-                    },
-                    onChanged: (v) {
-                      final n = int.tryParse(v);
-                      if (n != null) {
-                        setState(
-                          () => _value = _value.copyWith(
-                            prepareSeconds: n.clamp(5, 60),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  TextFormField(
-                    initialValue: '${_value.answerSeconds}',
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: WakeText.of(context).answer,
-                    ),
-                    validator: (v) {
-                      final n = int.tryParse(v ?? '');
-                      return n == null || n < 10 || n > 120 ? '10–120' : null;
-                    },
-                    onChanged: (v) {
-                      final n = int.tryParse(v);
-                      if (n != null) {
-                        setState(
-                          () => _value = _value.copyWith(
-                            answerSeconds: n.clamp(10, 120),
-                          ),
-                        );
-                      }
-                    },
-                  ),
                   Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(WakeText.of(context).timing),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        DropdownButtonFormField<StrongDismissTask>(
+                          initialValue: _value.dismissTask,
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem(
+                              value: StrongDismissTask.arithmetic,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(WakeText.of(context).arithmetic),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: StrongDismissTask.sequence,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(WakeText.of(context).sequence),
+                              ),
+                            ),
+                            DropdownMenuItem(
+                              value: StrongDismissTask.mixed,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(WakeText.of(context).mixed),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) {
+                            if (v != null) {
+                              setState(
+                                () => _value = _value.copyWith(dismissTask: v),
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          key: ValueKey(_value.dismissTask),
+                          initialValue: switch (_value.dismissTask) {
+                            StrongDismissTask.arithmetic =>
+                              _value.arithmeticRounds,
+                            StrongDismissTask.sequence => _value.sequenceRounds,
+                            StrongDismissTask.mixed => _value.mixedRounds,
+                          },
+                          decoration: InputDecoration(
+                            labelText: WakeText.of(context).rounds,
+                          ),
+                          items: [
+                            for (var n = 1; n <= 10; n++)
+                              DropdownMenuItem(value: n, child: Text('$n')),
+                          ],
+                          onChanged: (n) {
+                            if (n != null) {
+                              setState(
+                                () => _value = switch (_value.dismissTask) {
+                                  StrongDismissTask.arithmetic =>
+                                    _value.copyWith(arithmeticRounds: n),
+                                  StrongDismissTask.sequence => _value.copyWith(
+                                    sequenceRounds: n,
+                                  ),
+                                  StrongDismissTask.mixed => _value.copyWith(
+                                    mixedRounds: n,
+                                  ),
+                                },
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        if (_value.dismissTask == StrongDismissTask.mixed) ...[
+                          Text(
+                            WakeText.of(context).mixedHint,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_value.dismissTask !=
+                            StrongDismissTask.arithmetic) ...[
+                          DropdownButtonFormField<int>(
+                            key: const Key('strong-number-count'),
+                            initialValue: _value.sequenceNumberCount,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: WakeText.of(context).numberCount,
+                            ),
+                            items: [
+                              for (var n = 4; n <= 25; n++)
+                                DropdownMenuItem(value: n, child: Text('$n')),
+                            ],
+                            onChanged: (n) {
+                              if (n != null) {
+                                setState(
+                                  () => _value = _value.copyWith(
+                                    sequenceNumberCount: n,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_value.dismissTask !=
+                            StrongDismissTask.sequence) ...[
+                          DropdownButtonFormField<ArithmeticDifficulty>(
+                            key: const Key('strong-arithmetic-difficulty'),
+                            initialValue: _value.arithmeticDifficulty,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: WakeText.of(context).difficulty,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: ArithmeticDifficulty.simple,
+                                child: Text(WakeText.of(context).simple),
+                              ),
+                              DropdownMenuItem(
+                                value: ArithmeticDifficulty.medium,
+                                child: Text(WakeText.of(context).medium),
+                              ),
+                              DropdownMenuItem(
+                                value: ArithmeticDifficulty.hard,
+                                child: Text(WakeText.of(context).hard),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(
+                                  () => _value = _value.copyWith(
+                                    arithmeticDifficulty: v,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            WakeText.of(context).difficultyHint,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<ArithmeticAnswerMode>(
+                            key: const Key('strong-arithmetic-answer-mode'),
+                            initialValue: _value.arithmeticAnswerMode,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: WakeText.of(context).answerMode,
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: ArithmeticAnswerMode.input,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).manualInput),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: ArithmeticAnswerMode.choice3,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).choice3),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: ArithmeticAnswerMode.choice6,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).choice6),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(
+                                  () => _value = _value.copyWith(
+                                    arithmeticAnswerMode: v,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        TextFormField(
+                          initialValue: '${_value.prepareSeconds}',
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: WakeText.of(context).prepare,
+                          ),
+                          validator: (v) {
+                            final n = int.tryParse(v ?? '');
+                            return n == null || n < 5 || n > 60 ? '5–60' : null;
+                          },
+                          onChanged: (v) {
+                            final n = int.tryParse(v);
+                            if (n != null) {
+                              setState(
+                                () => _value = _value.copyWith(
+                                  prepareSeconds: n.clamp(5, 60),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          initialValue: '${_value.answerSeconds}',
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: WakeText.of(context).answer,
+                          ),
+                          validator: (v) {
+                            final n = int.tryParse(v ?? '');
+                            return n == null || n < 10 || n > 120
+                                ? '10–120'
+                                : null;
+                          },
+                          onChanged: (v) {
+                            final n = int.tryParse(v);
+                            if (n != null) {
+                              setState(
+                                () => _value = _value.copyWith(
+                                  answerSeconds: n.clamp(10, 120),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(WakeText.of(context).timing),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -540,43 +767,98 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 TextButton.icon(
                   icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
                   label: Text(l.reminderPreviewSound),
-                  onPressed: () async {
-                    try {
-                      await _channel.invokeMethod<void>(
-                        _playing ? 'stopPreview' : 'previewSound',
-                        _value.sound.toJson(),
-                      );
-                      if (mounted) setState(() => _playing = !_playing);
-                    } catch (_) {
-                      if (context.mounted) {
-                        setState(() => _playing = false);
-                        ScaffoldMessenger.of(context).showAppSnackBar(
-                          SnackBar(
-                            duration: const Duration(seconds: 6),
-                            content: Text(l.reminderAudioInvalid),
-                          ),
+                  onPressed: _previewBusy ? null : _preview,
+                ),
+              ] else if (Platform.isWindows) ...[
+                SwitchListTile(
+                  title: Text(l.reminderSound),
+                  value: _value.soundEnabled,
+                  onChanged: (v) =>
+                      setState(() => _value = _value.copyWith(soundEnabled: v)),
+                ),
+                const SizedBox(height: 12),
+                InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: WindowsReminderText.of(context).source,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _value.sound.kind,
+                      isExpanded: true,
+                      items: [
+                        DropdownMenuItem(
+                          value: 'system',
+                          child: Text(WindowsReminderText.of(context).system),
+                        ),
+                        DropdownMenuItem(
+                          value: 'file',
+                          child: Text(WindowsReminderText.of(context).imported),
+                        ),
+                      ],
+                      onChanged: (v) async {
+                        if (_playing) await _preview();
+                        if (v == 'file') {
+                          await _audio(false);
+                        } else if (v == 'system') {
+                          setState(
+                            () => _value = _value.copyWith(
+                              sound: const ReminderSound(),
+                              soundEnabled: true,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                if (_value.sound.kind == 'system') ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: _value.windowsSound,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: l.reminderSystemSound,
+                    ),
+                    items: [
+                      for (var n = 1; n <= 10; n++)
+                        DropdownMenuItem(
+                          value: n,
+                          child: Text('${l.reminderSound} $n'),
+                        ),
+                    ],
+                    onChanged: (n) {
+                      if (n != null) {
+                        setState(
+                          () => _value = _value.copyWith(windowsSound: n),
                         );
                       }
-                    }
+                    },
+                  ),
+                ],
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  leading: const Icon(Icons.audio_file_outlined),
+                  title: Text(l.reminderImportSound),
+                  subtitle: Text(
+                    _value.sound.kind == 'file'
+                        ? _value.sound.name
+                        : WindowsReminderText.of(context).selectFile,
+                  ),
+                  onTap: () async {
+                    if (_playing) await _preview();
+                    await _audio(false);
                   },
                 ),
-              ] else
-                DropdownButtonFormField<int>(
-                  initialValue: _value.windowsSound,
-                  decoration: InputDecoration(labelText: l.reminderSound),
-                  items: [
-                    for (var n = 1; n <= 10; n++)
-                      DropdownMenuItem(
-                        value: n,
-                        child: Text('${l.reminderSound} $n'),
-                      ),
-                  ],
-                  onChanged: (n) {
-                    if (n != null) {
-                      setState(() => _value = _value.copyWith(windowsSound: n));
-                    }
-                  },
+                TextButton.icon(
+                  icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
+                  label: Text(
+                    _playing
+                        ? WindowsReminderText.of(context).stopPreview
+                        : WindowsReminderText.of(context).preview,
+                  ),
+                  onPressed: _previewBusy ? null : _preview,
                 ),
+              ],
             ],
           ),
         ),

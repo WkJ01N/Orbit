@@ -92,6 +92,11 @@ class ScheduleDisplaySettingsNotifier
     await _save(next);
   }
 
+  Future<void> setHideUpcomingPage(bool value) =>
+      _save(state.copyWith(hideUpcomingPage: value));
+  Future<void> setHideImportPage(bool value) =>
+      _save(state.copyWith(hideImportPage: value));
+
   Future<void> setShowEmptyDays(bool value) async {
     final next = state.copyWith(showEmptyDays: value);
     await _save(next);

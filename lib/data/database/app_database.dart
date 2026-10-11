@@ -10,6 +10,9 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
+part 'app_database_statistics.dart';
+part 'app_database_backup.dart';
+
 class AppDatabase {
   AppDatabase(this._db);
 
@@ -24,7 +27,7 @@ class AppDatabase {
   static Future<AppDatabase> open(String databasePath) async {
     final db = await openDatabase(
       p.join(databasePath, 'orbit.db'),
-      version: 9,
+      version: 11,
       onCreate: (database, version) async {
         await _createSchema(database);
       },
@@ -33,6 +36,8 @@ class AppDatabase {
         await _createSyncSchema(database);
         await _createDeadlineSchema(database);
         await _createStrongSchema(database);
+        await _createStatisticsSchema(database);
+        await _createDeadlineStrongSchema(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -59,6 +64,8 @@ class AppDatabase {
         if (oldVersion < 7) await _createDeadlineSchema(database);
         if (oldVersion < 8) await _createArchiveSchema(database);
         if (oldVersion < 9) await _createStrongSchema(database);
+        if (oldVersion < 10) await _createStatisticsSchema(database);
+        if (oldVersion < 11) await _createDeadlineStrongSchema(database);
       },
     );
     return AppDatabase(db);
@@ -99,6 +106,25 @@ class AppDatabase {
     await _createDeadlineSchema(database);
     await _createArchiveSchema(database);
     await _createStrongSchema(database);
+    await _createStatisticsSchema(database);
+    await _createDeadlineStrongSchema(database);
+  }
+
+  static Future<void> _createDeadlineStrongSchema(Database database) async {
+    final columns = (await database.rawQuery(
+      'PRAGMA table_info(deadlines)',
+    )).map((row) => row['name']).toSet();
+    for (final entry in {
+      'strong_reminder_enabled': 'INTEGER NOT NULL DEFAULT 0',
+      'strong_lead_minutes': 'TEXT',
+      'disabled_reminder_lead_minutes': "TEXT NOT NULL DEFAULT '[]'",
+    }.entries) {
+      if (!columns.contains(entry.key)) {
+        await database.execute(
+          'ALTER TABLE deadlines ADD COLUMN ${entry.key} ${entry.value}',
+        );
+      }
+    }
   }
 
   static Future<void> _createStrongSchema(Database database) async {
@@ -291,14 +317,84 @@ class AppDatabase {
     return rows.isEmpty ? null : Deadline.fromMap(rows.first);
   }
 
-  Future<void> saveDeadline(Deadline value) async {
+  Future<void> saveDeadline(Deadline value) => saveDeadlines([value]);
+
+  Future<void> saveDeadlines(List<Deadline> values) async {
     await _db.transaction((txn) async {
-      await txn.insert(
-        'deadlines',
-        value.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await _queueSyncEntity(txn, _deadlineEntity(value), SyncOperation.upsert);
+      for (final value in values) {
+        await txn.insert(
+          'deadlines',
+          value.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await _queueSyncEntity(
+          txn,
+          _deadlineEntity(value),
+          SyncOperation.upsert,
+        );
+        if (value.completed && value.countsTowardStatistics) {
+          final owner = await _statisticsOwner(txn);
+          final id = 'ddl|${value.id}';
+          if (await _claimStatistic(txn, id, owner)) {
+            final exists = await txn.query(
+              'statistics_records',
+              where: 'owner=? AND id=?',
+              whereArgs: [owner, id],
+            );
+            if (exists.isEmpty) {
+              await _writeStatistic(txn, owner, id, {
+                'kind': 'ddl',
+                'name': value.title,
+                'completedAt': value.completedAt!.toUtc().toIso8601String(),
+              });
+            }
+          }
+        }
+      }
+    });
+    _syncChanges.add(null);
+  }
+
+  /// Update only selected reminder slots using fresh rows in one transaction.
+  Future<void> disableDeadlineReminders(
+    Map<String, Set<int>> selections, {
+    DateTime? now,
+  }) async {
+    final at = now ?? DateTime.now();
+    await _db.transaction((txn) async {
+      for (final entry in selections.entries) {
+        final rows = await txn.query(
+          'deadlines',
+          where: 'id=? AND deleted_at IS NULL',
+          whereArgs: [entry.key],
+          limit: 1,
+        );
+        if (rows.isEmpty) continue;
+        final value = Deadline.fromMap(rows.first);
+        if (value.completed || value.archived) continue;
+        final disabled = value.disabledReminderLeadMinutes.toSet();
+        disabled.addAll(
+          value.leadMinutes.where(
+            (m) =>
+                entry.value.contains(m) &&
+                value.dueAt.subtract(Duration(minutes: m)).isAfter(at),
+          ),
+        );
+        final next = value.copyWith(
+          disabledReminderLeadMinutes: disabled.toList()..sort(),
+        );
+        await txn.update(
+          'deadlines',
+          next.toMap(),
+          where: 'id=?',
+          whereArgs: [value.id],
+        );
+        await _queueSyncEntity(
+          txn,
+          _deadlineEntity(next),
+          SyncOperation.upsert,
+        );
+      }
     });
     _syncChanges.add(null);
   }
@@ -685,6 +781,7 @@ class AppDatabase {
   }
 
   Future<void> updateSession(CourseSession session) async {
+    await refreshStatistics();
     await _db.transaction((txn) async {
       await txn.insert(
         _tableName,
@@ -703,8 +800,29 @@ class AppDatabase {
     required List<String> deleteIds,
     required List<CourseSession> upsert,
     Map<String, String> identityChanges = const {},
+    bool deleteStatistics = false,
   }) async {
+    await refreshStatistics();
     await _db.transaction((txn) async {
+      if (deleteStatistics) {
+        await _setCourseStatisticsExcluded(
+          txn,
+          deleteIds.where(
+            (id) =>
+                !identityChanges.containsKey(id) &&
+                !upsert.any((s) => s.id == id),
+          ),
+          true,
+        );
+      }
+      await _withdrawPendingStatistics(
+        txn,
+        deleteIds.where(
+          (id) =>
+              !identityChanges.containsKey(id) &&
+              !upsert.any((s) => s.id == id),
+        ),
+      );
       for (final change in identityChanges.entries) {
         final updated = upsert.where((s) => s.id == change.value).firstOrNull;
         if (updated != null) {
@@ -747,6 +865,7 @@ class AppDatabase {
     String oldId,
     CourseSession session,
   ) async {
+    await refreshStatistics();
     await _db.transaction((txn) async {
       final oldRows = await txn.query(
         _tableName,
@@ -823,10 +942,12 @@ class AppDatabase {
     }
   }
 
-  Future<List<CourseSession>> getAllSessions() async {
+  Future<List<CourseSession>> getAllSessions({
+    bool includeDeleted = false,
+  }) async {
     final rows = await _db.query(
       _tableName,
-      where: 'deleted_at IS NULL',
+      where: includeDeleted ? null : 'deleted_at IS NULL',
       orderBy: 'start_at ASC',
     );
     return rows.map(CourseSession.fromMap).toList();
@@ -887,13 +1008,16 @@ class AppDatabase {
     return rows.map(CourseSession.fromMap).toList();
   }
 
-  Future<int> clearAllSessions() {
-    return _softDeleteWhere('deleted_at IS NULL', const []);
-  }
-
-  Future<int> deleteSessionById(String id) {
-    return _softDeleteWhere('id = ? AND deleted_at IS NULL', [id]);
-  }
+  Future<int> clearAllSessions({bool deleteStatistics = false}) =>
+      _softDeleteWhere(
+        'deleted_at IS NULL',
+        const [],
+        deleteStatistics: deleteStatistics,
+      );
+  Future<int> deleteSessionById(String id, {bool deleteStatistics = false}) =>
+      _softDeleteWhere('id = ? AND deleted_at IS NULL', [
+        id,
+      ], deleteStatistics: deleteStatistics);
 
   Future<int> countEndedSessions(DateTime before) async {
     final result = await _db.rawQuery(
@@ -904,10 +1028,13 @@ class AppDatabase {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  Future<int> deleteEndedSessions(DateTime before) async {
+  Future<int> deleteEndedSessions(
+    DateTime before, {
+    bool deleteStatistics = false,
+  }) async {
     return _softDeleteWhere('end_at <= ? AND deleted_at IS NULL', [
       before.toIso8601String(),
-    ]);
+    ], deleteStatistics: deleteStatistics);
   }
 
   Future<int> countSessionsFullyInRange(
@@ -924,17 +1051,32 @@ class AppDatabase {
 
   Future<int> deleteSessionsFullyInRange(
     DateTime startInclusive,
-    DateTime endInclusive,
-  ) async {
+    DateTime endInclusive, {
+    bool deleteStatistics = false,
+  }) async {
     return _softDeleteWhere(
       'start_at >= ? AND end_at <= ? AND deleted_at IS NULL',
       [startInclusive.toIso8601String(), endInclusive.toIso8601String()],
+      deleteStatistics: deleteStatistics,
     );
   }
 
-  Future<void> replaceAllActiveSessions(List<CourseSession> sessions) async {
+  Future<void> replaceAllActiveSessions(
+    List<CourseSession> sessions, {
+    bool deleteStatistics = false,
+  }) async {
+    await refreshStatistics();
     await _db.transaction((txn) async {
       final existing = await txn.query(_tableName, where: 'deleted_at IS NULL');
+      final retained = sessions.map((session) => session.id).toSet();
+      final removed = existing
+          .map((row) => row['id'] as String)
+          .where((id) => !retained.contains(id))
+          .toList();
+      await _withdrawPendingStatistics(txn, removed);
+      if (deleteStatistics) {
+        await _setCourseStatisticsExcluded(txn, removed, true);
+      }
       await txn.update(_tableName, {
         'deleted_at': DateTime.now().toIso8601String(),
       }, where: 'deleted_at IS NULL');
@@ -989,6 +1131,11 @@ class AppDatabase {
           where: where,
           whereArgs: chunk,
         );
+        await _setCourseStatisticsExcluded(
+          txn,
+          rows.map((r) => r['id'] as String),
+          false,
+        );
         for (final row in rows) {
           await _queueCourseMutation(
             txn,
@@ -1011,11 +1158,27 @@ class AppDatabase {
     );
   }
 
-  Future<int> purgeAllDeleted() {
-    return _db.delete(_tableName, where: 'deleted_at IS NOT NULL');
+  Future<int> purgeAllDeleted({bool deleteStatistics = false}) async {
+    final count = await _db.transaction((txn) async {
+      final rows = await txn.query(_tableName, where: 'deleted_at IS NOT NULL');
+      if (deleteStatistics) {
+        await _setCourseStatisticsExcluded(
+          txn,
+          rows.map((r) => r['id'] as String),
+          true,
+        );
+      }
+      return txn.delete(_tableName, where: 'deleted_at IS NOT NULL');
+    });
+    _syncChanges.add(null);
+    return count;
   }
 
-  Future<int> softDeleteSessionIds(List<String> ids) async {
+  Future<int> softDeleteSessionIds(
+    List<String> ids, {
+    bool deleteStatistics = false,
+  }) async {
+    await refreshStatistics();
     final unique = ids.toSet().toList();
     if (unique.isEmpty) return 0;
     final count = await _db.transaction((txn) async {
@@ -1039,6 +1202,17 @@ class AppDatabase {
           where: where,
           whereArgs: chunk,
         );
+        if (deleteStatistics) {
+          await _setCourseStatisticsExcluded(
+            txn,
+            rows.map((r) => r['id'] as String),
+            true,
+          );
+        }
+        await _withdrawPendingStatistics(
+          txn,
+          rows.map((r) => r['id'] as String),
+        );
         for (final row in rows) {
           await _queueCourseMutation(
             txn,
@@ -1053,13 +1227,26 @@ class AppDatabase {
     return count;
   }
 
-  Future<int> _softDeleteWhere(String where, List<Object?> whereArgs) async {
+  Future<int> _softDeleteWhere(
+    String where,
+    List<Object?> whereArgs, {
+    bool deleteStatistics = false,
+  }) async {
+    await refreshStatistics();
     final count = await _db.transaction((txn) async {
       final rows = await txn.query(
         _tableName,
         where: where,
         whereArgs: whereArgs,
       );
+      if (deleteStatistics) {
+        await _setCourseStatisticsExcluded(
+          txn,
+          rows.map((r) => r['id'] as String),
+          true,
+        );
+      }
+      await _withdrawPendingStatistics(txn, rows.map((r) => r['id'] as String));
       final count = await txn.update(
         _tableName,
         {'deleted_at': DateTime.now().toIso8601String()},
@@ -1155,6 +1342,7 @@ class AppDatabase {
         );
       }
     });
+    _syncChanges.add(null);
   }
 
   Future<String?> boundSyncAccountUid() async {
@@ -1369,12 +1557,17 @@ class AppDatabase {
       where: includeDeleted ? null : 'deleted_at IS NULL',
     );
     final revisions = await _syncRevisionMap();
+    final aliases = await reminderSessionAliases();
     return [
       for (final row in rows)
         SyncEntity(
           type: SyncEntityType.courseSession,
           id: row['id'] as String,
-          payload: courseSessionSyncPayload(CourseSession.fromMap(row)),
+          payload: {
+            ...courseSessionSyncPayload(CourseSession.fromMap(row)),
+            if (aliases.containsKey(row['id']))
+              'statisticsSourceId': aliases[row['id']],
+          },
           revision:
               revisions['${SyncEntityType.courseSession.name}|${row['id']}'] ??
               0,
@@ -1407,6 +1600,16 @@ class AppDatabase {
     await _db.transaction((txn) async {
       for (final entity in entities) {
         if (entity.type == SyncEntityType.courseSession) {
+          if (entity.payload['statisticsSourceId'] is String) {
+            await txn.insert(
+              'reminder_session_alias',
+              {
+                'session_id': entity.id,
+                'stable_id': entity.payload['statisticsSourceId'],
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
           if (entity.deleted) {
             await txn.update(
               _tableName,
@@ -1421,6 +1624,13 @@ class AppDatabase {
               conflictAlgorithm: ConflictAlgorithm.replace,
             );
           }
+        } else if (entity.type == SyncEntityType.statistic) {
+          await _mergeStatistic(
+            txn,
+            await _statisticsOwner(txn),
+            entity.id,
+            entity.payload,
+          );
         } else if (entity.type == SyncEntityType.deadline) {
           if (entity.deleted) {
             final changed = await txn.update(
@@ -1533,19 +1743,30 @@ class AppDatabase {
     Transaction txn,
     CourseSession session,
     SyncOperation operation,
-  ) => _queueSyncEntity(
-    txn,
-    SyncEntity(
-      type: SyncEntityType.courseSession,
-      id: session.id,
-      payload: courseSessionSyncPayload(session),
-      deleted: operation == SyncOperation.delete,
-    ),
-    operation,
-  );
+  ) async {
+    final aliases = await txn.query(
+      'reminder_session_alias',
+      where: 'session_id=?',
+      whereArgs: [session.id],
+    );
+    await _queueSyncEntity(
+      txn,
+      SyncEntity(
+        type: SyncEntityType.courseSession,
+        id: session.id,
+        payload: {
+          ...courseSessionSyncPayload(session),
+          if (aliases.isNotEmpty)
+            'statisticsSourceId': aliases.first['stable_id'],
+        },
+        deleted: operation == SyncOperation.delete,
+      ),
+      operation,
+    );
+  }
 
   static Future<void> _queueSyncEntity(
-    Transaction txn,
+    DatabaseExecutor txn,
     SyncEntity entity,
     SyncOperation operation, {
     int? baseRevision,

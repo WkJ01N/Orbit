@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -253,7 +254,8 @@ void main() {
       expect(xml, contains('activationType="foreground"'));
       expect(xml, contains('Open and answer'));
       expect(xml, isNot(contains('arguments="dismiss"')));
-      expect(xml, contains('loop="true"'));
+      expect(xml, contains('<audio silent="true"/>'));
+      expect(xml, isNot(contains('loop="true"')));
     },
   );
   test(
@@ -300,6 +302,22 @@ void main() {
   test(
     'v4 audio backup deduplicates content, remaps safe paths and starts restored rules now',
     () async {
+      if (Platform.isWindows) {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('com.must.orbit.orbit/windows_reminders'),
+              (call) async => null,
+            );
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding
+              .instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                const MethodChannel('com.must.orbit.orbit/windows_reminders'),
+                null,
+              ),
+        );
+      }
       SharedPreferences.setMockInitialValues({});
       final dir = await Directory.systemTemp.createTemp('orbit_audio_test_');
       final previous = ReminderAudioService.supportDirectory;

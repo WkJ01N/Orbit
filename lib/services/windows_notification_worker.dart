@@ -188,7 +188,7 @@ class NativeWindowsNotificationBackend implements WindowsNotificationBackend {
   }
 }
 
-/// System dismiss stops the Windows alarm sound without cancelling repetitions.
+/// Strong audio belongs to the native worker; toasts stay silent.
 String windowsReminderXml(ReminderAlarmSpec spec) {
   String escape(String value) => value
       .replaceAll('&', '&amp;')
@@ -210,7 +210,14 @@ String windowsReminderXml(ReminderAlarmSpec spec) {
             spec.localeTag!.contains('TW')
       : spec.stopLabel != 'Stop' &&
             (spec.body.contains('課') || spec.body.contains('彙'));
-  final guide = english
+  final deadline = spec.acknowledgementMode == 'openApp';
+  final guide = deadline
+      ? (english
+            ? 'Strong reminder: open Orbit to stop.'
+            : traditional
+            ? '強提醒：開啟 Orbit 即可關閉。'
+            : '强提醒：打开 Orbit 即可关闭。')
+      : english
       ? 'Strong reminder: open Orbit and finish the task to stop.'
       : traditional
       ? '強提醒：點擊開啟 Orbit，完成答題後結束提醒。'
@@ -220,21 +227,19 @@ String windowsReminderXml(ReminderAlarmSpec spec) {
     'rule': spec.ruleId,
     'session': spec.sessionId,
   });
-  return '<toast launch="${escape(strong ? open : spec.payload)}" ${strong ? 'scenario="alarm" duration="long"' : ''}>'
+  return '<toast launch="${escape(strong && !deadline ? open : spec.payload)}" ${strong ? 'scenario="alarm" duration="long"' : ''}>'
       '<visual><binding template="ToastGeneric"><text>${escape(spec.title)}</text>'
       '<text>${escape(strong ? "${spec.body} · $guide" : spec.body)}</text></binding></visual>'
-      '${strong && spec.strong.soundEnabled
-          ? '<audio src="ms-winsoundevent:Notification.Looping.Alarm${spec.strong.windowsSound.clamp(1, 10)}" loop="true"/>'
-          : strong
-          ? '<audio silent="true"/>'
-          : ''}'
+      '${strong ? '<audio silent="true"/>' : ''}'
       '<actions>${!strong && spec.ruleId != null && spec.acknowledgeLabel.isNotEmpty ? '<action content="${escape(spec.acknowledgeLabel)}" '
                 'arguments="${escape(ack)}" activationType="foreground"/>' : ''}'
-      '${strong ? '<action content="${escape(english
+      '${strong ? '<action content="${escape(deadline
+                ? spec.acknowledgeLabel
+                : english
                 ? 'Open and answer'
                 : traditional
                 ? '開啟並答題'
-                : '打开并答题')}" arguments="${escape(open)}" activationType="foreground"/>' : ''}'
+                : '打开并答题')}" arguments="${escape(deadline ? spec.payload : open)}" activationType="foreground"/>' : ''}'
       '</actions></toast>';
 }
 

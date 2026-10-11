@@ -604,6 +604,7 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
       ...data,
       'supportsDeadline': true,
       'supportsSettings': true,
+      'supportsStatistics': true,
       if (scope != null && !(previewAll && name == 'snapshot'))
         'selection': (await scope!.selection()).toJson(),
       if (previewAll && name == 'snapshot') 'previewAll': true,

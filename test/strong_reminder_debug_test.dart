@@ -9,6 +9,7 @@ import 'package:orbit/models/reminder_alarm_spec.dart';
 import 'package:orbit/services/reminder_id_ranges.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/windows_notification_worker.dart';
+import 'package:orbit/services/strong_session_service.dart';
 
 class _RecordingBackend implements WindowsNotificationBackend {
   _RecordingBackend(this.path);
@@ -37,6 +38,116 @@ class _RecordingBackend implements WindowsNotificationBackend {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final enabled in [true, false]) {
+    test(
+      'Windows strong debug waits for correlated playback${enabled ? " and notification" : " without notification permission"}',
+      () async {
+        final dir = await Directory.systemTemp.createTemp(
+          'orbit_native_receipt_',
+        );
+        final path = '${dir.path}/scheduled.json';
+        final worker = WindowsNotificationWorker(
+          backendFactory: () => _RecordingBackend(path),
+        );
+        final scheduler = ReminderScheduler.forTesting(windows: worker);
+        var polls = 0;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(StrongSessionService.windows, (
+              call,
+            ) async {
+              if (call.method == 'scheduleStrong') {
+                await File(path).writeAsString(call.arguments as String);
+                return null;
+              }
+              if (call.method == 'notificationsEnabled') return enabled;
+              if (call.method == 'strongDiagnostics') {
+                final key =
+                    (jsonDecode(await File(path).readAsString()) as Map)['key'];
+                polls++;
+                final receipt = {
+                  'trigger': {'key': key},
+                  'audio': {'key': key, 'ok': polls > 2},
+                  if (enabled) 'toast': {'key': key, 'ok': true},
+                };
+                return jsonEncode(
+                  enabled
+                      ? {
+                          // Another concurrent reminder may replace the latest global receipt.
+                          'toast': {'key': 'another reminder', 'ok': true},
+                          'instances': {key: receipt},
+                        }
+                      : receipt,
+                );
+              }
+              return null;
+            });
+        try {
+          final result = await scheduler.testStrongReminder(
+            title: 'Test',
+            body: 'Body',
+            copy: NotificationCopy.fromL10n(lookupL10n(const Locale('en'))),
+            strong: const StrongReminderSettings(),
+          );
+          expect(result.succeeded, isTrue);
+          expect(polls, 3);
+        } finally {
+          await scheduler.stopStrongTests();
+          worker.dispose();
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(StrongSessionService.windows, null);
+          await dir.delete(recursive: true);
+        }
+      },
+      skip: !Platform.isWindows,
+    );
+  }
+  test(
+    'Windows debug rejects a queued reminder with no actual playback receipt',
+    () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'orbit_missing_receipt_',
+      );
+      final path = '${dir.path}/scheduled.json';
+      final worker = WindowsNotificationWorker(
+        backendFactory: () => _RecordingBackend(path),
+      );
+      final scheduler = ReminderScheduler.forTesting(windows: worker);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(StrongSessionService.windows, (call) async {
+            if (call.method == 'scheduleStrong') {
+              await File(path).writeAsString(call.arguments as String);
+              return null;
+            }
+            if (call.method == 'notificationsEnabled') return true;
+            if (call.method == 'strongDiagnostics') {
+              return jsonEncode({
+                'workerAlive': true,
+                'trigger': {'key': 'another reminder'},
+                'toast': {'ok': true},
+                'audio': {'ok': true},
+              });
+            }
+            return null;
+          });
+      try {
+        final result = await scheduler.testStrongReminder(
+          title: 'Test',
+          body: 'Body',
+          copy: NotificationCopy.fromL10n(lookupL10n(const Locale('en'))),
+          strong: const StrongReminderSettings(),
+        );
+        expect(result.succeeded, isFalse);
+        expect(await File(path).exists(), isTrue);
+      } finally {
+        await scheduler.stopStrongTests();
+        worker.dispose();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(StrongSessionService.windows, null);
+        await dir.delete(recursive: true);
+      }
+    },
+    skip: !Platform.isWindows,
+  );
   test(
     'strong test bypasses global filters, retains audio and uses independent IDs',
     () async {

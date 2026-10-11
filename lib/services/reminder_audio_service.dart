@@ -9,6 +9,8 @@ class ReminderAudioService {
   @visibleForTesting
   static Future<Directory> Function() supportDirectory =
       getApplicationSupportDirectory;
+  static Future<Directory> audioDirectory() async =>
+      Directory(p.join((await supportDirectory()).path, 'reminder_audio'));
   static const maxFileBytes = 5 * 1024 * 1024;
   static const maxBackupBytes = 50 * 1024 * 1024;
   static void validate(String extension, Uint8List bytes) {
@@ -124,10 +126,12 @@ class ReminderAudioService {
     ).create(recursive: true);
     final target = File(p.join(directory.path, '${newReminderId()}$ext'));
     await target.writeAsBytes(bytes, flush: true);
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid || Platform.isWindows) {
       try {
-        await const MethodChannel(
-          'com.must.orbit.orbit/reminders',
+        await MethodChannel(
+          Platform.isWindows
+              ? 'com.must.orbit.orbit/windows_reminders'
+              : 'com.must.orbit.orbit/reminders',
         ).invokeMethod<void>('validateAudio', {'path': target.path});
       } catch (_) {
         await target.delete();

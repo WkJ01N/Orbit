@@ -56,3 +56,11 @@ https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.c
 DDL 使用独立的 `deadline` 同步实体，和课程继续共用原 CloudBase UID 及同步集合。支持 DDL 的客户端在 Orbit API 同步请求中声明 `supportsDeadline: true`。未声明此能力的旧安装包不会收到 DDL 实体；增量拉取仍按原始变更推进游标，快照即使过滤出空页也按原始记录数推进 `nextOffset`，避免重复拉取或漏页。
 
 上线顺序：先运行 `prepare-functions.ps1`，再部署旧客户端使用的 `orbit-sync-pull` 兼容代码，最后部署 `orbit-api`。另外两个旧同步函数可与 pull 一并部署以保持共享代码一致。旧函数不要移除，现有公开安装包与 Release 保持不变，直到新安装包另行发布。
+
+## 统计同步更新
+
+统计使用 `statistic` 实体和原同步集合，客户端声明 `supportsStatistics: true`；旧客户端不会收到统计实体。`statistics` 同步类别默认开启。明细按稳定课次、DDL ID 或自然日期去重；统计并发写入自动合并，删除排除标记及恢复标记按更新时间保留，已完成课次不重复累计。旧客户端编辑 DDL 时保留 `countsTowardStatistics` 与 `batchId`。
+
+发布前运行 `prepare-functions.ps1`，先部署 `orbit-sync-pull` 等旧客户端兼容函数，再部署 `orbit-api`，最后发布客户端。运行 `node --test cloudbase/functions/orbit-api/*.test.js` 验证兼容性。此次修改不需要新增云数据库集合。
+
+DDL 强提醒更新需先部署兼容后端：sync-visibility.js 保留旧客户端缺失的 strongReminderEnabled、strongLeadMinutes、disabledReminderLeadMinutes，以及显示设置 hideUpcomingPage／hideImportPage。运行 prepare-functions.ps1 后部署 orbit-api 和旧同步函数；JSON 备份仍使用 v9，客户端数据库升级 v11。

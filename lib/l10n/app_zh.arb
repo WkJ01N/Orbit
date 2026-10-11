@@ -833,7 +833,7 @@
   "androidEnhancedReminderNotificationTitle": "增強提醒已開啟",
   "androidEnhancedReminderNotificationBody": "Orbit 正在保護之後的課程提醒。",
   "androidEnhancedReminderDisable": "關閉",
-  "androidOriginOsSettings": "OriginOS 背景設定",
+  "androidOriginOsSettings": "系統背景設定",
   "androidOriginOsSettingsSubtitle": "請開啟自動啟動和背景高耗電、取消電池限制，並在最近任務中鎖定 Orbit。",
   "androidOpenAutostartSettings": "開啟設定",
   "androidForcedStopDetected": "Orbit 曾被強制停止",

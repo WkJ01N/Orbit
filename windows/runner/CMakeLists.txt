@@ -12,6 +12,7 @@ add_executable(${BINARY_NAME} WIN32
   "single_instance.cpp"
   "reminder_maintenance.cpp"
   "strong_reminders.cpp"
+  "reminder_audio.cpp"
   "utils.cpp"
   "win32_window.cpp"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
@@ -38,7 +39,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 # dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
-target_link_libraries(${BINARY_NAME} PRIVATE "taskschd.lib" "comsuppw.lib" "advapi32.lib" "runtimeobject.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "taskschd.lib" "comsuppw.lib" "advapi32.lib" "runtimeobject.lib" "mfplat.lib" "mfreadwrite.lib" "mfuuid.lib" "winmm.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.

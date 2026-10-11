@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,15 +52,21 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
 
   Future<void> _emptyTrash() async {
     final l10n = AppLocalizations.of(context)!;
+    var deleteStatistics = false;
     final confirmed = await confirmWithSteps(
       context,
+      finalContent: StatisticsDeletionChoice(
+        onChanged: (v) => deleteStatistics = v,
+      ),
       steps: [
         (l10n.trashEmptyConfirm1Title, l10n.trashEmptyConfirm1Content),
         (l10n.trashEmptyConfirm2Title, l10n.trashEmptyConfirm2Content),
       ],
     );
     if (!confirmed || !mounted) return;
-    await ref.read(scheduleRepositoryProvider).purgeAllDeletedSessions();
+    await ref
+        .read(scheduleRepositoryProvider)
+        .purgeAllDeletedSessions(deleteStatistics: deleteStatistics);
     if (mounted) _reload();
   }
 

@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 import 'package:orbit/features/archive/archive_actions.dart';
@@ -180,24 +181,31 @@ class SessionActionMenu {
     final timeLabel =
         '${session.startAt.hour.toString().padLeft(2, '0')}:${session.startAt.minute.toString().padLeft(2, '0')}';
 
+    var deleteStatistics = false;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.deleteSessionConfirmTitle),
-        content: Text(
-          targets.length > 1
-              ? l10n.courseOperationSummary(
-                  targets.length,
-                  DateFormat('yyyy-MM-dd').format(targets.first.date),
-                  DateFormat('yyyy-MM-dd').format(targets.last.date),
-                  0,
-                )
-              : l10n.deleteSessionConfirmContent(
-                  session.courseName,
-                  dateLabel,
-                  timeLabel,
-                  session.room,
-                ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              targets.length > 1
+                  ? l10n.courseOperationSummary(
+                      targets.length,
+                      DateFormat('yyyy-MM-dd').format(targets.first.date),
+                      DateFormat('yyyy-MM-dd').format(targets.last.date),
+                      0,
+                    )
+                  : l10n.deleteSessionConfirmContent(
+                      session.courseName,
+                      dateLabel,
+                      timeLabel,
+                      session.room,
+                    ),
+            ),
+            StatisticsDeletionChoice(onChanged: (v) => deleteStatistics = v),
+          ],
         ),
         actions: [
           TextButton(
@@ -220,6 +228,7 @@ class SessionActionMenu {
         final result = await repository.deleteCourseSeries(
           selected: session,
           scope: scope,
+          deleteStatistics: deleteStatistics,
         );
         refreshScheduleContainer(container);
         if (context.mounted) {

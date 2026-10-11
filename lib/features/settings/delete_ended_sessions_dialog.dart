@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +9,9 @@ import 'package:orbit/providers/app_providers.dart';
 
 Future<bool> confirmDeleteEndedSessions(
   BuildContext context,
-  WidgetRef ref,
-) async {
+  WidgetRef ref, {
+  ValueChanged<bool>? onDeleteStatistics,
+}) async {
   final l10n = AppLocalizations.of(context)!;
   final count = await ref.read(scheduleRepositoryProvider).countEndedSessions();
 
@@ -26,6 +28,9 @@ Future<bool> confirmDeleteEndedSessions(
 
   return confirmWithSteps(
     context,
+    finalContent: StatisticsDeletionChoice(
+      onChanged: (v) => onDeleteStatistics?.call(v),
+    ),
     steps: [
       (l10n.deleteEndedConfirm1Title, l10n.deleteEndedConfirm1Content(count)),
       (l10n.deleteEndedConfirm2Title, l10n.deleteEndedConfirm2Content),
@@ -38,7 +43,12 @@ Future<void> deleteEndedSessionsWithFeedback(
   WidgetRef ref,
 ) async {
   final l10n = AppLocalizations.of(context)!;
-  final confirmed = await confirmDeleteEndedSessions(context, ref);
+  var deleteStatistics = false;
+  final confirmed = await confirmDeleteEndedSessions(
+    context,
+    ref,
+    onDeleteStatistics: (v) => deleteStatistics = v,
+  );
   if (!confirmed || !context.mounted) {
     return;
   }
@@ -52,7 +62,7 @@ Future<void> deleteEndedSessionsWithFeedback(
             .toList();
     final deleted = await ref
         .read(scheduleRepositoryProvider)
-        .deleteEndedSessions(before: now);
+        .deleteEndedSessions(before: now, deleteStatistics: deleteStatistics);
     await rescheduleAllReminders(ref);
     refreshSchedule(ref);
 

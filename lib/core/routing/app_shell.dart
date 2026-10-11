@@ -1,3 +1,5 @@
+import 'package:orbit/features/deadline/deadline_strong_host.dart';
+import 'package:orbit/core/routing/app_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/features/grid/grid_page.dart';
@@ -12,11 +14,13 @@ import 'package:orbit/providers/app_providers.dart';
 
 class _NavItem {
   const _NavItem({
+    required this.tab,
     required this.icon,
     required this.selectedIcon,
     required this.label,
   });
 
+  final AppTab tab;
   final IconData icon;
   final IconData selectedIcon;
   final String label;
@@ -37,21 +41,25 @@ class AppShell extends ConsumerWidget {
   List<_NavItem> _navItems(AppLocalizations l10n) {
     return [
       _NavItem(
+        tab: AppTab.grid,
         icon: Icons.grid_view_outlined,
         selectedIcon: Icons.grid_view,
         label: l10n.navGrid,
       ),
       _NavItem(
+        tab: AppTab.upcoming,
         icon: Icons.schedule_outlined,
         selectedIcon: Icons.schedule,
         label: l10n.navUpcoming,
       ),
       _NavItem(
+        tab: AppTab.import,
         icon: Icons.upload_file_outlined,
         selectedIcon: Icons.upload_file,
         label: l10n.navImport,
       ),
       _NavItem(
+        tab: AppTab.settings,
         icon: Icons.settings_outlined,
         selectedIcon: Icons.settings,
         label: l10n.navSettings,
@@ -62,14 +70,36 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final items = _navItems(l10n);
-    final selectedIndex = ref.watch(appNavIndexProvider);
+    final display = ref.watch(scheduleDisplaySettingsProvider);
+    final items = _navItems(l10n)
+        .where(
+          (item) =>
+              !(item.tab == AppTab.upcoming && display.hideUpcomingPage) &&
+              !(item.tab == AppTab.import && display.hideImportPage),
+        )
+        .toList();
+    final requestedIndex = ref.watch(appNavIndexProvider);
+    final selectedIndex = items.any((item) => item.tab.index == requestedIndex)
+        ? requestedIndex
+        : AppTab.grid.index;
+    final navigationIndex = items.indexWhere(
+      (item) => item.tab.index == selectedIndex,
+    );
+    if (requestedIndex != selectedIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted &&
+            ref.read(appNavIndexProvider) == requestedIndex) {
+          ref.read(appNavIndexProvider.notifier).state = selectedIndex;
+        }
+      });
+    }
     final colorScheme = Theme.of(context).colorScheme;
 
     Future<void> onDestinationSelected(int index) async {
-      if (index == selectedIndex) return;
+      final target = items[index].tab.index;
+      if (target == selectedIndex) return;
       if (!await cancelGridSelection(context, ref) || !context.mounted) return;
-      ref.read(appNavIndexProvider.notifier).state = index;
+      ref.read(appNavIndexProvider.notifier).state = target;
     }
 
     // The settings page renders its own banner inside the reminders section, so
@@ -78,12 +108,10 @@ class AppShell extends ConsumerWidget {
     final showReminderBanner =
         rescheduleError != null && selectedIndex != AppShell._settingsIndex;
 
-    Widget wrapWithBanner(Widget content) {
-      if (!showReminderBanner) {
-        return content;
-      }
-      return Column(
-        children: [
+    Widget wrapWithBanner(Widget content) => Column(
+      children: [
+        const DeadlineStrongBanner(),
+        if (showReminderBanner)
           ReminderResyncBanner(
             error: rescheduleError,
             onDismiss: () =>
@@ -91,10 +119,9 @@ class AppShell extends ConsumerWidget {
             onResync: () =>
                 ref.read(reminderSettingsProvider.notifier).resyncReminders(),
           ),
-          Expanded(child: content),
-        ],
-      );
-    }
+        Expanded(child: content),
+      ],
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -105,7 +132,7 @@ class AppShell extends ConsumerWidget {
             body: Row(
               children: [
                 NavigationRail(
-                  selectedIndex: selectedIndex,
+                  selectedIndex: navigationIndex,
                   onDestinationSelected: onDestinationSelected,
                   labelType: NavigationRailLabelType.selected,
                   leading: Padding(
@@ -152,7 +179,7 @@ class AppShell extends ConsumerWidget {
             _AnimatedIndexedStack(index: selectedIndex, children: _pages),
           ),
           bottomNavigationBar: NavigationBar(
-            selectedIndex: selectedIndex,
+            selectedIndex: navigationIndex,
             onDestinationSelected: onDestinationSelected,
             destinations: [
               for (final item in items)

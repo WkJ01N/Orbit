@@ -1,6 +1,9 @@
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 import 'package:orbit/models/orbit_feature_text.dart';
+import 'package:orbit/models/windows_reminder_text.dart';
+import 'package:orbit/services/strong_session_service.dart';
+import 'package:orbit/providers/permission_providers.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,7 +37,8 @@ class _DebugPageState extends ConsumerState<DebugPage> {
             enabled: !_testing,
             onTap: () => _strongTest(context, false),
           ),
-          if (widget.showAndroidTools ?? Platform.isAndroid)
+          if ((widget.showAndroidTools ?? Platform.isAndroid) ||
+              Platform.isWindows)
             ListTile(
               title: Text(OrbitFeatureText.of(context).backgroundStrongTest),
               leading: const Icon(Icons.alarm_on),
@@ -47,6 +51,13 @@ class _DebugPageState extends ConsumerState<DebugPage> {
             enabled: !_testing,
             onTap: () => _stopTests(context),
           ),
+          if (Platform.isWindows)
+            ListTile(
+              title: Text(WindowsReminderText.of(context).diagnostics),
+              leading: const Icon(Icons.fact_check_outlined),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showWindowsDiagnostics(context),
+            ),
           ListTile(
             title: Text(l10n.androidTestImmediateReminder),
             subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
@@ -88,6 +99,12 @@ class _DebugPageState extends ConsumerState<DebugPage> {
             strong: settings.strong,
             background: background,
           );
+      final audioOnly =
+          Platform.isWindows &&
+          result.succeeded &&
+          !background &&
+          !(await ref.read(reminderSchedulerProvider).queryPermissionStatus())
+              .notificationsEnabled;
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
@@ -98,6 +115,8 @@ class _DebugPageState extends ConsumerState<DebugPage> {
                 ? l.androidTestBackgroundReminderScheduledAt(
                     TimeOfDay.fromDateTime(result.fireAt!).format(context),
                   )
+                : audioOnly
+                ? WindowsReminderText.of(context).audioOnly
                 : text.testShown,
           ),
         ),
@@ -173,6 +192,67 @@ class _DebugPageState extends ConsumerState<DebugPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _showWindowsDiagnostics(BuildContext context) async {
+    final text = WindowsReminderText.of(context);
+    try {
+      final status = await StrongSessionService.call('strongDiagnostics') ?? {};
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(text.diagnostics),
+          content: SizedBox(
+            width: 520,
+            height: MediaQuery.sizeOf(context).height * 0.5,
+            child: ListView(
+              children: [
+                Text(
+                  '${text.worker}: ${status['workerAlive'] == true ? text.running : text.stopped}',
+                ),
+                Text(
+                  text.pending((status['pendingCount'] as num?)?.toInt() ?? 0),
+                ),
+                const Divider(),
+                if ((status['events'] as List? ?? []).isEmpty) Text(text.empty),
+                for (final event in (status['events'] as List? ?? []).reversed)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      event['ok'] == true
+                          ? Icons.check_circle_outline
+                          : Icons.error_outline,
+                    ),
+                    title: Text(text.stage('${event['stage']}')),
+                    subtitle: Text(
+                      '${event['ok'] == true ? text.ok : text.failed} · ${event['hr']}\n${DateTime.fromMillisecondsSinceEpoch((event['at'] as num).toInt())}',
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => ref
+                  .read(notificationPermissionServiceProvider)
+                  .openSettings(),
+              child: Text(text.settings),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showAppSnackBar(SnackBar(content: Text(text.failed)));
+      }
+    }
   }
 
   String _failureMessage(AppLocalizations l10n, ReminderTestFailure? failure) {

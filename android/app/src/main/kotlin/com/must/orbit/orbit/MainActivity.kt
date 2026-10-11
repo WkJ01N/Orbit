@@ -25,7 +25,15 @@ class MainActivity : FlutterActivity() {
         openStrongSession()
         super.onCreate(savedInstanceState)
     }
-    override fun onResume() { super.onResume(); openStrongSession() }
+    override fun onResume() {
+        super.onResume()
+        try { OrbitDeadlineStrongSession.visibility(this,true) } catch(e: Exception) { OrbitReminderDiagnostics.failure(this,"deadline_open",error=e) }
+        openStrongSession()
+    }
+    override fun onPause() {
+        try { OrbitDeadlineStrongSession.visibility(this,false) } catch(e: Exception) { OrbitReminderDiagnostics.failure(this,"deadline_visibility",error=e) }
+        super.onPause()
+    }
 
     override fun onNewIntent(intent: Intent) {
         openStrongSession()
@@ -165,6 +173,21 @@ class MainActivity : FlutterActivity() {
                                 result.success(null)
                             }
                         } catch(e: Exception) { result.error("install_update",e.message,null) }
+                    }
+                    "deadlineStrongOpen" -> {
+                        try { result.success(if (OrbitDeadlineStrongSession.foreground(this)) OrbitDeadlineStrongSession.open(this).toString() else null) }
+                        catch(e: Exception) { result.error("deadline_open",e.message,null) }
+                    }
+                    "deadlineStrongEventsHandled" -> {
+                        try { result.success(OrbitDeadlineStrongSession.eventsHandled(this,(call.argument<List<String>>("ids") ?: emptyList()).toSet()).toString()) }
+                        catch(e: Exception) { result.error("deadline_events",e.message,null) }
+                    }
+                    "deadlineStrongReconcile" -> {
+                        try {
+                            val array=org.json.JSONArray(call.arguments as String)
+                            OrbitDeadlineStrongSession.reconcile(this,(0 until array.length()).map { array.getString(it) }.toSet())
+                            result.success(null)
+                        } catch(e: Exception) { result.error("deadline_reconcile",e.message,null) }
                     }
                     "strongLeave" -> result.success(OrbitStrongSession.leave(this)?.toString())
                     "strongState" -> result.success(OrbitStrongSession.state(this)?.toString())

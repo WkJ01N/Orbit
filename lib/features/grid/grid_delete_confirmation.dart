@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/formatters/date_time_formatters.dart';
@@ -49,6 +50,7 @@ class _GridDeleteConfirmationState
   late List<CourseSession> _targets;
   bool _expanded = false;
   bool _busy = false;
+  bool _deleteStatistics = false;
   String? _error;
   @override
   void initState() {
@@ -88,7 +90,10 @@ class _GridDeleteConfirmationState
         _notify();
         return;
       }
-      final deleted = await repository.deleteSessionIds(ids);
+      final deleted = await repository.deleteSessionIds(
+        ids,
+        deleteStatistics: _deleteStatistics,
+      );
       // A successful delete stays successful even if reminder resync fails.
       refreshScheduleContainer(container);
       var failures = 0;
@@ -142,6 +147,7 @@ class _GridDeleteConfirmationState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(text.trashHint),
+              StatisticsDeletionChoice(onChanged: (v) => _deleteStatistics = v),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

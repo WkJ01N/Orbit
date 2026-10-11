@@ -6,8 +6,85 @@ import 'package:orbit/features/deadline/deadline_ui.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/data/database/app_database.dart';
+import 'package:orbit/models/deadline.dart';
+
+class _ReuseDatabase implements AppDatabase {
+  @override
+  Future<List<Deadline>> getDeadlines({bool includeDeleted = false}) async => [
+    Deadline(
+      id: 'template',
+      subject: 'Math',
+      title: 'Archived template',
+      dueAt: DateTime(2025),
+      leadMinutes: const [60],
+      completedAt: DateTime(2025),
+      archivedAt: DateTime(2025),
+      countsTowardStatistics: false,
+    ),
+  ];
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
+  testWidgets(
+    'reuse resets statistics opt-out to checked and keeps the choice in batch mode',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(_ReuseDatabase()),
+            sessionsProvider.overrideWith((_) async => []),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (c) => Scaffold(
+                body: TextButton(
+                  onPressed: () => showDeadlineEditor(c),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reuse an existing DDL'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archived template'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isTrue,
+      );
+      expect(
+        tester
+            .widgetList<TextField>(find.byType(TextField))
+            .map((f) => f.controller?.text),
+        contains('Archived template'),
+      );
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump();
+      await tester.tap(find.text('Batch'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isFalse,
+      );
+      expect(find.text('Weeks'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('DDL editor fits a narrow screen and switches subjects', (
     tester,
   ) async {

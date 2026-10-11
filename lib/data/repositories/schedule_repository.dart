@@ -66,8 +66,9 @@ class ScheduleRepository {
 
   Future<List<CourseSession>> importParsedSessionsWithStrategy(
     List<CourseSession> sessions,
-    ImportMergeStrategy strategy,
-  ) async {
+    ImportMergeStrategy strategy, {
+    bool deleteStatistics = false,
+  }) async {
     if (sessions.isEmpty) {
       return sessions;
     }
@@ -100,7 +101,11 @@ class ScheduleRepository {
           .map((s) => s.id)
           .toList();
     }
-    await _database.replaceSessions(deleteIds: deleteIds, upsert: sessions);
+    await _database.replaceSessions(
+      deleteIds: deleteIds,
+      upsert: sessions,
+      deleteStatistics: deleteStatistics,
+    );
     return sessions;
   }
 
@@ -262,6 +267,7 @@ class ScheduleRepository {
     required CourseSession selected,
     required CourseSession changes,
     required CourseOperationScope scope,
+    bool deleteStatistics = false,
   }) async {
     final prepared = await _prepareCourseSeriesUpdate(
       selected: selected,
@@ -274,6 +280,7 @@ class ScheduleRepository {
         ...prepared.conflictIds,
       ],
       upsert: prepared.updated,
+      deleteStatistics: deleteStatistics,
       identityChanges: {
         for (var i = 0; i < prepared.targets.length; i++)
           prepared.targets[i].id: prepared.updated[i].id,
@@ -288,10 +295,12 @@ class ScheduleRepository {
   Future<CourseOperationResult> deleteCourseSeries({
     required CourseSession selected,
     required CourseOperationScope scope,
+    bool deleteStatistics = false,
   }) async {
     final targets = await getCourseSeries(selected, scope);
     final deleted = await _database.softDeleteSessionIds(
       targets.map((session) => session.id).toList(),
+      deleteStatistics: deleteStatistics,
     );
     return CourseOperationResult(affectedCount: deleted);
   }
@@ -323,7 +332,8 @@ class ScheduleRepository {
     return _database.purgeDeletedBefore(cutoff);
   }
 
-  Future<int> purgeAllDeletedSessions() => _database.purgeAllDeleted();
+  Future<int> purgeAllDeletedSessions({bool deleteStatistics = false}) =>
+      _database.purgeAllDeleted(deleteStatistics: deleteStatistics);
 
   Future<CourseSession?> getSessionById(String id) {
     return _database.getSessionById(id);
@@ -394,6 +404,7 @@ class ScheduleRepository {
   Future<int> saveSessionWithConflictResolution(
     CourseSession session, {
     CourseSession? original,
+    bool deleteStatistics = false,
   }) async {
     final newId = session.computeId();
     final sessionWithId = session.copyWith(id: newId);
@@ -416,6 +427,7 @@ class ScheduleRepository {
     await _database.replaceSessions(
       deleteIds: deleteIds,
       upsert: [sessionWithId],
+      deleteStatistics: deleteStatistics,
       identityChanges: original == null ? const {} : {original.id: newId},
     );
     return conflicts.length;
@@ -443,6 +455,7 @@ class ScheduleRepository {
     required CourseSession selected,
     required CourseSession changes,
     required RecurringCourseEditScope scope,
+    bool deleteStatistics = false,
   }) async {
     final prepared = await _prepareRecurringCourseUpdate(
       selected: selected,
@@ -455,6 +468,11 @@ class ScheduleRepository {
         ...prepared.conflictIds,
       ],
       upsert: prepared.updated,
+      deleteStatistics: deleteStatistics,
+      identityChanges: {
+        for (var i = 0; i < prepared.targets.length; i++)
+          prepared.targets[i].id: prepared.updated[i].id,
+      },
     );
     return CourseOperationResult(
       affectedCount: prepared.targets.length,
@@ -482,6 +500,7 @@ class ScheduleRepository {
   Future<BatchCourseSaveResult> saveBatchSessions(
     List<CourseSession> generated, {
     required BatchConflictStrategy strategy,
+    bool deleteStatistics = false,
   }) async {
     if (generated.isEmpty) {
       return const BatchCourseSaveResult(
@@ -511,6 +530,7 @@ class ScheduleRepository {
           ? conflictIds.toList()
           : const [],
       upsert: toInsert,
+      deleteStatistics: deleteStatistics,
     );
     return BatchCourseSaveResult(
       createdCount: toInsert.length,
@@ -555,15 +575,20 @@ class ScheduleRepository {
     return _database.getSessionsBetween(start, end);
   }
 
-  Future<int> clearAll() {
-    return _database.clearAllSessions();
+  Future<int> clearAll({bool deleteStatistics = false}) {
+    return _database.clearAllSessions(deleteStatistics: deleteStatistics);
   }
 
-  Future<int> deleteSessionIds(Iterable<String> ids) =>
-      _database.softDeleteSessionIds(ids.toSet().toList());
+  Future<int> deleteSessionIds(
+    Iterable<String> ids, {
+    bool deleteStatistics = false,
+  }) => _database.softDeleteSessionIds(
+    ids.toSet().toList(),
+    deleteStatistics: deleteStatistics,
+  );
 
-  Future<int> deleteSession(String id) {
-    return _database.deleteSessionById(id);
+  Future<int> deleteSession(String id, {bool deleteStatistics = false}) {
+    return _database.deleteSessionById(id, deleteStatistics: deleteStatistics);
   }
 
   Future<void> updateSession(
@@ -583,8 +608,14 @@ class ScheduleRepository {
     return _database.countEndedSessions(before ?? DateTime.now());
   }
 
-  Future<int> deleteEndedSessions({DateTime? before}) {
-    return _database.deleteEndedSessions(before ?? DateTime.now());
+  Future<int> deleteEndedSessions({
+    DateTime? before,
+    bool deleteStatistics = false,
+  }) {
+    return _database.deleteEndedSessions(
+      before ?? DateTime.now(),
+      deleteStatistics: deleteStatistics,
+    );
   }
 
   Future<int> countSessionsFullyInRange(
@@ -596,9 +627,14 @@ class ScheduleRepository {
 
   Future<int> deleteSessionsFullyInRange(
     DateTime startInclusive,
-    DateTime endInclusive,
-  ) {
-    return _database.deleteSessionsFullyInRange(startInclusive, endInclusive);
+    DateTime endInclusive, {
+    bool deleteStatistics = false,
+  }) {
+    return _database.deleteSessionsFullyInRange(
+      startInclusive,
+      endInclusive,
+      deleteStatistics: deleteStatistics,
+    );
   }
 
   Future<DateTime?> getEarliestWeekStart() async {
@@ -612,14 +648,19 @@ class ScheduleRepository {
   Future<List<CourseSession>> restoreBackupSessions(
     List<CourseSession> sessions, {
     required ImportMergeStrategy strategy,
+    bool deleteStatistics = false,
   }) async {
     if (strategy == ImportMergeStrategy.replaceWeek) {
-      await _database.replaceAllActiveSessions(sessions);
+      await _database.replaceAllActiveSessions(
+        sessions,
+        deleteStatistics: deleteStatistics,
+      );
       return sessions;
     }
     return importParsedSessionsWithStrategy(
       sessions,
       ImportMergeStrategy.mergeOverwrite,
+      deleteStatistics: deleteStatistics,
     );
   }
 

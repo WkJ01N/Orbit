@@ -11,6 +11,7 @@ import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/notification_providers.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
+import 'package:orbit/services/strong_session_service.dart';
 import 'package:orbit/services/tray_service.dart';
 
 class OrbitNotificationListener extends ConsumerStatefulWidget {
@@ -160,7 +161,10 @@ class _OrbitNotificationListenerState
     if (payload.startsWith('{')) {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       if (data['action'] == 'strong') {
-        if (Platform.isWindows) await showMainWindow();
+        if (Platform.isWindows) {
+          await showMainWindow();
+          await StrongSessionService.call('strongOpen');
+        }
         return;
       }
       if (data['action'] == 'ack') {
@@ -189,6 +193,7 @@ class _OrbitNotificationListenerState
       await showMainWindow();
     }
 
+    if (!context.mounted) return;
     if (payload.startsWith('deadline:')) {
       final deadline = await ref
           .read(appDatabaseProvider)
@@ -200,7 +205,7 @@ class _OrbitNotificationListenerState
     }
 
     if (payload.startsWith('next_day')) {
-      navigateToAppTab(ref, AppTab.upcoming);
+      navigateToAppTab(ref, AppTab.upcoming, context: context);
       return;
     }
 
@@ -211,8 +216,9 @@ class _OrbitNotificationListenerState
     final session = await ref
         .read(scheduleRepositoryProvider)
         .getSessionById(sessionId);
-    if (!context.mounted || session == null) {
-      navigateToAppTab(ref, AppTab.upcoming);
+    if (!context.mounted) return;
+    if (session == null) {
+      navigateToAppTab(ref, AppTab.upcoming, context: context);
       return;
     }
 

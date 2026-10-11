@@ -2240,7 +2240,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get androidEnhancedReminderDisable => '關閉';
 
   @override
-  String get androidOriginOsSettings => 'OriginOS 背景設定';
+  String get androidOriginOsSettings => '系統背景設定';
 
   @override
   String get androidOriginOsSettingsSubtitle =>
@@ -4507,7 +4507,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get androidEnhancedReminderDisable => '关闭';
 
   @override
-  String get androidOriginOsSettings => 'OriginOS 后台设置';
+  String get androidOriginOsSettings => '系统后台设置';
 
   @override
   String get androidOriginOsSettingsSubtitle =>
@@ -6774,7 +6774,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get androidEnhancedReminderDisable => '關閉';
 
   @override
-  String get androidOriginOsSettings => 'OriginOS 背景設定';
+  String get androidOriginOsSettings => '系統背景設定';
 
   @override
   String get androidOriginOsSettingsSubtitle =>

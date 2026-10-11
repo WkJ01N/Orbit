@@ -1,5 +1,9 @@
+import 'package:orbit/data/database/app_database.dart';
+import 'package:orbit/models/statistics_text.dart';
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/providers/course_color_providers.dart';
+import 'package:orbit/providers/account_sync_providers.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -20,8 +24,9 @@ import 'package:orbit/core/formatters/date_time_formatters.dart';
 Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
   final l10n = AppLocalizations.of(context)!;
   try {
-    final repository = ref.read(scheduleRepositoryProvider);
-    final sessions = await repository.getAllSessions();
+    final database = ref.read(appDatabaseProvider);
+    await database.refreshStatistics();
+    final sessions = await database.getAllSessions(includeDeleted: true);
     if (!context.mounted) {
       return;
     }
@@ -30,11 +35,16 @@ Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
         .ensureSaved(sessions);
     final settings = await ref
         .read(settingsServiceProvider)
-        .exportPortableSettings();
+        .exportPortableSettings(
+          accountUid: (await database.activeSyncAccount())?.uid,
+        );
     final json = await ScheduleBackupService().encodeWithAudio(
       sessions,
       settings,
-      deadlines: await ref.read(appDatabaseProvider).getDeadlines(),
+      deadlines: await ref
+          .read(appDatabaseProvider)
+          .getDeadlines(includeDeleted: true),
+      statistics: await ref.read(appDatabaseProvider).statisticsRecords(),
       sessionAliases: await ref
           .read(appDatabaseProvider)
           .reminderSessionAliases(),
@@ -179,28 +189,59 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       return;
     }
 
+    final settingsService = ref.read(settingsServiceProvider);
+    final accountUid =
+        (await ref.read(appDatabaseProvider).activeSyncAccount())?.uid;
+    final previousPreferences = await settingsService.snapshotPreferences();
+    final previousSettings =
+        selection.restoreSettings &&
+            backup.settings != null &&
+            selection.strategy == ImportMergeStrategy.mergeOverwrite
+        ? await settingsService.exportPortableSettings(accountUid: accountUid)
+        : null;
     final restoredSettings =
         selection.restoreSettings && backup.settings != null
         ? await ScheduleBackupService().restoreAudio(backup)
         : null;
-    List<CourseSession> restored = const [];
-    if (selection.restoreCourses) {
-      restored = await ref
-          .read(scheduleRepositoryProvider)
-          .restoreBackupSessions(backup.sessions, strategy: selection.strategy);
-    }
-    if (selection.restoreDeadlines) {
-      for (final deadline in backup.deadlines) {
-        await ref.read(appDatabaseProvider).saveDeadline(deadline);
+    final restored = selection.restoreCourses
+        ? backup.sessions
+        : const <CourseSession>[];
+    try {
+      await ref
+          .read(appDatabaseProvider)
+          .restoreUserBackup(
+            sessions: selection.restoreCourses ? backup.sessions : null,
+            deadlines: selection.restoreDeadlines ? backup.deadlines : null,
+            statistics: selection.restoreStatistics ? backup.statistics : null,
+            aliases: backup.sessionAliases,
+            memberships: backup.seriesMemberships,
+            replace: selection.strategy == ImportMergeStrategy.replaceWeek,
+            deleteStatistics: selection.deleteStatistics,
+            restoreSettings: restoredSettings == null
+                ? null
+                : () => settingsService.importPortableSettings(
+                    previousSettings == null
+                        ? restoredSettings.settings
+                        : restoredSettings.settings.mergeWith(previousSettings),
+                    accountUid: accountUid,
+                  ),
+          );
+    } catch (_) {
+      if (restoredSettings != null) {
+        try {
+          await settingsService.restorePreferences(previousPreferences);
+        } finally {
+          await ScheduleBackupService().discardImportedAudio(
+            restoredSettings.importedFiles,
+          );
+        }
       }
+      rethrow;
     }
     if (selection.restoreCourses || selection.restoreDeadlines) {
       refreshSchedule(ref);
     }
     if (restoredSettings != null) {
-      await ref
-          .read(settingsServiceProvider)
-          .importPortableSettings(restoredSettings.settings);
       await ref.read(appDatabaseProvider).clearReminderHistory();
       if (restoredSettings.soundFallback && context.mounted) {
         _showSnackBar(context, l10n.reminderSoundFallback);
@@ -219,8 +260,10 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       ref.invalidate(scheduleDisplaySettingsProvider);
       ref.invalidate(archiveSettingsProvider);
       ref.invalidate(importConfigurationProvider);
+      ref.invalidate(autoSyncSettingsProvider);
       ref.invalidate(reminderSettingsProvider);
       await ref.read(reminderSettingsProvider.future);
+      await ref.read(startupServiceProvider).syncWithPreference();
     }
     final failures = await ref
         .read(reminderSettingsProvider.notifier)
@@ -247,12 +290,16 @@ class _RestoreSelection {
     required this.restoreCourses,
     required this.restoreDeadlines,
     required this.restoreSettings,
+    required this.restoreStatistics,
+    required this.deleteStatistics,
     required this.strategy,
   });
 
   final bool restoreCourses;
   final bool restoreDeadlines;
   final bool restoreSettings;
+  final bool restoreStatistics;
+  final bool deleteStatistics;
   final ImportMergeStrategy strategy;
 }
 
@@ -261,8 +308,10 @@ Future<_RestoreSelection?> _showRestoreOptions(
   OrbitBackup backup,
 ) {
   final l10n = AppLocalizations.of(context)!;
-  var restoreCourses = backup.sessions.isNotEmpty;
-  var restoreDeadlines = backup.deadlines.isNotEmpty;
+  var restoreCourses = backup.version >= 9 || backup.sessions.isNotEmpty;
+  var restoreStatistics = backup.version >= 9;
+  var deleteStatistics = false;
+  var restoreDeadlines = backup.version >= 9 || backup.deadlines.isNotEmpty;
   var restoreSettings = backup.settings != null;
   var strategy = ImportMergeStrategy.mergeOverwrite;
   final dates = backup.sessions.map((session) => session.date).toList()..sort();
@@ -296,12 +345,12 @@ Future<_RestoreSelection?> _showRestoreOptions(
                 contentPadding: EdgeInsets.zero,
                 value: restoreCourses,
                 title: Text(l10n.restoreCoursesOption),
-                onChanged: backup.sessions.isEmpty
+                onChanged: backup.version < 9 && backup.sessions.isEmpty
                     ? null
                     : (value) =>
                           setState(() => restoreCourses = value ?? false),
               ),
-              if (backup.deadlines.isNotEmpty)
+              if (backup.version >= 9 || backup.deadlines.isNotEmpty)
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   value: restoreDeadlines,
@@ -310,6 +359,16 @@ Future<_RestoreSelection?> _showRestoreOptions(
                   ),
                   onChanged: (value) =>
                       setState(() => restoreDeadlines = value ?? false),
+                ),
+              if (backup.version >= 9)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: restoreStatistics,
+                  title: Text(
+                    '${StatisticsText.of(context).selectStatistics} (${backup.statistics.length})',
+                  ),
+                  onChanged: (v) =>
+                      setState(() => restoreStatistics = v ?? false),
                 ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
@@ -320,7 +379,7 @@ Future<_RestoreSelection?> _showRestoreOptions(
                     : (value) =>
                           setState(() => restoreSettings = value ?? false),
               ),
-              if (restoreCourses)
+              if (restoreCourses || restoreDeadlines || restoreStatistics)
                 DropdownButtonFormField<ImportMergeStrategy>(
                   initialValue: strategy,
                   decoration: const InputDecoration(
@@ -341,7 +400,14 @@ Future<_RestoreSelection?> _showRestoreOptions(
                         strategy = value ?? ImportMergeStrategy.mergeOverwrite,
                   ),
                 ),
-              if (!restoreCourses && !restoreDeadlines && !restoreSettings) ...[
+              if (restoreCourses)
+                StatisticsDeletionChoice(
+                  onChanged: (v) => deleteStatistics = v,
+                ),
+              if (!restoreCourses &&
+                  !restoreDeadlines &&
+                  !restoreSettings &&
+                  !restoreStatistics) ...[
                 const SizedBox(height: 12),
                 Text(
                   l10n.restoreNothingSelected,
@@ -357,7 +423,11 @@ Future<_RestoreSelection?> _showRestoreOptions(
             child: Text(l10n.actionCancel),
           ),
           FilledButton(
-            onPressed: !restoreCourses && !restoreDeadlines && !restoreSettings
+            onPressed:
+                !restoreCourses &&
+                    !restoreDeadlines &&
+                    !restoreSettings &&
+                    !restoreStatistics
                 ? null
                 : () => Navigator.pop(
                     context,
@@ -365,6 +435,8 @@ Future<_RestoreSelection?> _showRestoreOptions(
                       restoreCourses: restoreCourses,
                       restoreDeadlines: restoreDeadlines,
                       restoreSettings: restoreSettings,
+                      restoreStatistics: restoreStatistics,
+                      deleteStatistics: deleteStatistics,
                       strategy: strategy,
                     ),
                   ),

@@ -16,6 +16,9 @@ class ReminderAlarmSpec {
     this.courseEndAt,
     this.ruleId,
     this.sessionId,
+    this.deadlineId,
+    this.leadMinutes,
+    this.acknowledgementMode,
     this.sendIndex = 1,
     this.originalFireAt,
     this.catchUp = false,
@@ -40,6 +43,9 @@ class ReminderAlarmSpec {
   final DateTime? courseEndAt;
   final String? ruleId;
   final String? sessionId;
+  final String? deadlineId;
+  final int? leadMinutes;
+  final String? acknowledgementMode;
   final int sendIndex;
   final DateTime? originalFireAt;
   final bool catchUp;
@@ -63,6 +69,9 @@ class ReminderAlarmSpec {
       if (courseEndAt != null) 'courseEndAt': courseEndAt!.toIso8601String(),
       'ruleId': ruleId,
       'sessionId': sessionId,
+      'deadlineId': deadlineId,
+      'leadMinutes': leadMinutes,
+      'acknowledgementMode': acknowledgementMode,
       'sendIndex': sendIndex,
       'originalFireAt': originalFireAt?.toIso8601String(),
       'catchUp': catchUp,
@@ -87,6 +96,9 @@ class ReminderAlarmSpec {
       courseEndAt: DateTime.tryParse(json['courseEndAt'] as String? ?? ''),
       ruleId: json['ruleId'] as String?,
       sessionId: json['sessionId'] as String?,
+      deadlineId: json['deadlineId'] as String?,
+      leadMinutes: json['leadMinutes'] as int?,
+      acknowledgementMode: json['acknowledgementMode'] as String?,
       sendIndex: json['sendIndex'] as int? ?? 1,
       originalFireAt: DateTime.tryParse(
         json['originalFireAt'] as String? ?? '',

@@ -10,6 +10,8 @@ import 'package:orbit/core/widgets/reminder_template_field.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/features/grid/strong_grid_decoration.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
+import 'package:orbit/features/reminder/strong_confirmation.dart';
+import 'package:orbit/features/session/session_detail_sheet.dart';
 import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/features/settings/theme_scheme_page.dart';
 import 'package:orbit/features/settings/strong_reminder_page.dart';
@@ -81,6 +83,7 @@ Future<void> pumpPreview(
   WidgetTester tester,
   Widget child, {
   double width = 320,
+  double textScale = 1,
   Brightness brightness = Brightness.light,
   bool strong = false,
   StrongCardGradient gradient = StrongCardGradient.upperHalf,
@@ -123,6 +126,12 @@ Future<void> pumpPreview(
         currentTimeProvider.overrideWith(_Clock.new),
       ],
       child: MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         theme: theme.copyWith(
           textTheme: theme.textTheme.apply(fontFamily: 'OrbitPreview'),
         ),
@@ -157,6 +166,66 @@ void main() {
     icons.addFont(Future.value(ByteData.sublistView(iconBytes)));
     await icons.load();
   });
+  for (final locale in [
+    const Locale('en'),
+    const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+    const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+  ]) {
+    for (final brightness in Brightness.values) {
+      for (final width in [240.0, 320.0, 1000.0]) {
+        testWidgets('full width danger action $locale $brightness $width', (
+          tester,
+        ) async {
+          await pumpPreview(
+            tester,
+            Scaffold(body: SessionDetailSheet(session: courses().first)),
+            textScale: 1.7,
+            width: width,
+            brightness: brightness,
+            locale: locale,
+          );
+          final button = find.ancestor(
+            of: find.byIcon(Icons.delete_outline),
+            matching: find.byType(OutlinedButton),
+          );
+          final rect = tester.getRect(button);
+          expect(rect.width, closeTo(width - 40, 0.1));
+          expect(rect.height, greaterThanOrEqualTo(48));
+          for (final regular in [
+            Icons.edit_outlined,
+            Icons.palette_outlined,
+            Icons.sticky_note_2_outlined,
+            Icons.archive_outlined,
+          ]) {
+            final regularButton = find.ancestor(
+              of: find.byIcon(regular),
+              matching: find.byType(OutlinedButton),
+            );
+            expect(rect.top, greaterThan(tester.getRect(regularButton).bottom));
+          }
+          final theme = Theme.of(tester.element(button));
+          final style = tester.widget<OutlinedButton>(button).style!;
+          expect(style.foregroundColor!.resolve({}), theme.colorScheme.error);
+          expect(
+            style.backgroundColor!.resolve({}),
+            theme.colorScheme.error.withValues(alpha: 0.06),
+          );
+          if (Platform.isWindows &&
+              locale.languageCode == 'zh' &&
+              locale.scriptCode == 'Hans' &&
+              width == 320) {
+            await expectLater(
+              find.byKey(const Key('preview')),
+              matchesGoldenFile(
+                'goldens/course_detail_delete_${brightness.name}.png',
+              ),
+            );
+          }
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  }
   for (final config in [
     (320.0, Brightness.light),
     (1100.0, Brightness.light),
@@ -306,6 +375,108 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   }, skip: !Platform.isWindows);
+  testWidgets('mixed challenge settings preview', (tester) async {
+    await pumpPreview(
+      tester,
+      const StrongReminderPage(
+        showTargets: false,
+        initial: StrongReminderSettings(
+          dismissTask: StrongDismissTask.mixed,
+          sequenceNumberCount: 25,
+          arithmeticDifficulty: ArithmeticDifficulty.hard,
+          arithmeticAnswerMode: ArithmeticAnswerMode.choice6,
+        ),
+      ),
+      width: 400,
+      brightness: Brightness.dark,
+    );
+    await expectLater(
+      find.byKey(const Key('preview')),
+      matchesGoldenFile('goldens/strong_mixed_settings.png'),
+    );
+    expect(tester.takeException(), isNull);
+  }, skip: !Platform.isWindows);
+  for (final sequence in [true, false]) {
+    testWidgets(
+      'mixed challenge ${sequence ? 'numbers' : 'choices'} preview',
+      (tester) async {
+        final state = <String, dynamic>{
+          'id': 'preview',
+          'phase': 'task',
+          'expiresAt': DateTime(2030).millisecondsSinceEpoch,
+          'answerDeadline': DateTime(2030).millisecondsSinceEpoch,
+          'records': [],
+          'taskIndex': 1,
+          'taskProgress': 0,
+          'tasks': [
+            {
+              'type': 'arithmetic',
+              'a': 32,
+              'b': 9,
+              'operator': 'multiply',
+              'choices': [],
+            },
+            sequence
+                ? {
+                    'type': 'sequence',
+                    'numberCount': 25,
+                    'numbers': [
+                      15,
+                      9,
+                      2,
+                      20,
+                      25,
+                      1,
+                      10,
+                      11,
+                      5,
+                      24,
+                      13,
+                      12,
+                      16,
+                      19,
+                      6,
+                      21,
+                      23,
+                      3,
+                      7,
+                      18,
+                      4,
+                      8,
+                      14,
+                      22,
+                      17,
+                    ],
+                  }
+                : {
+                    'type': 'arithmetic',
+                    'a': 96,
+                    'b': 87,
+                    'operator': 'multiply',
+                    'choices': [8351, 8325, 8352, 8412, 8132, 8353],
+                  },
+          ],
+        };
+        await pumpPreview(
+          tester,
+          ProviderScope(
+            overrides: [strongSessionProvider.overrideWith((_) => state)],
+            child: const StrongConfirmationPage(),
+          ),
+          width: 400,
+          brightness: Brightness.dark,
+        );
+        await expectLater(
+          find.byKey(const Key('preview')),
+          matchesGoldenFile(
+            'goldens/strong_mixed_${sequence ? 'numbers' : 'choices'}.png',
+          ),
+        );
+        expect(tester.takeException(), isNull);
+      },
+      skip: !Platform.isWindows,
+    );
+  }
   testWidgets(
     'reminder template fields use compact top aligned spacing',
     (tester) async {

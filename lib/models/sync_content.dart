@@ -12,6 +12,7 @@ enum SyncCategory {
   reminders,
   strong,
   archive,
+  statistics,
 }
 
 enum SyncScopeMode { perDevice, shared }
@@ -24,6 +25,7 @@ class SyncSelection {
     SyncCategory.templates,
     SyncCategory.semesters,
     SyncCategory.periods,
+    SyncCategory.statistics,
   });
   final Set<SyncCategory> enabled;
   Map<String, dynamic> toJson() => {
@@ -31,7 +33,9 @@ class SyncSelection {
   };
   factory SyncSelection.fromJson(Map<String, dynamic> json) => SyncSelection({
     for (final c in SyncCategory.values)
-      if (json[c.name] == true) c,
+      if (json[c.name] == true ||
+          (c == SyncCategory.statistics && !json.containsKey(c.name)))
+        c,
   });
   SyncSelection toggle(SyncCategory c, bool value) => SyncSelection(
     {...enabled}
@@ -42,6 +46,7 @@ class SyncSelection {
   static SyncCategory? categoryFor(SyncEntity entity) => switch (entity.type) {
     SyncEntityType.courseSession => SyncCategory.courses,
     SyncEntityType.deadline => SyncCategory.deadlines,
+    SyncEntityType.statistic => SyncCategory.statistics,
     SyncEntityType.importTemplate => SyncCategory.templates,
     SyncEntityType.semesterPlan => SyncCategory.semesters,
     SyncEntityType.periodTimePlan => SyncCategory.periods,

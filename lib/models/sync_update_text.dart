@@ -10,6 +10,7 @@ class SyncUpdateText extends OrbitFeatureText {
   String category(SyncCategory c) => switch (c) {
     SyncCategory.courses => pick('Courses', '课程', '課程'),
     SyncCategory.deadlines => 'DDL',
+    SyncCategory.statistics => pick('Statistics', '统计信息', '統計資訊'),
     SyncCategory.templates => pick('Import templates', '导入模板', '匯入範本'),
     SyncCategory.semesters => pick('Semesters', '学期', '學期'),
     SyncCategory.periods => pick('Period schedules', '作息', '作息'),

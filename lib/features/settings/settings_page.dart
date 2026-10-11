@@ -1,3 +1,4 @@
+import 'package:orbit/models/deadline_strong_text.dart';
 import 'package:orbit/features/settings/update_page.dart';
 import 'package:orbit/models/sync_update_text.dart';
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
@@ -202,6 +203,8 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                     children: const [
                       _GridDefaultWeekTile(),
                       _WeekStartDayTile(),
+                      _PageVisibilityTile(upcoming: true),
+                      _PageVisibilityTile(upcoming: false),
                     ],
                   ),
                   SettingsGroup(
@@ -1335,6 +1338,38 @@ class _StrongCardGradientTile extends ConsumerWidget {
             DropdownMenuItem(value: v, child: Text(text.gradientName(v))),
         ],
       ),
+    );
+  }
+}
+
+class _PageVisibilityTile extends ConsumerWidget {
+  const _PageVisibilityTile({required this.upcoming});
+  final bool upcoming;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    final t = DeadlineStrongText.of(context);
+    return SwitchListTile(
+      key: ValueKey(upcoming ? 'hide-upcoming-page' : 'hide-import-page'),
+      title: Text(upcoming ? t.hideUpcoming : t.hideImport),
+      subtitle: Text(t.navigationHint),
+      value: upcoming ? settings.hideUpcomingPage : settings.hideImportPage,
+      onChanged: (value) async {
+        try {
+          final notifier = ref.read(scheduleDisplaySettingsProvider.notifier);
+          if (upcoming) {
+            await notifier.setHideUpcomingPage(value);
+          } else {
+            await notifier.setHideImportPage(value);
+          }
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showAppSnackBar(SnackBar(content: Text(t.failed)));
+          }
+        }
+      },
     );
   }
 }

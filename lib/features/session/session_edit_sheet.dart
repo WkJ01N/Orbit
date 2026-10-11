@@ -1,3 +1,4 @@
+import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -300,6 +301,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
 
     setState(() => _saving = true);
     try {
+      var deleteStatistics = false;
       var scope = CourseOperationScope.single;
       var recurringScope = RecurringCourseEditScope.single;
       var isRecurringEdit = false;
@@ -348,13 +350,22 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             context: context,
             builder: (context) => AlertDialog(
               title: Text(l10n.courseScopeTitle),
-              content: Text(
-                l10n.courseOperationSummary(
-                  preview.targetCount,
-                  DateFormat('yyyy-MM-dd').format(preview.firstDate),
-                  DateFormat('yyyy-MM-dd').format(preview.lastDate),
-                  preview.conflictCount,
-                ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.courseOperationSummary(
+                      preview.targetCount,
+                      DateFormat('yyyy-MM-dd').format(preview.firstDate),
+                      DateFormat('yyyy-MM-dd').format(preview.lastDate),
+                      preview.conflictCount,
+                    ),
+                  ),
+                  if (preview.conflictCount > 0)
+                    StatisticsDeletionChoice(
+                      onChanged: (v) => deleteStatistics = v,
+                    ),
+                ],
               ),
               actions: [
                 TextButton(
@@ -378,16 +389,57 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
                 selected: original,
                 changes: finalSession,
                 scope: recurringScope,
+                deleteStatistics: deleteStatistics,
               )
             : await repository.updateCourseSeries(
                 selected: original,
                 changes: finalSession,
                 scope: scope,
+                deleteStatistics: deleteStatistics,
               );
         overwritten = operationResult.conflictCount;
       } else {
+        final existing = await repository.getAllSessions();
+        final conflicts = existing
+            .where(
+              (s) =>
+                  s.id != finalSession.id &&
+                  s.startAt.isBefore(finalSession.endAt) &&
+                  finalSession.startAt.isBefore(s.endAt),
+            )
+            .toList();
+        if (conflicts.isNotEmpty) {
+          if (!mounted) return;
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (c) => AlertDialog(
+              title: Text(l10n.batchOverwriteConflicts),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.batchPreviewSummary(1, conflicts.length)),
+                  StatisticsDeletionChoice(
+                    onChanged: (v) => deleteStatistics = v,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(c, false),
+                  child: Text(l10n.actionCancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(c, true),
+                  child: Text(l10n.actionApply),
+                ),
+              ],
+            ),
+          );
+          if (confirmed != true || !mounted) return;
+        }
         overwritten = await repository.saveSessionWithConflictResolution(
           finalSession,
+          deleteStatistics: deleteStatistics,
         );
       }
       refreshSchedule(ref);

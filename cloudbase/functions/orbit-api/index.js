@@ -343,6 +343,7 @@ async function http(event) {
       limit: input.pullLimit || 200,
       supportsDeadline: input.supportsDeadline === true,
       supportsSettings: input.supportsSettings === true,
+      supportsStatistics: input.supportsStatistics === true,
       selection: input.selection,
     });
     return jsonResponse(200, { ...pushed, pull: pulled }, { gzip: true });
@@ -355,6 +356,7 @@ async function http(event) {
       limit: Math.min(Number(input.limit) || 500, 500),
       supportsDeadline: input.supportsDeadline === true,
       supportsSettings: input.supportsSettings === true,
+      supportsStatistics: input.supportsStatistics === true,
       selection: input.selection,
     }), { gzip: true });
   }
