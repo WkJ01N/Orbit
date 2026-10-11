@@ -17,6 +17,10 @@ final strongSessionProvider = StateProvider<Map<String, dynamic>?>(
   (ref) => null,
 );
 
+final strongSessionActionProvider = Provider(
+  (ref) => StrongSessionService.call,
+);
+
 class StrongReminderHost extends ConsumerStatefulWidget {
   const StrongReminderHost({
     super.key,
@@ -252,7 +256,7 @@ class _StrongConfirmationState extends ConsumerState<StrongConfirmationPage> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final next = await StrongSessionService.call(
+      final next = await ref.read(strongSessionActionProvider)(
         action,
         answer == null ? null : {'answer': answer},
       );

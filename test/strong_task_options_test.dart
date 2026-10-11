@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +10,6 @@ import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 import 'package:orbit/services/settings_sync_codec.dart';
-import 'package:orbit/services/strong_session_service.dart';
 
 Widget app(
   Widget child, {
@@ -161,40 +159,38 @@ void main() {
           'records': [],
         };
         final answers = <int>[];
-        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          StrongSessionService.channel,
-          (call) async {
-            if (call.method == 'strongAnswer') {
-              final input = (call.arguments as Map)['answer'] as int;
-              answers.add(input);
-              if (state['taskIndex'] == 0) {
-                state = {
-                  ...state,
-                  'wrong': input != 9801,
-                  if (input == 9801) 'taskIndex': 1,
-                };
-              } else if (state['taskIndex'] == 1) {
-                final step = state['taskProgress'] as int;
-                state = {
-                  ...state,
-                  'wrong': input != step + 1,
-                  if (input == step + 1) 'taskProgress': step + 1,
-                  if (input == 25) 'taskIndex': 2,
-                };
-              }
+        Future<Map<String, dynamic>?> action(
+          String method, [
+          Map<String, dynamic>? arguments,
+        ]) async {
+          if (method == 'strongAnswer') {
+            final input = arguments!['answer'] as int;
+            answers.add(input);
+            if (state['taskIndex'] == 0) {
+              state = {
+                ...state,
+                'wrong': input != 9801,
+                if (input == 9801) 'taskIndex': 1,
+              };
+            } else if (state['taskIndex'] == 1) {
+              final step = state['taskProgress'] as int;
+              state = {
+                ...state,
+                'wrong': input != step + 1,
+                if (input == step + 1) 'taskProgress': step + 1,
+                if (input == 25) 'taskIndex': 2,
+              };
             }
-            return jsonEncode(state);
-          },
-        );
-        addTearDown(
-          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-            StrongSessionService.channel,
-            null,
-          ),
-        );
+          }
+          return state;
+        }
+
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [strongSessionProvider.overrideWith((_) => state)],
+            overrides: [
+              strongSessionProvider.overrideWith((_) => state),
+              strongSessionActionProvider.overrideWithValue(action),
+            ],
             child: app(
               const StrongConfirmationPage(),
               locale: locale,
@@ -204,10 +200,13 @@ void main() {
         );
         await tester.pump();
         expect(find.text('99 × 99 = ?'), findsOneWidget);
+        await tester.ensureVisible(find.byKey(const Key('strong-choice-9800')));
         await tester.tap(find.byKey(const Key('strong-choice-9800')));
         await tester.pumpAndSettle();
         expect(state['taskIndex'], 0);
         expect(state['answerDeadline'], deadline);
+        expect(answers, [9800]);
+        await tester.ensureVisible(find.byKey(const Key('strong-choice-9801')));
         await tester.tap(find.byKey(const Key('strong-choice-9801')));
         await tester.pumpAndSettle();
         expect(find.byKey(const Key('strong-number-25')), findsOneWidget);
@@ -332,31 +331,31 @@ void main() {
       'records': [],
     };
     int? submitted;
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      StrongSessionService.channel,
-      (call) async {
-        if (call.method == 'strongAnswer') {
-          submitted = (call.arguments as Map)['answer'] as int;
-        }
-        return jsonEncode(state);
-      },
-    );
-    addTearDown(
-      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        StrongSessionService.channel,
-        null,
-      ),
-    );
+    Future<Map<String, dynamic>?> action(
+      String method, [
+      Map<String, dynamic>? arguments,
+    ]) async {
+      if (method == 'strongAnswer') {
+        submitted = arguments!['answer'] as int;
+      }
+      return state;
+    }
+
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [strongSessionProvider.overrideWith((_) => state)],
+        overrides: [
+          strongSessionProvider.overrideWith((_) => state),
+          strongSessionActionProvider.overrideWithValue(action),
+        ],
         child: app(const StrongConfirmationPage()),
       ),
     );
     for (final digit in ['9', '8', '0', '1']) {
+      await tester.ensureVisible(find.byKey(Key('strong-key-$digit')));
       await tester.tap(find.byKey(Key('strong-key-$digit')));
       await tester.pump();
     }
+    await tester.ensureVisible(find.byKey(const Key('strong-key-✓')));
     await tester.tap(find.byKey(const Key('strong-key-✓')));
     await tester.pump();
     expect(submitted, 9801);
