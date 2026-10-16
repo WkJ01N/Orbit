@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "version": "1.5.6",
+  "buildNumber": 28,
+  "assets": {
+    "android": {
+      "name": "orbit-v1.5.6-android.apk",
+      "size": 116826129,
+      "sha256": "2c037f6f2786fc8b3243f68d6d343e1af5869e7c34415edd4b4850c78276e01c"
+    },
+    "windows": {
+      "name": "orbit-v1.5.6-windows-x64.zip",
+      "size": 37651365,
+      "sha256": "fc31a6cf53a598dcca5a3f9d1584c6d8ac98219ba590e10f3f05bd1efd6a7872"
+    }
+  }
+}

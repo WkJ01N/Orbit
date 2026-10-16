@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.5.5（build 27）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.5.6（build 28）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -26,12 +26,12 @@
 
 ## 快速开始（用户）
 
-v1.5.5 构建产物位于 `release/v1.5.5/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
+v1.5.6 构建产物位于 `release/v1.5.6/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.5.5-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.5.5-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+| Windows | `orbit-v1.5.6-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.5.6-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
 
 ## 从源码运行
 
@@ -81,10 +81,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.5/orbit-v1.5.5-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.6/orbit-v1.5.6-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.5/orbit-v1.5.5-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.6/orbit-v1.5.6-android.apk -Force
 ```
 
 ## 更新日志

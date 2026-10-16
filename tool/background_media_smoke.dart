@@ -1,4 +1,5 @@
-// Usage: dart run tool/background_media_smoke.dart <libmpv-2.dll> <video-with-audio>
+// Usage: dart run '-Ddart.vm.product=true' tool/background_media_smoke.dart <libmpv-2.dll> <video-with-audio>
+// Match release behavior; media_kit hot-restart pointer tracking is debug-only.
 import 'dart:async';
 import 'dart:io';
 import 'package:media_kit/media_kit.dart';

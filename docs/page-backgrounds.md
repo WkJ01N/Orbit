@@ -39,9 +39,11 @@ Windows 原生无窗口媒体检查：
 
 ```powershell
 ffmpeg -f lavfi -i testsrc=size=320x180:rate=15 -f lavfi -i sine=frequency=440:sample_rate=44100 -t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac build/background-audio-fixture.mp4
-dart run tool/background_media_smoke.dart E:/Multiplatform/Orbit/build/windows/x64/runner/Debug/libmpv-2.dll E:/Multiplatform/Orbit/build/background-audio-fixture.mp4
+dart run '-Ddart.vm.product=true' tool/background_media_smoke.dart E:/Multiplatform/Orbit/build/windows/x64/runner/Release/libmpv-2.dll E:/Multiplatform/Orbit/build/background-audio-fixture.mp4
 ```
 
 该检查实测 Windows 解码、无音轨、音量零、暂停／恢复和循环。Android／Windows debug 构建均已通过。当前未连接 Android 设备，尚需真机验证锁屏、后台恢复、系统文档导出取消及普通／强提醒同时发声；Windows 托盘隐藏、纹理模糊填补及硬件解码失败恢复也需交互实测。自动化结果不替代这些设备验收。
 
 正式构建验证：Android 与 Windows release 均使用现有正式 CloudBase 编译配置构建成功（1.5.5+27）；Android APK 签名通过验证，与既有 v1.5.5 正式包证书一致。Windows release 原生媒体库也通过静音、循环和暂停／恢复测试。产物归档在本机 `release/background-customization-20261016/`，附 SHA256SUMS.txt；该构建未创建 GitHub Release 或更新线上更新清单。
+
+v1.5.6 发布构建：应用与两端安装包版本为 1.5.6+28；APK 签名与既有正式版一致，Windows ZIP 的 35 个文件与 Release 目录逐文件匹配。生产运行模式下的原生媒体复测通过；调试用 PID 热重启缓存不参与正式运行模式。版本一致性与更新相关 6 项测试通过；产物与更新清单位于 `release/v1.5.6/`。
