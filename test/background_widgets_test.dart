@@ -1,4 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +22,51 @@ class _QuietReminders extends ReminderSettingsNotifier {
   @override
   Future<ReminderSettings> build() async =>
       const ReminderSettings(enabled: false);
+}
+
+class _MediaPicker extends FilePicker {
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    bool allowCompression = true,
+    int compressionQuality = 30,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+  }) async => FilePickerResult([
+    PlatformFile(name: 'picked.png', size: 1, path: 'picked.png'),
+  ]);
+}
+
+class _MediaService extends BackgroundAssetService {
+  _MediaService(Directory directory) : super(directory: directory);
+  @override
+  Future<BackgroundAsset> importFile(File source, {String? name}) async =>
+      BackgroundAsset(
+        id: 'b' * 64,
+        name: 'picked.png',
+        kind: BackgroundMediaKind.image,
+        width: 800,
+        height: 600,
+      );
+}
+
+class _FailOnceBackgrounds extends BackgroundSettingsNotifier {
+  bool failNext = true;
+  @override
+  Future<void> save(BackgroundSettings value) async {
+    if (failNext) {
+      failNext = false;
+      throw StateError('disk unavailable');
+    }
+    await super.save(value);
+  }
 }
 
 class _Probe extends StatefulWidget {
@@ -127,7 +176,29 @@ void main() {
   testWidgets(
     'preview uses actual region bounds; taps edit draft without triggering page actions or persistence',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(400, 900));
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      Future<void> resize(Size size) async {
+        tester.view.physicalSize = size;
+        await tester.binding.setSurfaceSize(size);
+      }
+
+      await resize(const Size(400, 900));
+      if (const bool.fromEnvironment('ORBIT_CAPTURE_EDITOR')) {
+        await tester.runAsync(() async {
+          for (final entry in {
+            'Roboto': Platform.environment['ORBIT_SCREENSHOT_FONT'],
+            'MaterialIcons': Platform.environment['ORBIT_SCREENSHOT_ICON_FONT'],
+          }.entries) {
+            if (entry.value == null) continue;
+            final bytes = await File(entry.value!).readAsBytes();
+            await (FontLoader(
+              entry.key,
+            )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+          }
+        });
+      }
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final asset = BackgroundAsset(
         id: 'a' * 64,
@@ -149,8 +220,9 @@ void main() {
       addTearDown(() => directory.delete(recursive: true));
       final container = ProviderContainer(
         overrides: [
+          backgroundSettingsProvider.overrideWith(_FailOnceBackgrounds.new),
           backgroundAssetServiceProvider.overrideWithValue(
-            BackgroundAssetService(directory: directory),
+            _MediaService(directory),
           ),
           reminderSettingsProvider.overrideWith(_QuietReminders.new),
           sessionsProvider.overrideWith((ref) async => []),
@@ -159,6 +231,7 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+      FilePicker.platform = _MediaPicker();
       final textScale = ValueNotifier<double>(1);
       addTearDown(textScale.dispose);
       await tester.pumpWidget(
@@ -201,9 +274,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Open backgrounds'));
       await tester.pumpAndSettle();
+      expect(find.text('Choose a page'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('background-next-save')));
+      await tester.pumpAndSettle();
       BackgroundPageScope scope() => tester
           .widgetList<BackgroundPageScope>(find.byType(BackgroundPageScope))
           .firstWhere((s) => s.registry != null);
+      await tester.ensureVisible(find.text('Change media'));
+      await tester.tap(find.text('Change media'));
+      await tester.pumpAndSettle();
+      expect(scope().settings.resolved(BackgroundPage.grid).assetId, 'b' * 64);
       final header = scope().registry!.registrations.values.firstWhere(
         (r) => r.region == BackgroundRegionId.header,
       );
@@ -250,12 +330,33 @@ void main() {
         greaterThan(1),
       );
       expect(scope().settings.page(BackgroundPage.grid).regions, beforeBrowse);
+      await tester.ensureVisible(find.text('Browse preview'));
       await tester.tap(find.text('Browse preview'));
       await tester.pump();
       await tester.tapAt(header.bounds!.center);
       await tester.pump();
       expect(scope().settings.page(BackgroundPage.grid).regions, beforeBrowse);
       expect(tester.takeException(), isNull);
+      Future<void> capture(String name) async {
+        if (!const bool.fromEnvironment('ORBIT_CAPTURE_EDITOR')) return;
+        await tester.runAsync(() async {
+          final boundary = tester.renderObject<RenderRepaintBoundary>(
+            find
+                .ancestor(
+                  of: find.byType(BackgroundEditorPage),
+                  matching: find.byType(RepaintBoundary),
+                )
+                .first,
+          );
+          final image = await boundary.toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'build/background-editor-$name.png',
+          ).writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+
       Future<void> next() async {
         await tester.tap(find.text('Next'));
         await tester.runAsync(
@@ -265,29 +366,26 @@ void main() {
       }
 
       await next();
-      expect(find.text('Apply to other pages?'), findsOneWidget);
-      for (final name in ['Upcoming', 'Import', 'Settings']) {
-        await tester.tap(find.widgetWithText(CheckboxListTile, name));
-      }
-      await tester.tap(find.text('Continue'));
+      expect(scope().owner, BackgroundPage.grid);
+      expect(find.text('Apply to other pages?'), findsNothing);
+      await capture('mobile');
+      await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
-      expect(scope().owner, BackgroundPage.upcoming);
-      await next();
-      expect(scope().owner, BackgroundPage.import);
-      await next();
-      expect(scope().owner, BackgroundPage.settings);
-      await next();
-      expect(find.text('Save all pages'), findsOneWidget);
-      await tester.tap(find.text('Save all pages'));
+      expect(find.textContaining('disk unavailable'), findsOneWidget);
+      expect(find.byType(BackgroundEditorPage), findsOneWidget);
+      await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
+      expect(find.byType(BackgroundEditorPage), findsNothing);
       expect(find.text('Open backgrounds'), findsOneWidget);
       final saved = await container.read(backgroundSettingsProvider.future);
       expect(saved.enabled, isTrue);
-      for (final page in BackgroundPage.values.skip(1)) {
-        expect(saved.page(page).followGrid, isTrue);
-        expect(saved.resolved(page).assetId, asset.id);
-      }
+      expect(saved.resolved(BackgroundPage.grid).assetId, 'b' * 64);
+      expect(saved.page(BackgroundPage.upcoming).assetId, isNull);
+      expect(saved.resolved(BackgroundPage.grid).framing.zoom, greaterThan(1));
       await tester.tap(find.text('Open backgrounds'));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose a page'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('background-next-save')));
       await tester.pumpAndSettle();
       final reopenedHeader = scope().registry!.registrations.values.firstWhere(
         (r) => r.region == BackgroundRegionId.header,
@@ -298,15 +396,67 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Discard'));
       await tester.pumpAndSettle();
+      expect(find.byType(BackgroundEditorPage), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
       expect(
         (await container.read(backgroundSettingsProvider.future)).toJson(),
         saved.toJson(),
       );
       await tester.tap(find.text('Open backgrounds'));
       await tester.pumpAndSettle();
-      await tester.binding.setSurfaceSize(const Size(320, 600));
+      expect(find.text('Choose a page'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('background-next-save')));
+      await tester.pumpAndSettle();
+      await resize(const Size(320, 600));
       textScale.value = 2;
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await resize(const Size(1200, 800));
+      textScale.value = 1;
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Back'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('background-page-upcoming')));
+      await tester.tap(find.byKey(const Key('background-next-save')));
+      await tester.pumpAndSettle();
+      expect(scope().owner, BackgroundPage.upcoming);
+      final follow = find.widgetWithText(
+        SwitchListTile,
+        'Follow schedule background',
+      );
+      await tester.ensureVisible(follow);
+      await tester.tap(follow);
+      await tester.pumpAndSettle();
+      expect(scope().settings.page(BackgroundPage.upcoming).followGrid, isTrue);
+      final followedHeader = scope().registry!.registrations.values.firstWhere(
+        (r) => r.region == BackgroundRegionId.header,
+      );
+      await tester.tapAt(followedHeader.bounds!.center);
+      await tester.pumpAndSettle();
+      expect(
+        scope().settings.resolved(BackgroundPage.upcoming).regions,
+        isNot(contains(BackgroundRegionId.header)),
+      );
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      await capture('desktop');
+      expect(scope().settings.page(BackgroundPage.grid).framing.zoom, 1);
+      expect(
+        tester
+            .widgetList<Slider>(find.byType(Slider))
+            .where((slider) => slider.onChanged == null)
+            .length,
+        2,
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BackgroundEditorPage), findsNothing);
+      expect(
+        (await container.read(
+          backgroundSettingsProvider.future,
+        )).page(BackgroundPage.upcoming).followGrid,
+        isTrue,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

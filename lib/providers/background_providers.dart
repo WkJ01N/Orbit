@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/services/background_asset_service.dart';
@@ -17,6 +18,13 @@ class BackgroundSettingsNotifier extends AsyncNotifier<BackgroundSettings> {
       ref.watch(settingsServiceProvider).loadBackgroundSettings();
   Future<void> save(BackgroundSettings value) async {
     await ref.read(settingsServiceProvider).saveBackgroundSettings(value);
-    state = AsyncData(value);
+    final restored = await ref
+        .read(settingsServiceProvider)
+        .loadBackgroundSettings();
+    if (jsonEncode(restored.toJson()) !=
+        jsonEncode(BackgroundSettings.fromJson(value.toJson()).toJson())) {
+      throw StateError('Background settings could not be verified');
+    }
+    state = AsyncData(restored);
   }
 }

@@ -2,7 +2,7 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.5.6（build 28）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.5.7（build 29）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
 ## 功能概览
 
@@ -22,16 +22,18 @@
 | 通知权限 | Android 和 Windows 全页面权限警告、通知设置直达、二次确认后永久忽略；忽略仅保存在本设备，可在设置恢复提示；权限恢复自动重新排程 |
 | 隐私 | 未登录时数据仅存本机；用户主动登录并确认首次合并后，课表及课表方案才会上传到隔离的个人云空间；通知权限、提醒运行状态和登录令牌不进入课表备份 |
 
-页面背景支持图片、GIF 和静音视频，可按页面和区块设置、预览构图、共用或独立调整，并可选打包素材备份；使用及设备验收说明见 [页面背景](docs/page-backgrounds.md)。
+页面背景支持图片、GIF 和静音视频，可单选页面分步设置区块、构图与效果，跟随课表或独立调整，并可选打包素材备份；使用及设备验收说明见 [页面背景](docs/page-backgrounds.md)。
 
 ## 快速开始（用户）
 
-v1.5.6 构建产物位于 `release/v1.5.6/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
+v1.5.7 构建产物位于 `release/v1.5.7/`，已发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | `orbit-v1.5.6-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.5.6-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+| Windows | `orbit-v1.5.7-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
+| Android | `orbit-v1.5.7-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+
+Android 同时提供 `arm64-v8a`、`armeabi-v7a`、`x86_64` 专用 APK；多数现代手机选择 ARM64 包，通用包用于兼容回退。应用内更新会优先匹配设备架构。
 
 ## 从源码运行
 
@@ -81,10 +83,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.6/orbit-v1.5.6-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.5.7/orbit-v1.5.7-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.6/orbit-v1.5.6-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.5.7/orbit-v1.5.7-android.apk -Force
 ```
 
 ## 更新日志

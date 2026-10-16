@@ -31,10 +31,35 @@ jobs:
             > android/key.properties
       - run: flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
       - run: cp build/app/outputs/flutter-apk/app-release.apk orbit-${{ github.ref_name }}-android.apk
+      # Build each target independently: --split-per-abi adds versionCode offsets
+      # intended for Play multi-APK tracks and prevents fallback to universal APKs.
+      - name: Build architecture APKs with the same version code
+        run: |
+          for entry in arm64-v8a:android-arm64 armeabi-v7a:android-arm x86_64:android-x64; do
+            abi="${entry%%:*}"
+            target="${entry#*:}"
+            flutter build apk --release --target-platform "$target" --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
+            cp build/app/outputs/flutter-apk/app-release.apk "orbit-${{ github.ref_name }}-android-$abi.apk"
+          done
+      - name: Verify Android version codes
+        run: |
+          sdk="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          aapt=$(find "$sdk/build-tools" -name aapt | sort -V | tail -n 1)
+          expected=$(sed -n 's/^version:.*+//p' pubspec.yaml | tr -d '\r')
+          for apk in orbit-${{ github.ref_name }}-android*.apk; do
+            badging=$("$aapt" dump badging "$apk")
+            [[ "$badging" == *"versionCode='$expected'"* ]] || { echo "Wrong version code in $apk"; exit 1; }
+            if [[ "$apk" != *-android.apk ]]; then
+              expected_abi="${apk##*-android-}"
+              expected_abi="${expected_abi%.apk}"
+              native=$(printf '%s\n' "$badging" | sed -n 's/^native-code: //p' | tr -d "'")
+              [ "$native" = "$expected_abi" ] || { echo "Unexpected native libraries in $apk: $native"; exit 1; }
+            fi
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: android-release
-          path: orbit-${{ github.ref_name }}-android.apk
+          path: orbit-${{ github.ref_name }}-android*.apk
           if-no-files-found: error
 
   windows:
@@ -81,5 +106,11 @@ jobs:
           fi
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
           gh release edit "$TAG" --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
-          gh release upload "$TAG" dist/* --clobber
+          # Legacy apps choose the first APK returned by GitHub; upload universal first.
+          gh release upload "$TAG" "dist/orbit-$TAG-android.apk" --clobber
+          for file in dist/*; do
+            [ "$file" = "dist/orbit-$TAG-android.apk" ] || gh release upload "$TAG" "$file" --clobber
+          done
+          first_apk=$(gh release view "$TAG" --json assets --jq '[.assets[] | select(.name | endswith(".apk"))][0].name')
+          [ "$first_apk" = "orbit-$TAG-android.apk" ] || { echo "Universal APK must be first for legacy clients"; exit 1; }
           gh release edit "$TAG" --draft=false

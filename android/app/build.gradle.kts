@@ -58,6 +58,20 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // A single Flutter target only limits libapp/libflutter. Filter plugin
+        // native libraries too, without Play-style split APK version offsets.
+        val selectedAbi = mapOf(
+            "android-arm64" to "arm64-v8a",
+            "android-arm" to "armeabi-v7a",
+            "android-x64" to "x86_64",
+        )[project.findProperty("target-platform")?.toString()]
+        if (selectedAbi != null && project.findProperty("split-per-abi")?.toString() != "true") {
+            ndk {
+                abiFilters.clear()
+                abiFilters.add(selectedAbi)
+            }
+        }
     }
 
     signingConfigs {

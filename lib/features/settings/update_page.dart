@@ -30,10 +30,15 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
   File? _file;
   String? _error;
   bool _checked = false, _busy = false;
+  bool _assetsReady = false;
   double? _progress;
-  UpdateAsset? get _asset => _release?.assets
-      .where((a) => a.platform == Platform.operatingSystem)
-      .firstOrNull;
+  List<String> _supportedAbis = const [];
+  UpdateAsset? get _asset => !_assetsReady
+      ? null
+      : _release?.assetFor(
+          Platform.operatingSystem,
+          supportedAbis: _supportedAbis,
+        );
   @override
   void initState() {
     super.initState();
@@ -43,10 +48,13 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
 
   Future<void> _load() async {
     final service = ref.read(appUpdateServiceProvider);
+    final abis = await service.supportedAbis();
     final prefs = await service.preferences();
     final sources = await service.sources();
     if (mounted) {
       setState(() {
+        _supportedAbis = abis;
+        _assetsReady = true;
         _prefs = prefs;
         _sources = sources;
         _source = prefs['source'] as String?;
@@ -239,7 +247,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
           if (newer && _asset != null) ...[
             const SizedBox(height: 16),
             Text(
-              '${_asset!.name} · ${(_asset!.size / 1024 / 1024).toStringAsFixed(1)} MB',
+              '${_asset!.name}${_asset!.platform == 'android' && _asset!.abi == null ? ' (Universal APK)' : ''} · ${(_asset!.size / 1024 / 1024).toStringAsFixed(1)} MB',
             ),
             if (!_asset!.verifiable) Text(t.unverified),
             DropdownButtonFormField<String>(

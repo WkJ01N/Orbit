@@ -23,6 +23,7 @@ async function latest(fetch = getJson) {
   if (asset) {
     try { release.orbitManifest = await fetch(asset.browser_download_url); } catch (_) { /* Digest may be supplied by the official asset API. */ }
   }
+  release.assets = [...(release.assets || [])].sort((a, b) => Number(/-android-(arm64-v8a|armeabi-v7a|x86_64)\.apk$/.test(a.name)) - Number(/-android-(arm64-v8a|armeabi-v7a|x86_64)\.apk$/.test(b.name)));
   return release;
 }
 module.exports = { latest };

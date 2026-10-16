@@ -11,6 +11,30 @@ class AppRelease {
   final String notes;
   final String releaseUrl;
   final List<UpdateAsset> assets;
+  UpdateAsset? assetFor(
+    String platform, {
+    List<String> supportedAbis = const [],
+  }) {
+    final candidates = assets.where((a) => a.platform == platform);
+    if (platform == 'android') {
+      for (final abi in supportedAbis) {
+        final match = candidates.where((a) => a.abi == abi).firstOrNull;
+        if (match != null) return match;
+      }
+      return candidates.where((a) => a.abi == null).firstOrNull;
+    }
+    return candidates.firstOrNull;
+  }
+
+  static Map? _manifestAsset(Map manifest, String name) {
+    final base = manifest['assets'] as Map? ?? {};
+    final variants = manifest['androidAbis'] as Map? ?? {};
+    return [
+      ...base.values,
+      ...variants.values,
+    ].whereType<Map>().where((a) => a['name'] == name).firstOrNull;
+  }
+
   bool newerThan(String version, int build) =>
       compareVersions(this.version, version) > 0 ||
       (compareVersions(this.version, version) == 0 && buildNumber > build);
@@ -51,17 +75,19 @@ class AppRelease {
       notes: json['body'] as String? ?? '',
       releaseUrl:
           'https://github.com/WkJ01N/Orbit/releases/tag/v${tag.split('+').first}',
-      assets: [
-        for (final item in json['assets'] as List? ?? [])
-          if (_platform(item['name'] as String? ?? '') != null)
-            UpdateAsset.fromGitHub(
-              Map<String, dynamic>.from(item),
-              manifestMatches
-                  ? (manifest['assets'] as Map? ?? {})[_platform(item['name'])]
-                        as Map?
-                  : null,
-            ),
-      ],
+      assets:
+          [
+            for (final item in json['assets'] as List? ?? [])
+              if (_platform(item['name'] as String? ?? '') != null)
+                UpdateAsset.fromGitHub(
+                  Map<String, dynamic>.from(item),
+                  manifestMatches
+                      ? _manifestAsset(manifest, item['name'] as String)
+                      : null,
+                ),
+          ]..sort(
+            (a, b) => (a.abi == null ? 0 : 1).compareTo(b.abi == null ? 0 : 1),
+          ),
     );
   }
   static String? _platform(String name) => name.endsWith('.apk')
@@ -82,6 +108,13 @@ class UpdateAsset {
   final String platform, name, url;
   final int size;
   final String? sha256;
+  String? get abi {
+    for (final abi in const ['arm64-v8a', 'armeabi-v7a', 'x86_64']) {
+      if (name.endsWith('-$abi.apk')) return abi;
+    }
+    return null;
+  }
+
   bool get verifiable =>
       size > 0 && sha256 != null && RegExp(r'^[a-f0-9]{64}$').hasMatch(sha256!);
   factory UpdateAsset.fromGitHub(Map<String, dynamic> json, Map? manifest) {

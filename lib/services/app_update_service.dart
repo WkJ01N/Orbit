@@ -50,6 +50,18 @@ class AppUpdateService {
   static const _official =
       'https://api.github.com/repos/WkJ01N/Orbit/releases/latest';
   static const _native = MethodChannel('com.must.orbit.orbit/reminders');
+  Future<List<String>> supportedAbis() async {
+    if (!Platform.isAndroid) return const [];
+    try {
+      return await _native.invokeListMethod<String>('supportedAbis') ??
+          const [];
+    } on PlatformException {
+      return const [];
+    } on MissingPluginException {
+      return const [];
+    }
+  }
+
   Future<Map<String, dynamic>> preferences() =>
       settings.loadLocalJson('update_preferences');
   Future<void> savePreferences(Map<String, dynamic> value) =>

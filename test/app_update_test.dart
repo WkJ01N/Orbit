@@ -31,6 +31,74 @@ void main() {
     ],
   };
   test(
+    'ABI selection respects device priority and verifies each exact filename',
+    () {
+      const names = [
+        'orbit-v1.5.6-android-x86_64.apk',
+        'orbit-v1.5.6-android.apk',
+        'orbit-v1.5.6-android-arm64-v8a.apk',
+      ];
+      Map<String, Object> metadata(String name, String hash) => {
+        'name': name,
+        'size': 100,
+        'sha256': hash * 64,
+      };
+      final json = <String, dynamic>{
+        'tag_name': 'v1.5.6',
+        'assets': [
+          for (final name in names)
+            {
+              'name': name,
+              'size': 100,
+              'browser_download_url':
+                  'https://github.com/WkJ01N/Orbit/releases/download/v1.5.6/$name',
+            },
+        ],
+        'orbitManifest': {
+          'version': '1.5.6',
+          'assets': {'android': metadata(names[1], 'a')},
+          'androidAbis': {
+            'x86_64': metadata(names[0], 'b'),
+            'arm64-v8a': metadata(names[2], 'c'),
+          },
+        },
+      };
+      final parsed = AppRelease.fromGitHub(json);
+      expect(parsed.assets.first.name, names[1]);
+      expect(
+        parsed
+            .assetFor('android', supportedAbis: ['arm64-v8a', 'x86_64'])!
+            .sha256,
+        'c' * 64,
+      );
+      expect(
+        parsed.assetFor('android', supportedAbis: ['x86_64'])!.sha256,
+        'b' * 64,
+      );
+      expect(
+        parsed.assetFor('android', supportedAbis: ['unknown'])!.sha256,
+        'a' * 64,
+      );
+      expect(parsed.assetFor('android')!.abi, isNull);
+      (json['orbitManifest'] as Map).remove('androidAbis');
+      final legacy = AppRelease.fromGitHub(json);
+      expect(legacy.assetFor('android')!.verifiable, isTrue);
+      expect(
+        legacy.assets.where((a) => a.abi != null).every((a) => !a.verifiable),
+        isTrue,
+      );
+      final old = AppRelease.fromGitHub({
+        ...json,
+        'assets': [(json['assets'] as List)[1]],
+      });
+      expect(
+        old.assetFor('android', supportedAbis: ['arm64-v8a'])!.abi,
+        isNull,
+      );
+    },
+  );
+
+  test(
     'stable versions compare numerically and same-version builds compare separately',
     () {
       final value = AppRelease.fromGitHub(

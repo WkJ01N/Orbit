@@ -22,3 +22,10 @@ test('public update metadata is obtained from official stable GitHub releases on
  await assert.rejects(latest(async()=>({...payload,prerelease:true})));
  let count=0;await latest(async()=>{count++;return{...payload,assets:[{name:'update-manifest.json',browser_download_url:'https://mirror.invalid/checksum'}]};});assert.equal(count,1);
 });
+
+test('universal APK comes first for clients without ABI selection', async () => {
+ const release = await latest(async () => ({tag_name:'v1.5.6', assets:[
+  {name:'orbit-v1.5.6-android-arm64-v8a.apk'}, {name:'orbit-v1.5.6-android.apk'}, {name:'orbit-v1.5.6-android-x86_64.apk'}
+ ]}));
+ assert.equal(release.assets[0].name, 'orbit-v1.5.6-android.apk');
+});

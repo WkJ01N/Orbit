@@ -246,7 +246,15 @@ class _BackgroundMediaState extends State<BackgroundMedia>
                     ),
                   Positioned.fromRect(
                     rect: rect,
-                    child: _image(snapshot.data!),
+                    child: ImageFiltered(
+                      enabled: widget.framing.blur > 0,
+                      imageFilter: ui.ImageFilter.blur(
+                        sigmaX: widget.framing.blur * 20,
+                        sigmaY: widget.framing.blur * 20,
+                        tileMode: TileMode.clamp,
+                      ),
+                      child: _image(snapshot.data!),
+                    ),
                   ),
                   ColoredBox(
                     color: Colors.black.withValues(alpha: widget.framing.dim),

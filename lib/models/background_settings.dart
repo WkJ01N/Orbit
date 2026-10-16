@@ -112,8 +112,9 @@ class BackgroundFraming {
     this.allowEdges = false,
     this.fill = BackgroundEdgeFill.theme,
     this.dim = .2,
+    this.blur = 0,
   });
-  final double zoom, x, y, dim;
+  final double zoom, x, y, dim, blur;
   final bool allowEdges;
   final BackgroundEdgeFill fill;
   BackgroundFraming copyWith({
@@ -123,6 +124,7 @@ class BackgroundFraming {
     bool? allowEdges,
     BackgroundEdgeFill? fill,
     double? dim,
+    double? blur,
   }) => BackgroundFraming(
     zoom: zoom ?? this.zoom,
     x: x ?? this.x,
@@ -130,6 +132,7 @@ class BackgroundFraming {
     allowEdges: allowEdges ?? this.allowEdges,
     fill: fill ?? this.fill,
     dim: dim ?? this.dim,
+    blur: blur ?? this.blur,
   );
   Map<String, dynamic> toJson() => {
     'zoom': zoom,
@@ -138,6 +141,7 @@ class BackgroundFraming {
     'allowEdges': allowEdges,
     'fill': fill.name,
     'dim': dim,
+    'blur': blur,
   };
   factory BackgroundFraming.fromJson(Map<String, dynamic> j) =>
       BackgroundFraming(
@@ -148,7 +152,8 @@ class BackgroundFraming {
         fill: j['fill'] == 'blur'
             ? BackgroundEdgeFill.blur
             : BackgroundEdgeFill.theme,
-        dim: _number(j['dim'], .2, 0, .8),
+        dim: _number(j['dim'], .2, 0, .9),
+        blur: _number(j['blur'], 0, 0, 1),
       );
 }
 
@@ -189,9 +194,11 @@ class PageBackgroundSettings {
     this.framing = const BackgroundFraming(),
     this.regions = const {BackgroundRegionId.content},
     this.surfaceOpacity = .8,
+    this.autoTextProtection = true,
   });
   final String? assetId;
   final bool followGrid;
+  final bool autoTextProtection;
   final BackgroundFraming framing;
   final Set<BackgroundRegionId> regions;
   final double surfaceOpacity;
@@ -202,12 +209,14 @@ class PageBackgroundSettings {
     BackgroundFraming? framing,
     Set<BackgroundRegionId>? regions,
     double? surfaceOpacity,
+    bool? autoTextProtection,
   }) => PageBackgroundSettings(
     assetId: clearAsset ? null : assetId ?? this.assetId,
     followGrid: followGrid ?? this.followGrid,
     framing: framing ?? this.framing,
     regions: regions ?? this.regions,
     surfaceOpacity: surfaceOpacity ?? this.surfaceOpacity,
+    autoTextProtection: autoTextProtection ?? this.autoTextProtection,
   );
   Map<String, dynamic> toJson() => {
     'assetId': assetId,
@@ -215,6 +224,7 @@ class PageBackgroundSettings {
     'framing': framing.toJson(),
     'regions': regions.map((r) => r.name).toList()..sort(),
     'surfaceOpacity': surfaceOpacity,
+    'autoTextProtection': autoTextProtection,
   };
   factory PageBackgroundSettings.fromJson(Map<String, dynamic> j) =>
       PageBackgroundSettings(
@@ -229,6 +239,7 @@ class PageBackgroundSettings {
             .map(BackgroundRegionId.values.byName)
             .toSet(),
         surfaceOpacity: _number(j['surfaceOpacity'], .8, 0, 1),
+        autoTextProtection: j['autoTextProtection'] != false,
       );
 }
 
@@ -251,6 +262,18 @@ class BackgroundSettings {
         assetId: page(BackgroundPage.grid).assetId,
         clearAsset: page(BackgroundPage.grid).assetId == null,
         framing: page(BackgroundPage.grid).framing,
+        regions: {
+          ...value.regions.where(
+            (r) =>
+                r != BackgroundRegionId.header &&
+                r != BackgroundRegionId.navigation,
+          ),
+          ...page(BackgroundPage.grid).regions.where(
+            (r) =>
+                r == BackgroundRegionId.header ||
+                r == BackgroundRegionId.navigation,
+          ),
+        },
       );
     }
     return value;
@@ -276,10 +299,8 @@ class BackgroundSettings {
     PageBackgroundSettings value,
   ) => copyWith(pages: {...pages, owner: value});
   BackgroundSettings setFraming(BackgroundPage owner, BackgroundFraming frame) {
-    final target = owner != BackgroundPage.grid && page(owner).followGrid
-        ? BackgroundPage.grid
-        : owner;
-    return updatePage(target, page(target).copyWith(framing: frame));
+    if (owner != BackgroundPage.grid && page(owner).followGrid) return this;
+    return updatePage(owner, page(owner).copyWith(framing: frame));
   }
 
   BackgroundSettings detach(BackgroundPage owner) =>

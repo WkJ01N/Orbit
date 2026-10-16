@@ -8,6 +8,7 @@ class BackgroundRegionRegistration {
   final BackgroundRegionId region;
   final BuildContext context;
   Rect? get bounds {
+    if (!context.mounted) return null;
     final render = context.findRenderObject();
     if (render is! RenderBox || !render.attached || !render.hasSize) {
       return null;
@@ -83,7 +84,7 @@ class BackgroundPageScope extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<BackgroundPageScope>();
   bool visible(BackgroundRegionId region) =>
       settings.asset(owner) != null &&
-      settings.page(owner).regions.contains(region);
+      settings.resolved(owner).regions.contains(region);
   static bool enabled(BuildContext context, BackgroundRegionId region) =>
       maybeOf(context)?.visible(region) ?? false;
   static Color color(
@@ -124,7 +125,7 @@ class BackgroundPageTheme extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final configured = settings.asset(owner) != null;
-    final regions = settings.page(owner).regions;
+    final regions = settings.resolved(owner).regions;
     final header = configured && regions.contains(BackgroundRegionId.header);
     final body = configured && regions.contains(BackgroundRegionId.content);
     final themed = configured
@@ -191,6 +192,13 @@ class _BackgroundRegionState extends State<BackgroundRegion> {
   }
 
   @override
+  void deactivate() {
+    _registry?.registrations.remove(this);
+    _registry?.changed();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _registry?.registrations.remove(this);
     super.dispose();
@@ -209,9 +217,116 @@ class _BackgroundRegionState extends State<BackgroundRegion> {
         Theme.of(context).colorScheme.surface,
       ),
       surfaceTintColor: Colors.transparent,
-      child: widget.child,
+      child: BackgroundTextProtection(
+        enabled:
+            scope.visible(widget.region) &&
+            scope.settings.page(scope.owner).autoTextProtection,
+        dim: scope.settings.resolved(scope.owner).framing.dim,
+        child: widget.child,
+      ),
     );
   }
+}
+
+/// Region-local styles; captured themes restore normal typography on dialogs.
+class BackgroundTextProtection extends StatelessWidget {
+  const BackgroundTextProtection({
+    required this.enabled,
+    required this.dim,
+    required this.child,
+    super.key,
+  });
+  final bool enabled;
+  final double dim;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled || dim >= .3) return child;
+    final theme = Theme.of(context);
+    final amount = (1 - dim / .3).clamp(0.0, 1.0);
+    TextStyle? protect(TextStyle? style) {
+      if (style == null) return null;
+      final foreground = style.color ?? theme.colorScheme.onSurface;
+      final contrast = foreground.computeLuminance() > .4
+          ? Colors.black
+          : Colors.white;
+      return style.copyWith(
+        shadows: [
+          ...?style.shadows,
+          Shadow(color: contrast.withValues(alpha: .8 * amount), blurRadius: 3),
+          Shadow(color: contrast.withValues(alpha: .5 * amount), blurRadius: 1),
+        ],
+      );
+    }
+
+    TextTheme protectTheme(TextTheme t) => TextTheme(
+      displayLarge: protect(t.displayLarge),
+      displayMedium: protect(t.displayMedium),
+      displaySmall: protect(t.displaySmall),
+      headlineLarge: protect(t.headlineLarge),
+      headlineMedium: protect(t.headlineMedium),
+      headlineSmall: protect(t.headlineSmall),
+      titleLarge: protect(t.titleLarge),
+      titleMedium: protect(t.titleMedium),
+      titleSmall: protect(t.titleSmall),
+      bodyLarge: protect(t.bodyLarge),
+      bodyMedium: protect(t.bodyMedium),
+      bodySmall: protect(t.bodySmall),
+      labelLarge: protect(t.labelLarge),
+      labelMedium: protect(t.labelMedium),
+      labelSmall: protect(t.labelSmall),
+    );
+    return Theme(
+      data: theme.copyWith(
+        textTheme: protectTheme(theme.textTheme),
+        primaryTextTheme: protectTheme(theme.primaryTextTheme),
+        appBarTheme: theme.appBarTheme.copyWith(
+          titleTextStyle: protect(
+            theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge,
+          ),
+        ),
+        navigationBarTheme: theme.navigationBarTheme.copyWith(
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => protect(
+              theme.navigationBarTheme.labelTextStyle?.resolve(states) ??
+                  theme.textTheme.labelMedium,
+            ),
+          ),
+        ),
+        navigationRailTheme: theme.navigationRailTheme.copyWith(
+          selectedLabelTextStyle: protect(
+            theme.navigationRailTheme.selectedLabelTextStyle ??
+                theme.textTheme.labelMedium,
+          ),
+          unselectedLabelTextStyle: protect(
+            theme.navigationRailTheme.unselectedLabelTextStyle ??
+                theme.textTheme.labelMedium,
+          ),
+        ),
+      ),
+      child: _RestoreBackgroundPopupTheme(
+        original: theme,
+        child: DefaultTextStyle.merge(
+          style: protect(DefaultTextStyle.of(context).style),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _RestoreBackgroundPopupTheme extends InheritedTheme {
+  const _RestoreBackgroundPopupTheme({
+    required this.original,
+    required super.child,
+  });
+  final ThemeData original;
+  @override
+  bool updateShouldNotify(_RestoreBackgroundPopupTheme oldWidget) =>
+      original != oldWidget.original;
+  @override
+  Widget wrap(BuildContext context, Widget child) =>
+      Theme(data: original, child: child);
 }
 
 class BackgroundAppBar extends StatelessWidget implements PreferredSizeWidget {

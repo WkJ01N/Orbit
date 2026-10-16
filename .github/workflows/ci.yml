@@ -19,6 +19,8 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
+      - run: python3 tool/test_generate_update_manifest.py
+      - run: node --test cloudbase/functions/orbit-api/scope-updates.test.js
       - run: flutter build apk --debug
       # Flutter creates the ignored Gradle wrapper during the first Android build.
       - run: cd android && ./gradlew :app:testDebugUnitTest

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/rendering.dart';
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/gestures.dart';
@@ -18,6 +16,7 @@ import 'package:orbit/features/upcoming/upcoming_page.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/models/background_text.dart';
 import 'package:orbit/providers/background_providers.dart';
+import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/services/background_asset_service.dart';
 
 class BackgroundSettingsPage extends ConsumerWidget {
@@ -86,7 +85,7 @@ class BackgroundSettingsPage extends ConsumerWidget {
                 key: const Key('background-configure'),
                 icon: const Icon(Icons.wallpaper),
                 label: Text(
-                  text.t('Choose media and configure', '选择素材并设置', '選擇素材並設定'),
+                  text.t('Choose a page and edit', '选择页面并编辑', '選擇頁面並編輯'),
                 ),
                 onPressed: () => edit(settings),
               ),
@@ -178,50 +177,52 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
   final _previewKey = GlobalKey();
   final _sceneKey = GlobalKey();
   final _captureKey = GlobalKey();
-  final _shots = <BackgroundPage, ui.Image>{};
+
   final _imported = <BackgroundAsset>[];
-  bool _busy = false,
-      _browse = false,
-      _overview = false,
-      _saved = false,
-      _mouse = false;
-  bool _needsScope = false;
-  List<BackgroundPage>? _steps;
+  bool _busy = false, _browse = false, _saved = false, _mouse = false;
   int _step = 0;
+  bool _allowExit = false;
+  bool _confirmingExit = false;
+  bool _expandedControls = false;
+  bool get _following =>
+      _page != BackgroundPage.grid && _draft.page(_page).followGrid;
   double _startZoom = 1;
   ScrollPosition? _scroll;
   String? _error;
   late final BackgroundAssetService _service = ref.read(
     backgroundAssetServiceProvider,
   );
-  late BackgroundSettings _persisted = widget.initial;
+  late final _preferences = ref.read(settingsServiceProvider);
   bool get _dirty =>
       jsonEncode(_draft.toJson()) != jsonEncode(widget.initial.toJson());
   @override
   void initState() {
     super.initState();
     _service;
-    _persisted;
-    if (widget.initial.resolved(_page).assetId == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_pick());
-      });
-    }
+    _preferences;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    });
   }
 
   @override
   void dispose() {
     final service = _service;
-    final saved = _persisted;
-    unawaited(service.removeUnreferenced(_imported, saved));
-    for (final image in _shots.values) {
-      image.dispose();
-    }
+    final preferences = _preferences;
+    unawaited(() async {
+      try {
+        final saved = await preferences.loadBackgroundSettings();
+        await service.removeUnreferenced(_imported, saved);
+      } catch (_) {
+        /* Keep media if committed references cannot be checked. */
+      }
+    }());
     _registry.dispose();
     super.dispose();
   }
 
   Future<void> _pick() async {
+    if (_following || _busy) return;
     setState(() {
       _error = null;
       _busy = true;
@@ -243,13 +244,6 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
       _imported.add(asset);
       if (!mounted) return;
       var next = _draft;
-      if (_page == BackgroundPage.grid) {
-        for (final p in BackgroundPage.values.where(
-          (p) => p != _page && next.page(p).followGrid,
-        )) {
-          next = next.detach(p);
-        }
-      }
       next = next.copyWith(
         enabled: true,
         assets: {...next.assets, asset.id: asset},
@@ -266,11 +260,6 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
       );
       setState(() {
         _draft = next;
-        if (_page == BackgroundPage.grid) {
-          _needsScope = true;
-          _steps = null;
-          _step = 0;
-        }
       });
     } catch (e) {
       if (mounted) {
@@ -284,16 +273,23 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     }
   }
 
-  Future<void> _save() async {
-    if (_needsScope) {
-      setState(() {
-        _page = BackgroundPage.grid;
-        _overview = false;
-      });
-      await _next();
-      return;
-    }
-    setState(() => _busy = true);
+  Future<void> _close() async {
+    if (!mounted) return;
+    setState(() {
+      _allowExit = true;
+      _busy = false;
+    });
+    // PopScope must rebuild before Navigator sees the updated disposition.
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<bool> _save() async {
+    if (_busy) return false;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       final used = {
         for (final p in BackgroundPage.values) _draft.resolved(p).assetId,
@@ -304,20 +300,37 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
         ),
       );
       await ref.read(backgroundSettingsProvider.notifier).save(next);
-      _persisted = next;
-      if (mounted) {
-        setState(() => _saved = true);
-        Navigator.pop(context);
-      }
+      if (!mounted) return true;
+      _saved = true;
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          content: Text(
+            BackgroundText(context).t('Background saved', '背景已保存', '背景已儲存'),
+          ),
+        ),
+      );
+      await _close();
+      return true;
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) {
+        setState(
+          () => _error =
+              '${BackgroundText(context).t('Could not save. Please retry.', '保存失败，请重试。', '儲存失敗，請重試。')} $e',
+        );
+      }
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<bool> _exit() async {
-    if (_saved || !_dirty) return true;
+  Future<void> _exit() async {
+    if (_busy || _confirmingExit) return;
+    if (_saved || !_dirty) {
+      await _close();
+      return;
+    }
+    _confirmingExit = true;
     final t = BackgroundText(context);
     final choice = await showDialog<String>(
       context: context,
@@ -339,125 +352,34 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
         ],
       ),
     );
-    if (choice == 'save') {
-      await _save();
-      return false;
-    }
-    return choice == 'discard';
+    _confirmingExit = false;
+    if (!mounted) return;
+    if (choice == 'save') await _save();
+    if (choice == 'discard') await _close();
   }
 
   Future<void> _next() async {
-    await _capture();
-    if (!mounted) return;
-    final t = BackgroundText(context);
-    if (_steps == null && _page == BackgroundPage.grid) {
-      final selected = <BackgroundPage>{};
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (c) => StatefulBuilder(
-          builder: (c, update) => AlertDialog(
-            title: Text(t.t('Apply to other pages?', '应用到其他页面？', '套用到其他頁面？')),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  t.t(
-                    'Selected pages share the schedule image and framing. Unselected pages keep their backgrounds.',
-                    '选定页面共用课表素材与构图。未选页面保留自己的背景。',
-                    '選定頁面共用課表素材與構圖。未選頁面保留自己的背景。',
-                  ),
-                ),
-                for (final p in BackgroundPage.values.where(
-                  (p) => p != BackgroundPage.grid,
-                ))
-                  CheckboxListTile(
-                    title: Text(t.page(p)),
-                    value: selected.contains(p),
-                    onChanged: (v) => update(
-                      () => v == true ? selected.add(p) : selected.remove(p),
-                    ),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(c, false),
-                child: Text(t.t('Schedule only', '只应用课表', '只套用課表')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(c, true),
-                child: Text(t.t('Continue', '继续', '繼續')),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (proceed == null || !mounted) return;
-      var next = _draft;
-      final steps = proceed ? selected.toList() : <BackgroundPage>[];
-      for (final p in steps) {
-        next = next.updatePage(
-          p,
-          next
-              .page(p)
-              .copyWith(
-                assetId: next.page(BackgroundPage.grid).assetId,
-                followGrid: true,
-              ),
-        );
-      }
-      setState(() {
-        _draft = next;
-        _needsScope = false;
-        _steps = steps;
-        _step = 0;
-        if (steps.isEmpty) {
-          _overview = true;
-        } else {
-          _page = steps.first;
-        }
-      });
-    } else if (_steps != null && _step + 1 < _steps!.length) {
-      setState(() => _page = _steps![++_step]);
-    } else {
-      setState(() => _overview = true);
-    }
-  }
-
-  Future<void> _capture() async {
-    final object = _captureKey.currentContext?.findRenderObject();
-    if (object is! RenderRepaintBoundary || object.debugNeedsPaint) return;
-    final owner = _page;
-    try {
-      final image = await object.toImage(pixelRatio: .35);
-      if (!mounted) {
-        image.dispose();
-        return;
-      }
-      _shots.remove(owner)?.dispose();
-      _shots[owner] = image;
-    } catch (_) {
-      /* A platform texture may not support snapshots. */
-    }
-  }
-
-  void _previous() {
     setState(() {
-      if (_overview) {
-        _overview = false;
-        return;
-      }
-      _overview = false;
-      if (_steps != null && _step > 0) {
-        _page = _steps![--_step];
-      } else {
-        _page = BackgroundPage.grid;
-        _step = -1;
-      }
+      _step++;
+      _browse = false;
+      _expandedControls = false;
     });
+    if (_step == 1 &&
+        _draft.resolved(_page).assetId == null &&
+        !_following &&
+        (_page == BackgroundPage.grid ||
+            _draft.page(BackgroundPage.grid).assetId == null)) {
+      await _pick();
+    }
   }
+
+  void _previous() => setState(() {
+    _step = math.max(0, _step - 1);
+    _expandedControls = false;
+  });
 
   void _updateFrame(BackgroundFraming frame) {
+    if (_following || _busy) return;
     final asset = _draft.assets[_draft.resolved(_page).assetId];
     final render = _sceneKey.currentContext?.findRenderObject();
     if (asset != null && render is RenderBox && render.hasSize) {
@@ -476,6 +398,12 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
   }
 
   void _toggle(BackgroundRegionId region) {
+    if (_busy ||
+        (_following &&
+            (region == BackgroundRegionId.header ||
+                region == BackgroundRegionId.navigation))) {
+      return;
+    }
     final value = _draft.page(_page);
     final regions = {...value.regions};
     if (!regions.remove(region)) regions.add(region);
@@ -746,43 +674,24 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
   @override
   Widget build(BuildContext context) {
     final t = BackgroundText(context);
-    final value = _draft.page(_page);
-    final frame = _draft.resolved(_page).framing;
     final viewport = MediaQuery.sizeOf(context);
+    final wide = viewport.width >= 900;
     return PopScope(
-      canPop: !_busy && (_saved || !_dirty),
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop && !_busy && await _exit() && context.mounted) {
-          Navigator.pop(context);
-        }
+      canPop: _allowExit,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_exit());
       },
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: _busy
-                ? null
-                : () async {
-                    if (await _exit() && context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  },
+            onPressed: _busy ? null : _exit,
           ),
-          title: Text(t.title),
-          actions: [
-            IconButton(
-              tooltip: t.t('Previous step', '上一步'),
-              onPressed: _busy ? null : _previous,
-              icon: const Icon(Icons.arrow_back),
-            ),
-            TextButton(
-              onPressed: _busy ? null : _save,
-              child: Text(t.t('Save', '保存', '儲存')),
-            ),
-          ],
+          title: Text(
+            _step == 0
+                ? t.t('Choose a page', '选择编辑页面', '選擇編輯頁面')
+                : '${t.page(_page)} · ${_step == 1 ? t.t('Layout', '区域与构图', '區域與構圖') : t.t('Effects', '效果调整', '效果調整')}',
+          ),
         ),
         body: Column(
           children: [
@@ -796,264 +705,332 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                 ),
               ),
             Expanded(
-              child: _overview
-                  ? ListView(
+              child: _step == 0
+                  ? _pageChooser(t)
+                  : wide
+                  ? Row(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            t.t(
-                              'Review each page, then save all changes together.',
-                              '检查各页效果后统一保存。',
-                              '檢查各頁效果後統一儲存。',
-                            ),
-                          ),
-                        ),
-                        for (final p in BackgroundPage.values)
-                          ListTile(
-                            title: Text(t.page(p)),
-                            subtitle: Text(
-                              _draft.assets[_draft.resolved(p).assetId]?.name ??
-                                  t.t('No background', '未设置背景', '未設定背景'),
-                            ),
-                            leading: _shots[p] == null
-                                ? null
-                                : SizedBox(
-                                    width: 80,
-                                    height: 100,
-                                    child: RawImage(
-                                      image: _shots[p],
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                            minTileHeight: _shots[p] == null ? null : 124,
-                            trailing: const Icon(Icons.edit_outlined),
-                            onTap: () => setState(() {
-                              _page = p;
-                              _overview = false;
-                            }),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: FilledButton(
-                            onPressed: _busy ? null : _save,
-                            child: Text(
-                              t.t('Save all pages', '保存全部页面', '儲存全部頁面'),
-                            ),
-                          ),
-                        ),
+                        Expanded(child: _preview(viewport, t)),
+                        SizedBox(width: 340, child: _controls(t)),
                       ],
                     )
-                  : _preview(viewport, t),
+                  : Column(
+                      children: [
+                        Expanded(child: _preview(viewport, t)),
+                        TextButton.icon(
+                          onPressed: () => setState(
+                            () => _expandedControls = !_expandedControls,
+                          ),
+                          icon: Icon(
+                            _expandedControls
+                                ? Icons.expand_more
+                                : Icons.expand_less,
+                          ),
+                          label: Text(t.t('Adjustments', '调整选项', '調整選項')),
+                        ),
+                        SizedBox(
+                          height: math.min(
+                            _expandedControls ? 300 : 150,
+                            viewport.height * (_expandedControls ? .42 : .23),
+                          ),
+                          child: _controls(t),
+                        ),
+                      ],
+                    ),
             ),
-            if (!_overview)
-              SizedBox(
-                height: math.min(228, viewport.height * .42),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: Column(
-                    children: [
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        children: [
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 260),
-                            child: DropdownButton<BackgroundPage>(
-                              isExpanded: true,
-                              value: _page,
-                              items: [
-                                for (final p in BackgroundPage.values)
-                                  DropdownMenuItem(
-                                    value: p,
-                                    child: Text(t.page(p)),
-                                  ),
-                              ],
-                              onChanged: _busy
-                                  ? null
-                                  : (p) {
-                                      if (p != null) setState(() => _page = p);
-                                    },
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () => setState(() => _browse = !_browse),
-                            child: Text(
-                              _browse
-                                  ? t.t('Edit regions', '区域编辑', '區域編輯')
-                                  : t.t('Browse preview', '浏览预览', '瀏覽預覽'),
-                            ),
-                          ),
-                          FilledButton(
-                            onPressed: _busy ? null : _next,
-                            child: Text(t.t('Next', '下一步')),
-                          ),
-                        ],
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    if (_step > 0)
+                      TextButton(
+                        onPressed: _busy ? null : _previous,
+                        child: Text(t.t('Back', '上一步', '上一步')),
                       ),
-                      Text(
-                        t.t(
-                          'Tap a region; pinch with two fingers to zoom and drag. Desktop: drag / mouse wheel.',
-                          '点击区域开关；双指缩放拖动。桌面：拖动／滚轮。',
-                          '點擊區域開關；雙指縮放拖曳。桌面：拖曳／滾輪。',
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall,
+                    const Spacer(),
+                    FilledButton(
+                      key: const Key('background-next-save'),
+                      onPressed: _busy
+                          ? null
+                          : _step == 2
+                          ? () => _save()
+                          : _next,
+                      child: Text(
+                        _step == 2
+                            ? t.t('Save', '保存', '儲存')
+                            : t.t('Next', '下一步', '下一步'),
                       ),
-                      if ((_page == BackgroundPage.grid || value.followGrid) &&
-                          BackgroundPage.values.any(
-                            (p) =>
-                                p != BackgroundPage.grid &&
-                                _draft.page(p).followGrid,
-                          ))
-                        Text(
-                          t.t(
-                            'Framing changes affect every page sharing the schedule.',
-                            '调整构图会同时影响所有与课表共用的页面。',
-                            '調整構圖會同時影響所有與課表共用的頁面。',
-                          ),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      Wrap(
-                        spacing: 5,
-                        children: [
-                          for (final region in backgroundRegions(_page))
-                            FilterChip(
-                              label: Text(t.region(region)),
-                              selected: value.regions.contains(region),
-                              onSelected: _busy ? null : (_) => _toggle(region),
-                            ),
-                        ],
-                      ),
-                      if (_page != BackgroundPage.grid)
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            t.t('Share schedule framing', '与课表共用构图', '與課表共用構圖'),
-                          ),
-                          subtitle: Text(
-                            t.t(
-                              'Zoom, position, edge fill and dimming change together.',
-                              '缩放、位置、边缘填补和暗化同步变更。',
-                              '縮放、位置、邊緣填補和暗化同步變更。',
-                            ),
-                          ),
-                          value: value.followGrid,
-                          onChanged:
-                              _busy ||
-                                  _draft.page(BackgroundPage.grid).assetId ==
-                                      null
-                              ? null
-                              : (v) => setState(
-                                  () => _draft = v
-                                      ? _draft.updatePage(
-                                          _page,
-                                          value.copyWith(followGrid: true),
-                                        )
-                                      : _draft.detach(_page),
-                                ),
-                        ),
-                      Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          TextButton.icon(
-                            onPressed: _busy ? null : _pick,
-                            icon: const Icon(Icons.image_outlined),
-                            label: Text(t.t('Change media', '更换素材', '更換素材')),
-                          ),
-                          IconButton(
-                            tooltip: t.t('Zoom out', '缩小', '縮小'),
-                            onPressed: () => _zoom(frame.zoom / 1.1),
-                            icon: const Icon(Icons.remove),
-                          ),
-                          Text('${frame.zoom.toStringAsFixed(2)}×'),
-                          IconButton(
-                            tooltip: t.t('Zoom in', '放大'),
-                            onPressed: () => _zoom(frame.zoom * 1.1),
-                            icon: const Icon(Icons.add),
-                          ),
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () =>
-                                      _updateFrame(frame.copyWith(x: 0, y: 0)),
-                            child: Text(t.t('Center', '居中')),
-                          ),
-                          TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () => _updateFrame(
-                                    frame.copyWith(zoom: 1, x: 0, y: 0),
-                                  ),
-                            child: Text(t.t('Reset framing', '重置构图', '重設構圖')),
-                          ),
-                        ],
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          t.t(
-                            'Allow image edges in view',
-                            '允许图片边缘进入可视范围',
-                            '允許圖片邊緣進入可視範圍',
-                          ),
-                        ),
-                        value: frame.allowEdges,
-                        onChanged: (v) =>
-                            _updateFrame(frame.copyWith(allowEdges: v)),
-                      ),
-                      if (frame.allowEdges)
-                        DropdownButtonFormField<BackgroundEdgeFill>(
-                          initialValue: frame.fill,
-                          key: ValueKey('${_page.name}-${frame.fill.name}'),
-                          decoration: InputDecoration(
-                            labelText: t.t('Outside image', '图片外部填补', '圖片外部填補'),
-                          ),
-                          items: [
-                            DropdownMenuItem(
-                              value: BackgroundEdgeFill.theme,
-                              child: Text(t.t('Theme color', '主题底色', '主題底色')),
-                            ),
-                            DropdownMenuItem(
-                              value: BackgroundEdgeFill.blur,
-                              child: Text(t.t('Blurred media', '模糊背景', '模糊背景')),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v != null) {
-                              _updateFrame(frame.copyWith(fill: v));
-                            }
-                          },
-                        ),
-                      _slider(
-                        t.t('Card opacity', '底板不透明度', '底板不透明度'),
-                        value.surfaceOpacity,
-                        1,
-                        (v) => setState(
-                          () => _draft = _draft.updatePage(
-                            _page,
-                            value.copyWith(surfaceOpacity: v),
-                          ),
-                        ),
-                      ),
-                      _slider(
-                        t.t('Background dimming', '背景暗化', '背景暗化'),
-                        frame.dim,
-                        .8,
-                        (v) => _updateFrame(frame.copyWith(dim: v)),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _selectPage(BackgroundPage page) async {
+    if (page == _page) return;
+    if (_dirty) {
+      final t = BackgroundText(context);
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text(
+            t.t(
+              'Discard changes before switching pages?',
+              '放弃当前更改并切换编辑页面？',
+              '放棄目前變更並切換編輯頁面？',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text(t.t('Continue editing', '继续编辑', '繼續編輯')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(t.t('Discard', '放弃', '放棄')),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+    }
+    setState(() {
+      _draft = widget.initial;
+      _page = page;
+      _error = null;
+      _browse = false;
+    });
+  }
+
+  Widget _pageChooser(BackgroundText t) => ListView(
+    children: [
+      for (final page in BackgroundPage.values)
+        ListTile(
+          key: ValueKey('background-page-${page.name}'),
+          leading: Icon(
+            _page == page ? Icons.radio_button_checked : Icons.radio_button_off,
+          ),
+          title: Text(t.page(page)),
+          subtitle: Text(
+            _draft.assets[_draft.resolved(page).assetId]?.name ??
+                t.t('No background', '未设置背景', '未設定背景'),
+          ),
+          selected: _page == page,
+          onTap: _busy ? null : () => _selectPage(page),
+        ),
+    ],
+  );
+
+  Widget _controls(BackgroundText t) {
+    final value = _draft.page(_page);
+    final effective = _draft.resolved(_page);
+    final frame = effective.framing;
+    final canFrame = !_busy && !_following;
+    return SingleChildScrollView(
+      key: ValueKey('controls-${_page.name}-$_step'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Column(
+        children: [
+          if (_step == 2) ...[
+            _slider(
+              t.t('Background blur', '背景模糊', '背景模糊'),
+              frame.blur,
+              1,
+              canFrame ? (v) => _updateFrame(frame.copyWith(blur: v)) : null,
+            ),
+            _slider(
+              t.t('Background dimming', '背景暗化', '背景暗化'),
+              frame.dim,
+              .9,
+              canFrame ? (v) => _updateFrame(frame.copyWith(dim: v)) : null,
+            ),
+            _slider(
+              t.t('Card opacity', '底板不透明度', '底板不透明度'),
+              value.surfaceOpacity,
+              1,
+              (v) => setState(
+                () => _draft = _draft.updatePage(
+                  _page,
+                  value.copyWith(surfaceOpacity: v),
+                ),
+              ),
+            ),
+          ],
+          Text(
+            t.t(
+              'Tap regions; pinch to compose. Desktop: drag / wheel.',
+              '点击区块；双指缩放拖动。桌面：拖动／滚轮。',
+              '點擊區塊；雙指縮放拖曳。桌面：拖曳／滾輪。',
+            ),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          TextButton(
+            onPressed: _busy ? null : () => setState(() => _browse = !_browse),
+            child: Text(
+              _browse
+                  ? t.t('Edit regions', '区域编辑', '區域編輯')
+                  : t.t('Browse preview', '浏览预览', '瀏覽預覽'),
+            ),
+          ),
+          if (_page != BackgroundPage.grid)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                t.t('Follow schedule background', '跟随课表背景', '跟隨課表背景'),
+              ),
+              subtitle: Text(
+                _draft.page(BackgroundPage.grid).assetId == null
+                    ? t.t(
+                        'Set a schedule background first',
+                        '请先设置课表背景',
+                        '請先設定課表背景',
+                      )
+                    : t.t(
+                        'Media, framing, effects, header and navigation follow the schedule. Turn off to edit independently.',
+                        '素材、构图、效果、标题栏和主导航跟随课表；关闭后可独立编辑。',
+                        '素材、構圖、效果、標題列和主導覽跟隨課表；關閉後可獨立編輯。',
+                      ),
+              ),
+              value: value.followGrid,
+              onChanged:
+                  _busy || _draft.page(BackgroundPage.grid).assetId == null
+                  ? null
+                  : (v) => setState(
+                      () => _draft = v
+                          ? _draft
+                                .copyWith(enabled: true)
+                                .updatePage(
+                                  _page,
+                                  value.copyWith(followGrid: true),
+                                )
+                          : _draft.detach(_page),
+                    ),
+            ),
+          if (_page == BackgroundPage.grid &&
+              BackgroundPage.values.any(
+                (p) => p != _page && _draft.page(p).followGrid,
+              ))
+            Text(
+              t.t(
+                'Changes also affect pages following the schedule.',
+                '修改会同时影响跟随课表的页面。',
+                '修改會同時影響跟隨課表的頁面。',
+              ),
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
+            ),
+          if (_step == 1) ...[
+            Wrap(
+              spacing: 4,
+              children: [
+                for (final region in backgroundRegions(_page))
+                  FilterChip(
+                    label: Text(t.region(region)),
+                    selected: effective.regions.contains(region),
+                    onSelected:
+                        _busy ||
+                            (_following &&
+                                (region == BackgroundRegionId.header ||
+                                    region == BackgroundRegionId.navigation))
+                        ? null
+                        : (_) => _toggle(region),
+                  ),
+              ],
+            ),
+            TextButton.icon(
+              onPressed: canFrame ? _pick : null,
+              icon: const Icon(Icons.image_outlined),
+              label: Text(t.t('Change media', '更换素材', '更換素材')),
+            ),
+          ],
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              IconButton(
+                tooltip: t.t('Zoom out', '缩小', '縮小'),
+                onPressed: canFrame ? () => _zoom(frame.zoom / 1.1) : null,
+                icon: const Icon(Icons.remove),
+              ),
+              Text('${frame.zoom.toStringAsFixed(2)}×'),
+              IconButton(
+                tooltip: t.t('Zoom in', '放大'),
+                onPressed: canFrame ? () => _zoom(frame.zoom * 1.1) : null,
+                icon: const Icon(Icons.add),
+              ),
+              TextButton(
+                onPressed: canFrame
+                    ? () => _updateFrame(frame.copyWith(x: 0, y: 0))
+                    : null,
+                child: Text(t.t('Center', '居中')),
+              ),
+              TextButton(
+                onPressed: canFrame
+                    ? () => _updateFrame(frame.copyWith(zoom: 1, x: 0, y: 0))
+                    : null,
+                child: Text(t.t('Reset framing', '重置构图', '重設構圖')),
+              ),
+            ],
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(t.t('Allow image edges', '允许露出图片边缘', '允許露出圖片邊緣')),
+            value: frame.allowEdges,
+            onChanged: canFrame
+                ? (v) => _updateFrame(frame.copyWith(allowEdges: v))
+                : null,
+          ),
+          if (_step == 2) ...[
+            if (frame.allowEdges)
+              DropdownButtonFormField<BackgroundEdgeFill>(
+                initialValue: frame.fill,
+                key: ValueKey('${_page.name}-${frame.fill.name}'),
+                decoration: InputDecoration(
+                  labelText: t.t('Outside image', '图片外部填补', '圖片外部填補'),
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: BackgroundEdgeFill.theme,
+                    child: Text(t.t('Theme color', '主题底色', '主題底色')),
+                  ),
+                  DropdownMenuItem(
+                    value: BackgroundEdgeFill.blur,
+                    child: Text(t.t('Blurred media', '模糊背景')),
+                  ),
+                ],
+                onChanged: canFrame
+                    ? (v) {
+                        if (v != null) _updateFrame(frame.copyWith(fill: v));
+                      }
+                    : null,
+              ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(t.t('Automatic text protection', '自动文字保护', '自動文字保護')),
+              subtitle: Text(
+                t.t(
+                  'Soft text shadows below 30% dimming',
+                  '暗化低于30%时添加柔和文字阴影',
+                  '暗化低於30%時加入柔和文字陰影',
+                ),
+              ),
+              value: value.autoTextProtection,
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(
+                      () => _draft = _draft.updatePage(
+                        _page,
+                        value.copyWith(autoTextProtection: v),
+                      ),
+                    ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1062,7 +1039,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     String title,
     double value,
     double max,
-    ValueChanged<double> changed,
+    ValueChanged<double>? changed,
   ) => Row(
     children: [
       SizedBox(width: 130, child: Text('$title ${(value * 100).round()}%')),
@@ -1105,7 +1082,7 @@ class _RegionPainter extends CustomPainter {
       if (bounds == null) continue;
       final rect = bounds.shift(-origin).intersect(visible);
       if (rect.isEmpty) continue;
-      final selected = settings.page(page).regions.contains(item.region);
+      final selected = settings.resolved(page).regions.contains(item.region);
       final color = selected ? Colors.tealAccent : Colors.orangeAccent;
       canvas.drawRect(
         rect.deflate(1),

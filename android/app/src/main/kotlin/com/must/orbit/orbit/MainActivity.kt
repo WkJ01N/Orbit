@@ -97,6 +97,7 @@ class MainActivity : FlutterActivity() {
         ).also { channel ->
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "supportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
                     "runtimeStatus" -> {
                         val config = OrbitReminderStore.metadata(this)
                         result.success(config["schedule_failure"] ?: config["strong_degraded"])

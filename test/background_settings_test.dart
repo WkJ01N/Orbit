@@ -72,9 +72,14 @@ void main() {
         settings.continuityKey(BackgroundPage.upcoming),
         settings.continuityKey(BackgroundPage.grid),
       );
-      settings = settings.setFraming(
+      final protected = settings.setFraming(
         BackgroundPage.upcoming,
-        const BackgroundFraming(zoom: 3, dim: .5),
+        const BackgroundFraming(zoom: 8),
+      );
+      expect(protected.page(BackgroundPage.grid).framing.zoom, 2);
+      settings = settings.setFraming(
+        BackgroundPage.grid,
+        const BackgroundFraming(zoom: 3, dim: .9, blur: .5),
       );
       expect(settings.page(BackgroundPage.grid).framing.zoom, 3);
       settings = settings.detach(BackgroundPage.upcoming);
@@ -97,6 +102,60 @@ void main() {
     },
   );
 
+  test(
+    'following resolves only header and navigation, then detaches without visual change',
+    () {
+      var settings = sample()
+          .updatePage(
+            BackgroundPage.grid,
+            sample()
+                .page(BackgroundPage.grid)
+                .copyWith(
+                  regions: {
+                    BackgroundRegionId.header,
+                    BackgroundRegionId.content,
+                  },
+                  framing: const BackgroundFraming(dim: .9, blur: .7),
+                ),
+          )
+          .updatePage(
+            BackgroundPage.settings,
+            const PageBackgroundSettings(
+              followGrid: true,
+              regions: {
+                BackgroundRegionId.navigation,
+                BackgroundRegionId.categories,
+              },
+              surfaceOpacity: .4,
+              autoTextProtection: false,
+            ),
+          );
+      final effective = settings.resolved(BackgroundPage.settings);
+      expect(effective.regions, {
+        BackgroundRegionId.header,
+        BackgroundRegionId.categories,
+      });
+      expect(effective.framing.blur, .7);
+      expect(effective.framing.dim, .9);
+      expect(effective.surfaceOpacity, .4);
+      expect(effective.autoTextProtection, false);
+      settings = settings.detach(BackgroundPage.settings);
+      expect(
+        settings.resolved(BackgroundPage.settings).toJson(),
+        effective.copyWith(followGrid: false).toJson(),
+      );
+      settings = settings.setFraming(
+        BackgroundPage.grid,
+        const BackgroundFraming(),
+      );
+      expect(settings.resolved(BackgroundPage.settings).framing.blur, .7);
+      final restored = BackgroundSettings.fromJson(settings.toJson());
+      expect(restored.toJson(), settings.toJson());
+      expect(BackgroundFraming.fromJson({}).blur, 0);
+      expect(PageBackgroundSettings.fromJson({}).autoTextProtection, true);
+    },
+  );
+
   test('non-finite framing is normalized and managed paths cannot escape', () {
     final frame = BackgroundFraming.fromJson({
       'zoom': double.nan,
@@ -105,7 +164,7 @@ void main() {
     });
     expect(frame.zoom, 1);
     expect(frame.x, 0);
-    expect(frame.dim, .8);
+    expect(frame.dim, .9);
     expect(
       () => BackgroundAsset.fromJson({...asset.toJson(), 'id': '../escape'}),
       throwsFormatException,
