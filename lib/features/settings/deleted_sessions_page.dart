@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
@@ -73,7 +74,7 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(
         title: Text(l10n.trashTitle),
         actions: [

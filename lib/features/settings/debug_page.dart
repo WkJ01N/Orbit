@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
 import 'package:orbit/models/orbit_feature_text.dart';
@@ -25,7 +26,7 @@ class _DebugPageState extends ConsumerState<DebugPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(l10n.debugTitle)),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),

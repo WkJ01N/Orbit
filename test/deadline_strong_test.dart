@@ -222,7 +222,7 @@ void main() {
     },
   );
   test(
-    'v9 backup, repeated restore and remote sync retain strong choices and disabled slots',
+    'current backup, repeated restore and remote sync retain strong choices and disabled slots',
     () async {
       final d = sample().copyWith(
         strongReminderEnabled: true,
@@ -231,7 +231,10 @@ void main() {
       );
       final backup = ScheduleBackupService();
       final json = backup.encodeToJson([], deadlines: [d]);
-      expect(backup.decodeBackup(json).version, 9);
+      expect(
+        backup.decodeBackup(json).version,
+        ScheduleBackupService.backupVersion,
+      );
       expect(
         backup.decodeBackup(json).deadlines.single.toSyncPayload(),
         d.toSyncPayload(),

@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,7 +90,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(l10n.searchSessions)),
       body: Column(
         children: [

@@ -10,6 +10,8 @@ import 'package:orbit/core/widgets/color_picker_dialog.dart';
 import 'package:orbit/core/widgets/settings_group.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/features/settings/background_editor_page.dart';
+import 'package:orbit/models/background_text.dart';
 
 class SettingsAppearanceSection extends ConsumerWidget {
   const SettingsAppearanceSection({super.key});
@@ -27,6 +29,18 @@ class SettingsAppearanceSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.sectionAppearance,
           children: [
+            ListTile(
+              key: const Key('page-background-settings'),
+              leading: const Icon(Icons.wallpaper),
+              title: Text(BackgroundText(context).title),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const BackgroundSettingsPage(),
+                ),
+              ),
+            ),
             SettingsChoiceTile(
               title: Text(l10n.themeStyleTitle),
               subtitle: Text(l10n.themeStyleSubtitle),

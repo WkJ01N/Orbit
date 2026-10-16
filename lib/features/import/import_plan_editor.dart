@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/features/import/import_labels.dart';
@@ -12,7 +13,7 @@ class ImportPlansPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = importL10n(context);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(l.importPlans)),
       body: ref
           .watch(importConfigurationProvider)

@@ -1,3 +1,4 @@
+import 'package:orbit/providers/background_providers.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/features/statistics/statistics_page.dart';
 import 'package:orbit/features/settings/update_host.dart';
@@ -20,15 +21,23 @@ import 'package:orbit/providers/account_sync_providers.dart';
 import 'package:orbit/models/auto_sync_settings.dart';
 import 'package:orbit/core/widgets/notification_permission_banner.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/core/background/background_host.dart';
+import 'package:orbit/models/background_settings.dart';
 
 final _navigatorKey = GlobalKey<NavigatorState>();
 final _messageRouteObserver = AppMessageRouteObserver();
+final _backgroundRoutes = BackgroundRouteObserver();
 
 class OrbitApp extends ConsumerWidget {
   const OrbitApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    _backgroundRoutes.mainPage = () =>
+        BackgroundPage.values[ref.read(appNavIndexProvider).clamp(0, 3)];
+    _backgroundRoutes.settingsSnapshot = () =>
+        ref.read(backgroundSettingsProvider).valueOrNull ??
+        const BackgroundSettings();
     final locale = ref.watch(localeProvider);
     final seed = ref.watch(themeColorProvider);
 
@@ -41,21 +50,24 @@ class OrbitApp extends ConsumerWidget {
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      navigatorObservers: [_messageRouteObserver],
-      builder: (context, child) => AppScaffoldMessenger(
-        routeObserver: _messageRouteObserver,
-        child: DeadlineStrongHost(
-          navigatorKey: _navigatorKey,
-          child: StrongReminderHost(
+      navigatorObservers: [_messageRouteObserver, _backgroundRoutes],
+      builder: (context, child) => BackgroundHost(
+        routes: _backgroundRoutes,
+        child: AppScaffoldMessenger(
+          routeObserver: _messageRouteObserver,
+          child: DeadlineStrongHost(
             navigatorKey: _navigatorKey,
-            child: UpdateHost(
+            child: StrongReminderHost(
               navigatorKey: _navigatorKey,
-              child: ArchiveLifecycleHost(
-                child: StatisticsLifecycleHost(
-                  child: _AccountSyncLifecycleHost(
-                    child: NotificationPermissionHost(
-                      navigatorKey: _navigatorKey,
-                      child: child!,
+              child: UpdateHost(
+                navigatorKey: _navigatorKey,
+                child: ArchiveLifecycleHost(
+                  child: StatisticsLifecycleHost(
+                    child: _AccountSyncLifecycleHost(
+                      child: NotificationPermissionHost(
+                        navigatorKey: _navigatorKey,
+                        child: child!,
+                      ),
                     ),
                   ),
                 ),

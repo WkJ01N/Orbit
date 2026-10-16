@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -281,7 +282,7 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
         sessionsAsync.hasError ||
         deadlinesAsync.hasError ||
         settingsAsync.hasError;
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(
         title: Text(text.archive),
         actions: [
@@ -489,7 +490,7 @@ class ArchiveSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final text = OrbitFeatureText.of(context);
     final value = ref.watch(archiveSettingsProvider);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(text.settings)),
       body: value.when(
         loading: () => const Center(child: CircularProgressIndicator()),

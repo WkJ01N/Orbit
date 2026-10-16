@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/models/background_settings.dart';
 import 'package:flutter/services.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/features/grid/grid_selection.dart';
@@ -47,31 +49,36 @@ class GridPage extends ConsumerWidget {
           return KeyEventResult.ignored;
         },
         child: Scaffold(
-          appBar: _GridAppBar(
-            selection: selection,
-            onCancel: () => cancelGridSelection(context, ref),
-            onSubmit: () => _submitManual(context, ref),
-            onAdd: sessionsAsync.hasValue
-                ? () => showSessionAddAction(context)
-                : null,
-            onBatchDelete: canBatchDelete
-                ? () async {
-                    final manual = await showGridBatchDeleteDialog(
-                      context,
-                      ref,
-                      displayedWeekStart: grid.weekStart,
-                    );
-                    if (manual && context.mounted) {
-                      ref.read(gridSelectionProvider.notifier).enter();
+          appBar: BackgroundAppBar(
+            child: _GridAppBar(
+              selection: selection,
+              onCancel: () => cancelGridSelection(context, ref),
+              onSubmit: () => _submitManual(context, ref),
+              onAdd: sessionsAsync.hasValue
+                  ? () => showSessionAddAction(context)
+                  : null,
+              onBatchDelete: canBatchDelete
+                  ? () async {
+                      final manual = await showGridBatchDeleteDialog(
+                        context,
+                        ref,
+                        displayedWeekStart: grid.weekStart,
+                      );
+                      if (manual && context.mounted) {
+                        ref.read(gridSelectionProvider.notifier).enter();
+                      }
                     }
-                  }
-                : null,
-            onSearch: () => SessionSearchPage.show(context),
+                  : null,
+              onSearch: () => SessionSearchPage.show(context),
+            ),
           ),
           body: sessionsAsync.when(
             data: (sessions) {
               if (grid == null) {
-                return _EmptyState(onImport: () => _goToImport(context, ref));
+                return BackgroundRegion(
+                  region: BackgroundRegionId.content,
+                  child: _EmptyState(onImport: () => _goToImport(context, ref)),
+                );
               }
               return WeekGridView(
                 grid: grid,

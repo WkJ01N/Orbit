@@ -15,6 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
+    private var exportResult: MethodChannel.Result? = null
+    private var exportSource: java.io.File? = null
     private var ringtoneResult: MethodChannel.Result? = null
     private var preview: android.media.MediaPlayer? = null
     private var reminderChannel: MethodChannel? = null
@@ -53,6 +55,24 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.must.orbit.orbit/files").setMethodCallHandler { call, result ->
+            if (call.method != "exportFile") { result.notImplemented() }
+            else if (exportResult != null) { result.error("busy", "Export already in progress", null) }
+            else {
+                try {
+                    val source = java.io.File(call.argument<String>("path") ?: "").canonicalFile
+                    require(source.isFile && (source.path.startsWith(cacheDir.canonicalPath + java.io.File.separator) || source.path.startsWith(filesDir.canonicalPath + java.io.File.separator))) { "Invalid export source" }
+                    exportResult = result
+                    exportSource = source
+                    @Suppress("DEPRECATION")
+                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/zip"
+                        putExtra(Intent.EXTRA_TITLE, "orbit-backup.orbit")
+                    }, 6202)
+                } catch (e: Exception) { exportResult = null; exportSource = null; result.error("export", e.message, null) }
+            }
+        }
         OrbitReminderDiagnostics.attach(this)
         captureNotificationPayload(intent, notifyDart = false)
         MethodChannel(
@@ -363,6 +383,27 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 6202) {
+            val result = exportResult
+            val source = exportSource
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null || source == null) {
+                exportResult = null; exportSource = null
+                result?.success(false)
+            } else {
+                Thread {
+                    try {
+                        source.inputStream().use { input ->
+                            (contentResolver.openOutputStream(uri, "w") ?: throw java.io.IOException("Cannot open document")).use { output -> input.copyTo(output, 64 * 1024) }
+                        }
+                        runOnUiThread { exportResult = null; exportSource = null; result?.success(true) }
+                    } catch (e: Exception) {
+                        try { contentResolver.delete(uri, null, null) } catch (_: Exception) { }
+                        runOnUiThread { exportResult = null; exportSource = null; result?.error("export", e.message, null) }
+                    }
+                }.start()
+            }
+        }
         if (requestCode == 6201) {
             @Suppress("DEPRECATION")
             val uri = data?.getParcelableExtra<android.net.Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)

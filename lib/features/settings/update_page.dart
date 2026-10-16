@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -193,7 +194,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
   Widget build(BuildContext context) {
     final t = SyncUpdateText.of(context);
     final newer = _release?.newerThan(kAppVersion, kAppBuildNumber) ?? false;
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(t.check)),
       body: ListView(
         padding: const EdgeInsets.all(16),

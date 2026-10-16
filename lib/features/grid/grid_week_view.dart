@@ -9,6 +9,8 @@ import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/models/background_settings.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -409,73 +411,80 @@ class _ScheduleToolbar extends StatelessWidget {
         ? DateFormat.MMMd(locale).format(first)
         : '${DateFormat.MMMd(locale).format(first)} - ${DateFormat.MMMd(locale).format(last)}';
     final rangeKey = '${dateOnly(first)}|${dateOnly(last)}';
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            tooltip: l10n.gridPrevWeek,
-            onPressed: onPrevious,
+    return BackgroundRegion(
+      region: BackgroundRegionId.week,
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: BackgroundPageScope.color(
+            context,
+            BackgroundRegionId.week,
+            theme.colorScheme.surface,
           ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: reduceMotion
-                  ? Duration.zero
-                  : const Duration(milliseconds: 160),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              layoutBuilder: (currentChild, previousChildren) => Stack(
-                alignment: Alignment.center,
-                children: [...previousChildren, ?currentChild],
-              ),
-              transitionBuilder: (child, animation) {
-                final incoming = child.key == ValueKey(rangeKey);
-                final direction = transitionDirection == 0
-                    ? 0.0
-                    : transitionDirection.toDouble();
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: Offset(
-                        (incoming ? direction : -direction) * 0.08,
-                        0,
-                      ),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+          border: Border(
+            bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              tooltip: l10n.gridPrevWeek,
+              onPressed: onPrevious,
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 160),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.center,
+                  children: [...previousChildren, ?currentChild],
+                ),
+                transitionBuilder: (child, animation) {
+                  final incoming = child.key == ValueKey(rangeKey);
+                  final direction = transitionDirection == 0
+                      ? 0.0
+                      : transitionDirection.toDouble();
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(
+                          (incoming ? direction : -direction) * 0.08,
+                          0,
+                        ),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Center(
+                  key: ValueKey(rangeKey),
+                  child: GridWeekPicker(
+                    weekStart: weekStartFor(anchor),
+                    onChanged: onSelectWeek,
+                    labelOverride: range,
                   ),
-                );
-              },
-              child: Center(
-                key: ValueKey(rangeKey),
-                child: GridWeekPicker(
-                  weekStart: weekStartFor(anchor),
-                  onChanged: onSelectWeek,
-                  labelOverride: range,
                 ),
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            tooltip: l10n.gridNextWeek,
-            onPressed: onNext,
-          ),
-          IconButton(
-            icon: const Icon(Icons.today_outlined),
-            tooltip: l10n.gridThisWeek,
-            onPressed: onToday,
-          ),
-        ],
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              tooltip: l10n.gridNextWeek,
+              onPressed: onNext,
+            ),
+            IconButton(
+              icon: const Icon(Icons.today_outlined),
+              tooltip: l10n.gridThisWeek,
+              onPressed: onToday,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -525,9 +534,16 @@ class _SchedulePage extends ConsumerWidget {
     );
     if (data.visibleDates.isEmpty ||
         data.layout.days.every((day) => day.events.isEmpty) && !hasDeadlines) {
-      return ColoredBox(
-        color: Theme.of(context).colorScheme.surface,
-        child: _NoVisibleCourses(onJump: onJump ?? () {}),
+      return BackgroundRegion(
+        region: BackgroundRegionId.content,
+        child: ColoredBox(
+          color: BackgroundPageScope.color(
+            context,
+            BackgroundRegionId.content,
+            Theme.of(context).colorScheme.surface,
+          ),
+          child: _NoVisibleCourses(onJump: onJump ?? () {}),
+        ),
       );
     }
     return _ScheduleTimeline(
@@ -683,7 +699,10 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
         }
         return Column(
           children: [
-            _DateHeader(layout: layout, now: now),
+            BackgroundRegion(
+              region: BackgroundRegionId.dates,
+              child: _DateHeader(layout: layout, now: now),
+            ),
             Expanded(
               child: Scrollbar(
                 controller: scrollController,
@@ -695,7 +714,17 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                     width: constraints.maxWidth,
                     height: bodyHeight,
                     child: ColoredBox(
-                      color: colorScheme.surface,
+                      color:
+                          BackgroundPageScope.enabled(
+                                context,
+                                BackgroundRegionId.content,
+                              ) ||
+                              BackgroundPageScope.enabled(
+                                context,
+                                BackgroundRegionId.timeRail,
+                              )
+                          ? Colors.transparent
+                          : colorScheme.surface,
                       child: Stack(
                         children: [
                           _TimeGrid(
@@ -995,7 +1024,11 @@ class _DateHeader extends ConsumerWidget {
       key: const Key('schedule-date-header'),
       height: 58,
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: BackgroundPageScope.color(
+          context,
+          BackgroundRegionId.dates,
+          colors.surface,
+        ),
         border: Border(bottom: BorderSide(color: colors.outlineVariant)),
       ),
       child: Row(
@@ -1158,6 +1191,26 @@ class _TimeGrid extends StatelessWidget {
     ];
     return Stack(
       children: [
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: kScheduleTimeRailWidth,
+          child: const BackgroundRegion(
+            region: BackgroundRegionId.timeRail,
+            child: SizedBox.expand(),
+          ),
+        ),
+        Positioned(
+          left: kScheduleTimeRailWidth,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          child: const BackgroundRegion(
+            region: BackgroundRegionId.content,
+            child: SizedBox.expand(),
+          ),
+        ),
         for (var day = 0; day < layout.days.length; day++)
           Positioned(
             left: kScheduleTimeRailWidth + day * dayWidth,
@@ -1415,7 +1468,7 @@ class GridSessionChip extends ConsumerWidget {
             ? null
             : (details) => onMenu(details.globalPosition),
         child: Material(
-          color: surface,
+          color: BackgroundPageScope.surface(context, surface),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(

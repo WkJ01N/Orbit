@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/core/widgets/settings_group.dart';
@@ -40,7 +41,7 @@ class CustomRemindersPage extends ConsumerWidget {
       );
     }
 
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: settingsAppBar(
         context,
         title: l.customReminders,
@@ -392,7 +393,7 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
       onPopInvokedWithResult: (popped, result) {
         if (!popped) _back();
       },
-      child: Scaffold(
+      child: BackgroundScaffold(
         appBar: settingsAppBar(
           context,
           title: widget.rule == null ? l.reminderAdd : l.reminderEdit,

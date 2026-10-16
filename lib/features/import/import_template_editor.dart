@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -351,7 +352,7 @@ class _ImportTemplateEditorState extends State<ImportTemplateEditor> {
   Widget build(BuildContext context) {
     final l = importL10n(context);
     final titles = [l.importLayoutStep, l.importFieldsStep, l.importTestStep];
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(l.importTemplates)),
       body: Center(
         child: ConstrainedBox(

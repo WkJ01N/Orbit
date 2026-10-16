@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -118,7 +119,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
   @override
   Widget build(BuildContext context) {
     final t = StatisticsText.of(context);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(t.title)),
       body: FutureBuilder<OrbitStatistics>(
         future: _data,

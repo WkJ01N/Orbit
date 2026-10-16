@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/models/background_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
@@ -418,237 +420,243 @@ class _ImportPageState extends ConsumerState<ImportPage> {
     });
     final config = ref.watch(importConfigurationProvider);
     return Scaffold(
-      appBar: AppBar(
-        leading: widget.showBackButton ? const BackButton() : null,
-        title: Text(l.importTitle),
-      ),
-      body: config.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(importErrorMessage(l, e)),
-              TextButton(
-                onPressed: () => ref.invalidate(importConfigurationProvider),
-                child: Text(l.actionRetry),
-              ),
-            ],
-          ),
+      appBar: BackgroundAppBar(
+        child: AppBar(
+          leading: widget.showBackButton ? const BackButton() : null,
+          title: Text(l.importTitle),
         ),
-        data: (c) => _importing
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    Text(l.importInProgress),
-                  ],
+      ),
+      body: BackgroundRegion(
+        region: BackgroundRegionId.content,
+        child: config.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(importErrorMessage(l, e)),
+                TextButton(
+                  onPressed: () => ref.invalidate(importConfigurationProvider),
+                  child: Text(l.actionRetry),
                 ),
-              )
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  ExpansionTile(
-                    title: Text(l.importFormatTitle),
+              ],
+            ),
+          ),
+          data: (c) => _importing
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(l.importHelp),
-                      ),
+                      const CircularProgressIndicator(),
+                      Text(l.importInProgress),
                     ],
                   ),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _pick,
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(l.importPickTitle),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _busy
-                            ? null
-                            : () async {
-                                await Navigator.push<void>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ImportTemplatesPage(),
-                                  ),
-                                );
-                              },
-                        icon: const Icon(Icons.rule),
-                        label: Text(l.importTemplates),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _busy
-                            ? null
-                            : () async {
-                                await Navigator.push<void>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ImportPlansPage(),
-                                  ),
-                                );
-                              },
-                        icon: const Icon(Icons.schedule),
-                        label: Text(l.importPlans),
-                      ),
-                      OutlinedButton(
-                        onPressed: _busy
-                            ? null
-                            : () async {
-                                final chosen = await chooseImportContext(
-                                  context,
-                                  c,
-                                  _context,
-                                );
-                                if (chosen != null && mounted) {
-                                  _invalidate();
-                                  setState(() => _context = chosen);
-                                }
-                              },
-                        child: Text(l.importConfirmContext),
-                      ),
-                    ],
-                  ),
-                  if (_context.confirmed)
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        '${_context.semester?.name ?? ''} · ${_context.periodTimes?.name ?? ''} · ${_context.defaultWeeks.join(',')}',
-                      ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    ExpansionTile(
+                      title: Text(l.importFormatTitle),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(l.importHelp),
+                        ),
+                      ],
                     ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _encoding,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: l.importEncoding),
-                    items:
-                        {
-                              'auto': l.importAuto,
-                              'utf-8': 'UTF-8',
-                              'gbk': 'GBK',
-                              'gb18030': 'GB18030',
-                            }.entries
-                            .map(
-                              (e) => DropdownMenuItem(
-                                value: e.key,
-                                child: Text(e.value),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: _busy
-                        ? null
-                        : (v) {
-                            _encoding = v!;
-                            if (_sheets.isNotEmpty) {
-                              _redecode();
-                            } else {
-                              setState(() {});
-                            }
-                          },
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: _delimiter,
-                    isExpanded: true,
-                    decoration: InputDecoration(labelText: l.importDelimiter),
-                    items:
-                        {
-                              '': l.importAuto,
-                              ',': l.importComma,
-                              ';': l.importSemicolon,
-                              '\t': l.importTab,
-                            }.entries
-                            .map(
-                              (e) => DropdownMenuItem(
-                                value: e.key,
-                                child: Text(e.value),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: _busy
-                        ? null
-                        : (v) {
-                            _delimiter = v!;
-                            if (_sheets.isNotEmpty) {
-                              _redecode();
-                            } else {
-                              setState(() {});
-                            }
-                          },
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_busy) ...[
-                    const LinearProgressIndicator(),
-                    TextButton(
-                      onPressed: _invalidate,
-                      child: Text(l.importCancelTask),
-                    ),
-                  ],
-                  for (final e in _fileErrors)
-                    Text(
-                      e,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  if (_sheets.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Text(l.importSelectSheet),
-                  ],
-                  for (final s in _sheets) _sheetCard(s, c),
-                  if (_sheets.isNotEmpty)
                     FilledButton.icon(
-                      onPressed: _busy ? null : _parse,
-                      icon: const Icon(Icons.preview_outlined),
-                      label: Text(l.importPreview),
+                      onPressed: _busy ? null : _pick,
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(l.importPickTitle),
                     ),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        _error!,
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  await Navigator.push<void>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const ImportTemplatesPage(),
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.rule),
+                          label: Text(l.importTemplates),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  await Navigator.push<void>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ImportPlansPage(),
+                                    ),
+                                  );
+                                },
+                          icon: const Icon(Icons.schedule),
+                          label: Text(l.importPlans),
+                        ),
+                        OutlinedButton(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  final chosen = await chooseImportContext(
+                                    context,
+                                    c,
+                                    _context,
+                                  );
+                                  if (chosen != null && mounted) {
+                                    _invalidate();
+                                    setState(() => _context = chosen);
+                                  }
+                                },
+                          child: Text(l.importConfirmContext),
+                        ),
+                      ],
+                    ),
+                    if (_context.confirmed)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                          '${_context.semester?.name ?? ''} · ${_context.periodTimes?.name ?? ''} · ${_context.defaultWeeks.join(',')}',
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _encoding,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: l.importEncoding),
+                      items:
+                          {
+                                'auto': l.importAuto,
+                                'utf-8': 'UTF-8',
+                                'gbk': 'GBK',
+                                'gb18030': 'GB18030',
+                              }.entries
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e.key,
+                                  child: Text(e.value),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: _busy
+                          ? null
+                          : (v) {
+                              _encoding = v!;
+                              if (_sheets.isNotEmpty) {
+                                _redecode();
+                              } else {
+                                setState(() {});
+                              }
+                            },
+                    ),
+                    DropdownButtonFormField<String>(
+                      initialValue: _delimiter,
+                      isExpanded: true,
+                      decoration: InputDecoration(labelText: l.importDelimiter),
+                      items:
+                          {
+                                '': l.importAuto,
+                                ',': l.importComma,
+                                ';': l.importSemicolon,
+                                '\t': l.importTab,
+                              }.entries
+                              .map(
+                                (e) => DropdownMenuItem(
+                                  value: e.key,
+                                  child: Text(e.value),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: _busy
+                          ? null
+                          : (v) {
+                              _delimiter = v!;
+                              if (_sheets.isNotEmpty) {
+                                _redecode();
+                              } else {
+                                setState(() {});
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_busy) ...[
+                      const LinearProgressIndicator(),
+                      TextButton(
+                        onPressed: _invalidate,
+                        child: Text(l.importCancelTask),
+                      ),
+                    ],
+                    for (final e in _fileErrors)
+                      Text(
+                        e,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.error,
                         ),
                       ),
-                    ),
-                  if (_result != null) ...[
-                    Text(
-                      '${l.importValid}: ${_result!.sessions.length} · ${l.importDuplicates}: ${_result!.duplicates} · ${l.importErrors}: ${_result!.diagnostics.length}',
-                    ),
-                    for (final d in _result!.diagnostics.where(
-                      (d) => d.code == 'idConflict',
-                    ))
+                    if (_sheets.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(l.importSelectSheet),
+                    ],
+                    for (final s in _sheets) _sheetCard(s, c),
+                    if (_sheets.isNotEmpty)
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _parse,
+                        icon: const Icon(Icons.preview_outlined),
+                        label: Text(l.importPreview),
+                      ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    if (_result != null) ...[
                       Text(
-                        '${d.location}: ${importErrorMessage(l, d.code)} · ${d.detail}',
+                        '${l.importValid}: ${_result!.sessions.length} · ${l.importDuplicates}: ${_result!.duplicates} · ${l.importErrors}: ${_result!.diagnostics.length}',
                       ),
-                    if (_result!.diagnostics.isNotEmpty && !_result!.hasFatal)
-                      CheckboxListTile(
-                        value: _skip,
-                        title: Text(l.importSkipErrors),
-                        subtitle: Text(l.importSkipDescription),
-                        onChanged: (v) => setState(() => _skip = v ?? false),
+                      for (final d in _result!.diagnostics.where(
+                        (d) => d.code == 'idConflict',
+                      ))
+                        Text(
+                          '${d.location}: ${importErrorMessage(l, d.code)} · ${d.detail}',
+                        ),
+                      if (_result!.diagnostics.isNotEmpty && !_result!.hasFatal)
+                        CheckboxListTile(
+                          value: _skip,
+                          title: Text(l.importSkipErrors),
+                          subtitle: Text(l.importSkipDescription),
+                          onChanged: (v) => setState(() => _skip = v ?? false),
+                        ),
+                      FilledButton.icon(
+                        onPressed:
+                            _busy ||
+                                _result!.hasFatal ||
+                                _result!.sessions.isEmpty ||
+                                (_result!.diagnostics.isNotEmpty && !_skip)
+                            ? null
+                            : _confirm,
+                        icon: const Icon(Icons.save_alt),
+                        label: Text(l.importConfirm),
                       ),
-                    FilledButton.icon(
-                      onPressed:
-                          _busy ||
-                              _result!.hasFatal ||
-                              _result!.sessions.isEmpty ||
-                              (_result!.diagnostics.isNotEmpty && !_skip)
-                          ? null
-                          : _confirm,
-                      icon: const Icon(Icons.save_alt),
-                      label: Text(l.importConfirm),
-                    ),
+                    ],
+                    const SizedBox(height: 24),
                   ],
-                  const SizedBox(height: 24),
-                ],
-              ),
+                ),
+        ),
       ),
     );
   }

@@ -521,7 +521,12 @@ void main() {
             final rect = tester.getRect(button);
             expect(
               tester
-                  .getSize(find.byKey(const Key('schedule-date-header')))
+                  .getSize(
+                    find.descendant(
+                      of: find.byKey(const Key('adjacent-page-current')),
+                      matching: find.byKey(const Key('schedule-date-header')),
+                    ),
+                  )
                   .height,
               58,
             );

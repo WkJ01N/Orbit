@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
@@ -191,7 +192,7 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
       onPopInvokedWithResult: (popped, result) {
         if (!popped) _back();
       },
-      child: Scaffold(
+      child: BackgroundScaffold(
         appBar: settingsAppBar(
           context,
           title: l.reminderStrongConfig,

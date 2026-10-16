@@ -5,6 +5,8 @@ import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/models/orbit_feature_text.dart';
 
 import 'package:flutter/material.dart';
+import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/models/background_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:orbit/core/routing/app_tab.dart';
@@ -96,44 +98,49 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        leading: widget.showBackButton
-            ? const BackButton()
-            : upcomingAsync.hasValue
-            ? IconButton(
-                key: const Key('upcoming-add-session'),
-                icon: const Icon(Icons.add, size: 21),
-                tooltip: l10n.addSession,
-                onPressed: () => showSessionAddAction(context),
-              )
-            : null,
-        title: Text(l10n.upcomingTitle),
-        actions: [
-          IconButton(
-            tooltip: OrbitFeatureText.of(context).refresh,
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: l10n.searchSessions,
-            onPressed: () => SessionSearchPage.show(context),
-          ),
-        ],
-      ),
-      body: _lastSessions != null
-          ? list(_lastSessions!)
-          : upcomingAsync.when(
-              data: (sessions) {
-                return list(sessions);
-              },
-              loading: () => const _UpcomingSkeleton(),
-              error: (error, _) => ErrorState(
-                message: l10n.upcomingLoadFailed('$error'),
-                retryLabel: l10n.actionRetry,
-                onRetry: () => ref.invalidate(upcomingSessionsProvider),
-              ),
+      appBar: BackgroundAppBar(
+        child: AppBar(
+          leading: widget.showBackButton
+              ? const BackButton()
+              : upcomingAsync.hasValue
+              ? IconButton(
+                  key: const Key('upcoming-add-session'),
+                  icon: const Icon(Icons.add, size: 21),
+                  tooltip: l10n.addSession,
+                  onPressed: () => showSessionAddAction(context),
+                )
+              : null,
+          title: Text(l10n.upcomingTitle),
+          actions: [
+            IconButton(
+              tooltip: OrbitFeatureText.of(context).refresh,
+              icon: const Icon(Icons.refresh),
+              onPressed: _refresh,
             ),
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: l10n.searchSessions,
+              onPressed: () => SessionSearchPage.show(context),
+            ),
+          ],
+        ),
+      ),
+      body: BackgroundRegion(
+        region: BackgroundRegionId.content,
+        child: _lastSessions != null
+            ? list(_lastSessions!)
+            : upcomingAsync.when(
+                data: (sessions) {
+                  return list(sessions);
+                },
+                loading: () => const _UpcomingSkeleton(),
+                error: (error, _) => ErrorState(
+                  message: l10n.upcomingLoadFailed('$error'),
+                  retryLabel: l10n.actionRetry,
+                  onRetry: () => ref.invalidate(upcomingSessionsProvider),
+                ),
+              ),
+      ),
     );
   }
 
@@ -421,12 +428,15 @@ class _SessionCard extends ConsumerWidget {
         '${session.endAt.hour.toString().padLeft(2, '0')}:${session.endAt.minute.toString().padLeft(2, '0')}';
 
     return Card(
-      color: courseCardSurface(
-        accent: accent,
-        colorScheme: colorScheme,
-        themeStyle: themeStyle,
-        highlighted: highlight,
-        isPast: isPast,
+      color: BackgroundPageScope.surface(
+        context,
+        courseCardSurface(
+          accent: accent,
+          colorScheme: colorScheme,
+          themeStyle: themeStyle,
+          highlighted: highlight,
+          isPast: isPast,
+        ),
       ),
       child: GestureDetector(
         onLongPress: () => SessionActionMenu.show(

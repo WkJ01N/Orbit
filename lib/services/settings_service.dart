@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:orbit/models/archive_settings.dart';
+import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,31 @@ class SettingsService {
   };
   SharedPreferences? _prefs;
   Future<void> _importSaveTail = Future.value();
+
+  Future<BackgroundSettings> loadBackgroundSettings() async {
+    final raw = (await _prefsInstance()).getString('page_backgrounds_v1');
+    if (raw == null) return const BackgroundSettings();
+    try {
+      return BackgroundSettings.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return const BackgroundSettings();
+    }
+  }
+
+  Future<void> saveBackgroundSettings(BackgroundSettings settings) async {
+    final json = jsonEncode(settings.toJson());
+    BackgroundSettings.fromJson(
+      Map<String, dynamic>.from(jsonDecode(json) as Map),
+    );
+    if (!await (await _prefsInstance()).setString(
+      'page_backgrounds_v1',
+      json,
+    )) {
+      throw StateError('Could not save page backgrounds');
+    }
+  }
 
   Future<ImportConfiguration> loadImportConfiguration() async {
     final prefs = await _prefsInstance();
@@ -653,6 +679,7 @@ class SettingsService {
       importConfiguration: await loadImportConfiguration(),
       autoSyncSettings: await loadAutoSyncSettings(),
       archive: await loadArchiveSettings(),
+      backgrounds: await loadBackgroundSettings(),
     );
   }
 
@@ -690,6 +717,9 @@ class SettingsService {
       } else {
         throw FormatException('Invalid preference ${e.key}');
       }
+    }
+    if (snapshot.backgrounds != null) {
+      await saveBackgroundSettings(snapshot.backgrounds!);
     }
     await saveArchiveSettings(snapshot.archive);
     if (snapshot.importConfiguration != null) {

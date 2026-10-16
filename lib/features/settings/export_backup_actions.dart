@@ -1,3 +1,8 @@
+import 'package:orbit/services/background_package_service.dart';
+import 'package:orbit/services/backup_file_export.dart';
+import 'package:orbit/providers/background_providers.dart';
+import 'package:orbit/models/background_text.dart';
+import 'package:orbit/models/portable_settings.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/models/statistics_text.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
@@ -53,26 +58,61 @@ Future<void> exportScheduleJson(BuildContext context, WidgetRef ref) async {
           .reminderSeriesMemberships(),
     );
     if (!context.mounted) return;
+    var includeMedia = false;
+    final text = BackgroundText(context);
     final proceed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.exportScheduleJson),
-        content: Text(
-          '${(utf8.encode(json).length / 1024 / 1024).toStringAsFixed(2)} MiB',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: Text(l10n.exportScheduleJson),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${(utf8.encode(json).length / 1024 / 1024).toStringAsFixed(2)} MiB',
+              ),
+              CheckboxListTile(
+                value: includeMedia,
+                onChanged: (value) =>
+                    update(() => includeMedia = value ?? false),
+                title: Text(
+                  text.t(
+                    'Include background media (.orbit)',
+                    '包含背景素材（.orbit）',
+                    '包含背景素材（.orbit）',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.actionCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.reminderSave),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.actionCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.reminderSave),
-          ),
-        ],
       ),
     );
     if (proceed != true) return;
+    if (includeMedia) {
+      final staging = await Directory.systemTemp.createTemp('orbit-export-');
+      try {
+        final package = await BackgroundPackageService(
+          ref.read(backgroundAssetServiceProvider),
+        ).create(json, staging);
+        if (await exportBackupPackage(package) && context.mounted) {
+          _showSnackBar(context, l10n.exportDone(sessions.length));
+        }
+      } finally {
+        await staging.delete(recursive: true);
+      }
+      return;
+    }
     final path = await FilePicker.platform.saveFile(
       dialogTitle: l10n.exportScheduleJson,
       fileName: 'orbit-backup.json',
@@ -139,35 +179,36 @@ Future<void> exportScheduleXlsx(BuildContext context, WidgetRef ref) async {
 
 Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
   final l10n = AppLocalizations.of(context)!;
+  Directory? staging;
+  PreparedBackgroundPackage? package;
+  var committed = false;
   try {
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-      withData: true,
+      // Android has no registered MIME mapping for the .orbit extension.
+      type: Platform.isAndroid ? FileType.any : FileType.custom,
+      allowedExtensions: Platform.isAndroid ? null : ['json', 'orbit'],
+      withData: false,
     );
     if (result == null || result.files.isEmpty) {
       return;
     }
 
     final file = result.files.first;
-    final raw = file.bytes != null
-        ? utf8.decode(file.bytes!)
-        : file.path != null
-        ? await File(file.path!).readAsString()
-        : null;
-    if (raw == null) {
-      if (context.mounted) {
-        _showSnackBar(
-          context,
-          l10n.restoreFailed(l10n.importPickMissingPath(file.name)),
-        );
-      }
-      return;
+    String? raw;
+    if (file.path != null && file.extension?.toLowerCase() == 'orbit') {
+      staging = await Directory.systemTemp.createTemp('orbit-restore-');
+      package = await BackgroundPackageService(
+        ref.read(backgroundAssetServiceProvider),
+      ).prepare(File(file.path!), staging);
+    } else if (file.path != null) {
+      raw = await File(file.path!).readAsString();
+    } else {
+      throw FormatException(l10n.importPickMissingPath(file.name));
     }
 
     OrbitBackup backup;
     try {
-      backup = ScheduleBackupService().decodeBackup(raw);
+      backup = package?.backup ?? ScheduleBackupService().decodeBackup(raw!);
     } on ScheduleBackupException catch (e) {
       if (context.mounted) {
         _showSnackBar(
@@ -203,10 +244,31 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
         selection.restoreSettings && backup.settings != null
         ? await ScheduleBackupService().restoreAudio(backup)
         : null;
+    PortableSettings? effectiveSettings;
+    var missingBackgrounds = false;
     final restored = selection.restoreCourses
         ? backup.sessions
         : const <CourseSession>[];
     try {
+      if (restoredSettings != null) {
+        await package?.install(ref.read(backgroundAssetServiceProvider));
+        effectiveSettings = previousSettings == null
+            ? restoredSettings.settings
+            : restoredSettings.settings.mergeWith(previousSettings);
+        final backgrounds = effectiveSettings.backgrounds;
+        if (backgrounds != null) {
+          final available = await ref
+              .read(backgroundAssetServiceProvider)
+              .resolveAvailable(backgrounds);
+          missingBackgrounds =
+              jsonEncode(available.toJson()) !=
+              jsonEncode(backgrounds.toJson());
+          effectiveSettings = PortableSettings.fromJson({
+            ...effectiveSettings.toJson(),
+            'backgrounds': available.toJson(),
+          });
+        }
+      }
       await ref
           .read(appDatabaseProvider)
           .restoreUserBackup(
@@ -220,9 +282,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
             restoreSettings: restoredSettings == null
                 ? null
                 : () => settingsService.importPortableSettings(
-                    previousSettings == null
-                        ? restoredSettings.settings
-                        : restoredSettings.settings.mergeWith(previousSettings),
+                    effectiveSettings!,
                     accountUid: accountUid,
                   ),
           );
@@ -238,6 +298,17 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       }
       rethrow;
     }
+    committed = true;
+    if (missingBackgrounds && context.mounted) {
+      _showSnackBar(
+        context,
+        BackgroundText(context).t(
+          'Some background media is missing. Choose it again in Page backgrounds.',
+          '部分背景素材缺失，相关页面已停用背景，请在页面背景中补选。',
+          '部分背景素材遺失，相關頁面已停用背景，請在頁面背景中補選。',
+        ),
+      );
+    }
     if (selection.restoreCourses || selection.restoreDeadlines) {
       refreshSchedule(ref);
     }
@@ -246,6 +317,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       if (restoredSettings.soundFallback && context.mounted) {
         _showSnackBar(context, l10n.reminderSoundFallback);
       }
+      ref.invalidate(backgroundSettingsProvider);
       ref.invalidate(localeProvider);
       ref.invalidate(themeColorProvider);
       ref.invalidate(themeModeProvider);
@@ -281,6 +353,11 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
   } catch (e) {
     if (context.mounted) {
       _showSnackBar(context, l10n.restoreFailed('$e'), isError: true);
+    }
+  } finally {
+    if (!committed) await package?.rollback();
+    if (staging != null && await staging.exists()) {
+      await staging.delete(recursive: true);
     }
   }
 }

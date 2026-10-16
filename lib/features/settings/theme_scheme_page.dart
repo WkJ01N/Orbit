@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 // Color grid, scheme selection and palette dialog interactions adapted from
 // FlClash (GPL-3.0), chen08209/FlClash, lib/views/theme.dart.
@@ -108,7 +109,7 @@ class ThemeSchemePage extends ConsumerWidget {
       value.tertiary ?? colors.tertiary,
     ];
     final roleNames = [l.palettePrimary, l.paletteSecondary, l.paletteTertiary];
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: settingsAppBar(
         context,
         title: l.themeMulticolor,

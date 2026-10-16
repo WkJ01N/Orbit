@@ -10,6 +10,9 @@ import 'package:orbit/features/upcoming/upcoming_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/core/theme/layout_breakpoints.dart';
 import 'package:orbit/core/widgets/reminder_resync_banner.dart';
+import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/models/background_settings.dart';
+import 'package:orbit/providers/background_providers.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class _NavItem {
@@ -94,6 +97,24 @@ class AppShell extends ConsumerWidget {
       });
     }
     final colorScheme = Theme.of(context).colorScheme;
+    final backgrounds =
+        ref.watch(backgroundSettingsProvider).valueOrNull ??
+        const BackgroundSettings();
+    final backgroundPage = BackgroundPage.values[selectedIndex];
+    final revealNavigation =
+        backgrounds.asset(backgroundPage) != null &&
+        backgrounds
+            .page(backgroundPage)
+            .regions
+            .contains(BackgroundRegionId.navigation);
+    Widget wrapNavigation(Widget child) => BackgroundPageTheme(
+      settings: backgrounds,
+      owner: backgroundPage,
+      child: BackgroundRegion(
+        region: BackgroundRegionId.navigation,
+        child: child,
+      ),
+    );
 
     Future<void> onDestinationSelected(int index) async {
       final target = items[index].tab.index;
@@ -129,32 +150,38 @@ class AppShell extends ConsumerWidget {
 
         if (useRail) {
           return Scaffold(
+            backgroundColor: Colors.transparent,
             body: Row(
               children: [
-                NavigationRail(
-                  selectedIndex: navigationIndex,
-                  onDestinationSelected: onDestinationSelected,
-                  labelType: NavigationRailLabelType.selected,
-                  leading: Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 8),
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.calendar_month,
-                        color: colorScheme.onPrimaryContainer,
-                        size: 22,
+                wrapNavigation(
+                  NavigationRail(
+                    backgroundColor: revealNavigation
+                        ? Colors.transparent
+                        : null,
+                    selectedIndex: navigationIndex,
+                    onDestinationSelected: onDestinationSelected,
+                    labelType: NavigationRailLabelType.selected,
+                    leading: Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 8),
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: colorScheme.primaryContainer,
+                        child: Icon(
+                          Icons.calendar_month,
+                          color: colorScheme.onPrimaryContainer,
+                          size: 22,
+                        ),
                       ),
                     ),
+                    destinations: [
+                      for (final item in items)
+                        NavigationRailDestination(
+                          icon: Icon(item.icon),
+                          selectedIcon: Icon(item.selectedIcon),
+                          label: Text(item.label),
+                        ),
+                    ],
                   ),
-                  destinations: [
-                    for (final item in items)
-                      NavigationRailDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.selectedIcon),
-                        label: Text(item.label),
-                      ),
-                  ],
                 ),
                 VerticalDivider(
                   width: 1,
@@ -175,20 +202,25 @@ class AppShell extends ConsumerWidget {
         }
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           body: wrapWithBanner(
             _AnimatedIndexedStack(index: selectedIndex, children: _pages),
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: navigationIndex,
-            onDestinationSelected: onDestinationSelected,
-            destinations: [
-              for (final item in items)
-                NavigationDestination(
-                  icon: Icon(item.icon),
-                  selectedIcon: Icon(item.selectedIcon),
-                  label: item.label,
-                ),
-            ],
+          bottomNavigationBar: wrapNavigation(
+            NavigationBar(
+              backgroundColor: revealNavigation ? Colors.transparent : null,
+              surfaceTintColor: revealNavigation ? Colors.transparent : null,
+              selectedIndex: navigationIndex,
+              onDestinationSelected: onDestinationSelected,
+              destinations: [
+                for (final item in items)
+                  NavigationDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.selectedIcon),
+                    label: item.label,
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -310,7 +342,15 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
                   child: Transform.scale(
                     scale: scale,
                     alignment: Alignment.center,
-                    child: widget.children[index],
+                    child: Consumer(
+                      builder: (context, ref, _) => BackgroundPageTheme(
+                        settings:
+                            ref.watch(backgroundSettingsProvider).valueOrNull ??
+                            const BackgroundSettings(),
+                        owner: BackgroundPage.values[index],
+                        child: widget.children[index],
+                      ),
+                    ),
                   ),
                 ),
               ),

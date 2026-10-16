@@ -335,7 +335,7 @@ void main() {
     },
   );
   test(
-    'v9 round trip includes trash and statistics; repeated restore is idempotent',
+    'current backup round trip includes trash and statistics; repeated restore is idempotent',
     () async {
       await db.upsertSessions([lesson('a', DateTime(2025, 1, 1, 9))]);
       await db.deleteSessionById('a');
@@ -346,7 +346,7 @@ void main() {
           statistics: await db.statisticsRecords(),
         ),
       );
-      expect(backup.version, 9);
+      expect(backup.version, ScheduleBackupService.backupVersion);
       expect(backup.sessions.single.deletedAt, isNotNull);
       await db.restoreUserBackup(
         sessions: backup.sessions,

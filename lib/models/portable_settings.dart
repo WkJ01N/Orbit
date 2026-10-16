@@ -1,3 +1,4 @@
+import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/models/archive_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
@@ -26,10 +27,12 @@ class PortableSettings {
     this.archive = const ArchiveSettings(),
     this.localPreferences = const {},
     this.sourcePlatform,
+    this.backgrounds,
   });
 
   final Map<String, dynamic> localPreferences;
   final String? sourcePlatform;
+  final BackgroundSettings? backgrounds;
   final ArchiveSettings archive;
   final String locale;
   final ImportConfiguration? importConfiguration;
@@ -95,6 +98,7 @@ class PortableSettings {
   PortableSettings withReminders(ReminderSettings value) => PortableSettings(
     localPreferences: localPreferences,
     sourcePlatform: sourcePlatform,
+    backgrounds: backgrounds,
     locale: locale,
     themeColor: themeColor,
     themeMode: themeMode,
@@ -116,6 +120,7 @@ class PortableSettings {
   Map<String, dynamic> toJson() => {
     'localPreferences': localPreferences,
     'sourcePlatform': sourcePlatform,
+    if (backgrounds != null) 'backgrounds': backgrounds!.toJson(),
     'archive': archive.toJson(),
     'locale': locale,
     if (importConfiguration != null)
@@ -191,6 +196,11 @@ class PortableSettings {
         json['localPreferences'] as Map? ?? {},
       ),
       sourcePlatform: json['sourcePlatform'] as String?,
+      backgrounds: json['backgrounds'] == null
+          ? null
+          : BackgroundSettings.fromJson(
+              Map<String, dynamic>.from(json['backgrounds'] as Map),
+            ),
       archive: ArchiveSettings.fromJson(
         Map<String, dynamic>.from(json['archive'] as Map? ?? {}),
       ),

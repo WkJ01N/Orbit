@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -146,7 +147,7 @@ class _ImportTemplatesPageState extends ConsumerState<ImportTemplatesPage> {
   @override
   Widget build(BuildContext context) {
     final l = importL10n(context);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(l.importTemplates)),
       body: ref
           .watch(importConfigurationProvider)

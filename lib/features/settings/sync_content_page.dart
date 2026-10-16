@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/models/account_sync.dart';
@@ -196,7 +197,7 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
   @override
   Widget build(BuildContext context) {
     final t = SyncUpdateText.of(context);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(t.content)),
       body: _selection == null
           ? Center(

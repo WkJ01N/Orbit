@@ -1,3 +1,4 @@
+import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/models/statistics_text.dart';
@@ -41,7 +42,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
         }
       });
     }
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(text.title)),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -381,7 +382,7 @@ class _SyncConflictsPageState extends ConsumerState<SyncConflictsPage> {
   @override
   Widget build(BuildContext context) {
     final text = _SyncText.of(context);
-    return Scaffold(
+    return BackgroundScaffold(
       appBar: AppBar(title: Text(text.conflictTitle)),
       body: FutureBuilder<List<SyncConflict>>(
         future: _conflicts,
