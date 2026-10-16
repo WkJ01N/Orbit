@@ -33,7 +33,7 @@ v1.5.7 构建产物位于 `release/v1.5.7/`，已发布版本可从 [GitHub Rele
 | Windows | `orbit-v1.5.7-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
 | Android | `orbit-v1.5.7-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
 
-Android 同时提供 `arm64-v8a`、`armeabi-v7a`、`x86_64` 专用 APK；多数现代手机选择 ARM64 包，通用包用于兼容回退。应用内更新会优先匹配设备架构。
+Android 同时提供 `orbit-v1.5.7-arm64-v8a.apk`、`orbit-v1.5.7-armeabi-v7a.apk`、`orbit-v1.5.7-x86_64.apk` 专用包；多数现代手机选择 ARM64 包，通用包用于兼容回退。应用内更新会优先匹配设备架构。
 
 ## 从源码运行
 

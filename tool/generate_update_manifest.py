@@ -18,7 +18,7 @@ def describe(file):
 assets = {}
 abis = {}
 for abi in ("arm64-v8a", "armeabi-v7a", "x86_64"):
-    files = list(args.release_directory.glob(f"*-android-{abi}.apk"))
+    files = list(args.release_directory.glob(f"*-{abi}.apk"))
     if len(files) > 1:
         raise SystemExit(f"Duplicate {abi} packages")
     if files:

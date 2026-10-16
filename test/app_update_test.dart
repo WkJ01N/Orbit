@@ -34,9 +34,9 @@ void main() {
     'ABI selection respects device priority and verifies each exact filename',
     () {
       const names = [
-        'orbit-v1.5.6-android-x86_64.apk',
+        'orbit-v1.5.6-x86_64.apk',
         'orbit-v1.5.6-android.apk',
-        'orbit-v1.5.6-android-arm64-v8a.apk',
+        'orbit-v1.5.6-arm64-v8a.apk',
       ];
       Map<String, Object> metadata(String name, String hash) => {
         'name': name,

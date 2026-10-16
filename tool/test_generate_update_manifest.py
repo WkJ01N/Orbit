@@ -17,9 +17,10 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             names = ['orbit-v1.5.6-android.apk', 'orbit-v1.5.6-windows-x64.zip']
-            names += [f'orbit-v1.5.6-android-{abi}.apk' for abi in ('arm64-v8a', 'armeabi-v7a', 'x86_64')]
+            names += [f'orbit-v1.5.6-{abi}.apk' for abi in ('arm64-v8a', 'armeabi-v7a', 'x86_64')]
             for name in names:
                 (root / name).write_bytes(name.encode())
+            self.assertEqual(sorted(name for name in names if name.endswith('.apk'))[0], names[0])
             result = self.generate(root)
             self.assertEqual(result.returncode, 0, result.stderr)
             manifest = json.loads((root / 'update-manifest.json').read_text())

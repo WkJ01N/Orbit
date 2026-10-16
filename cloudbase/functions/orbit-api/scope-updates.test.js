@@ -25,7 +25,7 @@ test('public update metadata is obtained from official stable GitHub releases on
 
 test('universal APK comes first for clients without ABI selection', async () => {
  const release = await latest(async () => ({tag_name:'v1.5.6', assets:[
-  {name:'orbit-v1.5.6-android-arm64-v8a.apk'}, {name:'orbit-v1.5.6-android.apk'}, {name:'orbit-v1.5.6-android-x86_64.apk'}
+  {name:'orbit-v1.5.6-android-arm64-v8a.apk'}, {name:'orbit-v1.5.6-android.apk'}, {name:'orbit-v1.5.6-x86_64.apk'}
  ]}));
  assert.equal(release.assets[0].name, 'orbit-v1.5.6-android.apk');
 });
