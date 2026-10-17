@@ -17,6 +17,7 @@ import 'package:orbit/models/reminder_schedule_report.dart';
 import 'package:orbit/providers/schedule_providers.dart';
 import 'package:orbit/services/reminder_scheduler.dart';
 import 'package:orbit/services/settings_service.dart';
+import 'package:orbit/providers/launch_providers.dart';
 
 final reminderSchedulerProvider = Provider<ReminderScheduler>(
   (ref) => ReminderScheduler.shared,
@@ -67,7 +68,8 @@ class MulticolorSettingsNotifier extends Notifier<MulticolorSettings> {
     ref.read(settingsServiceProvider).loadMulticolorSettings().then((value) {
       if (generation == _generation) state = value;
     });
-    return const MulticolorSettings();
+    return ref.read(launchSnapshotProvider)?.multicolor ??
+        const MulticolorSettings();
   }
 
   Future<void> setValue(MulticolorSettings value) {
@@ -109,7 +111,7 @@ class ThemeColorNotifier extends Notifier<Color> {
   @override
   Color build() {
     _loadSavedColor();
-    return kDefaultThemeColor;
+    return ref.read(launchSnapshotProvider)?.color ?? kDefaultThemeColor;
   }
 
   Future<void> _loadSavedColor() async {
@@ -139,7 +141,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   ThemeMode build() {
     ref.onDispose(() => _loadGeneration++);
     _loadSavedMode();
-    return ThemeMode.system;
+    return ref.read(launchSnapshotProvider)?.mode ?? ThemeMode.system;
   }
 
   Future<void> _loadSavedMode() async {
@@ -169,7 +171,7 @@ class ThemeStyleNotifier extends Notifier<AppThemeStyle> {
   AppThemeStyle build() {
     ref.onDispose(() => _loadGeneration++);
     _loadSavedStyle();
-    return AppThemeStyle.standard;
+    return ref.read(launchSnapshotProvider)?.style ?? AppThemeStyle.standard;
   }
 
   Future<void> _loadSavedStyle() async {
@@ -240,7 +242,7 @@ class LocaleNotifier extends Notifier<Locale> {
   @override
   Locale build() {
     _loadSavedLocale();
-    return defaultLocale;
+    return ref.read(launchSnapshotProvider)?.locale ?? defaultLocale;
   }
 
   Future<void> _loadSavedLocale() async {

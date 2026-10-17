@@ -50,3 +50,7 @@ app.*.map.json
 /android/*.jks
 /android/*.keystore
 /android/build/
+
+# Local third-party APK references and reverse-engineering outputs
+/ReWakeup/
+/ReWemust/

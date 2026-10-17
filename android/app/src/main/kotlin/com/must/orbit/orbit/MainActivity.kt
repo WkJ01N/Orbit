@@ -15,6 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
+    private var handMotion: OrbitHandMotion? = null
     private var exportResult: MethodChannel.Result? = null
     private var exportSource: java.io.File? = null
     private var ringtoneResult: MethodChannel.Result? = null
@@ -29,10 +30,12 @@ class MainActivity : FlutterActivity() {
     }
     override fun onResume() {
         super.onResume()
+        handMotion?.resume()
         try { OrbitDeadlineStrongSession.visibility(this,true) } catch(e: Exception) { OrbitReminderDiagnostics.failure(this,"deadline_open",error=e) }
         openStrongSession()
     }
     override fun onPause() {
+        handMotion?.pause()
         try { OrbitDeadlineStrongSession.visibility(this,false) } catch(e: Exception) { OrbitReminderDiagnostics.failure(this,"deadline_visibility",error=e) }
         super.onPause()
     }
@@ -55,6 +58,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        handMotion = OrbitHandMotion(this, flutterEngine.dartExecutor.binaryMessenger)
+        OrbitWemustLauncher.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.must.orbit.orbit/files").setMethodCallHandler { call, result ->
             if (call.method != "exportFile") { result.notImplemented() }
             else if (exportResult != null) { result.error("busy", "Export already in progress", null) }
@@ -343,6 +348,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        handMotion?.dispose()
+        handMotion = null
         reminderStatusExecutor.shutdownNow()
         super.onDestroy()
     }

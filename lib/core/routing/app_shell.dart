@@ -14,6 +14,7 @@ import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/providers/background_providers.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/core/motion/launch_motion.dart';
 
 class _NavItem {
   const _NavItem({
@@ -117,6 +118,7 @@ class AppShell extends ConsumerWidget {
     );
 
     Future<void> onDestinationSelected(int index) async {
+      LaunchMotionScope.maybeOf(context)?.finish();
       final target = items[index].tab.index;
       if (target == selectedIndex) return;
       if (!await cancelGridSelection(context, ref) || !context.mounted) return;
@@ -155,30 +157,70 @@ class AppShell extends ConsumerWidget {
               children: [
                 wrapNavigation(
                   NavigationRail(
+                    useIndicator: false,
                     backgroundColor: revealNavigation
                         ? Colors.transparent
                         : null,
                     selectedIndex: navigationIndex,
                     onDestinationSelected: onDestinationSelected,
                     labelType: NavigationRailLabelType.selected,
-                    leading: Padding(
-                      padding: const EdgeInsets.only(top: 12, bottom: 8),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: colorScheme.primaryContainer,
-                        child: Icon(
-                          Icons.calendar_month,
-                          color: colorScheme.onPrimaryContainer,
-                          size: 22,
+                    leading: LaunchReveal(
+                      startMs: 380,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 8),
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.calendar_month,
+                            color: colorScheme.onPrimaryContainer,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ),
                     destinations: [
-                      for (final item in items)
+                      for (var index = 0; index < items.length; index++)
                         NavigationRailDestination(
-                          icon: Icon(item.icon),
-                          selectedIcon: Icon(item.selectedIcon),
-                          label: Text(item.label),
+                          icon: LaunchReveal(
+                            startMs: 480 + index * 35,
+                            durationMs: 350,
+                            offset: const Offset(-24, 0),
+                            spring: true,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              child: Icon(items[index].icon),
+                            ),
+                          ),
+                          selectedIcon: LaunchReveal(
+                            startMs: 480 + index * 35,
+                            durationMs: 350,
+                            offset: const Offset(-24, 0),
+                            spring: true,
+                            child: DecoratedBox(
+                              decoration: ShapeDecoration(
+                                color: colorScheme.secondaryContainer,
+                                shape: const StadiumBorder(),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 4,
+                                ),
+                                child: Icon(items[index].selectedIcon),
+                              ),
+                            ),
+                          ),
+                          label: LaunchReveal(
+                            startMs: 480 + index * 35,
+                            durationMs: 350,
+                            offset: const Offset(-24, 0),
+                            spring: true,
+                            child: Text(items[index].label),
+                          ),
                         ),
                     ],
                   ),
@@ -213,11 +255,17 @@ class AppShell extends ConsumerWidget {
               selectedIndex: navigationIndex,
               onDestinationSelected: onDestinationSelected,
               destinations: [
-                for (final item in items)
-                  NavigationDestination(
-                    icon: Icon(item.icon),
-                    selectedIcon: Icon(item.selectedIcon),
-                    label: item.label,
+                for (var index = 0; index < items.length; index++)
+                  LaunchReveal(
+                    startMs: 480 + index * 35,
+                    durationMs: 350,
+                    offset: const Offset(0, 24),
+                    spring: true,
+                    child: NavigationDestination(
+                      icon: Icon(items[index].icon),
+                      selectedIcon: Icon(items[index].selectedIcon),
+                      label: items[index].label,
+                    ),
                   ),
               ],
             ),

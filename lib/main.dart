@@ -2,8 +2,13 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/app.dart';
+import 'package:orbit/providers/launch_providers.dart';
+import 'package:orbit/providers/reminder_providers.dart'
+    show settingsServiceProvider;
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/services/android_reminder_guard.dart';
@@ -16,6 +21,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'Nunito',
+    ], await rootBundle.loadString('assets/fonts/OFL.txt'));
+  });
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
@@ -30,13 +40,24 @@ Future<void> main(List<String> args) async {
 
   // Window setup and the database do not depend on each other.
   final databaseFuture = openAppDatabase();
+  final settingsService = SettingsService();
+  final presentationFuture = LaunchSnapshot.load(settingsService)
+      .then<LaunchSnapshot?>(
+        (value) => value,
+        onError: (Object error) {
+          debugPrint('Startup presentation preferences unavailable: $error');
+          return null;
+        },
+      );
   await Future.wait<void>([
     databaseFuture.then((_) {}),
+    presentationFuture.then((_) {}),
     if (Platform.isWindows && !maintenance && !notificationAction)
       initializeDesktopWindow(startHidden: startHidden),
     if (Platform.isAndroid) _initializeAndroidGuard(),
   ]);
   final database = await databaseFuture;
+  final presentation = await presentationFuture;
   registerAppDatabase(database);
   String? launchPayload;
   if (Platform.isWindows) {
@@ -69,6 +90,14 @@ Future<void> main(List<String> args) async {
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(database),
+        settingsServiceProvider.overrideWithValue(settingsService),
+        launchSnapshotProvider.overrideWithValue(presentation),
+        launchAnimationsEnabledProvider.overrideWithValue(
+          !startHidden &&
+              !maintenance &&
+              !notificationAction &&
+              launchPayload == null,
+        ),
         if (launchPayload != null)
           pendingNotificationPayloadProvider.overrideWith(
             (ref) => launchPayload,

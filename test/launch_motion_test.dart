@@ -1,0 +1,496 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:orbit/core/motion/launch_motion.dart';
+import 'package:orbit/core/routing/app_shell.dart';
+import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/features/grid/grid_week_view.dart';
+import 'package:orbit/features/reminder/strong_badge.dart';
+import 'package:orbit/features/reminder/strong_confirmation.dart';
+import 'package:orbit/features/settings/launch_settings_page.dart';
+import 'package:orbit/l10n/app_localizations.dart';
+import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/launch_settings.dart';
+import 'package:orbit/models/reminder_settings.dart';
+import 'package:orbit/models/schedule_display_settings.dart';
+import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/providers/launch_providers.dart';
+import 'package:orbit/providers/notification_providers.dart';
+import 'package:orbit/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _Display extends ScheduleDisplaySettingsNotifier {
+  _Display(this.value);
+  final ScheduleDisplaySettings value;
+  @override
+  ScheduleDisplaySettings build() => value;
+}
+
+class _Reminders extends ReminderSettingsNotifier {
+  @override
+  Future<ReminderSettings> build() async => const ReminderSettings();
+}
+
+class _Clock extends CurrentTimeNotifier {
+  _Clock([this.now]);
+  final DateTime? now;
+  @override
+  DateTime build() => now ?? DateTime(2026, 10, 12, 10);
+}
+
+class _LaunchSettings extends LaunchSettingsNotifier {
+  _LaunchSettings(this.value);
+  final LaunchSettings value;
+  @override
+  LaunchSettings build() => value;
+}
+
+List<CourseSession> _courses() => [
+  for (var day = 0; day < 5; day++)
+    for (var i = 0; i < 3; i++)
+      CourseSession(
+        id: 'course-$day-$i',
+        classType: '',
+        room: 'A101',
+        date: DateTime(2026, 10, 12 + day),
+        weekday: day + 1,
+        courseName: 'Course $day',
+        courseCode: 'C$day',
+        section: '1',
+        startAt: DateTime(2026, 10, 12 + day, 9 + i * 3),
+        endAt: DateTime(2026, 10, 12 + day, 11 + i * 3),
+        teachers: const [],
+        faculty: '',
+        semester: '',
+      ),
+];
+
+Future<ProviderContainer> _pump(
+  WidgetTester tester, {
+  Size size = const Size(400, 800),
+  bool enabled = true,
+  bool reduced = false,
+  bool hideUpcoming = false,
+  bool hideImport = false,
+  String? payload,
+  bool strong = false,
+  Future<List<CourseSession>>? data,
+  CardEntranceMode mode = CardEntranceMode.edge,
+  String? iconPath,
+  DateTime? now,
+  Widget child = const AppShell(),
+}) async {
+  await tester.binding.setSurfaceSize(size);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  final container = ProviderContainer(
+    overrides: [
+      launchAnimationsEnabledProvider.overrideWithValue(enabled),
+      launchSettingsProvider.overrideWith(
+        () => _LaunchSettings(
+          LaunchSettings(cardEntrance: mode, iconPath: iconPath),
+        ),
+      ),
+      reminderSettingsProvider.overrideWith(_Reminders.new),
+      scheduleDisplaySettingsProvider.overrideWith(
+        () => _Display(
+          ScheduleDisplaySettings(
+            hideUpcomingPage: hideUpcoming,
+            hideImportPage: hideImport,
+            fitToPage: true,
+          ),
+        ),
+      ),
+      currentTimeProvider.overrideWith(() => _Clock(now)),
+      selectedScheduleDateProvider.overrideWith(
+        (ref) => DateTime(2026, 10, 12),
+      ),
+      selectedWeekStartProvider.overrideWith((ref) => DateTime(2026, 10, 12)),
+      sessionsProvider.overrideWith((ref) => data ?? Future.value(_courses())),
+      deadlinesProvider.overrideWith((ref) async => []),
+      strongCourseIdsProvider.overrideWith((ref) async => {'course-0-0'}),
+      pendingNotificationPayloadProvider.overrideWith((ref) => payload),
+      strongConfirmationVisibleProvider.overrideWith((ref) => strong),
+    ],
+  );
+  addTearDown(container.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        locale: const Locale('en'),
+        theme: AppTheme.light().copyWith(
+          textTheme: AppTheme.light().textTheme.copyWith(
+            labelSmall: const TextStyle(fontSize: 9),
+          ),
+        ),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+          child: child!,
+        ),
+        home: OrbitLaunchHost(child: child),
+      ),
+    ),
+  );
+  await tester.pump();
+  return container;
+}
+
+LaunchMotion _motion(WidgetTester tester) => tester
+    .widget<LaunchMotionScope>(find.byType(LaunchMotionScope).first)
+    .motion;
+
+Future<void> _ready(WidgetTester tester) async {
+  for (var i = 0; i < 40; i++) {
+    if (_motion(tester).timeline.isAnimating || _motion(tester).finished) {
+      await tester.pump();
+      return;
+    }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump();
+  }
+  fail('Startup resources did not finish preparing');
+}
+
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test(
+    'directions are balanced per column and globally, starts are staggered and bounded',
+    () {
+      final columns = {
+        for (var column = 0; column < 7; column++)
+          column: [for (var i = 0; i < column + 1; i++) '$column-$i'],
+      };
+      for (var seed = 0; seed < 100; seed++) {
+        final plan = planCardEntrances(columns, random: Random(seed));
+        for (final ids in [...columns.values, plan.keys.toList()]) {
+          final above = ids.where((id) => plan[id]!.fromAbove).length;
+          expect((above - (ids.length - above)).abs(), lessThanOrEqualTo(1));
+        }
+        expect(plan.values.map((s) => s.delayMs).toSet().length, plan.length);
+        expect(
+          plan.values.every((s) => s.delayMs >= 0 && s.delayMs <= 180),
+          isTrue,
+        );
+        final again = planCardEntrances(columns, random: Random(seed));
+        expect(plan.keys, again.keys);
+        expect(
+          plan.values.map((s) => s.fromAbove),
+          again.values.map((s) => s.fromAbove),
+        );
+      }
+    },
+  );
+
+  test(
+    'edge offsets place a whole card outside the scrolled viewport; nearby is 48px',
+    () {
+      const rect = Rect.fromLTWH(54, 500, 120, 80);
+      const viewport = Rect.fromLTWH(54, 400, 400, 600);
+      for (final above in [true, false]) {
+        final spec = CardEntranceSpec(fromAbove: above, delayMs: 0);
+        final offset = cardEntranceOffset(
+          rect: rect,
+          viewport: viewport,
+          spec: spec,
+          mode: CardEntranceMode.edge,
+        );
+        final start = rect.shift(Offset(0, offset));
+        expect(start.overlaps(viewport), isFalse);
+        expect(
+          above ? start.bottom < viewport.top : start.top > viewport.bottom,
+          isTrue,
+        );
+        expect(
+          cardEntranceOffset(
+            rect: rect,
+            viewport: viewport,
+            spec: spec,
+            mode: CardEntranceMode.nearby,
+          ).abs(),
+          48,
+        );
+      }
+    },
+  );
+
+  for (final mode in CardEntranceMode.values) {
+    testWidgets(
+      '${mode.name}: timetable, bells and visible red line enter once and end within budget',
+      (tester) async {
+        final container = await _pump(tester, mode: mode);
+        await _ready(tester);
+        expect(find.byKey(const Key('orbit-launch-brand')), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 220));
+        final wrappers = tester
+            .widgetList<LaunchCard>(find.byType(LaunchCard))
+            .where((w) => w.spec != null)
+            .toList();
+        expect(wrappers.length, greaterThan(2));
+        expect(wrappers.any((w) => w.child is GridSessionChip), isTrue);
+        final marker = find.byKey(const Key('schedule-current-time-line'));
+        expect(marker, findsOneWidget);
+        expect(
+          tester
+              .widget<LaunchCard>(
+                find.descendant(of: marker, matching: find.byType(LaunchCard)),
+              )
+              .spec,
+          isNotNull,
+        );
+        final courseWrapper = wrappers.firstWhere(
+          (w) => w.child is GridSessionChip,
+        );
+        final bellWrapper = wrappers.firstWhere(
+          (w) => w.child.key == const ValueKey('grid-strong-bell-course-0-0'),
+        );
+        final cardWrapper = wrappers.firstWhere(
+          (w) =>
+              w.child is GridSessionChip &&
+              (w.child as GridSessionChip).session.id == 'course-0-0',
+        );
+        expect(bellWrapper.spec, same(cardWrapper.spec));
+        expect(bellWrapper.offset, cardWrapper.offset);
+        if (mode == CardEntranceMode.nearby) {
+          expect(courseWrapper.offset.abs(), 48);
+        }
+        await tester.pump(const Duration(milliseconds: 280));
+        expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+        await tester.pump(const Duration(milliseconds: 650));
+        await tester.pump(const Duration(milliseconds: 650));
+        expect(_motion(tester).cardsComplete, isTrue);
+        final oldSpec = cardWrapper.spec;
+        container.read(currentTimeProvider.notifier).state = DateTime(
+          2026,
+          10,
+          12,
+          10,
+          1,
+        );
+        await tester.pump();
+        final updated = tester
+            .widgetList<LaunchCard>(find.byType(LaunchCard))
+            .firstWhere(
+              (w) =>
+                  w.child is GridSessionChip &&
+                  (w.child as GridSessionChip).session.id == 'course-0-0',
+            );
+        expect(updated.spec, same(oldSpec));
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
+
+  testWidgets(
+    'slow data does not hold brand; cards animate once data becomes ready',
+    (tester) async {
+      final data = Completer<List<CourseSession>>();
+      await _pump(tester, data: data.future);
+      await _ready(tester);
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+      expect(_motion(tester).canClaimGrid, isTrue);
+      data.complete(_courses());
+      await tester.pump();
+      await tester.pump();
+      expect(_motion(tester).canClaimGrid, isFalse);
+      await tester.pump(const Duration(milliseconds: 650));
+      expect(_motion(tester).cardsComplete, isTrue);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final scenario in ['hidden', 'reduced', 'notification', 'strong']) {
+    testWidgets('$scenario bypasses decorative animation', (tester) async {
+      await _pump(
+        tester,
+        enabled: scenario != 'hidden',
+        reduced: scenario == 'reduced',
+        payload: scenario == 'notification' ? 'course' : null,
+        strong: scenario == 'strong',
+      );
+      expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+      expect(_motion(tester).finished, isTrue);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  for (final count in [2, 3, 4]) {
+    testWidgets('$count bottom destinations animate as complete buttons', (
+      tester,
+    ) async {
+      await _pump(tester, hideUpcoming: count < 4, hideImport: count == 2);
+      await _ready(tester);
+      final destinations = find.byType(NavigationDestination);
+      expect(destinations, findsNWidgets(count));
+      final reveals = tester
+          .widgetList<LaunchReveal>(
+            find.ancestor(
+              of: destinations,
+              matching: find.byType(LaunchReveal),
+            ),
+          )
+          .toList();
+      expect(reveals.map((r) => r.startMs), [
+        for (var i = 0; i < count; i++) 480 + i * 35,
+      ]);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets(
+    'wide layout animates rail and switching tabs cancels the entrance',
+    (tester) async {
+      final container = await _pump(tester, size: const Size(1100, 800));
+      await _ready(tester);
+      expect(find.byType(NavigationRail), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 550));
+      container.read(appNavIndexProvider.notifier).state = 3;
+      await tester.pump();
+      expect(_motion(tester).finished, isTrue);
+      container.read(appNavIndexProvider.notifier).state = 0;
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('settings preview uses isolated navigation and sample data', (
+    tester,
+  ) async {
+    final container = await _pump(
+      tester,
+      enabled: false,
+      child: const LaunchSettingsPage(),
+    );
+    container.read(appNavIndexProvider.notifier).state = 3;
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('launch-preview')));
+    await tester.pumpAndSettle();
+    expect(find.byType(GridSessionChip), findsWidgets);
+    expect(container.read(appNavIndexProvider), 3);
+    expect(
+      container.read(sessionsProvider).valueOrNull,
+      isNot(
+        contains(predicate<CourseSession>((s) => s.id.startsWith('preview-'))),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'hidden time marker has no entrance and moving paint is clipped below dates',
+    (tester) async {
+      await _pump(tester, now: DateTime(2026, 10, 12, 23));
+      await _ready(tester);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byKey(const Key('schedule-current-time-line')), findsNothing);
+      final clip = find
+          .ancestor(
+            of: find.byKey(const Key('schedule-vertical-body')),
+            matching: find.byType(ClipRect),
+          )
+          .first;
+      final header = tester.getRect(
+        find.byKey(const Key('schedule-date-header')),
+      );
+      expect(tester.getRect(clip).top, closeTo(header.bottom, 0.01));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('pause/resume finishes the startup without replay', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _ready(tester);
+    await tester.pump(const Duration(milliseconds: 180));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(_motion(tester).finished, isTrue);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+    expect(_motion(tester).canClaimGrid, isFalse);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'missing custom image falls back to bundled icon and cannot stall launch',
+    (tester) async {
+      await _pump(tester, iconPath: 'missing-orbit-launch-icon.png');
+      await _ready(tester);
+      await tester.pump(const Duration(milliseconds: 220));
+      expect(
+        tester
+            .widgetList<Image>(find.byType(Image))
+            .any(
+              (w) =>
+                  (w.image is AssetImage &&
+                      (w.image as AssetImage).assetName == orbitIconAsset) ||
+                  (w.image is ResizeImage &&
+                      (w.image as ResizeImage).imageProvider is AssetImage &&
+                      ((w.image as ResizeImage).imageProvider as AssetImage)
+                              .assetName ==
+                          orbitIconAsset),
+            ),
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'empty first result consumes the entrance without delaying brand exit',
+    (tester) async {
+      await _pump(tester, data: Future.value([]));
+      await _ready(tester);
+      expect(_motion(tester).canClaimGrid, isFalse);
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
+      expect(find.byType(GridSessionChip), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  test(
+    'local presentation settings persist and tolerate unknown modes',
+    () async {
+      final service = SettingsService();
+      await service.saveLocalJson(
+        'launch_presentation_v1',
+        const LaunchSettings(
+          iconPath: 'icon.png',
+          cardEntrance: CardEntranceMode.nearby,
+        ).toJson(),
+      );
+      final loaded = LaunchSettings.fromJson(
+        await SettingsService().loadLocalJson('launch_presentation_v1'),
+      );
+      expect(loaded.iconPath, 'icon.png');
+      expect(loaded.cardEntrance, CardEntranceMode.nearby);
+      expect(
+        LaunchSettings.fromJson({'cardEntrance': 'future'}).cardEntrance,
+        CardEntranceMode.edge,
+      );
+    },
+  );
+}

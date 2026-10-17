@@ -1,0 +1,472 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orbit/features/deadline/deadline_strong_host.dart';
+import 'package:orbit/features/reminder/strong_confirmation.dart';
+import 'package:orbit/models/launch_settings.dart';
+import 'package:orbit/providers/launch_providers.dart';
+import 'package:orbit/providers/notification_providers.dart';
+import 'package:orbit/providers/navigation_providers.dart';
+import 'package:orbit/providers/reminder_providers.dart'
+    show themeColorProvider;
+
+const orbitBrandFont = 'OrbitBrand';
+const orbitIconAsset = 'assets/icons/orbit.png';
+
+double launchProgress(double milliseconds, double start, double duration) =>
+    ((milliseconds - start) / duration).clamp(0.0, 1.0);
+
+class CardEntranceSpec {
+  const CardEntranceSpec({required this.fromAbove, required this.delayMs});
+  final bool fromAbove;
+  final double delayMs;
+}
+
+/// Balance each date column and the complete batch, while shuffling directions
+/// and start order independently. A supplied Random makes tests reproducible.
+Map<String, CardEntranceSpec> planCardEntrances(
+  Map<int, List<String>> columns, {
+  required math.Random random,
+}) {
+  final directions = <String, bool>{};
+  var extraAbove = random.nextBool();
+  for (final ids in columns.values) {
+    final shuffled = ids.toList()..shuffle(random);
+    final aboveCount =
+        ids.length ~/ 2 + (ids.length.isOdd && extraAbove ? 1 : 0);
+    if (ids.length.isOdd) extraAbove = !extraAbove;
+    for (var index = 0; index < shuffled.length; index++) {
+      directions[shuffled[index]] = index < aboveCount;
+    }
+  }
+  final order = directions.keys.toList()..shuffle(random);
+  return {
+    for (var index = 0; index < order.length; index++)
+      order[index]: CardEntranceSpec(
+        fromAbove: directions[order[index]]!,
+        // Bounded total duration, even with a very dense timetable.
+        delayMs: order.length < 2 ? 0 : index * 180 / (order.length - 1),
+      ),
+  };
+}
+
+double cardEntranceOffset({
+  required Rect rect,
+  required Rect viewport,
+  required CardEntranceSpec spec,
+  required CardEntranceMode mode,
+}) => mode == CardEntranceMode.nearby
+    ? (spec.fromAbove ? -48 : 48)
+    : spec.fromAbove
+    ? viewport.top - rect.bottom - 8
+    : viewport.bottom - rect.top + 8;
+
+/// One clock for the shell and a second clock for the first ready timetable.
+/// Data loading never extends the brand overlay's lifetime.
+class LaunchMotion {
+  LaunchMotion({
+    required TickerProvider vsync,
+    required this.settings,
+    int? seed,
+  }) : random = math.Random(seed),
+       timeline = AnimationController(
+         vsync: vsync,
+         duration: const Duration(milliseconds: 1150),
+       ),
+       cards = AnimationController(
+         vsync: vsync,
+         duration: const Duration(milliseconds: 600),
+       );
+
+  final LaunchSettings settings;
+  final math.Random random;
+  final AnimationController timeline;
+  final AnimationController cards;
+  Object? _gridOwner;
+  bool _finished = false;
+
+  double get milliseconds => timeline.value * 1150;
+  bool get canClaimGrid => !_finished && _gridOwner == null;
+  bool get finished => _finished;
+  bool get cardsComplete => _finished || cards.isCompleted;
+
+  bool startGrid(Object owner) {
+    if (!canClaimGrid) return false;
+    _gridOwner = owner;
+    timeline.addListener(_startCardsWhenReady);
+    _startCardsWhenReady();
+    return true;
+  }
+
+  void skipGridEntrance() {
+    if (canClaimGrid) _gridOwner = this;
+  }
+
+  void _startCardsWhenReady() {
+    if (_finished || milliseconds < 500) return;
+    timeline.removeListener(_startCardsWhenReady);
+    cards.forward();
+  }
+
+  void finish() {
+    if (_finished) return;
+    _finished = true;
+    timeline.removeListener(_startCardsWhenReady);
+    timeline.value = 1;
+    cards.value = 1;
+  }
+
+  void dispose() {
+    timeline.removeListener(_startCardsWhenReady);
+    timeline.dispose();
+    cards.dispose();
+  }
+}
+
+class LaunchMotionScope extends InheritedWidget {
+  const LaunchMotionScope({
+    super.key,
+    required this.motion,
+    required super.child,
+  });
+  final LaunchMotion motion;
+  static LaunchMotion? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LaunchMotionScope>()?.motion;
+  @override
+  bool updateShouldNotify(LaunchMotionScope oldWidget) =>
+      oldWidget.motion != motion;
+}
+
+/// The child is cached by AnimatedBuilder; only opacity/paint transforms tick.
+class LaunchReveal extends StatelessWidget {
+  const LaunchReveal({
+    super.key,
+    required this.child,
+    this.startMs = 350,
+    this.durationMs = 230,
+    this.offset = Offset.zero,
+    this.spring = false,
+    this.grow,
+  });
+  final Widget child;
+  final double startMs;
+  final double durationMs;
+  final Offset offset;
+  final bool spring;
+  final Axis? grow;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = LaunchMotionScope.maybeOf(context);
+    if (motion == null ||
+        motion.finished ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+    return AnimatedBuilder(
+      animation: motion.timeline,
+      child: child,
+      builder: (context, child) {
+        final t = launchProgress(motion.milliseconds, startMs, durationMs);
+        final p = (spring ? Curves.easeOutBack : Curves.easeOutCubic).transform(
+          t,
+        );
+        Widget result = Opacity(
+          opacity: (t * 3).clamp(0, 1),
+          alwaysIncludeSemantics: true,
+          child: Transform.translate(offset: offset * (1 - p), child: child),
+        );
+        if (grow != null) {
+          result = ClipRect(
+            clipper: _GrowingClipper(p.clamp(0, 1), grow!),
+            child: result,
+          );
+        }
+        // NavigationBar supplies a tab semantic role above its destination.
+        // Keep the destination's tap action even while opacity is zero.
+        return result;
+      },
+    );
+  }
+}
+
+class _GrowingClipper extends CustomClipper<Rect> {
+  const _GrowingClipper(this.progress, this.axis);
+  final double progress;
+  final Axis axis;
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(
+    0,
+    0,
+    size.width * (axis == Axis.horizontal ? progress : 1),
+    size.height * (axis == Axis.vertical ? progress : 1),
+  );
+  @override
+  bool shouldReclip(_GrowingClipper oldClipper) =>
+      progress != oldClipper.progress || axis != oldClipper.axis;
+}
+
+class LaunchCard extends StatelessWidget {
+  const LaunchCard({
+    super.key,
+    required this.child,
+    this.spec,
+    this.offset = 0,
+    this.pending = false,
+  });
+  final Widget child;
+  final CardEntranceSpec? spec;
+  final double offset;
+  final bool pending;
+  @override
+  Widget build(BuildContext context) {
+    final motion = LaunchMotionScope.maybeOf(context);
+    if (motion == null ||
+        motion.finished ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return child;
+    }
+    if (pending) return IgnorePointer(child: Opacity(opacity: 0, child: child));
+    if (spec == null) return child;
+    return AnimatedBuilder(
+      animation: motion.cards,
+      child: child,
+      builder: (context, child) {
+        final t = launchProgress(motion.cards.value * 600, spec!.delayMs, 420);
+        return IgnorePointer(
+          ignoring: t < 1,
+          child: Opacity(
+            opacity: (t * 5).clamp(0, 1),
+            child: Transform.translate(
+              offset: Offset(
+                0,
+                offset * (1 - Curves.easeOutCubic.transform(t)),
+              ),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class LaunchIcon extends StatelessWidget {
+  const LaunchIcon({super.key, this.path, this.size = 96});
+  final String? path;
+  final double size;
+  @override
+  Widget build(BuildContext context) => ClipOval(
+    child: SizedBox.square(
+      dimension: size,
+      child: path == null
+          ? Image.asset(orbitIconAsset, fit: BoxFit.cover, cacheWidth: 512)
+          : Image.file(
+              File(path!),
+              fit: BoxFit.cover,
+              cacheWidth: 512,
+              errorBuilder: (_, _, _) => Image.asset(
+                orbitIconAsset,
+                fit: BoxFit.cover,
+                cacheWidth: 512,
+              ),
+            ),
+    ),
+  );
+}
+
+class OrbitLaunchHost extends ConsumerStatefulWidget {
+  const OrbitLaunchHost({super.key, required this.child});
+  final Widget child;
+  @override
+  ConsumerState<OrbitLaunchHost> createState() => _OrbitLaunchHostState();
+}
+
+class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  LaunchMotion? _motion;
+  bool _preparing = false;
+  Size? _lastViewSize;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _lastViewSize = View.of(context).physicalSize;
+    _motion ??= LaunchMotion(
+      vsync: this,
+      settings: ref.read(launchSettingsProvider),
+    );
+    if (!ref.read(launchAnimationsEnabledProvider) ||
+        MediaQuery.disableAnimationsOf(context) ||
+        ref.read(pendingNotificationPayloadProvider) != null ||
+        ref.read(strongConfirmationVisibleProvider) ||
+        ref.read(deadlineStrongEventsProvider).isNotEmpty) {
+      _motion!.finish();
+    }
+    if (!_preparing && !_motion!.finished) {
+      _preparing = true;
+      unawaited(_prepare());
+    }
+  }
+
+  Future<void> _prepare() async {
+    final path = _motion!.settings.iconPath;
+    try {
+      await Future.wait([
+        precacheImage(
+          const AssetImage(orbitIconAsset),
+          context,
+          onError: (_, _) {},
+        ),
+        if (path != null)
+          precacheImage(FileImage(File(path)), context, onError: (_, _) {}),
+        (FontLoader(
+          orbitBrandFont,
+        )..addFont(rootBundle.load('assets/fonts/Nunito.ttf'))).load(),
+      ]);
+    } catch (error) {
+      // A missing optional visual must never leave an opaque overlay stuck.
+      debugPrint('Startup image/font preparation failed: $error');
+    }
+    if (!mounted || _motion!.finished) return;
+    // Start on a painted frame rather than during dependency resolution.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_motion!.finished) _motion!.timeline.forward();
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  @override
+  void didChangeMetrics() {
+    final size = View.of(context).physicalSize;
+    if (_lastViewSize != null &&
+        size != _lastViewSize &&
+        (_motion?.milliseconds ?? 0) > 0) {
+      _motion?.finish();
+    }
+    _lastViewSize = size;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _motion?.finish();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _motion?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(appNavIndexProvider, (previous, next) {
+      if (previous != next) _motion?.finish();
+    });
+    ref.listen(pendingNotificationPayloadProvider, (_, value) {
+      if (value != null) _motion?.finish();
+    });
+    ref.listen(strongConfirmationVisibleProvider, (_, value) {
+      if (value) _motion?.finish();
+    });
+    ref.listen(deadlineStrongEventsProvider, (_, value) {
+      if (value.isNotEmpty) _motion?.finish();
+    });
+    final motion = _motion!;
+    final brand = ref.watch(themeColorProvider);
+    final foreground =
+        ThemeData.estimateBrightnessForColor(brand) == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF172C2B);
+    return LaunchMotionScope(
+      motion: motion,
+      child: Listener(
+        onPointerDown: (_) {
+          if (motion.milliseconds >= 450) motion.finish();
+        },
+        onPointerSignal: (_) => motion.finish(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            widget.child,
+            AnimatedBuilder(
+              animation: motion.timeline,
+              builder: (context, _) {
+                final ms = motion.milliseconds;
+                if (motion.finished || ms >= 450) {
+                  return const SizedBox.shrink();
+                }
+                final fade = 1 - launchProgress(ms, 300, 150);
+                final icon = Curves.easeOutCubic.transform(
+                  launchProgress(ms, 0, 200),
+                );
+                final name = Curves.easeOutCubic.transform(
+                  launchProgress(ms, 40, 200),
+                );
+                return BlockSemantics(
+                  child: AbsorbPointer(
+                    child: Opacity(
+                      opacity: fade,
+                      child: ColoredBox(
+                        key: const Key('orbit-launch-brand'),
+                        color: brand,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Opacity(
+                                opacity: icon,
+                                child: Transform.scale(
+                                  scale: 0.94 + 0.06 * icon,
+                                  child: LaunchIcon(
+                                    path: motion.settings.iconPath,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Opacity(
+                                opacity: name,
+                                child: Transform.translate(
+                                  offset: Offset(0, (1 - name) * 8),
+                                  child: Text(
+                                    'Orbit',
+                                    style: TextStyle(
+                                      fontFamily: orbitBrandFont,
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.3,
+                                      color: foreground,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

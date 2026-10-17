@@ -1,5 +1,7 @@
 enum UpcomingDateDisplay { dateAndWeekday, dateOnly, weekdayOnly }
 
+enum BackToTopPosition { left, center, right, smart }
+
 enum StrongCardGradient { upperHalf, fullCard, topQuarter }
 
 enum NarrowScheduleLayout { compactWeek, adaptive }
@@ -15,6 +17,7 @@ class ScheduleDisplaySettings {
     this.showEmptyDays = true,
     this.showUpcomingCourseDate = true,
     this.upcomingDateDisplay = UpcomingDateDisplay.dateAndWeekday,
+    this.backToTopPosition = BackToTopPosition.smart,
     this.verticalScalePercent = 100,
     this.fitToPage = false,
     this.hideUpcomingPage = false,
@@ -27,6 +30,7 @@ class ScheduleDisplaySettings {
   final bool showEmptyDays;
   final bool showUpcomingCourseDate;
   final UpcomingDateDisplay upcomingDateDisplay;
+  final BackToTopPosition backToTopPosition;
   final int verticalScalePercent;
   final bool fitToPage;
   final bool hideUpcomingPage;
@@ -48,6 +52,7 @@ class ScheduleDisplaySettings {
     bool? showEmptyDays,
     bool? showUpcomingCourseDate,
     UpcomingDateDisplay? upcomingDateDisplay,
+    BackToTopPosition? backToTopPosition,
     int? verticalScalePercent,
     bool? fitToPage,
     bool? hideUpcomingPage,
@@ -66,6 +71,7 @@ class ScheduleDisplaySettings {
       showUpcomingCourseDate:
           showUpcomingCourseDate ?? this.showUpcomingCourseDate,
       upcomingDateDisplay: upcomingDateDisplay ?? this.upcomingDateDisplay,
+      backToTopPosition: backToTopPosition ?? this.backToTopPosition,
       verticalScalePercent: normalizeVerticalScalePercent(
         verticalScalePercent ?? this.verticalScalePercent,
       ),

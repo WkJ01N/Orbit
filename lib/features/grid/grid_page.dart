@@ -17,6 +17,7 @@ import 'package:orbit/features/session/session_add_action.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/core/motion/launch_motion.dart';
 
 class GridPage extends ConsumerWidget {
   const GridPage({super.key});
@@ -72,24 +73,33 @@ class GridPage extends ConsumerWidget {
               onSearch: () => SessionSearchPage.show(context),
             ),
           ),
-          body: sessionsAsync.when(
-            data: (sessions) {
-              if (grid == null) {
-                return BackgroundRegion(
-                  region: BackgroundRegionId.content,
-                  child: _EmptyState(onImport: () => _goToImport(context, ref)),
+          body: LaunchReveal(
+            startMs: 400,
+            child: sessionsAsync.when(
+              data: (sessions) {
+                if (grid == null) {
+                  final motion = LaunchMotionScope.maybeOf(context);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) motion?.skipGridEntrance();
+                  });
+                  return BackgroundRegion(
+                    region: BackgroundRegionId.content,
+                    child: _EmptyState(
+                      onImport: () => _goToImport(context, ref),
+                    ),
+                  );
+                }
+                return WeekGridView(
+                  grid: grid,
+                  sessions: sessions.where((s) => s.visible).toList(),
                 );
-              }
-              return WeekGridView(
-                grid: grid,
-                sessions: sessions.where((s) => s.visible).toList(),
-              );
-            },
-            loading: () => const _GridSkeleton(),
-            error: (error, _) => ErrorState(
-              message: l10n.gridLoadFailed('$error'),
-              retryLabel: l10n.actionRetry,
-              onRetry: () => ref.invalidate(sessionsProvider),
+              },
+              loading: () => const _GridSkeleton(),
+              error: (error, _) => ErrorState(
+                message: l10n.gridLoadFailed('$error'),
+                retryLabel: l10n.actionRetry,
+                onRetry: () => ref.invalidate(sessionsProvider),
+              ),
             ),
           ),
         ),
@@ -212,42 +222,51 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       leading: onAdd == null
           ? null
-          : IconButton(
-              key: const Key('grid-add-session'),
-              icon: const Icon(Icons.add, size: 21),
-              tooltip: l10n.addSession,
-              onPressed: onAdd,
+          : LaunchReveal(
+              startMs: 350,
+              child: IconButton(
+                key: const Key('grid-add-session'),
+                icon: const Icon(Icons.add, size: 21),
+                tooltip: l10n.addSession,
+                onPressed: onAdd,
+              ),
             ),
-      title: Text(l10n.gridTitle),
+      title: LaunchReveal(startMs: 370, child: Text(l10n.gridTitle)),
       actions: [
         if (onSearch != null)
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: onSearch,
-            tooltip: l10n.searchSessions,
+          LaunchReveal(
+            startMs: 395,
+            child: IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: onSearch,
+              tooltip: l10n.searchSessions,
+            ),
           ),
         if (onBatchDelete != null)
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-            onSelected: (value) {
-              if (value == 'delete') onBatchDelete?.call();
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete_sweep_outlined,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(l10n.gridBatchDelete)),
-                  ],
+          LaunchReveal(
+            startMs: 415,
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+              onSelected: (value) {
+                if (value == 'delete') onBatchDelete?.call();
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_sweep_outlined,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(l10n.gridBatchDelete)),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
       ],
     );

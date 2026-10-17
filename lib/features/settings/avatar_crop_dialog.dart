@@ -5,17 +5,26 @@ import 'package:orbit/services/avatar_image_service.dart';
 
 Future<Uint8List?> showAvatarCropDialog(
   BuildContext context,
-  Uint8List image,
-) => showDialog<Uint8List>(
+  Uint8List image, {
+  bool circular = false,
+  String? title,
+}) => showDialog<Uint8List>(
   context: context,
   barrierDismissible: false,
-  builder: (_) => _AvatarCropDialog(image: image),
+  builder: (_) =>
+      _AvatarCropDialog(image: image, circular: circular, title: title),
 );
 
 class _AvatarCropDialog extends StatefulWidget {
-  const _AvatarCropDialog({required this.image});
+  const _AvatarCropDialog({
+    required this.image,
+    this.circular = false,
+    this.title,
+  });
 
   final Uint8List image;
+  final bool circular;
+  final String? title;
 
   @override
   State<_AvatarCropDialog> createState() => _AvatarCropDialogState();
@@ -108,7 +117,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
       children: [
         AppBar(
           automaticallyImplyLeading: false,
-          title: Text(text.title),
+          title: Text(widget.title ?? text.title),
           actions: [
             IconButton(
               tooltip: text.cancel,
@@ -141,6 +150,7 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
                         // Keep that space visible while the image stays fixed.
                         padding: const EdgeInsets.all(16),
                         child: Crop(
+                          withCircleUi: widget.circular,
                           // Recreate its internal geometry when the available
                           // viewport changes (for example, a resized window).
                           key: ValueKey(viewport),
@@ -187,13 +197,14 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Column(
               children: [
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(text.squareCrop),
-                  subtitle: Text(text.squareCropHint),
-                  value: _square,
-                  onChanged: _busy || !_canCrop ? null : _setSquare,
-                ),
+                if (!widget.circular)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(text.squareCrop),
+                    subtitle: Text(text.squareCropHint),
+                    value: _square,
+                    onChanged: _busy || !_canCrop ? null : _setSquare,
+                  ),
                 if (!_square) ...[
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,

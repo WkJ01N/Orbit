@@ -147,6 +147,7 @@ class PortableSettings {
       'showEmptyDays': scheduleDisplay.showEmptyDays,
       'showUpcomingCourseDate': scheduleDisplay.showUpcomingCourseDate,
       'upcomingDateDisplay': scheduleDisplay.upcomingDateDisplay.name,
+      'backToTopPosition': scheduleDisplay.backToTopPosition.name,
       'verticalScalePercent':
           ScheduleDisplaySettings.normalizeVerticalScalePercent(
             scheduleDisplay.verticalScalePercent,
@@ -257,6 +258,10 @@ class PortableSettings {
         showEmptyDays: display['showEmptyDays'] as bool? ?? true,
         showUpcomingCourseDate:
             display['showUpcomingCourseDate'] as bool? ?? true,
+        backToTopPosition: BackToTopPosition.values.firstWhere(
+          (value) => value.name == display['backToTopPosition'],
+          orElse: () => BackToTopPosition.smart,
+        ),
         upcomingDateDisplay: UpcomingDateDisplay.values.firstWhere(
           (value) => value.name == display['upcomingDateDisplay'],
           orElse: () => UpcomingDateDisplay.dateAndWeekday,

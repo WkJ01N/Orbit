@@ -32,6 +32,7 @@ import 'package:orbit/models/schedule_layout.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/course_color_utils.dart';
 import 'package:orbit/services/schedule_layout_engine.dart';
+import 'package:orbit/core/motion/launch_motion.dart';
 
 class WeekGridView extends ConsumerStatefulWidget {
   const WeekGridView({super.key, required this.grid, this.sessions});
@@ -273,6 +274,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         );
         final reduceMotion = MediaQuery.disableAnimationsOf(context);
         final currentSchedulePage = _SchedulePage(
+          animateEntrance: true,
           data: currentPage,
           density: density,
           scrollController: _scrollController,
@@ -434,54 +436,63 @@ class _ScheduleToolbar extends StatelessWidget {
               onPressed: onPrevious,
             ),
             Expanded(
-              child: AnimatedSwitcher(
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 160),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                layoutBuilder: (currentChild, previousChildren) => Stack(
-                  alignment: Alignment.center,
-                  children: [...previousChildren, ?currentChild],
-                ),
-                transitionBuilder: (child, animation) {
-                  final incoming = child.key == ValueKey(rangeKey);
-                  final direction = transitionDirection == 0
-                      ? 0.0
-                      : transitionDirection.toDouble();
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(
-                          (incoming ? direction : -direction) * 0.08,
-                          0,
-                        ),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+              child: LaunchReveal(
+                startMs: 420,
+                child: AnimatedSwitcher(
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.center,
+                    children: [...previousChildren, ?currentChild],
+                  ),
+                  transitionBuilder: (child, animation) {
+                    final incoming = child.key == ValueKey(rangeKey);
+                    final direction = transitionDirection == 0
+                        ? 0.0
+                        : transitionDirection.toDouble();
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: Offset(
+                            (incoming ? direction : -direction) * 0.08,
+                            0,
+                          ),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Center(
+                    key: ValueKey(rangeKey),
+                    child: GridWeekPicker(
+                      weekStart: weekStartFor(anchor),
+                      onChanged: onSelectWeek,
+                      labelOverride: range,
                     ),
-                  );
-                },
-                child: Center(
-                  key: ValueKey(rangeKey),
-                  child: GridWeekPicker(
-                    weekStart: weekStartFor(anchor),
-                    onChanged: onSelectWeek,
-                    labelOverride: range,
                   ),
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              tooltip: l10n.gridNextWeek,
-              onPressed: onNext,
+            LaunchReveal(
+              startMs: 440,
+              child: IconButton(
+                icon: const Icon(Icons.chevron_right),
+                tooltip: l10n.gridNextWeek,
+                onPressed: onNext,
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.today_outlined),
-              tooltip: l10n.gridThisWeek,
-              onPressed: onToday,
+            LaunchReveal(
+              startMs: 460,
+              child: IconButton(
+                icon: const Icon(Icons.today_outlined),
+                tooltip: l10n.gridThisWeek,
+                onPressed: onToday,
+              ),
             ),
           ],
         ),
@@ -513,9 +524,11 @@ class _SchedulePage extends ConsumerWidget {
     this.onJump,
     this.onSelectSession,
     this.onMenu,
+    this.animateEntrance = false,
   });
 
   final _SchedulePageData data;
+  final bool animateEntrance;
   final GridDensity density;
   final ScrollController scrollController;
   final bool shouldAutoScroll;
@@ -534,6 +547,12 @@ class _SchedulePage extends ConsumerWidget {
     );
     if (data.visibleDates.isEmpty ||
         data.layout.days.every((day) => day.events.isEmpty) && !hasDeadlines) {
+      if (animateEntrance) {
+        final motion = LaunchMotionScope.maybeOf(context);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) motion?.skipGridEntrance();
+        });
+      }
       return BackgroundRegion(
         region: BackgroundRegionId.content,
         child: ColoredBox(
@@ -547,6 +566,7 @@ class _SchedulePage extends ConsumerWidget {
       );
     }
     return _ScheduleTimeline(
+      animateEntrance: animateEntrance,
       layout: data.layout,
       density: density,
       scrollController: scrollController,
@@ -610,9 +630,11 @@ class _ScheduleTimeline extends ConsumerStatefulWidget {
     required this.selectedSessionId,
     required this.onSelectSession,
     required this.onMenu,
+    this.animateEntrance = false,
   });
 
   final ScheduleTimelineLayout layout;
+  final bool animateEntrance;
   final GridDensity density;
   final ScrollController scrollController;
   final bool shouldAutoScroll;
@@ -626,6 +648,96 @@ class _ScheduleTimeline extends ConsumerStatefulWidget {
 }
 
 class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
+  LaunchMotion? _launch;
+  bool _entrancePrepared = false;
+  bool _entranceQueued = false;
+  Map<String, CardEntranceSpec> _entrances = const {};
+  Map<String, double> _entranceOffsets = const {};
+
+  bool get _pendingEntrance =>
+      widget.animateEntrance &&
+      !_entrancePrepared &&
+      (_launch?.canClaimGrid ?? false);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _launch = LaunchMotionScope.maybeOf(context);
+  }
+
+  Widget _entrance(String id, Widget child) => LaunchCard(
+    spec: _entrances[id],
+    offset: _entranceOffsets[id] ?? 0,
+    pending: _pendingEntrance,
+    child: child,
+  );
+
+  void _prepareEntrance(
+    List<({ScheduleEventLayout event, int dayIndex, Rect rect})> placements,
+    double viewportHeight,
+    double width,
+    double dayWidth,
+    double ppm,
+    double inset,
+    DateTime now,
+  ) {
+    if (!_pendingEntrance || _entranceQueued) return;
+    _entranceQueued = true;
+    // Registered after the existing scroll-position callbacks in this frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _entranceQueued = false;
+      if (!mounted || !_pendingEntrance || !scrollController.hasClients) return;
+      final top = scrollController.offset;
+      final viewport = Rect.fromLTWH(
+        kScheduleTimeRailWidth,
+        top,
+        width - kScheduleTimeRailWidth,
+        viewportHeight,
+      );
+      final columns = <int, List<String>>{};
+      final rects = <String, Rect>{};
+      for (final placement in placements) {
+        if (!placement.rect.overlaps(viewport)) continue;
+        final id = placement.event.session.id;
+        columns.putIfAbsent(placement.dayIndex, () => []).add(id);
+        rects[id] = placement.rect;
+      }
+      final day = layout.days.indexWhere(
+        (d) => isSameScheduleDate(d.date, now),
+      );
+      final minute = now.hour * 60 + now.minute + now.second / 60;
+      if (day >= 0 &&
+          minute >= layout.startMinute &&
+          minute <= layout.endMinute) {
+        final rect = Rect.fromLTWH(
+          kScheduleTimeRailWidth + day * dayWidth,
+          inset + (minute - layout.startMinute) * ppm - 9,
+          dayWidth,
+          18,
+        );
+        if (rect.overlaps(viewport)) {
+          columns.putIfAbsent(day, () => []).add('@current-time');
+          rects['@current-time'] = rect;
+        }
+      }
+      final motion = _launch!;
+      if (!motion.startGrid(this)) return;
+      setState(() {
+        _entrancePrepared = true;
+        _entrances = planCardEntrances(columns, random: motion.random);
+        _entranceOffsets = {
+          for (final entry in _entrances.entries)
+            entry.key: cardEntranceOffset(
+              rect: rects[entry.key]!,
+              viewport: viewport,
+              spec: entry.value,
+              mode: motion.settings.cardEntrance,
+            ),
+        };
+      });
+    });
+  }
+
   double? _lastPixelsPerMinute;
   bool? _lastFit;
   double? _lastInset;
@@ -697,6 +809,15 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
         if (!settings.fitToPage) {
           _scheduleInitialScroll(now, pixelsPerMinute, constraints.maxHeight);
         }
+        _prepareEntrance(
+          placements,
+          constraints.maxHeight - headerHeight,
+          constraints.maxWidth,
+          dayWidth,
+          pixelsPerMinute,
+          inset,
+          now,
+        );
         return Column(
           children: [
             BackgroundRegion(
@@ -704,151 +825,174 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
               child: _DateHeader(layout: layout, now: now),
             ),
             Expanded(
-              child: Scrollbar(
-                controller: scrollController,
-                child: SingleChildScrollView(
-                  key: const Key('schedule-vertical-body'),
+              child: ClipRect(
+                child: Scrollbar(
                   controller: scrollController,
-                  child: SizedBox(
-                    key: const Key('schedule-timeline-body'),
-                    width: constraints.maxWidth,
-                    height: bodyHeight,
-                    child: ColoredBox(
-                      color:
-                          BackgroundPageScope.enabled(
-                                context,
-                                BackgroundRegionId.content,
-                              ) ||
-                              BackgroundPageScope.enabled(
-                                context,
-                                BackgroundRegionId.timeRail,
-                              )
-                          ? Colors.transparent
-                          : colorScheme.surface,
-                      child: Stack(
-                        children: [
-                          _TimeGrid(
-                            layout: layout,
-                            dayWidth: dayWidth,
-                            pixelsPerMinute: pixelsPerMinute,
-                            topInset: inset,
-                            colorScheme: colorScheme,
-                          ),
-                          for (final placement in placements)
-                            _eventWidget(
-                              placement.event,
-                              placement.dayIndex,
-                              placement.rect,
-                              pixelsPerMinute,
-                              colorScheme,
-                              l10n,
+                  child: SingleChildScrollView(
+                    key: const Key('schedule-vertical-body'),
+                    controller: scrollController,
+                    child: SizedBox(
+                      key: const Key('schedule-timeline-body'),
+                      width: constraints.maxWidth,
+                      height: bodyHeight,
+                      child: ColoredBox(
+                        color:
+                            BackgroundPageScope.enabled(
+                                  context,
+                                  BackgroundRegionId.content,
+                                ) ||
+                                BackgroundPageScope.enabled(
+                                  context,
+                                  BackgroundRegionId.timeRail,
+                                )
+                            ? Colors.transparent
+                            : colorScheme.surface,
+                        child: Stack(
+                          children: [
+                            _TimeGrid(
+                              layout: layout,
+                              dayWidth: dayWidth,
+                              pixelsPerMinute: pixelsPerMinute,
+                              topInset: inset,
+                              colorScheme: colorScheme,
                             ),
-                          if (settings.fitToPage)
-                            for (
-                              var dayIndex = 0;
-                              dayIndex < layout.days.length;
-                              dayIndex++
-                            )
-                              for (final event in layout.days[dayIndex].events)
-                                if (event.durationMinutes * pixelsPerMinute <
-                                    48)
-                                  Positioned(
-                                    left:
-                                        kScheduleTimeRailWidth +
-                                        dayIndex * dayWidth +
-                                        event.lane * dayWidth / event.laneCount,
-                                    top: math.max(
-                                      0,
-                                      inset +
-                                          ((event.startMinute +
-                                                          event.endMinute) /
-                                                      2 -
-                                                  layout.startMinute) *
-                                              pixelsPerMinute -
-                                          24,
-                                    ),
-                                    width: dayWidth / event.laneCount,
-                                    height: 48,
-                                    child: Semantics(
-                                      button: true,
-                                      label:
-                                          '${event.session.courseName}, ${_time(event.session.startAt)}, ${event.session.room}',
-                                      child: InkWell(
-                                        key: ValueKey(
-                                          'grid-fit-target-${event.session.id}',
-                                        ),
-                                        onLongPress:
-                                            ref
-                                                .watch(gridSelectionProvider)
-                                                .active
-                                            ? () {}
-                                            : () => widget.onMenu(
-                                                event.session,
-                                                null,
-                                              ),
-                                        onTap: () => _selectAtEvent(
-                                          event,
-                                          dayIndex,
-                                          pixelsPerMinute,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                          if (strongIndices.isNotEmpty)
-                            Positioned.fill(
-                              child: AnimatedBuilder(
-                                animation: scrollController,
-                                builder: (context, child) {
-                                  final offset = scrollController.hasClients
-                                      ? scrollController.offset
-                                      : 0.0;
-                                  final visible = visibleStrongGridBells(
-                                    cards: [for (final p in placements) p.rect],
-                                    strongIndices: strongIndices,
-                                    bounds: Rect.fromLTRB(
-                                      kScheduleTimeRailWidth,
-                                      math.max(0, offset),
-                                      constraints.maxWidth,
-                                      math.min(
-                                        bodyHeight,
-                                        offset +
-                                            constraints.maxHeight -
-                                            headerHeight,
-                                      ),
-                                    ),
-                                  );
-                                  return Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      for (final index in visible)
-                                        Positioned.fromRect(
-                                          rect: strongGridBellRect(
-                                            placements[index].rect,
-                                          ),
-                                          child: _GridStrongBell(
-                                            key: ValueKey(
-                                              'grid-strong-bell-${placements[index].event.session.id}',
-                                            ),
-                                            session:
-                                                placements[index].event.session,
-                                          ),
-                                        ),
-                                    ],
-                                  );
-                                },
+                            for (final placement in placements)
+                              _eventWidget(
+                                placement.event,
+                                placement.dayIndex,
+                                placement.rect,
+                                pixelsPerMinute,
+                                colorScheme,
+                                l10n,
                               ),
+                            if (settings.fitToPage)
+                              for (
+                                var dayIndex = 0;
+                                dayIndex < layout.days.length;
+                                dayIndex++
+                              )
+                                for (final event
+                                    in layout.days[dayIndex].events)
+                                  if (event.durationMinutes * pixelsPerMinute <
+                                      48)
+                                    Positioned(
+                                      left:
+                                          kScheduleTimeRailWidth +
+                                          dayIndex * dayWidth +
+                                          event.lane *
+                                              dayWidth /
+                                              event.laneCount,
+                                      top: math.max(
+                                        0,
+                                        inset +
+                                            ((event.startMinute +
+                                                            event.endMinute) /
+                                                        2 -
+                                                    layout.startMinute) *
+                                                pixelsPerMinute -
+                                            24,
+                                      ),
+                                      width: dayWidth / event.laneCount,
+                                      height: 48,
+                                      child: _entrance(
+                                        event.session.id,
+                                        Semantics(
+                                          button: true,
+                                          label:
+                                              '${event.session.courseName}, ${_time(event.session.startAt)}, ${event.session.room}',
+                                          child: InkWell(
+                                            key: ValueKey(
+                                              'grid-fit-target-${event.session.id}',
+                                            ),
+                                            onLongPress:
+                                                ref
+                                                    .watch(
+                                                      gridSelectionProvider,
+                                                    )
+                                                    .active
+                                                ? () {}
+                                                : () => widget.onMenu(
+                                                    event.session,
+                                                    null,
+                                                  ),
+                                            onTap: () => _selectAtEvent(
+                                              event,
+                                              dayIndex,
+                                              pixelsPerMinute,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            if (strongIndices.isNotEmpty)
+                              Positioned.fill(
+                                child: AnimatedBuilder(
+                                  animation: scrollController,
+                                  builder: (context, child) {
+                                    final offset = scrollController.hasClients
+                                        ? scrollController.offset
+                                        : 0.0;
+                                    final visible = visibleStrongGridBells(
+                                      cards: [
+                                        for (final p in placements) p.rect,
+                                      ],
+                                      strongIndices: strongIndices,
+                                      bounds: Rect.fromLTRB(
+                                        kScheduleTimeRailWidth,
+                                        math.max(0, offset),
+                                        constraints.maxWidth,
+                                        math.min(
+                                          bodyHeight,
+                                          offset +
+                                              constraints.maxHeight -
+                                              headerHeight,
+                                        ),
+                                      ),
+                                    );
+                                    return Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        for (final index in visible)
+                                          Positioned.fromRect(
+                                            rect: strongGridBellRect(
+                                              placements[index].rect,
+                                            ),
+                                            child: _entrance(
+                                              placements[index]
+                                                  .event
+                                                  .session
+                                                  .id,
+                                              _GridStrongBell(
+                                                key: ValueKey(
+                                                  'grid-strong-bell-${placements[index].event.session.id}',
+                                                ),
+                                                session: placements[index]
+                                                    .event
+                                                    .session,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            _CurrentTimeLine(
+                              entranceSpec: _entrances['@current-time'],
+                              entranceOffset:
+                                  _entranceOffsets['@current-time'] ?? 0,
+                              entrancePending: _pendingEntrance,
+                              key: ValueKey(
+                                '${now.year}-${now.month}-${now.day}|$pixelsPerMinute',
+                              ),
+                              layout: layout,
+                              now: now,
+                              dayWidth: dayWidth,
+                              pixelsPerMinute: pixelsPerMinute,
+                              topInset: inset,
                             ),
-                          _CurrentTimeLine(
-                            key: ValueKey(
-                              '${now.year}-${now.month}-${now.day}|$pixelsPerMinute',
-                            ),
-                            layout: layout,
-                            now: now,
-                            dayWidth: dayWidth,
-                            pixelsPerMinute: pixelsPerMinute,
-                            topInset: inset,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -977,15 +1121,18 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   ) {
     return Positioned.fromRect(
       rect: rect,
-      child: GridSessionChip(
-        key: ValueKey(event.session.id),
-        session: event.session,
-        colorScheme: colorScheme,
-        l10n: l10n,
-        isSelected: widget.selectedSessionId == event.session.id,
-        compact: layout.mode == ScheduleViewportMode.compactWeek,
-        onTap: () => _selectAtEvent(event, dayIndex, pixelsPerMinute),
-        onMenu: (position) => widget.onMenu(event.session, position),
+      child: _entrance(
+        event.session.id,
+        GridSessionChip(
+          key: ValueKey(event.session.id),
+          session: event.session,
+          colorScheme: colorScheme,
+          l10n: l10n,
+          isSelected: widget.selectedSessionId == event.session.id,
+          compact: layout.mode == ScheduleViewportMode.compactWeek,
+          onTap: () => _selectAtEvent(event, dayIndex, pixelsPerMinute),
+          onMenu: (position) => widget.onMenu(event.session, position),
+        ),
       ),
     );
   }
@@ -1043,117 +1190,127 @@ class _DateHeader extends ConsumerWidget {
               color: colors.onSurfaceVariant,
             ),
           ),
-          for (final day in layout.days)
+          for (var dayIndex = 0; dayIndex < layout.days.length; dayIndex++)
             Expanded(
-              child: Builder(
-                builder: (context) {
-                  final entries = deadlines
-                      .where((d) => isSameScheduleDate(d.dueAt, day.date))
-                      .toList();
-                  final counted = entries
-                      .where((d) => !d.completed || d.archived)
-                      .toList();
-                  final today = isSameScheduleDate(day.date, now);
-                  final strong = counted.any((d) => d.hasStrongReminder);
-                  return Container(
-                    key: Key(
-                      'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
-                    ),
-                    decoration: BoxDecoration(
-                      color: today
-                          ? colors.primaryContainer.withAlpha(90)
-                          : null,
-                      border: Border(
-                        left: BorderSide(color: colors.outlineVariant),
+              child: LaunchReveal(
+                startMs: 430 + dayIndex * 20,
+                child: Builder(
+                  builder: (context) {
+                    final day = layout.days[dayIndex];
+                    final entries = deadlines
+                        .where((d) => isSameScheduleDate(d.dueAt, day.date))
+                        .toList();
+                    final counted = entries
+                        .where((d) => !d.completed || d.archived)
+                        .toList();
+                    final today = isSameScheduleDate(day.date, now);
+                    final strong = counted.any((d) => d.hasStrongReminder);
+                    return Container(
+                      key: Key(
+                        'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
                       ),
-                    ),
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: InkWell(
-                        key: counted.isEmpty
-                            ? null
-                            : Key(
-                                'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
-                              ),
-                        onTap: counted.isEmpty
-                            ? null
-                            : () => showDeadlinesForDay(context, entries),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 3,
-                            vertical: 5,
-                          ),
-                          child: _FitLargeText(
-                            child: Column(
-                              mainAxisSize:
-                                  MediaQuery.textScalerOf(context).scale(12) >
-                                      12
-                                  ? MainAxisSize.min
-                                  : MainAxisSize.max,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  compact
-                                      ? weekdayLabel(l10n, day.date.weekday)
-                                      : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
-                                  textAlign: TextAlign.center,
-                                  maxLines: compact ? 1 : null,
-                                  overflow: compact ? TextOverflow.clip : null,
-                                  style: Theme.of(context).textTheme.labelMedium
-                                      ?.copyWith(
-                                        fontSize: compact ? 10 : null,
-                                        height: compact ? 1.1 : null,
-                                        fontWeight: FontWeight.w700,
-                                        color: today
-                                            ? colors.primary
-                                            : colors.onSurface,
-                                      ),
+                      decoration: BoxDecoration(
+                        color: today
+                            ? colors.primaryContainer.withAlpha(90)
+                            : null,
+                        border: Border(
+                          left: BorderSide(color: colors.outlineVariant),
+                        ),
+                      ),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkWell(
+                          key: counted.isEmpty
+                              ? null
+                              : Key(
+                                  'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
                                 ),
-                                if (compact)
+                          onTap: counted.isEmpty
+                              ? null
+                              : () => showDeadlinesForDay(context, entries),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 5,
+                            ),
+                            child: _FitLargeText(
+                              child: Column(
+                                mainAxisSize:
+                                    MediaQuery.textScalerOf(context).scale(12) >
+                                        12
+                                    ? MainAxisSize.min
+                                    : MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
                                   Text(
-                                    DateFormat.Md(locale).format(day.date),
-                                    maxLines: 1,
+                                    compact
+                                        ? weekdayLabel(l10n, day.date.weekday)
+                                        : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
+                                    textAlign: TextAlign.center,
+                                    maxLines: compact ? 1 : null,
+                                    overflow: compact
+                                        ? TextOverflow.clip
+                                        : null,
                                     style: Theme.of(context)
                                         .textTheme
-                                        .labelSmall
+                                        .labelMedium
                                         ?.copyWith(
-                                          fontSize: 8,
-                                          height: 1.1,
-                                          color: colors.onSurfaceVariant,
-                                        ),
-                                  )
-                                else
-                                  Text(
-                                    l10n.scheduleCourseCount(day.events.length),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: colors.onSurfaceVariant,
+                                          fontSize: compact ? 10 : null,
+                                          height: compact ? 1.1 : null,
+                                          fontWeight: FontWeight.w700,
+                                          color: today
+                                              ? colors.primary
+                                              : colors.onSurface,
                                         ),
                                   ),
-                                if (counted.isNotEmpty)
-                                  Text(
-                                    'DDL ${counted.length}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: colors.error,
-                                          fontSize: compact ? 8 : null,
-                                          fontWeight: strong
-                                              ? FontWeight.w700
-                                              : FontWeight.w400,
-                                        ),
-                                  ),
-                              ],
+                                  if (compact)
+                                    Text(
+                                      DateFormat.Md(locale).format(day.date),
+                                      maxLines: 1,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontSize: 8,
+                                            height: 1.1,
+                                            color: colors.onSurfaceVariant,
+                                          ),
+                                    )
+                                  else
+                                    Text(
+                                      l10n.scheduleCourseCount(
+                                        day.events.length,
+                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  if (counted.isNotEmpty)
+                                    Text(
+                                      'DDL ${counted.length}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: colors.error,
+                                            fontSize: compact ? 8 : null,
+                                            fontWeight: strong
+                                                ? FontWeight.w700
+                                                : FontWeight.w400,
+                                          ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
         ],
@@ -1217,10 +1374,15 @@ class _TimeGrid extends StatelessWidget {
             top: 0,
             bottom: 0,
             width: dayWidth,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: colorScheme.outlineVariant),
+            child: LaunchReveal(
+              startMs: 440 + day * 20,
+              durationMs: 260,
+              grow: Axis.vertical,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: colorScheme.outlineVariant),
+                  ),
                 ),
               ),
             ),
@@ -1239,11 +1401,18 @@ class _TimeGrid extends StatelessWidget {
                   (minute - layout.startMinute) * pixelsPerMinute -
                   8,
               width: kScheduleTimeRailWidth - 6,
-              child: Text(
-                _formatMinute(minute),
-                textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              child: LaunchReveal(
+                startMs:
+                    450 +
+                    (minute - layout.startMinute) /
+                        (layout.endMinute - layout.startMinute) *
+                        140,
+                child: Text(
+                  _formatMinute(minute),
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -1251,9 +1420,18 @@ class _TimeGrid extends StatelessWidget {
             left: kScheduleTimeRailWidth,
             right: 0,
             top: topInset + (minute - layout.startMinute) * pixelsPerMinute,
-            child: Divider(
-              height: 1,
-              color: colorScheme.outlineVariant.withAlpha(150),
+            child: LaunchReveal(
+              startMs:
+                  450 +
+                  (minute - layout.startMinute) /
+                      (layout.endMinute - layout.startMinute) *
+                      140,
+              durationMs: 260,
+              grow: Axis.horizontal,
+              child: Divider(
+                height: 1,
+                color: colorScheme.outlineVariant.withAlpha(150),
+              ),
             ),
           ),
         ],
@@ -1270,8 +1448,14 @@ class _CurrentTimeLine extends StatelessWidget {
     required this.dayWidth,
     required this.pixelsPerMinute,
     required this.topInset,
+    this.entranceSpec,
+    this.entranceOffset = 0,
+    this.entrancePending = false,
   });
   final ScheduleTimelineLayout layout;
+  final CardEntranceSpec? entranceSpec;
+  final double entranceOffset;
+  final bool entrancePending;
   final DateTime now;
   final double dayWidth;
   final double pixelsPerMinute;
@@ -1306,66 +1490,71 @@ class _CurrentTimeLine extends StatelessWidget {
       width: dayWidth,
       height: 18,
       child: IgnorePointer(
-        child: compact
-            ? Row(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(left: 2),
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Expanded(child: Container(height: 2, color: color)),
-                ],
-              )
-            : Row(
-                children: [
-                  _FitLargeText(
-                    maxWidth: math.max(1.0, dayWidth - 16),
-                    child: Container(
+        child: LaunchCard(
+          spec: entranceSpec,
+          offset: entranceOffset,
+          pending: entrancePending,
+          child: compact
+              ? Row(
+                  children: [
+                    Container(
                       margin: const EdgeInsets.only(left: 2),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
+                      width: 7,
+                      height: 7,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        border: Border.all(color: color.withAlpha(180)),
-                        borderRadius: BorderRadius.circular(4),
+                        color: color,
+                        shape: BoxShape.circle,
                       ),
-                      child: Text(
-                        _formatMinute(now.hour * 60 + now.minute),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          height: 1,
+                    ),
+                    Expanded(child: Container(height: 2, color: color)),
+                  ],
+                )
+              : Row(
+                  children: [
+                    _FitLargeText(
+                      maxWidth: math.max(1.0, dayWidth - 16),
+                      child: Container(
+                        margin: const EdgeInsets.only(left: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          border: Border.all(color: color.withAlpha(180)),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          _formatMinute(now.hour * 60 + now.minute),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            height: 1,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 2),
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 2,
+                    const SizedBox(width: 2),
+                    Container(
+                      width: 7,
+                      height: 7,
                       decoration: BoxDecoration(
                         color: color,
-                        borderRadius: BorderRadius.circular(1),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    Expanded(
+                      child: Container(
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
       ),
     );
   }

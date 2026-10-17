@@ -1,7 +1,7 @@
 name: orbit
 description: 跨平台课表提醒应用，支援 Windows 與 Android。
 publish_to: 'none'
-version: 1.5.7+29
+version: 1.6.0+30
 
 environment:
   sdk: ^3.12.1
@@ -75,3 +75,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: OrbitBrand
+      fonts:
+        - asset: assets/fonts/Nunito.ttf
+          weight: 800

@@ -1,3 +1,4 @@
+import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/models/deadline_strong_text.dart';
 import 'package:orbit/features/settings/update_page.dart';
 import 'package:orbit/models/sync_update_text.dart';
@@ -230,6 +231,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                       children: const [
                         _UpcomingCourseDateTile(),
                         _UpcomingDateDisplayTile(),
+                        _BackToTopPositionTile(),
                       ],
                     ),
                   ],
@@ -1385,6 +1387,36 @@ class _PageVisibilityTile extends ConsumerWidget {
           }
         }
       },
+    );
+  }
+}
+
+class _BackToTopPositionTile extends ConsumerWidget {
+  const _BackToTopPositionTile();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final text = NavigationAssistText.of(context);
+    final settings = ref.watch(scheduleDisplaySettingsProvider);
+    return SettingsChoiceTile(
+      title: Text(text.position),
+      subtitle: Text(text.smartHint),
+      trailing: _SettingsDropdown<BackToTopPosition>(
+        value: settings.backToTopPosition,
+        onChanged: (value) {
+          if (value != null) {
+            ref
+                .read(scheduleDisplaySettingsProvider.notifier)
+                .setBackToTopPosition(value);
+          }
+        },
+        items: [
+          for (final value in BackToTopPosition.values)
+            DropdownMenuItem(
+              value: value,
+              child: Text(text.positionLabel(value)),
+            ),
+        ],
+      ),
     );
   }
 }

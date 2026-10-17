@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/desktop/desktop_shell.dart';
+import 'package:orbit/core/motion/launch_motion.dart';
 import 'package:orbit/core/routing/app_shell.dart';
 import 'package:orbit/core/routing/notification_listener.dart';
 import 'package:orbit/core/theme/app_theme.dart';
@@ -100,7 +101,7 @@ class OrbitApp extends ConsumerWidget {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: const OrbitNotificationListener(
-        child: DesktopShell(child: AppShell()),
+        child: DesktopShell(child: OrbitLaunchHost(child: AppShell())),
       ),
     );
   }

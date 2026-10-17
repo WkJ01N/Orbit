@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "version": "1.6.0",
+  "buildNumber": 30,
+  "assets": {
+    "android": {
+      "name": "orbit-v1.6.0-android.apk",
+      "size": 118143942,
+      "sha256": "b7dcb49cba85d0e8785b091eaed08959dd7b33a93ba04264cfd320dea2a8b441"
+    },
+    "windows": {
+      "name": "orbit-v1.6.0-windows-x64.zip",
+      "size": 37469778,
+      "sha256": "7e380854a9b5ccd4863425dc080ac356c6758bc7f1cb509374a11818dd886035"
+    }
+  },
+  "androidAbis": {
+    "arm64-v8a": {
+      "name": "orbit-v1.6.0-arm64-v8a.apk",
+      "size": 39936166,
+      "sha256": "151f56ceacb16fb40361e6ad62e2caf39ed7a3fc61292c3c4714f9852ae37d51"
+    },
+    "armeabi-v7a": {
+      "name": "orbit-v1.6.0-armeabi-v7a.apk",
+      "size": 37559938,
+      "sha256": "f3293d85ffd8fec6ff496f80d6c6220b49551ba1ef0d8d67b09905da3c1e1659"
+    },
+    "x86_64": {
+      "name": "orbit-v1.6.0-x86_64.apk",
+      "size": 45021204,
+      "sha256": "dc3381dd76bb8ef07de942304d27a0e8ad84199cce84140ff49ccbe64f6aed91"
+    }
+  }
+}

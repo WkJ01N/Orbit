@@ -209,7 +209,8 @@ class _OrbitNotificationListenerState
       return;
     }
 
-    final sessionId = payload.startsWith('checkin_')
+    final fromCheckInReminder = payload.startsWith('checkin_');
+    final sessionId = fromCheckInReminder
         ? payload.substring('checkin_'.length)
         : payload;
 
@@ -231,6 +232,10 @@ class _OrbitNotificationListenerState
       return;
     }
 
-    await SessionDetailSheet.show(context, session);
+    await SessionDetailSheet.show(
+      context,
+      session,
+      fromCheckInReminder: fromCheckInReminder,
+    );
   }
 }

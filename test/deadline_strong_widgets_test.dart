@@ -352,14 +352,22 @@ void main() {
               );
               final labels = width == 400
                   ? tester
-                        .widget<NavigationBar>(find.byType(NavigationBar))
-                        .destinations
-                        .map((d) => (d as NavigationDestination).label)
+                        .widgetList<NavigationDestination>(
+                          find.descendant(
+                            of: find.byType(NavigationBar),
+                            matching: find.byType(NavigationDestination),
+                          ),
+                        )
+                        .map((d) => d.label)
                         .toList()
                   : tester
-                        .widget<NavigationRail>(find.byType(NavigationRail))
-                        .destinations
-                        .map((d) => (d.label as Text).data!)
+                        .widgetList<Text>(
+                          find.descendant(
+                            of: find.byType(NavigationRail),
+                            matching: find.byType(Text),
+                          ),
+                        )
+                        .map((d) => d.data!)
                         .toList();
               expect(labels, [
                 'Schedule',

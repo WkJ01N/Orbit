@@ -10,6 +10,7 @@ import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/services/grid_builder.dart';
 import 'package:orbit/services/xlsx_parser.dart';
+import 'package:orbit/providers/launch_providers.dart';
 
 final xlsxParserProvider = Provider<XlsxParser>((ref) => XlsxParser());
 
@@ -69,7 +70,8 @@ class ScheduleDisplaySettingsNotifier
   ScheduleDisplaySettings build() {
     ref.onDispose(() => _loadGeneration++);
     _load();
-    return const ScheduleDisplaySettings();
+    return ref.read(launchSnapshotProvider)?.display ??
+        const ScheduleDisplaySettings();
   }
 
   Future<void> _load() async {
@@ -106,6 +108,9 @@ class ScheduleDisplaySettingsNotifier
     final next = state.copyWith(showUpcomingCourseDate: value);
     await _save(next);
   }
+
+  Future<void> setBackToTopPosition(BackToTopPosition value) =>
+      _save(state.copyWith(backToTopPosition: value));
 
   Future<void> setUpcomingDateDisplay(UpcomingDateDisplay value) async {
     final next = state.copyWith(upcomingDateDisplay: value);
@@ -149,7 +154,8 @@ class GridDefaultWeekModeNotifier extends Notifier<GridDefaultWeekMode> {
   @override
   GridDefaultWeekMode build() {
     _load();
-    return GridDefaultWeekMode.smart;
+    return ref.read(launchSnapshotProvider)?.defaultWeek ??
+        GridDefaultWeekMode.smart;
   }
 
   Future<void> _load() async {
@@ -179,7 +185,7 @@ class WeekStartDayNotifier extends Notifier<int> {
   @override
   int build() {
     _load();
-    return DateTime.monday;
+    return ref.read(launchSnapshotProvider)?.weekStart ?? DateTime.monday;
   }
 
   Future<void> _load() async {
@@ -209,7 +215,7 @@ class GridDensityNotifier extends Notifier<GridDensity> {
   @override
   GridDensity build() {
     _load();
-    return GridDensity.standard;
+    return ref.read(launchSnapshotProvider)?.density ?? GridDensity.standard;
   }
 
   Future<void> _load() async {

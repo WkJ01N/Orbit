@@ -91,6 +91,10 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
         );
       }
       return _UpcomingList(
+        position: ref.watch(scheduleDisplaySettingsProvider).backToTopPosition,
+        active:
+            widget.showBackButton ||
+            ref.watch(appNavIndexProvider) == AppTab.upcoming.index,
         groups: _groupSessions(sessions),
         deadlines: deadlines,
         onRefresh: _refresh,
@@ -244,12 +248,16 @@ class _DeadlineItem extends _FlatItem {
 
 class _UpcomingList extends StatefulWidget {
   const _UpcomingList({
+    required this.position,
+    required this.active,
     required this.groups,
     required this.deadlines,
     required this.onRefresh,
   });
   final Future<void> Function() onRefresh;
 
+  final BackToTopPosition position;
+  final bool active;
   final List<_SessionGroup> groups;
   final List<Deadline> deadlines;
 
@@ -327,6 +335,8 @@ class _UpcomingListState extends State<_UpcomingList> {
     }
 
     return UpcomingScrollToTop(
+      position: widget.position,
+      active: widget.active,
       onRefresh: widget.onRefresh,
       sliver: SliverList.builder(
         itemCount: items.length,

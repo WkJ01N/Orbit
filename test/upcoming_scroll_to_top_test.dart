@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:orbit/models/schedule_display_settings.dart';
+import 'package:orbit/services/hand_motion_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +16,9 @@ const _spaceKey = Key('upcoming-back-to-top-footer-space');
 
 Future<void> _pumpList(
   WidgetTester tester, {
+  BackToTopPosition position = BackToTopPosition.smart,
+  bool active = true,
+  Stream<HandMotionSample>? motionSamples,
   int count = 20,
   double itemExtent = 100,
   bool reduceMotion = false,
@@ -44,6 +50,9 @@ Future<void> _pumpList(
         ),
         child: Scaffold(
           body: UpcomingScrollToTop(
+            position: position,
+            active: active,
+            motionSamples: motionSamples,
             sliver:
                 sliver ??
                 SliverFixedExtentList.builder(
@@ -85,6 +94,84 @@ double _progress(WidgetTester tester, Key key) {
 }
 
 void main() {
+  for (final mode in BackToTopPosition.values) {
+    testWidgets('floating and footer share ${mode.name} alignment', (
+      tester,
+    ) async {
+      await _pumpList(tester, position: mode);
+      final x = switch (mode) {
+        BackToTopPosition.left => 44.0,
+        BackToTopPosition.right => 356.0,
+        _ => 200.0,
+      };
+      await _jump(tester, 400);
+      expect(tester.getCenter(find.byKey(_floatingKey)).dx, x);
+      await _jump(tester, _position(tester).maxScrollExtent);
+      expect(tester.getCenter(find.byKey(_footerKey)).dx, x);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'smart changes only after release, footer follows, mouse returns center',
+    (tester) async {
+      await _pumpList(tester);
+      await _jump(tester, 400);
+      await tester.dragFrom(const Offset(75, 450), const Offset(3, -90));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.byKey(_floatingKey)).dx, 200);
+      final finger = await tester.startGesture(const Offset(75, 450));
+      await finger.moveBy(const Offset(2, -90));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.byKey(_floatingKey)).dx, 200);
+      await finger.up();
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.byKey(_floatingKey)).dx, 44);
+      await _jump(tester, _position(tester).maxScrollExtent);
+      expect(tester.getCenter(find.byKey(_footerKey)).dx, 44);
+      final mouse = await tester.startGesture(
+        const Offset(200, 200),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.byKey(_footerKey)).dx, 44);
+      await mouse.up();
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(find.byKey(_footerKey)).dx, 200);
+    },
+  );
+
+  testWidgets(
+    'motion stops off-page and in background and restarts on return',
+    (tester) async {
+      var listens = 0;
+      var cancels = 0;
+      final controller = StreamController<HandMotionSample>.broadcast(
+        onListen: () => listens++,
+        onCancel: () => cancels++,
+      );
+      addTearDown(controller.close);
+      await _pumpList(tester, motionSamples: controller.stream);
+      expect(listens, 1);
+      await _pumpList(tester, motionSamples: controller.stream, active: false);
+      expect(cancels, 1);
+      await _pumpList(tester, motionSamples: controller.stream);
+      expect(listens, 2);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      expect(cancels, 2);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(listens, 3);
+      await _pumpList(
+        tester,
+        motionSamples: controller.stream,
+        position: BackToTopPosition.left,
+      );
+      expect(cancels, 3);
+    },
+  );
+
   for (final reduceMotion in [false, true]) {
     testWidgets(
       'extent corrections are smoothed without delaying offsets (reduceMotion: $reduceMotion)',
@@ -258,7 +345,7 @@ void main() {
       expect(find.byKey(_floatingKey).hitTestable(), findsOneWidget);
       expect(tester.getSize(find.byKey(_floatingKey)), const Size(56, 56));
       final rect = tester.getRect(find.byKey(_floatingKey));
-      expect(rect.right, 384);
+      expect(rect.center.dx, 200);
       expect(rect.bottom, 584);
       await _jump(tester, 100);
       expect(find.byKey(_floatingKey).hitTestable(), findsOneWidget);

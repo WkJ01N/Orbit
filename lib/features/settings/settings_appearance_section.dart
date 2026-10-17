@@ -12,6 +12,8 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/features/settings/background_editor_page.dart';
 import 'package:orbit/models/background_text.dart';
+import 'package:orbit/models/launch_text.dart';
+import 'package:orbit/features/settings/launch_settings_page.dart';
 
 class SettingsAppearanceSection extends ConsumerWidget {
   const SettingsAppearanceSection({super.key});
@@ -29,6 +31,17 @@ class SettingsAppearanceSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.sectionAppearance,
           children: [
+            ListTile(
+              key: const Key('launch-animation-settings'),
+              leading: const Icon(Icons.animation_rounded),
+              title: Text(LaunchText(context).title),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const LaunchSettingsPage(),
+                ),
+              ),
+            ),
             ListTile(
               key: const Key('page-background-settings'),
               leading: const Icon(Icons.wallpaper),

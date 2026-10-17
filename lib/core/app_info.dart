@@ -1,4 +1,4 @@
-const kAppVersion = '1.5.7';
+const kAppVersion = '1.6.0';
 const kGithubRepoUrl = 'https://github.com/WkJ01N/Orbit';
 
-const kAppBuildNumber = 29;
+const kAppBuildNumber = 30;

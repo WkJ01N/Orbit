@@ -494,6 +494,11 @@ class SettingsService {
           .clamp(1, 6),
       showEmptyDays: prefs.getBool(_scheduleShowEmptyDaysKey) ?? true,
       showUpcomingCourseDate: prefs.getBool(_upcomingShowCourseDateKey) ?? true,
+      backToTopPosition: BackToTopPosition.values.firstWhere(
+        (value) =>
+            value.name == prefs.getString('upcoming_back_to_top_position'),
+        orElse: () => BackToTopPosition.smart,
+      ),
       upcomingDateDisplay: UpcomingDateDisplay.values.firstWhere(
         (display) => display.name == prefs.getString(_upcomingDateDisplayKey),
         orElse: () => UpcomingDateDisplay.dateAndWeekday,
@@ -552,6 +557,12 @@ class SettingsService {
       settings.showUpcomingCourseDate,
     )) {
       throw StateError("Could not save settings");
+    }
+    if (!await prefs.setString(
+      'upcoming_back_to_top_position',
+      settings.backToTopPosition.name,
+    )) {
+      throw StateError('Could not save button position');
     }
     if (!await prefs.setString(
       _upcomingDateDisplayKey,

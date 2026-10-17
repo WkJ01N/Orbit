@@ -1,3 +1,4 @@
+import 'package:orbit/features/session/wemust_check_in_action.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'package:flutter/material.dart';
@@ -18,16 +19,28 @@ import 'package:orbit/features/archive/archive_actions.dart';
 import 'package:orbit/models/orbit_feature_text.dart';
 
 class SessionDetailSheet extends ConsumerWidget {
-  const SessionDetailSheet({super.key, required this.session});
+  const SessionDetailSheet({
+    super.key,
+    required this.session,
+    this.fromCheckInReminder = false,
+  });
 
   final CourseSession session;
+  final bool fromCheckInReminder;
 
-  static Future<void> show(BuildContext context, CourseSession session) {
+  static Future<void> show(
+    BuildContext context,
+    CourseSession session, {
+    bool fromCheckInReminder = false,
+  }) {
     return showAdaptiveBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       maxDialogWidth: 760,
-      builder: (context) => SessionDetailSheet(session: session),
+      builder: (context) => SessionDetailSheet(
+        session: session,
+        fromCheckInReminder: fromCheckInReminder,
+      ),
     );
   }
 
@@ -90,6 +103,7 @@ class SessionDetailSheet extends ConsumerWidget {
                 text: session.note!,
               ),
             const SizedBox(height: 20),
+            if (fromCheckInReminder) const WemustCheckInAction(),
             _SessionActionButtons(session: session),
           ],
         ),

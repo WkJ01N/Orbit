@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#39C5BB</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimationDuration">150</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#39C5BB</item>
+        <item name="android:navigationBarColor">#39C5BB</item>
+    </style>
+</resources>
