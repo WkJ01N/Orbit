@@ -280,10 +280,15 @@ class _BackgroundZoomTransitionsBuilder extends PageTransitionsBuilder {
       animation: animation,
       entering: true,
       reverse: true,
+      fadeCoveredPage: !showScrim,
       child: child,
     ),
-    reverseBuilder: (context, animation, child) =>
-        _ZoomMotion(animation: animation, entering: false, child: child),
+    reverseBuilder: (context, animation, child) => _ZoomMotion(
+      animation: animation,
+      entering: false,
+      fadeCoveredPage: !showScrim,
+      child: child,
+    ),
     child: child,
   );
 
@@ -323,10 +328,11 @@ class _ZoomMotion extends StatelessWidget {
     required this.entering,
     this.reverse = false,
     this.showScrim = false,
+    this.fadeCoveredPage = false,
     this.child,
   });
   final Animation<double> animation;
-  final bool entering, reverse, showScrim;
+  final bool entering, reverse, showScrim, fadeCoveredPage;
   final Widget? child;
 
   // Match ZoomPageTransitionsBuilder's two-stage scale and fade intervals.
@@ -353,11 +359,13 @@ class _ZoomMotion extends StatelessWidget {
       begin: entering ? (reverse ? 1.1 : .85) : 1,
       end: entering ? 1 : (reverse ? .9 : 1.05),
     ).chain(_curve).animate(animation);
-    final fade = entering && !reverse
+    // An opaque incoming page normally hides the route underneath. Wallpaper
+    // pages are transparent, so that route also needs an explicit cross-fade.
+    final fade = entering && (!reverse || fadeCoveredPage)
         ? Tween(begin: 0.0, end: 1.0)
               .chain(CurveTween(curve: const Interval(.125, .25)))
               .animate(animation)
-        : !entering && reverse
+        : !entering && (reverse || fadeCoveredPage)
         ? Tween(begin: 1.0, end: 0.0)
               .chain(CurveTween(curve: const Interval(.0825, .2075)))
               .animate(animation)

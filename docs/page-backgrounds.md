@@ -35,6 +35,8 @@ GIF、视频默认循环，视频禁用音轨、字幕且音量为零。可关�
 
 二级页面的背景主题在路由内部应用，导航器外层结构保持固定。路由退出时，来源配置和背景保持到反向动画结束、覆盖层移除后再释放，避免退出页面更换布局树而重建滚动列表。Android 保留系统预测返回与取消手势；有背景参与时取消默认过渡底色。Windows 保留默认缩放曲线和淡出时序，但显式跳过背景遮罩绘制（Flutter 默认缩放绘制器会重新设置颜色透明度，仅传入透明色仍会产生黑色遮罩）。无背景过渡保留主题遮罩。
 
+Windows 有背景参与时，被覆盖的来源页面也显式淡出，返回时淡入。默认缩放过渡依赖不透明的新页面遮住来源内容；背景页面透明后，仅取消遮罩会让来源内容一直显示到动画结束才突然消失。该分支沿用缩放过渡的淡出／淡入区间，保持页面子树及动画中途反向时的连续性。
+
 主导航动画复用稳定页面子树，页面及媒体使用绘制隔离；无背景页面之间不启动空媒体过渡。Windows 编辑面板使用 8px 按钮／换行间距、12px 分组间距和 16px 水平留白，缩放按钮作为整体换行，手机布局不变。
 
 ## 验证
@@ -54,6 +56,8 @@ dart run '-Ddart.vm.product=true' tool/background_media_smoke.dart E:/Multiplatf
 
 `integration_test/background_transition_test.dart` 使用真实主导航、已登录账号页面与原生媒体插件，在内存设置和临时素材目录下记录静态图片、GIF、视频的主导航与二级页面帧耗时。每种素材预热全部页面后，记录 20 次主导航切换及 5 次账号页面进入、滚动和返回。测试不执行真实登录，不使用用户课程数据。素材目录必须位于测试设备可读取的位置，包含 `still.png`、`animated.gif`、1280×720 的 `video.mp4`。视频直接安装为测试素材，测量实际播放与切换，不经过视频导入流程。
 
+每种素材还验证真实「课表 → 搜索课程」过渡：在进入动画尚未完成、来源路由仍在屏幕树内时，来源内容透明度必须已经降到零；返回后恢复到一且复用原页面。组件测试额外逐帧采样有色来源内容与背景的混合像素，覆盖主页面、嵌套二级页面、正常返回和进入动画中途返回，避免仅检查背景像素而漏掉内容叠影。
+
 ```powershell
 $env:ORBIT_BACKGROUND_REPORT = 'build/background-transition-profile.json'
 flutter drive --no-pub --profile -d windows --driver=test_driver/background_transition_driver.dart --target=integration_test/background_transition_test.dart --dart-define=ORBIT_BACKGROUND_FIXTURES=E:/path/to/fixtures
@@ -62,6 +66,8 @@ flutter drive --no-pub --profile -d windows --driver=test_driver/background_tran
 Windows 验收应使用独立测试副本，且测试副本的原生 runner 必须跳过单实例互斥、`OpenStrongReminder` 与 `RegisterStrongReminderWindow`，避免启动测试时激活当前 Orbit 或改写提醒窗口登记。正式源码保留这些功能。修复前后需使用相同 runner 隔离调整、素材、窗口大小与操作流程，并分别保存报告；比较 UI／光栅耗时、超时帧及视觉连续性。Android 使用 `-d <device-id>` 和设备端素材目录另行验收，桌面数据不能替代手机真机结果。
 
 2026-10-17 本次源码验收：静态检查通过，全量 Flutter 测试 674 项通过、1 项跳过；补充的测试验证动画各阶段背景像素、来源路由配置释放、账号页按钮／系统返回及预测返回取消／提交时的滚动位置，以及 Windows 宽窄窗口、中文和双倍字体布局。
+
+同日 Windows 内容叠影补充验收：先用真实搜索页和有色来源内容复现未淡出问题，再修复被覆盖页面的透明度。全量 Flutter 测试 676 项通过、1 项跳过；应用、测试及工具静态分析无问题。隔离 Windows profile 程序通过 PNG、GIF、视频三种背景的真实搜索页进入／返回检查，以及主导航、已登录账号页滚动返回检查；原始报告为本机 `build/background-transition-fade-fixed.json`。组件测试同时验证嵌套页面和未完成进入动画时返回的像素连续性，Android 真机验收状态保持如下文所述。
 
 Windows profile 使用 1920×1080 PNG、640×360／12fps GIF、1280×720／24fps 视频，在同一隔离 runner、相同流程下分别采集修复前 4,414 帧、修复后 6,008 帧。账号页静态背景的 UI 构建 P99 从 8.521ms 降至 1.624ms，GIF 从 8.302ms 降至 2.376ms；主导航静态背景为 1.655→1.298ms，视频为 1.520→1.390ms，GIF 为 1.443→1.514ms，存在小幅波动。六场景修复前后均未超过 Flutter 默认帧预算，因此这些数据用于说明本机 UI 构建负担改善，不作为所有设备零掉帧的保证。视频场景额外验证实际解码为 1280×720、音量为零且无音轨。原始报告为本机 `build/background-transition-baseline.json`、`build/background-transition-fixed.json`，精简对比为 `build/background-transition-comparison.json`。当前未连接 Android 真机，手机帧耗时验收仍待设备连接后执行。
 
@@ -88,3 +94,5 @@ v1.5.6 发布构建：应用与两端安装包版本为 1.5.6+28；APK 签名与
 版本升级为1.5.7+29，正式产物位于 release/v1.5.7/。提供三个独立架构APK、通用APK、Windows ZIP及独立散列清单；Android包保持相同内部版本号和正式签名。背景编辑修订在此版本发布，安装包由现有正式CloudBase配置重新编译。更新代理排序的源码随本次提交推送，但不包含云端部署。
 
 2026-10-17 背景过渡修复版本地 release 构建保持 1.5.7+29，使用既有正式 CloudBase 配置和 Android 签名，单独归档至 `release/background-transition-fix-20261017/`。通用、ARM64、ARMv7、x86_64 四个 APK 的版本、ABI 和证书均通过校验；Windows ZIP 的 35 个文件与构建目录逐一匹配。两端 AOT 包均确认包含本次路由修复且使用正式应用入口，更新清单与 SHA-256 与最终产物一致；Windows release 原生视频的静音、循环、暂停和恢复复测通过。
+
+同日 Windows 内容淡出补充修复使用正式入口和既有 CloudBase 配置重新构建 Windows release，版本仍为 1.5.7+29，产物单独存放在 `release/background-transition-fade-fix-20261017/`。该包用于替换上述过渡修复归档中的 Windows 包，Android 包不变。

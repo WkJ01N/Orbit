@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:orbit/core/background/background_host.dart';
 import 'package:orbit/core/routing/app_shell.dart';
 import 'package:orbit/core/theme/app_theme.dart';
+import 'package:orbit/features/search/session_search_page.dart';
 import 'package:orbit/features/settings/account_sync_page.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/account_sync.dart';
@@ -40,6 +41,18 @@ class _Account extends AccountSyncNotifier {
   );
   @override
   Future<void> refreshProfile() async {}
+}
+
+double _paintedOpacity(Element element) {
+  var opacity = 1.0;
+  element.visitAncestorElements((ancestor) {
+    final widget = ancestor.widget;
+    if (widget is FadeTransition) opacity *= widget.opacity.value;
+    if (widget is Opacity) opacity *= widget.opacity;
+    if (widget is Offstage && widget.offstage) opacity = 0;
+    return true;
+  });
+  return opacity;
 }
 
 /// Uses in-memory preferences and a temporary media directory, without opening
@@ -179,6 +192,26 @@ void main() {
         expect(player.state.volume, 0);
         expect(player.state.track.audio.id, 'no');
       }
+      // Cover the actual grid -> search route. Transparent wallpaper pages must
+      // fade the previous content before Navigator hides its route at the end.
+      final source = tester.element(find.byType(AppShell));
+      SessionSearchPage.show(navigator.currentContext!);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 130));
+      final search = ModalRoute.of(
+        tester.element(find.byType(SessionSearchPage)),
+      )!;
+      expect(search.animation!.isAnimating, isTrue);
+      expect(_paintedOpacity(source), closeTo(0, .001));
+      expect(tester.element(find.byType(AppShell)), same(source));
+      await waitForMotion();
+      navigator.currentState!.pop();
+      await waitForMotion();
+      expect(tester.element(find.byType(AppShell)), same(source));
+      expect(_paintedOpacity(source), 1);
+      debugPrint(
+        'ORBIT_BACKGROUND_PROFILE ${asset.kind.name} search fade verified',
+      );
       // Warm all destinations and the account page before recording timings.
       for (final index in [1, 2, 3, 0, 3]) {
         await tab(index);

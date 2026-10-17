@@ -12,6 +12,8 @@ import 'package:orbit/core/background/background_media.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/settings/account_sync_page.dart';
+import 'package:orbit/features/search/session_search_page.dart';
+import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/providers/background_providers.dart';
@@ -93,6 +95,9 @@ Widget _app({
     ],
     child: MaterialApp(
       theme: AppTheme.light(),
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       navigatorKey: navigator,
       navigatorObservers: [routes],
       builder: (context, child) => RepaintBoundary(
@@ -118,18 +123,25 @@ Future<void> _loadImage(WidgetTester tester, File file) async {
   await tester.pumpAndSettle();
 }
 
+Future<List<int>?> _pixelAt(
+  WidgetTester tester,
+  GlobalKey capture, [
+  Offset? position,
+]) => tester.runAsync(() async {
+  final boundary =
+      capture.currentContext!.findRenderObject() as RenderRepaintBoundary;
+  final image = await boundary.toImage(pixelRatio: 1);
+  final bytes = (await image.toByteData())!.buffer.asUint8List();
+  final x = position?.dx.toInt() ?? image.width ~/ 2;
+  final y = position?.dy.toInt() ?? image.height ~/ 2;
+  final offset = (image.width * y + x) * 4;
+  final result = bytes.sublist(offset, offset + 4);
+  image.dispose();
+  return result;
+});
+
 Future<void> _expectWallpaper(WidgetTester tester, GlobalKey capture) async {
-  final pixel = await tester.runAsync(() async {
-    final boundary =
-        capture.currentContext!.findRenderObject() as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 1);
-    final bytes = (await image.toByteData())!.buffer.asUint8List();
-    final offset = (image.width * (image.height ~/ 2) + image.width ~/ 2) * 4;
-    final result = bytes.sublist(offset, offset + 4);
-    image.dispose();
-    return result;
-  });
-  expect(pixel, [220, 30, 80, 255]);
+  expect(await _pixelAt(tester, capture), [220, 30, 80, 255]);
 }
 
 void main() {
@@ -147,6 +159,88 @@ void main() {
   });
   tearDownAll(() => directory.delete(recursive: true));
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  for (final nested in [false, true]) {
+    testWidgets(
+      'Windows search fades the previous page before offstage (nested=$nested)',
+      (tester) async {
+        final routes = BackgroundRouteObserver();
+        addTearDown(routes.dispose);
+        final navigator = GlobalKey<NavigatorState>();
+        final capture = GlobalKey();
+        const marker = Key('previous-page-marker');
+        const sample = Offset(380, 260);
+        const previousPage = BackgroundScaffold(
+          body: Center(
+            child: SizedBox(
+              width: 200,
+              height: 160,
+              child: ColoredBox(key: marker, color: Color(0xff00cc66)),
+            ),
+          ),
+        );
+        await tester.pumpWidget(
+          _app(
+            routes: routes,
+            navigator: navigator,
+            image: wallpaper,
+            capture: capture,
+            home: previousPage,
+          ),
+        );
+        await _loadImage(tester, wallpaper);
+        if (nested) {
+          navigator.currentState!.push(
+            MaterialPageRoute<void>(builder: (_) => previousPage),
+          );
+          await tester.pumpAndSettle();
+        }
+        final previous = tester.element(find.byKey(marker));
+        expect(await _pixelAt(tester, capture, sample), [0, 204, 102, 255]);
+
+        SessionSearchPage.show(navigator.currentContext!);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 30));
+        final early = (await _pixelAt(tester, capture, sample))!;
+        await tester.pump(const Duration(milliseconds: 15));
+        final middle = (await _pixelAt(tester, capture, sample))!;
+        expect(early[1], inExclusiveRange(30, 204));
+        expect(middle[1], inExclusiveRange(30, early[1]));
+        await tester.pump(const Duration(milliseconds: 55));
+        final search = ModalRoute.of(
+          tester.element(find.byType(SessionSearchPage)),
+        )!;
+        expect(search.animation!.isAnimating, isTrue);
+        expect(await _pixelAt(tester, capture, sample), [220, 30, 80, 255]);
+        expect(tester.element(find.byKey(marker)), same(previous));
+        await tester.pumpAndSettle();
+        expect(await _pixelAt(tester, capture, sample), [220, 30, 80, 255]);
+
+        navigator.currentState!.pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 45));
+        final returning = (await _pixelAt(tester, capture, sample))!;
+        expect(returning[1], inExclusiveRange(30, 204));
+        await tester.pumpAndSettle();
+        expect(tester.element(find.byKey(marker)), same(previous));
+        expect(await _pixelAt(tester, capture, sample), [0, 204, 102, 255]);
+
+        // Reversing an unfinished push must keep the same page and rendered frame.
+        SessionSearchPage.show(navigator.currentContext!);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 45));
+        final interrupted = await _pixelAt(tester, capture, sample);
+        navigator.currentState!.pop();
+        await tester.pump();
+        expect(await _pixelAt(tester, capture, sample), interrupted);
+        await tester.pumpAndSettle();
+        expect(tester.element(find.byKey(marker)), same(previous));
+        expect(await _pixelAt(tester, capture, sample), [0, 204, 102, 255]);
+        expect(tester.takeException(), isNull);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.windows),
+    );
+  }
 
   for (final platform in [TargetPlatform.android, TargetPlatform.windows]) {
     testWidgets(
