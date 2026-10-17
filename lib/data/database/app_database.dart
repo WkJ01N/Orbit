@@ -1,3 +1,4 @@
+import 'package:orbit/data/database/row_decoders.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/archive_settings.dart';
@@ -301,11 +302,13 @@ class AppDatabase {
   }
 
   Future<List<Deadline>> getDeadlines({bool includeDeleted = false}) async =>
-      (await _db.query(
-        'deadlines',
-        where: includeDeleted ? null : 'deleted_at IS NULL',
-        orderBy: 'due_at ASC',
-      )).map(Deadline.fromMap).toList();
+      decodeDeadlineRows(
+        await _db.query(
+          'deadlines',
+          where: includeDeleted ? null : 'deleted_at IS NULL',
+          orderBy: 'due_at ASC',
+        ),
+      );
 
   Future<Deadline?> getDeadlineById(String id) async {
     final rows = await _db.query(
@@ -950,7 +953,7 @@ class AppDatabase {
       where: includeDeleted ? null : 'deleted_at IS NULL',
       orderBy: 'start_at ASC',
     );
-    return rows.map(CourseSession.fromMap).toList();
+    return decodeCourseRows(rows);
   }
 
   Future<CourseSession?> getSessionById(String id) async {
@@ -981,7 +984,7 @@ class AppDatabase {
       orderBy: 'start_at ASC',
       limit: 100,
     );
-    return rows.map(CourseSession.fromMap).toList();
+    return decodeCourseRows(rows);
   }
 
   Future<List<CourseSession>> getUpcomingSessions(DateTime from) async {
@@ -992,7 +995,7 @@ class AppDatabase {
       whereArgs: [from.toIso8601String()],
       orderBy: 'start_at ASC',
     );
-    return rows.map(CourseSession.fromMap).toList();
+    return decodeCourseRows(rows);
   }
 
   Future<List<CourseSession>> getSessionsBetween(
@@ -1005,7 +1008,7 @@ class AppDatabase {
       whereArgs: [_dateKey(startInclusive), _dateKey(endInclusive)],
       orderBy: 'start_at ASC',
     );
-    return rows.map(CourseSession.fromMap).toList();
+    return decodeCourseRows(rows);
   }
 
   Future<int> clearAllSessions({bool deleteStatistics = false}) =>
@@ -1105,7 +1108,7 @@ class AppDatabase {
       where: 'deleted_at IS NOT NULL',
       orderBy: 'deleted_at DESC, start_at ASC',
     );
-    return rows.map(CourseSession.fromMap).toList();
+    return decodeCourseRows(rows);
   }
 
   Future<int> restoreDeletedSessionIds(List<String> ids) async {

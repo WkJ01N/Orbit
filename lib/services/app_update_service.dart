@@ -115,7 +115,106 @@ class AppUpdateService {
     }
   }
 
-  Future<Map<String, dynamic>> _json(Uri uri, UpdateOperation operation) async {
+  Future<ReleaseHistoryPage> history({int page = 1}) async {
+    if (page < 1 || page > 1000) throw ArgumentError.value(page);
+    final operation = UpdateOperation();
+    try {
+      dynamic payload;
+      if (apiBase.isNotEmpty) {
+        try {
+          payload = await _json(
+            Uri.parse('$apiBase/v1/updates/releases?page=$page'),
+            operation,
+          );
+        } catch (_) {
+          /* Official fallback below. */
+        }
+      }
+      payload ??= await _value(
+        Uri.parse(
+          'https://api.github.com/repos/WkJ01N/Orbit/releases?per_page=20&page=$page',
+        ),
+        operation,
+      );
+      final values = payload is Map
+          ? payload['releases'] as List
+          : payload as List;
+      return ReleaseHistoryPage(
+        [
+          for (final item in values)
+            if (item['draft'] != true &&
+                item['prerelease'] != true &&
+                RegExp(
+                  r'^v?\d+\.\d+\.\d+(\+\d+)?$',
+                ).hasMatch(item['tag_name'] as String? ?? ''))
+              AppRelease.fromGitHub(Map<String, dynamic>.from(item as Map)),
+        ],
+        hasMore: payload is Map
+            ? payload['hasMore'] == true
+            : values.length >= 20,
+      );
+    } finally {
+      operation.cancel();
+    }
+  }
+
+  Future<AppRelease> release(String version) async {
+    if (!RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version)) {
+      throw const FormatException('Invalid version');
+    }
+    final operation = UpdateOperation();
+    try {
+      Map<String, dynamic>? payload;
+      if (apiBase.isNotEmpty) {
+        try {
+          payload = await _json(
+            Uri.parse('$apiBase/v1/updates/releases/v$version'),
+            operation,
+          );
+          AppRelease.fromGitHub(payload);
+        } catch (_) {
+          payload = null;
+        }
+      }
+      payload ??= await _json(
+        Uri.parse(
+          'https://api.github.com/repos/WkJ01N/Orbit/releases/tags/v$version',
+        ),
+        operation,
+      );
+      if (payload['orbitManifest'] == null) {
+        final metadata = (payload['assets'] as List? ?? [])
+            .where((e) => e['name'] == 'update-manifest.json')
+            .firstOrNull;
+        if (metadata != null) {
+          final uri = Uri.parse(metadata['browser_download_url'] as String);
+          if (uri.scheme == 'https' &&
+              uri.host == 'github.com' &&
+              uri.path.startsWith('/WkJ01N/Orbit/releases/download/')) {
+            try {
+              payload['orbitManifest'] = await _json(uri, operation);
+            } catch (_) {
+              /* Missing verification blocks download. */
+            }
+          }
+        }
+      }
+      final result = AppRelease.fromGitHub(payload);
+      if (result.version != version) {
+        throw const FormatException('Release version mismatch');
+      }
+      return result;
+    } finally {
+      operation.cancel();
+    }
+  }
+
+  Future<Map<String, dynamic>> _json(
+    Uri uri,
+    UpdateOperation operation,
+  ) async => Map<String, dynamic>.from(await _value(uri, operation) as Map);
+
+  Future<dynamic> _value(Uri uri, UpdateOperation operation) async {
     final client = operation.client();
     try {
       final request = await client
@@ -137,7 +236,7 @@ class AppUpdateService {
           throw const FormatException('Metadata too large');
         }
       }
-      return Map<String, dynamic>.from(jsonDecode(utf8.decode(bytes)) as Map);
+      return jsonDecode(utf8.decode(bytes));
     } finally {
       operation.done(client);
     }
@@ -304,11 +403,38 @@ class AppUpdateService {
     );
   }
 
-  Future<void> install(File file, UpdateAsset asset) async {
+  Future<Map<String, dynamic>> inspect(
+    File file,
+    UpdateAsset asset, {
+    AppRelease? release,
+  }) async {
     await verify(file, asset);
+    if (!Platform.isAndroid) return {};
+    final info = Map<String, dynamic>.from(
+      await _native.invokeMapMethod<String, dynamic>('inspectUpdate', {
+            'path': file.path,
+          }) ??
+          {},
+    );
+    if (release != null &&
+        (info['versionName'] != release.version ||
+            (release.buildNumber > 0 &&
+                info['versionCode'] != release.buildNumber))) {
+      throw const FormatException('APK version differs from release metadata');
+    }
+    return info;
+  }
+
+  Future<void> install(
+    File file,
+    UpdateAsset asset, {
+    AppRelease? release,
+  }) async {
     if (Platform.isAndroid) {
+      await inspect(file, asset, release: release);
       await _native.invokeMethod('installUpdate', {'path': file.path});
     } else if (Platform.isWindows) {
+      await verify(file, asset);
       await Process.start('explorer.exe', [file.path]);
     } else {
       throw UnsupportedError('Unsupported platform');

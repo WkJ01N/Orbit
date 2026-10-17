@@ -110,7 +110,9 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('entering the cached Upcoming tab queries again', (tester) async {
+  testWidgets('cached Upcoming refresh waits for the tab transition', (
+    tester,
+  ) async {
     var queries = 0;
     await tester.pumpWidget(
       app(
@@ -128,6 +130,9 @@ void main() {
       tester.element(find.byType(UpcomingPage)),
     );
     container.read(appNavIndexProvider.notifier).state = 1;
+    await tester.pump(const Duration(milliseconds: 260));
+    expect(queries, 1, reason: 'Keep refresh out of the transition');
+    await tester.pump(const Duration(milliseconds: 30));
     await tester.pumpAndSettle();
     expect(queries, 2);
     await tester.pumpWidget(const SizedBox());

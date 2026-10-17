@@ -1,3 +1,4 @@
+import 'package:orbit/services/component_service.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -40,6 +41,16 @@ class _BackgroundMediaState extends State<BackgroundMedia>
       _windowVisible = true,
       _motion = true;
   int _generation = 0;
+  String? _missingComponent;
+  void _componentChanged() {
+    if (_missingComponent != null &&
+        widget.service.components.ready(_missingComponent!)) {
+      _missingComponent = null;
+      _failed = false;
+      unawaited(_open());
+    }
+  }
+
   static final _positions = <String, Duration>{};
   static Future<void> _releases = Future<void>.value();
   String get _identity => widget.key.toString();
@@ -52,6 +63,7 @@ class _BackgroundMediaState extends State<BackgroundMedia>
   @override
   void initState() {
     super.initState();
+    widget.service.components.addListener(_componentChanged);
     _foreground =
         WidgetsBinding.instance.lifecycleState == null ||
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
@@ -70,7 +82,9 @@ class _BackgroundMediaState extends State<BackgroundMedia>
       await Future<void>.delayed(Duration.zero);
       await _releases;
       if (!mounted || generation != _generation) return;
-      MediaKit.ensureInitialized();
+      MediaKit.ensureInitialized(
+        libmpv: await widget.service.components.ensureVideo(),
+      );
       final player = Player(
         configuration: const PlayerConfiguration(
           muted: true,
@@ -95,6 +109,9 @@ class _BackgroundMediaState extends State<BackgroundMedia>
       if (!mounted) return;
       setState(() => _ready = true);
       await _syncPlayback();
+    } on ComponentMissing catch (error) {
+      _missingComponent = error.id;
+      if (mounted) setState(() => _failed = true);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
@@ -155,6 +172,7 @@ class _BackgroundMediaState extends State<BackgroundMedia>
 
   @override
   void dispose() {
+    widget.service.components.removeListener(_componentChanged);
     ++_generation;
     WidgetsBinding.instance.removeObserver(this);
     if (Platform.isWindows) windowManager.removeListener(this);

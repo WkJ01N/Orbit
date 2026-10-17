@@ -15,8 +15,22 @@ final wemustLauncherProvider = Provider<WemustLauncher>(
 );
 
 class WemustLauncher {
+  static const targetPackage = 'cn.doocom.wemustcampus';
+  static const timetableUri =
+      'wmstud://must.edu.mo/services/S-WM-CLASS-TIMETABLE-APP';
   static const channel = MethodChannel('com.must.orbit.orbit/wemust');
   bool get supported => Platform.isAndroid;
+  Future<String?> installedVersion() async {
+    if (!supported) return null;
+    try {
+      return await channel.invokeMethod<String>('version');
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+
   Future<WemustLaunchResult> open({bool timetable = true}) async {
     if (!supported) return WemustLaunchResult.unsupported;
     try {

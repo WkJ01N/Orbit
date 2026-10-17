@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:orbit/models/deadline.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/features/grid/strong_grid_decoration.dart';
@@ -34,6 +35,16 @@ import 'package:orbit/services/course_color_utils.dart';
 import 'package:orbit/services/schedule_layout_engine.dart';
 import 'package:orbit/core/motion/launch_motion.dart';
 
+class _DeadlineDates {
+  const _DeadlineDates(this.values);
+  final List<DateTime> values;
+  @override
+  bool operator ==(Object other) =>
+      other is _DeadlineDates && listEquals(values, other.values);
+  @override
+  int get hashCode => Object.hashAll(values);
+}
+
 class WeekGridView extends ConsumerStatefulWidget {
   const WeekGridView({super.key, required this.grid, this.sessions});
 
@@ -53,10 +64,19 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   String? _lastAutoScrollKey;
   String? _selectedSessionId;
   int _rangeTransitionDirection = 1;
+  Object? _sessionSource;
+  List<CourseSession> _visibleSessions = const [];
+  Object? _layoutConfiguration;
+  final Map<DateTime, _SchedulePageData> _pageLayouts = {};
 
   List<CourseSession> get _sessions {
+    final source = widget.sessions ?? widget.grid;
+    if (identical(source, _sessionSource)) return _visibleSessions;
+    _sessionSource = source;
     if (widget.sessions != null) {
-      return widget.sessions!.where((s) => s.visible).toList();
+      return _visibleSessions = widget.sessions!
+          .where((s) => s.visible)
+          .toList();
     }
     final byId = <String, CourseSession>{};
     for (final cell in widget.grid.cells.values) {
@@ -64,7 +84,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         byId[session.id] = session;
       }
     }
-    return byId.values.where((s) => s.visible).toList();
+    return _visibleSessions = byId.values.where((s) => s.visible).toList();
   }
 
   @override
@@ -164,10 +184,17 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
       if (next != AppTab.grid.index) _clearSelection();
     });
     final selection = ref.watch(gridSelectionProvider);
-    final deadlineDates = (ref.watch(deadlinesProvider).valueOrNull ?? [])
-        .where((d) => !d.completed || d.archived)
-        .map((d) => d.dueAt)
-        .toList();
+    final dateSet = ref.watch(
+      deadlinesProvider.select(
+        (value) => _DeadlineDates(
+          (value.valueOrNull ?? [])
+              .where((d) => !d.completed || d.archived)
+              .map((d) => d.dueAt)
+              .toList(),
+        ),
+      ),
+    );
+    final deadlineDates = dateSet.values;
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final now = ref.watch(currentTimeProvider);
     final density = ref.watch(gridDensityProvider);
@@ -181,45 +208,52 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           constraints.maxWidth,
           narrowLayout: settings.narrowLayout,
         );
-        final visibleDates = visibleScheduleDates(
-          anchor: anchor,
-          mode: mode,
-          preferredMultiDayCount: settings.preferredMultiDayCount,
-          maxMultiDayCount: maxMultiDayCountForWidth(constraints.maxWidth),
-          showEmptyDays: settings.showEmptyDays,
-          sessions: _sessions,
-          eventDates: deadlineDates,
-          weekStartDay: weekStartDay,
+        final sessions = _sessions;
+        final configuration = (
+          mode,
+          settings,
+          weekStartDay,
+          constraints.maxWidth,
+          _sessionSource,
+          dateSet,
         );
-        final layout = const ScheduleLayoutEngine().build(
-          dates: visibleDates,
-          sessions: _sessions,
-          mode: mode,
-          fitToPage: settings.fitToPage,
-        );
-
+        if (_layoutConfiguration != configuration) {
+          _pageLayouts.clear();
+          _layoutConfiguration = configuration;
+        }
         _SchedulePageData pageData(DateTime pageAnchor) {
+          final cached = _pageLayouts[pageAnchor];
+          if (cached != null) return cached;
           final dates = visibleScheduleDates(
             anchor: pageAnchor,
             mode: mode,
             preferredMultiDayCount: settings.preferredMultiDayCount,
             maxMultiDayCount: maxMultiDayCountForWidth(constraints.maxWidth),
             showEmptyDays: settings.showEmptyDays,
-            sessions: _sessions,
+            sessions: sessions,
             eventDates: deadlineDates,
             weekStartDay: weekStartDay,
           );
-          return _SchedulePageData(
+          final result = _SchedulePageData(
             anchor: pageAnchor,
             visibleDates: dates,
             layout: const ScheduleLayoutEngine().build(
               dates: dates,
-              sessions: _sessions,
+              sessions: sessions,
               mode: mode,
               fitToPage: settings.fitToPage,
             ),
           );
+          if (_pageLayouts.length >= 7) {
+            _pageLayouts.remove(_pageLayouts.keys.first);
+          }
+          _pageLayouts[pageAnchor] = result;
+          return result;
         }
+
+        final current = pageData(anchor);
+        final visibleDates = current.visibleDates;
+        final layout = current.layout;
 
         final visibleDayCount = math.max(1, visibleDates.length);
         final previousAnchor = navigateScheduleAnchor(

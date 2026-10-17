@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/components_page.dart';
+import 'package:orbit/services/component_service.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -59,6 +61,16 @@ class BackgroundSettingsPage extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (settings) => ListView(
           children: [
+            ListTile(
+              leading: const Icon(Icons.download_for_offline_outlined),
+              title: Text(
+                text.t('Video playback component', '视频背景组件', '影片背景元件'),
+              ),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const ComponentsPage()),
+              ),
+            ),
             SwitchListTile(
               title: Text(
                 text.t('Enable page backgrounds', '启用页面背景', '啟用頁面背景'),
@@ -238,6 +250,23 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
         return;
       }
       setState(() => _busy = true);
+      if (BackgroundAssetService.videoExtensions.contains(
+        (selected.files.single.name.split('.').last).toLowerCase(),
+      )) {
+        final components = ref.read(componentServiceProvider);
+        final id = await components.videoId();
+        await components.initialize();
+        if (!components.ready(id)) {
+          if (!mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => ComponentsPage(focusId: id),
+            ),
+          );
+          if (!mounted || !components.ready(id)) return;
+        }
+      }
       final asset = await _service.importFile(
         File(selected.files.single.path!),
         name: selected.files.single.name,

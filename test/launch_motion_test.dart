@@ -223,7 +223,7 @@ void main() {
         }
         expect(plan.values.map((s) => s.delayMs).toSet().length, plan.length);
         expect(
-          plan.values.every((s) => s.delayMs >= 0 && s.delayMs <= 180),
+          plan.values.every((s) => s.delayMs >= 0 && s.delayMs <= 140),
           isTrue,
         );
         final again = planCardEntrances(columns, random: Random(seed));

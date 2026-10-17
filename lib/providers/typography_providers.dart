@@ -29,9 +29,14 @@ class TypographyNotifier extends Notifier<TypographySettings> {
     final service = ref.read(fontServiceProvider);
     final work = _tail.catchError((Object _) {}).then((_) async {
       final next = change(state).copyWith(loadWarning: false);
-      await service.prepare(next);
+      final prepared = await service.prepare(
+        next,
+        recover:
+            next.appFontId == state.appFontId &&
+            next.launchFontId == state.launchFontId,
+      );
       await service.save(next);
-      state = next;
+      state = prepared;
     });
     _tail = work.catchError((Object _) {});
     return work;

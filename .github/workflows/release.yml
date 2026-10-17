@@ -8,10 +8,52 @@ permissions:
   contents: write
 
 jobs:
-  android:
+  native-video:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - run: python tool/collect_video_runtime.py --output native-video
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-video-inputs
+          path: native-video/
+          if-no-files-found: error
+
+  components:
+    needs: native-video
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-video-inputs
+          path: native-video
+      # One job produces every archive: all app platforms embed the exact same
+      # catalog, independent of the operating system's zlib/ZIP implementation.
+      - run: python3 tool/build_components.py --windows-input native-video --output components-release --release-tag "${{ github.ref_name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: components-release
+          path: components-release/
+          if-no-files-found: error
+
+  android:
+    needs: components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: components-release
+          path: components-release
+      - run: cp components-release/component-catalog.json assets/components/catalog.json
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.44.1
@@ -63,9 +105,15 @@ jobs:
           if-no-files-found: error
 
   windows:
+    needs: components
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: components-release
+          path: components-release
+      - run: Copy-Item components-release/component-catalog.json assets/components/catalog.json
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.44.1
@@ -83,7 +131,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [android, windows]
+    needs: [android, windows, components]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,8 +152,10 @@ jobs:
             echo "Release $TAG is already published; preserving its verified assets."
             exit 0
           fi
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
-          gh release edit "$TAG" --title "$TAG" --notes-file "release/$TAG/RELEASE_NOTES.md"
+          notes="release/$TAG/RELEASE_NOTES.md"
+          [ -f "$notes" ] || notes="docs/releases/$TAG.md"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes-file "$notes"
+          gh release edit "$TAG" --title "$TAG" --notes-file "$notes"
           # Legacy apps choose the first APK in GitHub name order; architecture
           # packages omit "android-" so the unchanged universal name sorts first.
           gh release upload "$TAG" "dist/orbit-$TAG-android.apk" --clobber

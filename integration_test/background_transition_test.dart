@@ -1,3 +1,4 @@
+import 'package:orbit/services/component_service.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -84,7 +85,14 @@ void main() {
     final directory = await Directory.systemTemp.createTemp(
       'orbit-background-profile-',
     );
-    final service = BackgroundAssetService(directory: directory);
+    final components = ComponentService(
+      directory: Directory('${directory.path}/components'),
+    );
+    await components.initialize();
+    final service = BackgroundAssetService(
+      directory: directory,
+      components: components,
+    );
     final assets = <BackgroundAsset>[
       for (final name in ['still.png', 'animated.gif'])
         await service.importFile(File('$fixtures/$name')),
@@ -104,6 +112,18 @@ void main() {
     assets.add(video);
 
     for (final asset in assets) {
+      if (asset.kind == BackgroundMediaKind.video) {
+        const runtime = String.fromEnvironment('ORBIT_VIDEO_COMPONENT');
+        expect(
+          runtime,
+          isNotEmpty,
+          reason: 'Provide the verified component pack',
+        );
+        final descriptor = await components.descriptor(
+          await components.videoId(),
+        );
+        await components.installArchive(descriptor, File(runtime));
+      }
       debugPrint('ORBIT_BACKGROUND_PROFILE ${asset.kind.name} warmup');
       final settings = BackgroundSettings(
         enabled: true,

@@ -1,3 +1,7 @@
+import 'package:orbit/models/navigation_assist_text.dart';
+import 'dart:async';
+import 'package:orbit/features/settings/components_page.dart';
+import 'package:orbit/services/component_service.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -233,12 +237,38 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
     super.initState();
     final value = ref.read(typographySettingsProvider);
     _selected = widget.launch ? value.launchFontId : value.appFontId;
+    unawaited(
+      ref.read(componentServiceProvider).initialize().then((_) {
+        if (mounted) setState(() {});
+      }, onError: (Object _) {}),
+    );
   }
 
   Future<void> _select(String id, {bool apply = false}) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      if (!apply && const ['rounded', 'huninn', 'maiyuan'].contains(id)) {
+        final components = ref.read(componentServiceProvider);
+        await components.initialize();
+        var installed = false;
+        try {
+          await components.installed(id);
+          installed = true;
+        } on ComponentMissing {
+          /* Offer explicit download. */
+        }
+        if (!installed) {
+          if (!mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => ComponentsPage(focusId: id),
+            ),
+          );
+          if (!mounted || !components.ready(id)) return;
+        }
+      }
       TypographySettings next(TypographySettings value) => widget.launch
           ? value.copyWith(launchFontId: id)
           : value.copyWith(appFontId: id);
@@ -266,7 +296,16 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
   Widget build(BuildContext context) {
     final text = TypographyText(context);
     final value = ref.watch(typographySettingsProvider);
-    final family = _selected == 'system'
+    final components = ref.watch(componentServiceProvider);
+    final available =
+        !const ['rounded', 'huninn', 'maiyuan'].contains(_selected) ||
+        components.ready(_selected);
+    final family = !available
+        ? FontCatalog.systemFamily(
+            defaultTargetPlatform,
+            Localizations.localeOf(context),
+          )
+        : _selected == 'system'
         ? FontCatalog.systemFamily(
             defaultTargetPlatform,
             Localizations.localeOf(context),
@@ -324,8 +363,16 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
               ),
               FilledButton(
                 key: const Key('apply-font'),
-                onPressed: _busy ? null : () => _select(_selected, apply: true),
-                child: Text(text.apply),
+                onPressed: _busy
+                    ? null
+                    : () => _select(_selected, apply: available),
+                child: Text(
+                  available
+                      ? text.apply
+                      : NavigationAssistText.of(
+                          context,
+                        ).pick('Download and preview', '下载并预览', '下載並預覽'),
+                ),
               ),
               if (_busy) const LinearProgressIndicator(),
               for (final id in choices)

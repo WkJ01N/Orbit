@@ -1,3 +1,9 @@
+class ReleaseHistoryPage {
+  const ReleaseHistoryPage(this.items, {required this.hasMore});
+  final List<AppRelease> items;
+  final bool hasMore;
+}
+
 class AppRelease {
   const AppRelease({
     required this.version,

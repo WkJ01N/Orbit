@@ -1,0 +1,310 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "id": "rounded",
+      "name": "Resource Han Rounded",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "any",
+      "abi": null,
+      "entrypoint": null,
+      "size": 14856737,
+      "sha256": "f4076a6333801a339d2f91811a76bfe6859048c1c76fc46362ee7aceb88c4a55",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-rounded-1.orbitpack",
+      "files": {
+        "ResourceHanRounded-OFL.txt": {
+          "size": 4428,
+          "sha256": "92a56a1be1b019cf44b26594fa80158a04e0e38e3e0653e8a08dc5236d07aa7b"
+        },
+        "ResourceHanRoundedCN-Bold.ttf": {
+          "size": 13978508,
+          "sha256": "f713907a21a10701cd68a7ce3e345ccdce46c789e1809d65ace54e095d7107c3"
+        },
+        "ResourceHanRoundedCN-Regular.ttf": {
+          "size": 14663464,
+          "sha256": "1c5c623f008eabef10c45135a48b01b46311f9369c28857355872cfe05f48dc0"
+        }
+      }
+    },
+    {
+      "id": "huninn",
+      "name": "jf open huninn",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "any",
+      "abi": null,
+      "entrypoint": null,
+      "size": 2946809,
+      "sha256": "9ebb82428d4109a9ebb2c7d4eff624fcf3554fe63b1308b7496aed5204d7a9a2",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-huninn-1.orbitpack",
+      "files": {
+        "Huninn-OFL.txt": {
+          "size": 4847,
+          "sha256": "0db78e79bb9231c8449ff7aeb9a25ec833dc94c36c3f00879f94b0146959a053"
+        },
+        "Huninn.ttf": {
+          "size": 4911464,
+          "sha256": "9d5bf4932d31fe94c18cd8cfddc98bc1b14ce10f4e354c682179db290a99c825"
+        }
+      }
+    },
+    {
+      "id": "maiyuan",
+      "name": "Kingnam Maiyuan",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "any",
+      "abi": null,
+      "entrypoint": null,
+      "size": 4457577,
+      "sha256": "9505f1f4469466f739b2aa002bf87445511bf9f6b47316bd2932a4d53fa3fb70",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-maiyuan-1.orbitpack",
+      "files": {
+        "Maiyuan-OFL.txt": {
+          "size": 4397,
+          "sha256": "7a34612c0c84a6bfdea81dae79a844ab5ad08175a957e6453991e9235924207c"
+        },
+        "Maiyuan.ttf": {
+          "size": 7996068,
+          "sha256": "94ea78c51086b1ea58c1744784b2335dea2c5ef1c5193b80e02c7d46b8e0283f"
+        }
+      }
+    },
+    {
+      "id": "video-android-arm64-v8a",
+      "name": "Video playback",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "android",
+      "abi": "arm64-v8a",
+      "entrypoint": "libmpv.so",
+      "size": 5631679,
+      "sha256": "5bf9b24c689db522d56a805f4216e3355a788cc5dfec3958f77a18fb1d502e7f",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-arm64-v8a-1.orbitpack",
+      "files": {
+        "LICENSE-ANGLE.txt": {
+          "size": 1643,
+          "sha256": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a"
+        },
+        "LICENSE-GPL-2.0.txt": {
+          "size": 17984,
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        },
+        "LICENSE-GPL-3.0.txt": {
+          "size": 35149,
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "LICENSE-LGPL-2.1.txt": {
+          "size": 26419,
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+        },
+        "LICENSE-LGPL-3.0.txt": {
+          "size": 7652,
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        },
+        "LICENSE-media-kit.txt": {
+          "size": 1112,
+          "sha256": "2e3000f38718f050869d57540c288c661a446f64df1ba4ea4764df552b04a331"
+        },
+        "LICENSE-zlib.txt": {
+          "size": 1002,
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+        },
+        "NOTICE.txt": {
+          "size": 608,
+          "sha256": "438d68a603dc1fcf3f74816dc5b9dda8ae005373e825d318ea216bdbde1e8a92"
+        },
+        "libmpv.so": {
+          "size": 12369680,
+          "sha256": "adf83fde58a9f6751ce6e83b9b187f651425d53ec0e20da04deb8dfb4aa775e1"
+        }
+      }
+    },
+    {
+      "id": "video-android-armeabi-v7a",
+      "name": "Video playback",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "android",
+      "abi": "armeabi-v7a",
+      "entrypoint": "libmpv.so",
+      "size": 5418283,
+      "sha256": "a358f1da032e8e8e0412a9ac127a94299c4e15a152c46fa52305c220728d27f6",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-armeabi-v7a-1.orbitpack",
+      "files": {
+        "LICENSE-ANGLE.txt": {
+          "size": 1643,
+          "sha256": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a"
+        },
+        "LICENSE-GPL-2.0.txt": {
+          "size": 17984,
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        },
+        "LICENSE-GPL-3.0.txt": {
+          "size": 35149,
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "LICENSE-LGPL-2.1.txt": {
+          "size": 26419,
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+        },
+        "LICENSE-LGPL-3.0.txt": {
+          "size": 7652,
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        },
+        "LICENSE-media-kit.txt": {
+          "size": 1112,
+          "sha256": "2e3000f38718f050869d57540c288c661a446f64df1ba4ea4764df552b04a331"
+        },
+        "LICENSE-zlib.txt": {
+          "size": 1002,
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+        },
+        "NOTICE.txt": {
+          "size": 608,
+          "sha256": "438d68a603dc1fcf3f74816dc5b9dda8ae005373e825d318ea216bdbde1e8a92"
+        },
+        "libmpv.so": {
+          "size": 11746532,
+          "sha256": "8aa2b23d16d941a8d685b8eb995b1cb31677ed3e28c55c776954eb1618ab1a2e"
+        }
+      }
+    },
+    {
+      "id": "video-android-x86_64",
+      "name": "Video playback",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "android",
+      "abi": "x86_64",
+      "entrypoint": "libmpv.so",
+      "size": 6419192,
+      "sha256": "ad8c5c2950269ef104cd1f0656535aab2993173b6e58b37d79818ec87d396703",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-x86_64-1.orbitpack",
+      "files": {
+        "LICENSE-ANGLE.txt": {
+          "size": 1643,
+          "sha256": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a"
+        },
+        "LICENSE-GPL-2.0.txt": {
+          "size": 17984,
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        },
+        "LICENSE-GPL-3.0.txt": {
+          "size": 35149,
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "LICENSE-LGPL-2.1.txt": {
+          "size": 26419,
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+        },
+        "LICENSE-LGPL-3.0.txt": {
+          "size": 7652,
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        },
+        "LICENSE-media-kit.txt": {
+          "size": 1112,
+          "sha256": "2e3000f38718f050869d57540c288c661a446f64df1ba4ea4764df552b04a331"
+        },
+        "LICENSE-zlib.txt": {
+          "size": 1002,
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+        },
+        "NOTICE.txt": {
+          "size": 608,
+          "sha256": "438d68a603dc1fcf3f74816dc5b9dda8ae005373e825d318ea216bdbde1e8a92"
+        },
+        "libmpv.so": {
+          "size": 15816336,
+          "sha256": "f030e9a1a4d4664e89d7160a3d4528cd5875ee023ff6262e16e95aac28ffaec5"
+        }
+      }
+    },
+    {
+      "id": "video-win-x64",
+      "name": "Video playback",
+      "version": 1,
+      "minBuild": 31,
+      "runtimeApi": 1,
+      "platform": "windows",
+      "abi": "x64",
+      "entrypoint": "libmpv-2.dll",
+      "size": 20100826,
+      "sha256": "e4e7c534680f1cf59441c421ccec76e87dcf482e0ba0825e7d52e9a8828be1e0",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-win-x64-1.orbitpack",
+      "files": {
+        "LICENSE-ANGLE.txt": {
+          "size": 1643,
+          "sha256": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a"
+        },
+        "LICENSE-GPL-2.0.txt": {
+          "size": 17984,
+          "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+        },
+        "LICENSE-GPL-3.0.txt": {
+          "size": 35149,
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        },
+        "LICENSE-LGPL-2.1.txt": {
+          "size": 26419,
+          "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+        },
+        "LICENSE-LGPL-3.0.txt": {
+          "size": 7652,
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        },
+        "LICENSE-media-kit.txt": {
+          "size": 1112,
+          "sha256": "2e3000f38718f050869d57540c288c661a446f64df1ba4ea4764df552b04a331"
+        },
+        "LICENSE-zlib.txt": {
+          "size": 1002,
+          "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+        },
+        "NOTICE.txt": {
+          "size": 608,
+          "sha256": "438d68a603dc1fcf3f74816dc5b9dda8ae005373e825d318ea216bdbde1e8a92"
+        },
+        "d3dcompiler_47.dll": {
+          "size": 4891080,
+          "sha256": "5653bc7b0e2701561464ef36602ff6171c96bffe96e4c3597359cd7addcba88a"
+        },
+        "libEGL.dll": {
+          "size": 472904,
+          "sha256": "b2590bd0692f0381fc45c20bf1c7f7f713c9ea19c7ea6bab62efdd1fadc4eaac"
+        },
+        "libGLESv2.dll": {
+          "size": 7414088,
+          "sha256": "620bb6e38d7ed6c760a0cf4a8eb6a8f64b259b96ff286551cd32cefc6c35ca39"
+        },
+        "libmpv-2.dll": {
+          "size": 29764622,
+          "sha256": "d5f0694b08c124e785d858d00082f3e3b158dd9138bfc48c0382bf1eb443a5fc"
+        },
+        "orbit_video_backend.dll": {
+          "size": 151040,
+          "sha256": "bcc60303891f10e0618138ee3be134a85e9df262c1438767d784b082fd4530a3"
+        },
+        "vk_swiftshader.dll": {
+          "size": 4808008,
+          "sha256": "4f33eea716491972cb1ad123a78acef485f852581130d3f3a98a1981009004f2"
+        },
+        "vulkan-1.dll": {
+          "size": 872776,
+          "sha256": "3be9a95dd9019aa1aca47ade26f5c1c7c0047f3cf6f633d586c9ec0d3b459566"
+        },
+        "zlib.dll": {
+          "size": 203264,
+          "sha256": "82d5bf175cf882ac9afc1558b416e674606d055966bc09529076b28a498fc0e4"
+        }
+      }
+    }
+  ]
+}

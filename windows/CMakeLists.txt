@@ -117,3 +117,11 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Remove runtime DLLs left by a pre-1.6.1 build; only the optional component
+# directory contains these video-specific dependencies now.
+install(CODE "
+  foreach(runtime libmpv-2.dll libEGL.dll libGLESv2.dll d3dcompiler_47.dll vk_swiftshader.dll vulkan-1.dll zlib.dll)
+    file(REMOVE \"${CMAKE_INSTALL_PREFIX}/\${runtime}\")
+  endforeach()
+" COMPONENT Runtime)

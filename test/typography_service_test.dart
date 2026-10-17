@@ -1,3 +1,5 @@
+import 'package:orbit/services/component_service.dart';
+import 'support/font_components.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -28,7 +30,12 @@ void main() {
   test(
     'native font loader accepts the three bundled families and variable/CFF imports',
     () async {
-      final native = FontService(directory: root);
+      final native = FontService(
+        directory: root,
+        components: await installedFontComponents(
+          Directory('${root.path}/components'),
+        ),
+      );
       for (final id in ['rounded', 'huninn', 'maiyuan']) {
         await native.load(id, const {});
       }
@@ -86,7 +93,13 @@ void main() {
     'all bundled faces, a variable TTF and real CFF OTF are valid',
     () async {
       for (final asset in FontCatalog.builtins.values.expand((v) => v)) {
-        FontService.validate(await File(asset).readAsBytes());
+        FontService.validate(
+          await File(
+            asset.contains('Nunito')
+                ? asset
+                : asset.replaceFirst('assets/fonts/', 'resources/fonts/'),
+          ).readAsBytes(),
+        );
       }
       final imported = await fonts.importBytes('中文字体.TTF', ttf);
       final cff = await fonts.importBytes('test.otf', otf);
@@ -216,7 +229,7 @@ void main() {
       final encoder = ScheduleBackupService(fonts: fonts);
       final json = await encoder.encodeWithAudio([], portable);
       final backup = encoder.decodeBackup(json);
-      expect(backup.version, 11);
+      expect(backup.version, 12);
       expect(backup.fonts.keys.toList(), [selected.id]);
       expect(backup.settings!.typography!.imports.keys.toList(), [selected.id]);
       expect(json, isNot(contains(root.path.replaceAll(r'\', r'\\'))));
@@ -277,6 +290,98 @@ void main() {
         await SettingsService().importPortableSettings(backup.settings!);
         expect((await fonts.read()).launchFontId, 'system');
       }
+    },
+  );
+  test(
+    'v12 carries an installed font component and restores without downloading',
+    () async {
+      final components = await installedFontComponents(
+        Directory('${root.path}/source-components'),
+        ids: ['huninn'],
+      );
+      final source = FontService(
+        directory: Directory('${root.path}/source-fonts'),
+        components: components,
+        register: (_, _) async {},
+      );
+      await source.save(const TypographySettings(appFontId: 'huninn'));
+      final service = ScheduleBackupService(fonts: source);
+      final encoded = await service.encodeWithAudio(
+        [],
+        await SettingsService().exportPortableSettings(),
+      );
+      final backup = service.decodeBackup(encoded);
+      expect(backup.version, 12);
+      expect(backup.fontComponents['huninn']!['version'], 1);
+      final targetComponents = ComponentService(
+        directory: Directory('${root.path}/target-components'),
+        catalog: await components.descriptors(),
+      );
+      final target = FontService(
+        directory: Directory('${root.path}/target-fonts'),
+        components: targetComponents,
+        register: (_, _) async {},
+      );
+      final result = await ScheduleBackupService(
+        fonts: target,
+      ).restoreAudio(backup);
+      expect(result.importedComponents, ['huninn']);
+      final effective = await target.prepare(result.settings.typography!);
+      expect(effective.effectiveAppFontId, 'huninn');
+      final damaged = jsonDecode(encoded) as Map<String, dynamic>;
+      final files = damaged['fontComponents']['huninn']['files'] as Map;
+      final bytes = base64Decode(files['Huninn.ttf'] as String);
+      bytes[bytes.length - 1] ^= 1;
+      files['Huninn.ttf'] = base64Encode(bytes);
+      final bad = service.decodeBackup(jsonEncode(damaged));
+      await expectLater(
+        ScheduleBackupService(fonts: target).restoreAudio(bad),
+        throwsFormatException,
+      );
+      expect(
+        targetComponents.ready('huninn'),
+        isTrue,
+        reason: 'A failed restore keeps an already installed component',
+      );
+      components.dispose();
+      targetComponents.dispose();
+    },
+  );
+
+  test(
+    'downgrade protection preserves unused imported fonts and local launch settings',
+    () async {
+      final first = (await fonts.importBytes('first.ttf', ttf)).font;
+      final unused = (await fonts.importBytes('unused.otf', otf)).font;
+      await fonts.save(
+        TypographySettings(
+          appFontId: first.id,
+          imports: {first.id: first, unused.id: unused},
+        ),
+      );
+      await SettingsService().saveLocalJson('launch_presentation_v1', {
+        'cardEntrance': 'nearby',
+      });
+      final service = ScheduleBackupService(fonts: fonts);
+      final encoded = await service.encodeWithAudio(
+        [],
+        await SettingsService().exportPortableSettings(),
+        protectLocalResources: true,
+      );
+      final backup = service.decodeBackup(encoded);
+      expect(backup.fonts, hasLength(2));
+      expect(backup.settings!.typography!.imports, hasLength(2));
+      expect(backup.localPresentation!['cardEntrance'], 'nearby');
+      final target = FontService(
+        directory: Directory('${root.path}/protected-restore'),
+        register: (_, _) async {},
+      );
+      final restored = await ScheduleBackupService(
+        fonts: target,
+      ).restoreAudio(backup);
+      expect(restored.importedFonts, hasLength(2));
+      expect(restored.launchPresentation!['cardEntrance'], 'nearby');
+      expect(restored.settings.typography!.imports.keys, contains(unused.id));
     },
   );
 }

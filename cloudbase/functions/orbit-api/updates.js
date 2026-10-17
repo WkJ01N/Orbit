@@ -26,4 +26,18 @@ async function latest(fetch = getJson) {
   release.assets = [...(release.assets || [])].sort((a, b) => Number(/-(?:android-)?(arm64-v8a|armeabi-v7a|x86_64)\.apk$/.test(a.name)) - Number(/-(?:android-)?(arm64-v8a|armeabi-v7a|x86_64)\.apk$/.test(b.name)));
   return release;
 }
-module.exports = { latest };
+function stable(release) {
+  return release && !release.draft && !release.prerelease && /^v?\d+\.\d+\.\d+(\+\d+)?$/.test(release.tag_name);
+}
+async function history(page = 1, fetch = getJson) {
+  if (!Number.isInteger(page) || page < 1 || page > 1000) throw new Error('Invalid page');
+  const releases = await fetch(`https://api.github.com/repos/WkJ01N/Orbit/releases?per_page=20&page=${page}`);
+  if (!Array.isArray(releases)) throw new Error('Invalid releases');
+  return { releases: releases.filter(stable), hasMore: releases.length >= 20 };
+}
+async function release(tag, fetch = getJson) {
+  if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error('Invalid tag');
+  // Reuse the existing stable-release validation and manifest hydration.
+  return latest(async (url) => fetch(url.endsWith('/releases/latest') ? `https://api.github.com/repos/WkJ01N/Orbit/releases/tags/${tag}` : url));
+}
+module.exports = { latest, history, release };

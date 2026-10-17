@@ -1,3 +1,6 @@
+import 'package:url_launcher/url_launcher.dart';
+import 'package:orbit/features/settings/downgrade_page.dart';
+import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -31,9 +34,19 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
   String? _error;
   bool _checked = false, _busy = false;
   bool _assetsReady = false;
+  String? _assetName;
   double? _progress;
   List<String> _supportedAbis = const [];
-  UpdateAsset? get _asset => !_assetsReady
+  bool get _older =>
+      _release != null &&
+      (AppRelease.compareVersions(_release!.version, kAppVersion) < 0 ||
+          (_release!.version == kAppVersion &&
+              _release!.buildNumber > 0 &&
+              _release!.buildNumber < kAppBuildNumber));
+  UpdateAsset? get _asset => _assetName == null
+      ? _recommendedAsset
+      : _release?.assets.where((e) => e.name == _assetName).firstOrNull;
+  UpdateAsset? get _recommendedAsset => !_assetsReady
       ? null
       : _release?.assetFor(
           Platform.operatingSystem,
@@ -102,6 +115,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
     if (mounted) {
       setState(() {
         _release = release;
+        _assetName = null;
         _checked = true;
         _file = null;
         _latencies = {};
@@ -109,6 +123,27 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
       });
     }
   });
+  Future<void> _chooseRelease() async {
+    final selected = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const _ReleaseHistoryPage()),
+    );
+    if (selected == null || !mounted) return;
+    await _run(() async {
+      final release = await ref
+          .read(appUpdateServiceProvider)
+          .release(selected);
+      if (!mounted) return;
+      setState(() {
+        _release = release;
+        _assetName = null;
+        _file = null;
+        _progress = null;
+        _latencies = {};
+      });
+    });
+  }
+
   Future<List<SourceLatency>> _test() async {
     final operation = _operation ??= UpdateOperation();
     setState(() => _latencies = {});
@@ -155,6 +190,30 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
         );
     if (mounted) setState(() => _file = file);
   });
+  Future<void> _install() => _run(() async {
+    final service = ref.read(appUpdateServiceProvider);
+    final info = Platform.isAndroid
+        ? await service.inspect(_file!, _asset!, release: _release)
+        : <String, dynamic>{};
+    if (!mounted) return;
+    final actualCode = info['versionCode'] as int?;
+    final installedCode = info['installedVersionCode'] as int?;
+    if (_older ||
+        (actualCode != null &&
+            installedCode != null &&
+            actualCode < installedCode)) {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              DowngradePage(release: _release!, asset: _asset!, file: _file!),
+        ),
+      );
+    } else {
+      await service.install(_file!, _asset!, release: _release);
+    }
+  });
+
   Future<void> _addSource() async {
     final t = SyncUpdateText.of(context);
     final controller = TextEditingController();
@@ -201,6 +260,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
   @override
   Widget build(BuildContext context) {
     final t = SyncUpdateText.of(context);
+    final extra = NavigationAssistText.of(context);
     final newer = _release?.newerThan(kAppVersion, kAppBuildNumber) ?? false;
     return BackgroundScaffold(
       appBar: AppBar(title: Text(t.check)),
@@ -228,6 +288,36 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
             icon: const Icon(Icons.system_update),
             label: Text(t.check),
           ),
+          Wrap(
+            spacing: 8,
+            children: [
+              OutlinedButton(
+                onPressed: _busy
+                    ? null
+                    : () => _run(() async {
+                        final current = await ref
+                            .read(appUpdateServiceProvider)
+                            .release(kAppVersion);
+                        if (mounted) {
+                          setState(() {
+                            _release = current;
+                            _assetName = null;
+                            _file = null;
+                            _latencies = {};
+                            _progress = null;
+                          });
+                        }
+                      }),
+                child: Text(
+                  extra.pick('Reinstall this version', '重新安装此版本', '重新安裝此版本'),
+                ),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _chooseRelease,
+                child: Text(extra.pick('Version history', '历史版本', '歷史版本')),
+              ),
+            ],
+          ),
           if (_busy)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
@@ -239,17 +329,71 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
             Text(
               newer
                   ? '${t.available}: ${_release!.version} (${_release!.buildNumber})'
+                  : _older
+                  ? '${extra.pick('Older version', '旧版本', '舊版本')}: ${_release!.version}'
                   : t.latest,
             ),
             SelectableText(_release!.notes),
           ] else if (_checked)
             Text(t.latest),
-          if (newer && _asset != null) ...[
+          if (_asset != null) ...[
             const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: ValueKey('asset-${_release!.version}-${_asset!.name}'),
+              initialValue: _asset!.name,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: extra.pick('Package type', '安装包类型', '安裝包類型'),
+              ),
+              items: [
+                for (final item in _release!.assets.where(
+                  (e) => e.platform == Platform.operatingSystem,
+                ))
+                  DropdownMenuItem(
+                    value: item.name,
+                    enabled:
+                        item.abi == null || _supportedAbis.contains(item.abi),
+                    child: Text(
+                      '${item.abi ?? (item.platform == 'android' ? 'Universal APK' : 'Windows x64')}${item.abi != null && !_supportedAbis.contains(item.abi) ? ' · ${extra.pick('Incompatible', '不兼容', '不相容')}' : ''}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() {
+                      _assetName = value;
+                      _file = null;
+                      _progress = null;
+                      _latencies = {};
+                    }),
+            ),
+            if (_older)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  extra.pick(
+                    'Downgrading needs an external backup. Android normally requires uninstalling first; unsupported data cannot be restored.',
+                    '降级前必须导出外部备份。Android 通常需要先卸载再安装；旧版不支持的数据无法恢复。',
+                    '降級前必須匯出外部備份。Android 通常需要先解除安裝再安裝；舊版不支援的資料無法恢復。',
+                  ),
+                ),
+              ),
             Text(
               '${_asset!.name}${_asset!.platform == 'android' && _asset!.abi == null ? ' (Universal APK)' : ''} · ${(_asset!.size / 1024 / 1024).toStringAsFixed(1)} MB',
             ),
-            if (!_asset!.verifiable) Text(t.unverified),
+            if (!_asset!.verifiable) ...[
+              Text(t.unverified),
+              TextButton(
+                onPressed: () => launchUrl(
+                  Uri.parse(_release!.releaseUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: Text(
+                  extra.pick('View official release', '查看官方发布页', '查看官方發佈頁'),
+                ),
+              ),
+            ],
             DropdownButtonFormField<String>(
               initialValue: _source ?? 'automatic',
               isExpanded: true,
@@ -314,13 +458,7 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
               Text(t.verified),
               if (Platform.isWindows) Text(t.zipHelp),
               FilledButton(
-                onPressed: _busy
-                    ? null
-                    : () => _run(
-                        () => ref
-                            .read(appUpdateServiceProvider)
-                            .install(_file!, _asset!),
-                      ),
+                onPressed: _busy ? null : _install,
                 child: Text(t.install),
               ),
             ],
@@ -334,6 +472,80 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
                 child: Text(t.cancel),
               ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReleaseHistoryPage extends ConsumerStatefulWidget {
+  const _ReleaseHistoryPage();
+  @override
+  ConsumerState<_ReleaseHistoryPage> createState() =>
+      _ReleaseHistoryPageState();
+}
+
+class _ReleaseHistoryPageState extends ConsumerState<_ReleaseHistoryPage> {
+  final List<AppRelease> _items = [];
+  int _page = 1;
+  bool _busy = false, _more = true;
+  String? _error;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final page = await ref
+          .read(appUpdateServiceProvider)
+          .history(page: _page);
+      if (mounted) {
+        setState(() {
+          _items.addAll(
+            page.items.where(
+              (e) => !_items.any((old) => old.version == e.version),
+            ),
+          );
+          _page++;
+          _more = page.hasMore;
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = NavigationAssistText.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(t.pick('Version history', '历史版本', '歷史版本'))),
+      body: ListView(
+        children: [
+          for (final item in _items)
+            ListTile(
+              title: Text('v${item.version}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.pop(context, item.version),
+            ),
+          if (_error != null)
+            Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
+          if (_busy)
+            const LinearProgressIndicator()
+          else if (_more)
+            TextButton(
+              onPressed: _load,
+              child: Text(t.pick('Load more', '加载更多', '載入更多')),
+            ),
         ],
       ),
     );

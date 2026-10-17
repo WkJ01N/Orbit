@@ -246,19 +246,25 @@ final weekGridProvider = Provider<WeekGrid?>((ref) {
   if (sessions == null) {
     return null;
   }
-  final deadlines = ref.watch(deadlinesProvider).valueOrNull ?? <Deadline>[];
-  final displayedDeadlines = deadlines
-      .where((d) => !d.completed || d.archived)
-      .toList();
-  if (sessions.isEmpty && displayedDeadlines.isEmpty) {
-    return null;
-  }
+  // Deadlines only choose the initial anchor when there are no courses.
+  // Refreshing unchanged DDL data must not regenerate every course grid.
+  final firstDeadline = sessions.isEmpty
+      ? ref.watch(
+          deadlinesProvider.select(
+            (value) => value.valueOrNull
+                ?.where((d) => !d.completed || d.archived)
+                .firstOrNull
+                ?.dueAt,
+          ),
+        )
+      : null;
+  if (sessions.isEmpty && firstDeadline == null) return null;
 
   final mode = ref.watch(gridDefaultWeekModeProvider);
   final startWeekday = ref.watch(weekStartDayProvider);
   var weekStart = ref.watch(selectedWeekStartProvider);
   weekStart ??= sessions.isEmpty
-      ? weekStartFor(displayedDeadlines.first.dueAt, startWeekday: startWeekday)
+      ? weekStartFor(firstDeadline!, startWeekday: startWeekday)
       : resolveDefaultWeekStart(sessions, mode, startWeekday: startWeekday);
   if (weekStart == null) {
     return null;

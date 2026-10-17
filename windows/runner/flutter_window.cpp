@@ -1,3 +1,4 @@
+#include "components.h"
 #include "strong_reminders.h"
 #include "reminder_audio.h"
 #include "flutter_window.h"
@@ -30,6 +31,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  component_channel_ = CreateComponentChannel(flutter_controller_->engine());
   reminder_channel_=CreateReminderMaintenanceChannel(flutter_controller_->engine()->messenger(),GetHandle(),[this]() {reminder_headless_=false;});
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
@@ -49,6 +51,7 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   StopReminderPreview();
+  component_channel_.reset();
   reminder_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;

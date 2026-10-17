@@ -1,3 +1,4 @@
+import 'package:orbit/services/component_service.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,21 @@ import 'package:orbit/models/typography_settings.dart';
 import 'package:orbit/providers/typography_providers.dart';
 import 'package:orbit/services/font_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _UiComponents extends ComponentService {
+  @override
+  bool ready(String id) => true;
+  @override
+  Future<void> initialize() async {}
+  @override
+  Future<Directory> installed(String id) async => Directory.systemTemp;
+}
+
+class _UiFonts extends FontService {
+  _UiFonts(ComponentService components) : super(components: components);
+  @override
+  Future<void> load(String id, Map<String, ImportedFont> imports) async {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -26,14 +42,14 @@ void main() {
       ) async {
         await tester.binding.setSurfaceSize(Size(width, 900));
         addTearDown(() => tester.binding.setSurfaceSize(null));
+        final components = _UiComponents();
         final container = ProviderContainer(
           overrides: [
+            componentServiceProvider.overrideWith((ref) => components),
             typographySnapshotProvider.overrideWithValue(
               const TypographySettings(),
             ),
-            fontServiceProvider.overrideWithValue(
-              FontService(register: (_, _) async {}),
-            ),
+            fontServiceProvider.overrideWithValue(_UiFonts(components)),
           ],
         );
         addTearDown(container.dispose);

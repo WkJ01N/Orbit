@@ -59,6 +59,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         handMotion = OrbitHandMotion(this, flutterEngine.dartExecutor.binaryMessenger)
+        OrbitComponents.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         OrbitWemustLauncher.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.must.orbit.orbit/files").setMethodCallHandler { call, result ->
             if (call.method != "exportFile") { result.notImplemented() }
@@ -73,7 +74,7 @@ class MainActivity : FlutterActivity() {
                     startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
                         type = "application/zip"
-                        putExtra(Intent.EXTRA_TITLE, "orbit-backup.orbit")
+                        putExtra(Intent.EXTRA_TITLE, call.argument<String>("name")?.takeIf { it.matches(Regex("[A-Za-z0-9_.-]+")) } ?: "orbit-backup.orbit")
                     }, 6202)
                 } catch (e: Exception) { exportResult = null; exportSource = null; result.error("export", e.message, null) }
             }
@@ -185,11 +186,18 @@ class MainActivity : FlutterActivity() {
                         } catch(e: Exception) { result.success(null) }
                     }
                     "updateDirectory" -> result.success(java.io.File(getExternalFilesDir(null), "updates").absolutePath)
+                    "inspectUpdate" -> {
+                        try {
+                            result.success(OrbitUpdateInspector.inspect(this,call.argument<String>("path") ?: ""))
+                        } catch (e: Exception) { result.error("update_inspection",e.message,null) }
+                    }
                     "installUpdate" -> {
                         try {
                             val directory=java.io.File(getExternalFilesDir(null),"updates").canonicalFile
                             val file=java.io.File(call.argument<String>("path") ?: "").canonicalFile
                             require(file.parentFile==directory && file.extension=="apk" && file.isFile) { "Invalid update package" }
+                            val info = OrbitUpdateInspector.inspect(this,file.path)
+                            require((info["versionCode"] as Long) >= (info["installedVersionCode"] as Long)) { "Downgrade requires backup and manual reinstall" }
                             if(Build.VERSION.SDK_INT>=26 && !packageManager.canRequestPackageInstalls()) {
                                 startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
                                 result.error("install_permission", "Allow Orbit to install apps, then return and tap Install again.", null)
@@ -404,6 +412,12 @@ class MainActivity : FlutterActivity() {
                         source.inputStream().use { input ->
                             (contentResolver.openOutputStream(uri, "w") ?: throw java.io.IOException("Cannot open document")).use { output -> input.copyTo(output, 64 * 1024) }
                         }
+                        require(uri.authority != "$packageName.updates") { "Choose a persistent document location" }
+                        val expected = java.security.MessageDigest.getInstance("SHA-256")
+                        source.inputStream().use { input -> val buffer = ByteArray(65536); while (true) { val n = input.read(buffer); if (n < 0) break; expected.update(buffer,0,n) } }
+                        val actual = java.security.MessageDigest.getInstance("SHA-256")
+                        (contentResolver.openInputStream(uri) ?: throw java.io.IOException("Cannot verify document")).use { input -> val buffer = ByteArray(65536); while (true) { val n = input.read(buffer); if (n < 0) break; actual.update(buffer,0,n) } }
+                        require(expected.digest().contentEquals(actual.digest())) { "Export verification failed" }
                         runOnUiThread { exportResult = null; exportSource = null; result?.success(true) }
                     } catch (e: Exception) {
                         try { contentResolver.delete(uri, null, null) } catch (_: Exception) { }

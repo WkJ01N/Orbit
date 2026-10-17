@@ -1,3 +1,4 @@
+import 'package:orbit/services/component_service.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -9,7 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:orbit/models/background_settings.dart';
 
 class BackgroundAssetService {
-  BackgroundAssetService({this._directory});
+  BackgroundAssetService({this._directory, ComponentService? components})
+    : components = components ?? ComponentService.shared;
+  final ComponentService components;
   final Directory? _directory;
   static const extensions = [
     'jpg',
@@ -62,7 +65,7 @@ class BackgroundAssetService {
       var kind = BackgroundMediaKind.image;
       List<int>? preview;
       if (videoExtensions.contains(extension)) {
-        MediaKit.ensureInitialized();
+        MediaKit.ensureInitialized(libmpv: await components.ensureVideo());
         player = Player(
           configuration: const PlayerConfiguration(
             muted: true,

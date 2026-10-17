@@ -51,7 +51,7 @@ Map<String, CardEntranceSpec> planCardEntrances(
       order[index]: CardEntranceSpec(
         fromAbove: directions[order[index]]!,
         // Bounded total duration, even with a very dense timetable.
-        delayMs: order.length < 2 ? 0 : index * 180 / (order.length - 1),
+        delayMs: order.length < 2 ? 0 : index * 140 / (order.length - 1),
       ),
   };
 }
@@ -81,7 +81,7 @@ class LaunchMotion {
        ),
        cards = AnimationController(
          vsync: vsync,
-         duration: const Duration(milliseconds: 600),
+         duration: const Duration(milliseconds: 620),
        );
 
   final LaunchSettings settings;
@@ -238,15 +238,15 @@ class LaunchCard extends StatelessWidget {
       animation: motion.cards,
       child: child,
       builder: (context, child) {
-        final t = launchProgress(motion.cards.value * 600, spec!.delayMs, 420);
+        final t = launchProgress(motion.cards.value * 620, spec!.delayMs, 480);
         return IgnorePointer(
           ignoring: t < 1,
           child: Opacity(
-            opacity: (t * 5).clamp(0, 1),
+            opacity: Curves.easeOut.transform((t * 3).clamp(0.0, 1.0)),
             child: Transform.translate(
               offset: Offset(
                 0,
-                offset * (1 - Curves.easeOutCubic.transform(t)),
+                offset * (1 - Curves.easeOutQuint.transform(t)),
               ),
               child: child,
             ),
@@ -390,7 +390,7 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
     });
     final motion = _motion!;
     final typography = ref.watch(typographySettingsProvider);
-    final launchFont = typography.launchFontId;
+    final launchFont = typography.effectiveLaunchFontId;
     final launchFamily = launchFont == 'system'
         ? FontCatalog.systemFamily(
             defaultTargetPlatform,

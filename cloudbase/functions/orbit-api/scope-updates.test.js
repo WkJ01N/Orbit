@@ -29,3 +29,19 @@ test('universal APK comes first for clients without ABI selection', async () => 
  ]}));
  assert.equal(release.assets[0].name, 'orbit-v1.5.6-android.apk');
 });
+
+test('history and explicit versions only use the pinned official repository', async () => {
+  const {history, release} = require('./updates');
+  const value = await history(2,async (url) => {
+    assert.equal(url,'https://api.github.com/repos/WkJ01N/Orbit/releases?per_page=20&page=2');
+    return [{tag_name:'v1.6.0'}, {tag_name:'v1.6.1',draft:true}, {tag_name:'resources'}, {tag_name:'v1.6.2',prerelease:true}];
+  });
+  assert.deepEqual(value.releases.map((r) => r.tag_name),['v1.6.0']);
+  await assert.rejects(history(-1));
+  await assert.rejects(release('../bad'));
+  const old = await release('v1.5.5', async (url) => {
+    assert.equal(url,'https://api.github.com/repos/WkJ01N/Orbit/releases/tags/v1.5.5');
+    return {tag_name:'v1.5.5',assets:[]};
+  });
+  assert.equal(old.tag_name,'v1.5.5');
+});

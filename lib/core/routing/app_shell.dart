@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:flutter/material.dart';
@@ -370,7 +371,6 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
               index: _activeIndex,
               child: destinations[_activeIndex]!,
               offset: Offset(_direction * (1 - progress) * 14, 0),
-              scale: 0.996 + progress * 0.004,
               interactive: true,
             ),
             if (!reduceMotion && _previousIndex != null)
@@ -392,9 +392,9 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
     bool offstage = false,
     bool interactive = false,
     double opacity = 1,
-    double scale = 1,
     Offset offset = Offset.zero,
   }) {
+    child = _DeferredPageLayout(frozen: offstage, child: child);
     return KeyedSubtree(
       key: ValueKey('app-destination-$index'),
       child: Offstage(
@@ -407,19 +407,46 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
               excluding: !interactive,
               child: Opacity(
                 opacity: opacity.clamp(0.0, 1.0),
-                child: Transform.translate(
-                  offset: offset,
-                  child: Transform.scale(
-                    scale: scale,
-                    alignment: Alignment.center,
-                    child: child,
-                  ),
-                ),
+                child: Transform.translate(offset: offset, child: child),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Offstage keeps element state but normally still lays out its child. Defer
+/// hidden page layout so background provider updates do not rebuild a full grid.
+class _DeferredPageLayout extends SingleChildRenderObjectWidget {
+  const _DeferredPageLayout({required this.frozen, required super.child});
+  final bool frozen;
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _DeferredPageBox(frozen);
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _DeferredPageBox renderObject,
+  ) => renderObject.frozen = frozen;
+}
+
+class _DeferredPageBox extends RenderProxyBox {
+  _DeferredPageBox(this._frozen);
+  bool _frozen;
+  set frozen(bool value) {
+    if (_frozen == value) return;
+    _frozen = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    if (_frozen) {
+      size = constraints.constrain(Size.zero);
+    } else {
+      super.performLayout();
+    }
   }
 }

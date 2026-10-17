@@ -37,6 +37,22 @@ Future<void> main(List<String> args) async {
     yield LicenseEntryWithLineBreaks([
       'Nunito',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
+    for (final name in [
+      'ANGLE.txt',
+      'GPL-2.0.txt',
+      'GPL-3.0.txt',
+      'LGPL-2.1.txt',
+      'LGPL-3.0.txt',
+      'media-kit.txt',
+      'zlib.txt',
+    ]) {
+      yield LicenseEntryWithLineBreaks([
+        'Orbit optional video runtime',
+      ], await rootBundle.loadString('resources/video/licenses/$name'));
+    }
+    yield LicenseEntryWithLineBreaks([
+      'Orbit optional video runtime sources',
+    ], await rootBundle.loadString('resources/video/NOTICE.txt'));
   });
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

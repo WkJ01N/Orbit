@@ -298,6 +298,25 @@ async function http(event) {
     await ref.set({ cachedAt: Date.now(), release });
     return jsonResponse(200, release);
   }
+  if (method === 'GET' && path === '/v1/updates/releases') {
+    const page = Number(event.queryStringParameters?.page || 1);
+    if (!Number.isInteger(page) || page < 1 || page > 1000) return jsonResponse(400, { error: 'Invalid page' });
+    const ref = db.collection(collections.updates).doc(`history_${page}`);
+    const cached = documentData(await ref.get());
+    if (cached && Date.now() - cached.cachedAt < 15 * 60 * 1000) return jsonResponse(200, cached.release);
+    const release = await updates.history(page);
+    await ref.set({ cachedAt: Date.now(), release });
+    return jsonResponse(200, release);
+  }
+  const releaseMatch = /^\/v1\/updates\/releases\/(v\d+\.\d+\.\d+)$/.exec(path);
+  if (method === 'GET' && releaseMatch) {
+    const ref = db.collection(collections.updates).doc(`tag_${releaseMatch[1].replaceAll('.', '_')}`);
+    const cached = documentData(await ref.get());
+    if (cached && Date.now() - cached.cachedAt < 15 * 60 * 1000) return jsonResponse(200, cached.release);
+    const release = await updates.release(releaseMatch[1]);
+    await ref.set({ cachedAt: Date.now(), release });
+    return jsonResponse(200, release);
+  }
   const identity = await authenticate(event);
   if (method === 'GET' && path === '/v1/profile') {
     return jsonResponse(200, { account: publicProfile(await ensureProfile(identity.uid)) });

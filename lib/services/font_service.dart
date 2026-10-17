@@ -1,3 +1,4 @@
+import 'package:orbit/services/component_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
@@ -11,13 +12,18 @@ typedef RegisterFont =
     Future<void> Function(String family, List<Uint8List> bytes);
 
 class FontService {
-  FontService({this.directory, RegisterFont? register})
-    : _register = register ?? _registerNative;
+  FontService({
+    this.directory,
+    ComponentService? components,
+    RegisterFont? register,
+  }) : components = components ?? ComponentService.shared,
+       _register = register ?? _registerNative;
   static final shared = FontService();
   static const preferenceKey = 'typography_v1';
   static const maxFileBytes = 50 * 1024 * 1024;
   static const maxBackupBytes = 100 * 1024 * 1024;
   final Directory? directory;
+  final ComponentService components;
   final RegisterFont _register;
   final _loaded = <String, Future<void>>{};
   Future<Directory> fontDirectory() async =>
@@ -98,10 +104,15 @@ class FontService {
       final List<Uint8List> bytes;
       final assets = FontCatalog.builtins[id];
       if (assets != null) {
-        bytes = [
-          for (final asset in assets)
-            (await rootBundle.load(asset)).buffer.asUint8List(),
-        ];
+        if (id == 'nunito') {
+          bytes = [(await rootBundle.load(assets.single)).buffer.asUint8List()];
+        } else {
+          final folder = await components.installed(id);
+          bytes = [
+            for (final asset in assets)
+              await File(p.join(folder.path, p.basename(asset))).readAsBytes(),
+          ];
+        }
       } else {
         final font = imports[id];
         if (font == null) throw const FormatException('Font unavailable');
@@ -131,14 +142,19 @@ class FontService {
     TypographySettings value, {
     bool recover = false,
   }) async {
-    var settings = value;
+    var settings = value.copyWith(unavailableFontIds: {}, loadWarning: false);
+    final unavailable = <String>{};
     for (final launch in [false, true]) {
       final id = launch ? settings.launchFontId : settings.appFontId;
       try {
         await load(id, settings.imports);
-        if (id != 'system' && id != 'nunito') {
+        if (id != 'system' && id != 'nunito' && components.ready('rounded')) {
           await load('rounded', settings.imports);
         }
+      } on ComponentMissing {
+        if (!recover) rethrow;
+        unavailable.add(id);
+        settings = settings.copyWith(loadWarning: true);
       } catch (_) {
         if (!recover) rethrow;
         settings = settings.copyWith(
@@ -155,7 +171,7 @@ class FontService {
         }
       }
     }
-    return settings;
+    return settings.copyWith(unavailableFontIds: unavailable);
   }
 
   Future<TypographySettings> initialize() async {
@@ -219,10 +235,16 @@ class FontService {
     // so retaining it for this process cannot replace a different font.
   }
 
-  Future<Map<String, dynamic>> exportFonts(TypographySettings value) async {
+  Future<Map<String, dynamic>> exportFonts(
+    TypographySettings value, {
+    bool allLibrary = false,
+  }) async {
     final output = <String, dynamic>{};
     var total = 0;
-    for (final id in value.selected.where(value.imports.containsKey)) {
+    for (final id
+        in (allLibrary
+            ? value.imports.keys
+            : value.selected.where(value.imports.containsKey))) {
       final font = value.imports[id]!;
       final source = await file(font);
       if (await source.length() > maxFileBytes) {

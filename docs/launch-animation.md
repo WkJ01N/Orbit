@@ -8,8 +8,8 @@ an active entrance immediately.
 
 The brand layer exits after 450 ms. Shell elements start at 350–480 ms, with
 35 ms between navigation buttons. The first ready timetable starts its card
-clock at 500 ms, or immediately if data arrives later. Card starts span 180 ms
-and movement takes 420 ms, keeping the normal sequence near 1.1 seconds.
+clock at 500 ms, or immediately if data arrives later. Card starts span 140 ms
+and movement takes 480 ms with a monotonic ease-out quint curve, keeping the normal sequence near 1.1 seconds.
 Reduced-motion preferences render final positions directly.
 
 Cards are prepared after initial scroll callbacks. Only cards and the current
@@ -23,7 +23,8 @@ Appearance → Startup & entrance provides image selection, circular cropping,
 reset, edge/nearby movement and a preview with isolated navigation and sample
 courses. Images are normalized to at most 512 px and copied into private
 `launch_icons` storage. Settings use `launch_presentation_v1` and are local to
-the device; they are excluded from portable settings and cloud sync.
+the device; they are excluded from ordinary portable settings and cloud sync. The v12
+downgrade protection backup additionally carries their private resource data.
 
 The Flutter brand screen uses the saved theme color and selected image. The
 Android system splash uses the default brand color/icon before Flutter is ready.

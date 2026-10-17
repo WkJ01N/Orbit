@@ -32,21 +32,29 @@ class TypographySettings {
     this.launchFontId = 'nunito',
     this.imports = const {},
     this.loadWarning = false,
+    this.unavailableFontIds = const {},
   });
   final String appFontId, launchFontId;
   final Map<String, ImportedFont> imports;
   final bool loadWarning;
+  final Set<String> unavailableFontIds;
+  String get effectiveAppFontId =>
+      unavailableFontIds.contains(appFontId) ? 'system' : appFontId;
+  String get effectiveLaunchFontId =>
+      unavailableFontIds.contains(launchFontId) ? 'nunito' : launchFontId;
   Set<String> get selected => {appFontId, launchFontId};
   TypographySettings copyWith({
     String? appFontId,
     String? launchFontId,
     Map<String, ImportedFont>? imports,
     bool? loadWarning,
+    Set<String>? unavailableFontIds,
   }) => TypographySettings(
     appFontId: appFontId ?? this.appFontId,
     launchFontId: launchFontId ?? this.launchFontId,
     imports: imports ?? this.imports,
     loadWarning: loadWarning ?? this.loadWarning,
+    unavailableFontIds: unavailableFontIds ?? this.unavailableFontIds,
   );
   Map<String, dynamic> toJson({bool usedOnly = false}) => {
     'appFontId': appFontId,

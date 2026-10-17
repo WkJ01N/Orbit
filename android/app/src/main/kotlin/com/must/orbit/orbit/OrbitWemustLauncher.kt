@@ -15,6 +15,16 @@ object OrbitWemustLauncher {
 
     fun attach(activity: Activity, messenger: BinaryMessenger) {
         MethodChannel(messenger, "com.must.orbit.orbit/wemust").setMethodCallHandler { call, result ->
+            if (call.method == "version") {
+                try {
+                    @Suppress("DEPRECATION")
+                    val info = activity.packageManager.getPackageInfo(targetPackage, 0)
+                    result.success(info.versionName)
+                } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
+                    result.success(null)
+                }
+                return@setMethodCallHandler
+            }
             if (call.method != "open") { result.notImplemented(); return@setMethodCallHandler }
             try {
                 @Suppress("DEPRECATION")

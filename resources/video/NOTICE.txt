@@ -1,0 +1,9 @@
+Orbit optional video runtime, based on media-kit and its pinned native builds.
+media-kit (MIT): https://github.com/media-kit/media-kit
+libmpv Windows build: https://github.com/media-kit/libmpv-win32-video-build/releases/tag/2023-09-24
+libmpv Android build v1.1.7: https://github.com/media-kit/libmpv-android-video-build/releases/tag/v1.1.7
+mpv / FFmpeg components retain their upstream licenses. Sources and build recipes:
+https://github.com/mpv-player/mpv
+https://github.com/FFmpeg/FFmpeg
+https://github.com/google/angle
+See the upstream build repositories for the exact source revisions and license terms.

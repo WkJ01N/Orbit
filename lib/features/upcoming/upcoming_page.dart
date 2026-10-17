@@ -45,6 +45,27 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
   List<CourseSession>? _lastSessions;
   List<Deadline> _lastDeadlines = [];
   Future<void>? _refreshing;
+  Timer? _entryRefresh;
+  List<CourseSession>? _groupSource;
+  List<_SessionGroup> _groups = const [];
+  DateTime? _groupDay;
+
+  @override
+  void dispose() {
+    _entryRefresh?.cancel();
+    super.dispose();
+  }
+
+  List<_SessionGroup> _cachedGroups(List<CourseSession> sessions) {
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    if (!identical(_groupSource, sessions) || _groupDay != day) {
+      _groups = _groupSessions(sessions);
+      _groupSource = sessions;
+      _groupDay = day;
+    }
+    return _groups;
+  }
 
   Future<void> _refresh() =>
       _refreshing ??= _refreshData().whenComplete(() => _refreshing = null);
@@ -66,7 +87,16 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
   @override
   Widget build(BuildContext context) {
     ref.listen(appNavIndexProvider, (old, next) {
-      if (next == AppTab.upcoming.index && old != next) unawaited(_refresh());
+      _entryRefresh?.cancel();
+      if (next == AppTab.upcoming.index && old != next) {
+        // Keep database results and grouping out of the 260ms tab transition.
+        _entryRefresh = Timer(const Duration(milliseconds: 280), () {
+          if (mounted &&
+              ref.read(appNavIndexProvider) == AppTab.upcoming.index) {
+            unawaited(_refresh());
+          }
+        });
+      }
     });
     final l10n = AppLocalizations.of(context)!;
     final upcomingAsync = ref.watch(upcomingSessionsProvider);
@@ -95,7 +125,7 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
         active:
             widget.showBackButton ||
             ref.watch(appNavIndexProvider) == AppTab.upcoming.index,
-        groups: _groupSessions(sessions),
+        groups: _cachedGroups(sessions),
         deadlines: deadlines,
         onRefresh: _refresh,
       );
@@ -154,21 +184,22 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
     final tomorrow = today.add(const Duration(days: 1));
     final weekEnd = today.add(Duration(days: 7 - today.weekday));
 
+    int dateKey(DateTime date) =>
+        date.year * 10000 + date.month * 100 + date.day;
+    final todayKey = dateKey(today),
+        tomorrowKey = dateKey(tomorrow),
+        weekEndKey = dateKey(weekEnd);
     final groups = <SessionGroupKind, List<CourseSession>>{};
     final laterLabelDate = weekEnd.add(const Duration(days: 1));
 
     for (final session in sessions) {
-      final sessionDate = DateTime(
-        session.date.year,
-        session.date.month,
-        session.date.day,
-      );
+      final sessionDate = dateKey(session.date);
       final SessionGroupKind kind;
-      if (sessionDate == today) {
+      if (sessionDate == todayKey) {
         kind = SessionGroupKind.today;
-      } else if (sessionDate == tomorrow) {
+      } else if (sessionDate == tomorrowKey) {
         kind = SessionGroupKind.tomorrow;
-      } else if (!sessionDate.isAfter(weekEnd)) {
+      } else if (sessionDate <= weekEndKey) {
         kind = SessionGroupKind.thisWeek;
       } else {
         kind = SessionGroupKind.later;
@@ -265,22 +296,74 @@ class _UpcomingList extends StatefulWidget {
   State<_UpcomingList> createState() => _UpcomingListState();
 }
 
-class _UpcomingListState extends State<_UpcomingList> {
+class _UpcomingListState extends State<_UpcomingList>
+    with WidgetsBindingObserver {
   Timer? _timer;
+  bool _foreground = true;
   late DateTime _now;
+  List<_SessionGroup>? _flatGroups;
+  List<Deadline>? _flatDeadlines;
+  String? _flatLocale;
+  List<_FlatItem> _items = const [];
+
+  void _syncTimer() {
+    _timer?.cancel();
+    _timer = null;
+    if (widget.active && _foreground) {
+      final previous = _now;
+      _now = DateTime.now();
+      if (previous.year != _now.year ||
+          previous.month != _now.month ||
+          previous.day != _now.day) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && widget.active && _foreground) {
+            unawaited(widget.onRefresh());
+          }
+        });
+      }
+      _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        final previous = _now;
+        setState(() => _now = DateTime.now());
+        if (previous.year != _now.year ||
+            previous.month != _now.month ||
+            previous.day != _now.day) {
+          unawaited(widget.onRefresh());
+        }
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (_foreground == foreground) return;
+    _foreground = foreground;
+    _syncTimer();
+    if (foreground && widget.active && mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(_UpcomingList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncTimer();
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     _now = DateTime.now();
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
-    });
+    _syncTimer();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -303,36 +386,51 @@ class _UpcomingListState extends State<_UpcomingList> {
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
 
-    // Flatten groups into a single list so course cards remain truly lazy.
-    final items = <_FlatItem>[];
-    if (widget.deadlines.isNotEmpty) {
-      items.add(_HeaderItem(DeadlineText.of(context).ddl));
-      for (final deadline in widget.deadlines.where((d) => !d.completed)) {
-        items.add(_DeadlineItem(deadline));
-      }
-      if (widget.deadlines.any((d) => d.completed)) {
-        items.add(_HeaderItem(DeadlineText.of(context).completed));
-        for (final deadline in widget.deadlines.where((d) => d.completed)) {
+    if (!identical(_flatGroups, widget.groups) ||
+        !identical(_flatDeadlines, widget.deadlines) ||
+        _flatLocale != locale) {
+      // Flatten groups into a single list so course cards remain truly lazy.
+      final items = <_FlatItem>[];
+      if (widget.deadlines.isNotEmpty) {
+        items.add(_HeaderItem(DeadlineText.of(context).ddl));
+        for (final deadline in widget.deadlines.where((d) => !d.completed)) {
           items.add(_DeadlineItem(deadline));
         }
-      }
-    }
-    final seenWeeks = <DateTime>{};
-    for (final group in widget.groups) {
-      items.add(_HeaderItem(_groupLabel(l10n, group)));
-      for (final session in group.sessions) {
-        final date = DateTime(
-          session.date.year,
-          session.date.month,
-          session.date.day,
-        );
-        final monday = date.subtract(Duration(days: date.weekday - 1));
-        if (seenWeeks.add(monday)) {
-          items.add(_WeekHeaderItem(monday));
+        if (widget.deadlines.any((d) => d.completed)) {
+          items.add(_HeaderItem(DeadlineText.of(context).completed));
+          for (final deadline in widget.deadlines.where((d) => d.completed)) {
+            items.add(_DeadlineItem(deadline));
+          }
         }
-        items.add(_SessionItem(session));
       }
+      final seenWeeks = <int>{};
+      for (final group in widget.groups) {
+        items.add(_HeaderItem(_groupLabel(l10n, group)));
+        for (final session in group.sessions) {
+          final date = session.date;
+          // UTC is only a cheap calendar ordinal here. Construct a local date
+          // once per week marker, not twice per course (expensive on Windows).
+          final mondayDay = date.day - (date.weekday - 1);
+          final mondayKey = DateTime.utc(
+            date.year,
+            date.month,
+            mondayDay,
+          ).millisecondsSinceEpoch;
+          if (seenWeeks.add(mondayKey)) {
+            items.add(
+              _WeekHeaderItem(DateTime(date.year, date.month, mondayDay)),
+            );
+          }
+          items.add(_SessionItem(session));
+        }
+      }
+
+      _items = items;
+      _flatGroups = widget.groups;
+      _flatDeadlines = widget.deadlines;
+      _flatLocale = locale;
     }
+    final items = _items;
 
     return UpcomingScrollToTop(
       position: widget.position,
@@ -351,6 +449,7 @@ class _UpcomingListState extends State<_UpcomingList> {
               ),
             ),
             _SessionItem(:final session) => _SessionCard(
+              key: ValueKey('upcoming-session-${session.id}'),
               session: session,
               now: _now,
             ),
@@ -404,7 +503,7 @@ class _WeekMarker extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SessionCard extends ConsumerWidget {
-  const _SessionCard({required this.session, required this.now});
+  const _SessionCard({super.key, required this.session, required this.now});
 
   final CourseSession session;
   final DateTime now;

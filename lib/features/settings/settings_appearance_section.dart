@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/components_page.dart';
+import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
 import 'package:orbit/models/typography_text.dart';
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
@@ -33,6 +35,20 @@ class SettingsAppearanceSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.sectionAppearance,
           children: [
+            ListTile(
+              key: const Key('components-settings'),
+              leading: const Icon(Icons.download_for_offline_outlined),
+              title: Text(
+                NavigationAssistText.of(
+                  context,
+                ).pick('Resources & components', '资源与组件', '資源與元件'),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const ComponentsPage()),
+              ),
+            ),
             ListTile(
               key: const Key('typography-settings'),
               leading: const Icon(Icons.font_download_outlined),

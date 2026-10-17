@@ -1,3 +1,5 @@
+import 'package:orbit/services/launch_icon_service.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/providers/typography_providers.dart';
 import 'package:orbit/services/background_package_service.dart';
 import 'package:orbit/services/backup_file_export.dart';
@@ -282,10 +284,18 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
             deleteStatistics: selection.deleteStatistics,
             restoreSettings: restoredSettings == null
                 ? null
-                : () => settingsService.importPortableSettings(
-                    effectiveSettings!,
-                    accountUid: accountUid,
-                  ),
+                : () async {
+                    await settingsService.importPortableSettings(
+                      effectiveSettings!,
+                      accountUid: accountUid,
+                    );
+                    if (restoredSettings.launchPresentation != null) {
+                      await settingsService.saveLocalJson(
+                        'launch_presentation_v1',
+                        restoredSettings.launchPresentation!,
+                      );
+                    }
+                  },
           );
     } catch (_) {
       if (restoredSettings != null) {
@@ -295,6 +305,10 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
           await ScheduleBackupService().discardImportedAudio(
             restoredSettings.importedFiles,
           );
+          await deleteLaunchIcon(restoredSettings.createdLaunchIcon);
+          for (final id in restoredSettings.importedComponents) {
+            await ref.read(fontServiceProvider).components.remove(id);
+          }
           for (final font in restoredSettings.importedFonts) {
             await ref.read(fontServiceProvider).deleteFile(font);
           }
@@ -323,6 +337,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       }
       final typography = await ref.read(fontServiceProvider).initialize();
       ref.read(typographySettingsProvider.notifier).restoreLoaded(typography);
+      ref.invalidate(launchSettingsProvider);
       ref.invalidate(backgroundSettingsProvider);
       ref.invalidate(localeProvider);
       ref.invalidate(themeColorProvider);

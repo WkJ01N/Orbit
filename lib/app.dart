@@ -91,24 +91,24 @@ class OrbitApp extends ConsumerWidget {
         style: themeStyle,
         multicolor: multicolor,
         useWindowsCjkFont: useWindowsCjkFont,
-        fontFamily: typography.appFontId == 'system'
+        fontFamily: typography.effectiveAppFontId == 'system'
             ? null
-            : FontCatalog.family(typography.appFontId),
-        fontFallback: typography.appFontId == 'system'
+            : FontCatalog.family(typography.effectiveAppFontId),
+        fontFallback: typography.effectiveAppFontId == 'system'
             ? null
-            : FontCatalog.fallback(typography.appFontId),
+            : FontCatalog.fallback(typography.effectiveAppFontId),
       ),
       darkTheme: AppTheme.dark(
         seed: seed,
         style: themeStyle,
         multicolor: multicolor,
         useWindowsCjkFont: useWindowsCjkFont,
-        fontFamily: typography.appFontId == 'system'
+        fontFamily: typography.effectiveAppFontId == 'system'
             ? null
-            : FontCatalog.family(typography.appFontId),
-        fontFallback: typography.appFontId == 'system'
+            : FontCatalog.family(typography.effectiveAppFontId),
+        fontFallback: typography.effectiveAppFontId == 'system'
             ? null
-            : FontCatalog.fallback(typography.appFontId),
+            : FontCatalog.fallback(typography.effectiveAppFontId),
       ),
       themeMode: themeMode,
       locale: locale,

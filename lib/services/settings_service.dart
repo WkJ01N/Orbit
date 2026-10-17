@@ -704,7 +704,7 @@ class SettingsService {
       final current = await FontService.shared.read();
       if (current.appFontId != snapshot.typography!.appFontId ||
           current.launchFontId != snapshot.typography!.launchFontId) {
-        await FontService.shared.prepare(snapshot.typography!);
+        await FontService.shared.prepare(snapshot.typography!, recover: true);
       }
     }
     final prefs = await _prefsInstance();

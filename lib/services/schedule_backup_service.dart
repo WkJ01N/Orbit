@@ -1,3 +1,6 @@
+import 'package:orbit/services/settings_service.dart';
+import 'package:orbit/services/launch_icon_service.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:orbit/services/font_service.dart';
@@ -22,6 +25,8 @@ class OrbitBackup {
     this.settings,
     this.audio = const {},
     this.fonts = const {},
+    this.fontComponents = const {},
+    this.localPresentation,
     this.statistics = const [],
     this.sessionAliases = const {},
     this.seriesMemberships = const {},
@@ -37,6 +42,8 @@ class OrbitBackup {
   final PortableSettings? settings;
   final Map<String, Map<String, dynamic>> audio;
   final Map<String, Map<String, dynamic>> fonts;
+  final Map<String, Map<String, dynamic>> fontComponents;
+  final Map<String, dynamic>? localPresentation;
 }
 
 class ScheduleBackupException implements Exception {
@@ -52,7 +59,7 @@ class ScheduleBackupService {
   ScheduleBackupService({FontService? fonts})
     : fontService = fonts ?? FontService.shared;
   final FontService fontService;
-  static const backupVersion = 11;
+  static const backupVersion = 12;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
@@ -61,6 +68,7 @@ class ScheduleBackupService {
     List<Map<String, dynamic>> statistics = const [],
     Map<String, String> sessionAliases = const {},
     Map<String, List<String>> seriesMemberships = const {},
+    bool protectLocalResources = false,
   }) async {
     final sounds = [
       settings.reminders.strong.sound,
@@ -152,7 +160,38 @@ class ScheduleBackupService {
             as Map<String, dynamic>;
     json['audio'] = audio;
     if (settings.typography != null) {
-      json['fonts'] = await fontService.exportFonts(settings.typography!);
+      json['fonts'] = await fontService.exportFonts(
+        settings.typography!,
+        allLibrary: protectLocalResources,
+      );
+      if (protectLocalResources) {
+        (json['settings'] as Map)['typography'] = settings.typography!.toJson();
+      }
+      json['fontComponents'] = await fontService.components
+          .exportFontComponents(settings.typography!.selected);
+    }
+    if (protectLocalResources) {
+      final presentation = await SettingsService().loadLocalJson(
+        'launch_presentation_v1',
+      );
+      final iconPath = presentation['iconPath'] as String?;
+      final local = <String, dynamic>{
+        'cardEntrance': presentation['cardEntrance'] == 'nearby'
+            ? 'nearby'
+            : 'edge',
+      };
+      if (iconPath != null) {
+        final support = await getApplicationSupportDirectory();
+        final root = p.join(support.path, 'launch_icons');
+        final source = File(iconPath);
+        if (!p.isWithin(root, p.absolute(source.path)) ||
+            !await source.exists() ||
+            await source.length() > 2 * 1024 * 1024) {
+          throw const FormatException('Startup icon missing');
+        }
+        local['iconData'] = base64Encode(await source.readAsBytes());
+      }
+      json['localPresentation'] = local;
     }
     json['sessionAliases'] = sessionAliases;
     json['seriesMemberships'] = seriesMemberships;
@@ -165,13 +204,27 @@ class ScheduleBackupService {
       bool soundFallback,
       List<String> importedFiles,
       List<ImportedFont> importedFonts,
+      List<String> importedComponents,
+      Map<String, dynamic>? launchPresentation,
+      String? createdLaunchIcon,
     })
   >
   restoreAudio(OrbitBackup backup) async {
     var fallback = false;
     final refs = <String, ReminderSound>{};
     final createdFonts = <ImportedFont>[];
+    final createdComponents = <String>[];
+    String? createdIcon;
+    Map<String, dynamic>? launchPresentation;
     try {
+      for (final entry in backup.fontComponents.entries) {
+        if (await fontService.components.restoreFontComponent(
+          entry.key,
+          entry.value,
+        )) {
+          createdComponents.add(entry.key);
+        }
+      }
       for (final entry in backup.fonts.values) {
         final source = ImportedFont.fromJson(entry);
         final result = await fontService.importBytes(
@@ -182,6 +235,17 @@ class ScheduleBackupService {
           throw const FormatException('Font hash mismatch');
         }
         if (result.created) createdFonts.add(result.font);
+      }
+      if (backup.localPresentation != null) {
+        launchPresentation = {
+          'cardEntrance': backup.localPresentation!['cardEntrance'],
+        };
+        if (backup.localPresentation!['iconData'] != null) {
+          createdIcon = await saveLaunchIcon(
+            base64Decode(backup.localPresentation!['iconData'] as String),
+          );
+          launchPresentation['iconPath'] = createdIcon;
+        }
       }
       for (final entry in backup.audio.entries) {
         final info = entry.value;
@@ -202,6 +266,10 @@ class ScheduleBackupService {
         for (final font in createdFonts) {
           await fontService.deleteFile(font);
         }
+      }
+      await deleteLaunchIcon(createdIcon);
+      for (final id in createdComponents) {
+        await fontService.components.remove(id);
       }
       rethrow;
     }
@@ -245,6 +313,9 @@ class ScheduleBackupService {
       soundFallback: fallback,
       importedFiles: refs.values.map((s) => s.value).toList(),
       importedFonts: createdFonts,
+      importedComponents: createdComponents,
+      launchPresentation: launchPresentation,
+      createdLaunchIcon: createdIcon,
     );
   }
 
@@ -407,7 +478,7 @@ class ScheduleBackupService {
     final fonts = <String, Map<String, dynamic>>{};
     try {
       final raw = decoded['fonts'] ?? <String, dynamic>{};
-      if (raw is! Map || raw.length > 2) {
+      if (raw is! Map || raw.length > (version >= 12 ? 100 : 2)) {
         throw const FormatException('Font backup');
       }
       var total = 0;
@@ -431,18 +502,92 @@ class ScheduleBackupService {
                 font.extension ||
             settings?.typography?.imports[font.id]?.extension !=
                 font.extension ||
-            !(settings?.typography?.selected.contains(font.id) ?? false)) {
+            (version < 12 &&
+                !(settings?.typography?.selected.contains(font.id) ?? false))) {
           throw const FormatException('Invalid backup font');
         }
         fonts[font.id] = item;
       }
       if (settings?.typography != null) {
-        for (final id in settings!.typography!.selected) {
+        for (final id
+            in (version >= 12
+                ? settings!.typography!.imports.keys
+                : settings!.typography!.selected)) {
           if (settings.typography!.imports.containsKey(id) &&
               !fonts.containsKey(id)) {
             throw const FormatException('Missing backup font');
           }
         }
+      }
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
+    Map<String, dynamic>? localPresentation;
+    try {
+      final raw = decoded['localPresentation'];
+      if (raw != null) {
+        if (version < 12 ||
+            raw is! Map ||
+            raw.keys.any(
+              (e) => !const ['cardEntrance', 'iconData'].contains(e),
+            ) ||
+            !const ['edge', 'nearby'].contains(raw['cardEntrance'])) {
+          throw const FormatException('Presentation backup');
+        }
+        localPresentation = Map<String, dynamic>.from(raw);
+        final encoded = raw['iconData'];
+        if (encoded != null) {
+          if (encoded is! String || encoded.length > 3 * 1024 * 1024) {
+            throw const FormatException('Icon size');
+          }
+          final bytes = base64Decode(encoded);
+          if (bytes.length > 2 * 1024 * 1024 ||
+              bytes.length < 8 ||
+              bytes[0] != 137 ||
+              bytes[1] != 80 ||
+              bytes[2] != 78 ||
+              bytes[3] != 71) {
+            throw const FormatException('Icon format');
+          }
+        }
+      }
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
+    final fontComponents = <String, Map<String, dynamic>>{};
+    try {
+      final raw = decoded['fontComponents'] ?? <String, dynamic>{};
+      if (raw is! Map || raw.length > 2 || (version < 12 && raw.isNotEmpty)) {
+        throw const FormatException('Font components');
+      }
+      var total = 0;
+      for (final entry in raw.entries) {
+        if (!const {'rounded', 'huninn', 'maiyuan'}.contains(entry.key) ||
+            !(settings?.typography?.selected.contains(entry.key) ?? false)) {
+          throw const FormatException('Unreferenced font component');
+        }
+        final record = Map<String, dynamic>.from(entry.value as Map);
+        if (record['version'] is! int ||
+            record['version'] < 1 ||
+            record['files'] is! Map) {
+          throw const FormatException('Font component version');
+        }
+        final files = Map<String, dynamic>.from(record['files'] as Map);
+        if (files.length > 3) throw const FormatException('Font files');
+        for (final file in files.entries) {
+          if (!RegExp(r'^[A-Za-z0-9_.-]+\.(ttf|txt)$').hasMatch(file.key) ||
+              file.value is! String ||
+              (file.value as String).length > 70 * 1024 * 1024) {
+            throw const FormatException('Font component entry');
+          }
+          final bytes = base64Decode(file.value as String);
+          total += bytes.length;
+          if (total > FontService.maxBackupBytes) {
+            throw const FormatException('Font backup size');
+          }
+          if (file.key.endsWith('.ttf')) FontService.validate(bytes);
+        }
+        fontComponents[entry.key as String] = record;
       }
     } catch (_) {
       throw ScheduleBackupException('invalid_format');
@@ -515,6 +660,8 @@ class ScheduleBackupService {
       settings: settings,
       audio: audio,
       fonts: fonts,
+      fontComponents: fontComponents,
+      localPresentation: localPresentation,
     );
   }
 

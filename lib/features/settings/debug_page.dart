@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/wemust_debug_page.dart';
+import 'package:orbit/services/wemust_launcher.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'dart:io';
@@ -31,6 +33,19 @@ class _DebugPageState extends ConsumerState<DebugPage> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          if (ref.watch(wemustLauncherProvider).supported)
+            ListTile(
+              key: const Key('wemust-debug'),
+              title: const Text('WeMust'),
+              leading: const Icon(Icons.open_in_new),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const WemustDebugPage(),
+                ),
+              ),
+            ),
           ListTile(
             title: Text(OrbitFeatureText.of(context).strongTest),
             subtitle: Text(OrbitFeatureText.of(context).testHint),

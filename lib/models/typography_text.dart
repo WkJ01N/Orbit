@@ -51,8 +51,8 @@ class TypographyText {
     '字型載入或儲存失敗，請選擇有效且不超過 50MiB 的 TTF / OTF 檔案。',
   );
   String get warning => t(
-    'A saved font is unavailable. A default font is being used; select a font again.',
-    '已选字体不可用，已使用默认字体，请重新选择。',
-    '所選字型無法使用，已改用預設字型，請重新選擇。',
+    'A saved font is unavailable. A default is being used. Download the font component or choose another font.',
+    '已选字体暂不可用，当前使用默认字体。请下载相应字体组件或重新选择。',
+    '所選字型暫時無法使用，目前使用預設字型。請下載對應字型元件或重新選擇。',
   );
 }
