@@ -3,7 +3,7 @@
     <!-- Android owns the initial splash; the Flutter brand layer follows it. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowSplashScreenBackground">#39C5BB</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/orbit_splash_icon</item>
         <item name="android:windowSplashScreenAnimationDuration">150</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">#39C5BB</item>

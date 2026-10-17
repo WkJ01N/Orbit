@@ -1,3 +1,6 @@
+import 'package:orbit/models/typography_settings.dart';
+import 'package:orbit/providers/typography_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -72,6 +75,7 @@ List<CourseSession> _courses() => [
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   Size size = const Size(400, 800),
+  TypographySettings typography = const TypographySettings(),
   bool enabled = true,
   bool reduced = false,
   bool hideUpcoming = false,
@@ -88,6 +92,7 @@ Future<ProviderContainer> _pump(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   final container = ProviderContainer(
     overrides: [
+      typographySnapshotProvider.overrideWithValue(typography),
       launchAnimationsEnabledProvider.overrideWithValue(enabled),
       launchSettingsProvider.overrideWith(
         () => _LaunchSettings(
@@ -165,6 +170,42 @@ Future<void> _ready(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'startup system font is isolated from interface font and icon stays visible at first frame',
+    (tester) async {
+      await _pump(
+        tester,
+        typography: const TypographySettings(
+          appFontId: 'huninn',
+          launchFontId: 'system',
+        ),
+      );
+      final wordmark = find.descendant(
+        of: find.byKey(const Key('orbit-launch-brand')),
+        matching: find.text('Orbit'),
+      );
+      final style = tester.widget<Text>(wordmark).style!;
+      expect(style.inherit, isFalse);
+      expect(
+        style.fontFamily,
+        FontCatalog.systemFamily(defaultTargetPlatform, const Locale('en')),
+      );
+      expect(style.fontFamily, isNot(FontCatalog.family('huninn')));
+      final icon = find.descendant(
+        of: find.byKey(const Key('orbit-launch-brand')),
+        matching: find.byType(LaunchIcon),
+      );
+      expect(icon, findsOneWidget);
+      // Opacity ancestors contain only the opaque brand layer, not a hidden icon.
+      for (final widget in tester.widgetList<Opacity>(
+        find.ancestor(of: icon, matching: find.byType(Opacity)),
+      )) {
+        expect(widget.opacity, 1);
+      }
+      expect(tester.getCenter(icon).dy, closeTo(400, 1));
+    },
+  );
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test(

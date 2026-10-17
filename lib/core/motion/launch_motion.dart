@@ -1,9 +1,11 @@
+import 'package:orbit/models/typography_settings.dart';
+import 'package:orbit/providers/typography_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
@@ -330,9 +332,9 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
         ),
         if (path != null)
           precacheImage(FileImage(File(path)), context, onError: (_, _) {}),
-        (FontLoader(
-          orbitBrandFont,
-        )..addFont(rootBundle.load('assets/fonts/Nunito.ttf'))).load(),
+        ref
+            .read(fontServiceProvider)
+            .prepare(ref.read(typographySettingsProvider)),
       ]);
     } catch (error) {
       // A missing optional visual must never leave an opaque overlay stuck.
@@ -387,6 +389,14 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
       if (value.isNotEmpty) _motion?.finish();
     });
     final motion = _motion!;
+    final typography = ref.watch(typographySettingsProvider);
+    final launchFont = typography.launchFontId;
+    final launchFamily = launchFont == 'system'
+        ? FontCatalog.systemFamily(
+            defaultTargetPlatform,
+            Localizations.localeOf(context),
+          )
+        : FontCatalog.family(launchFont);
     final brand = ref.watch(themeColorProvider);
     final foreground =
         ThemeData.estimateBrightnessForColor(brand) == Brightness.dark
@@ -424,39 +434,43 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
                       child: ColoredBox(
                         key: const Key('orbit-launch-brand'),
                         color: brand,
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Opacity(
-                                opacity: icon,
-                                child: Transform.scale(
-                                  scale: 0.94 + 0.06 * icon,
-                                  child: LaunchIcon(
-                                    path: motion.settings.iconPath,
-                                  ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Center(
+                              child: Transform.scale(
+                                scale: .99 + .01 * icon,
+                                child: LaunchIcon(
+                                  path: motion.settings.iconPath,
                                 ),
                               ),
-                              const SizedBox(height: 18),
-                              Opacity(
-                                opacity: name,
-                                child: Transform.translate(
-                                  offset: Offset(0, (1 - name) * 8),
-                                  child: Text(
-                                    'Orbit',
-                                    style: TextStyle(
-                                      fontFamily: orbitBrandFont,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.3,
-                                      color: foreground,
-                                      decoration: TextDecoration.none,
+                            ),
+                            Center(
+                              child: Transform.translate(
+                                offset: Offset(0, 66 + (1 - name) * 8),
+                                child: FractionalTranslation(
+                                  translation: const Offset(0, .5),
+                                  child: Opacity(
+                                    opacity: name,
+                                    child: Text(
+                                      'Orbit',
+                                      style: TextStyle(
+                                        inherit: false,
+                                        fontFamily: launchFamily,
+                                        fontFamilyFallback:
+                                            FontCatalog.fallback(launchFont),
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.3,
+                                        color: foreground,
+                                        decoration: TextDecoration.none,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

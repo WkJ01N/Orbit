@@ -1,3 +1,4 @@
+import 'package:orbit/services/font_service.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:orbit/models/archive_settings.dart';
@@ -665,6 +666,7 @@ class SettingsService {
     final prefs = await _prefsInstance();
     return PortableSettings(
       sourcePlatform: Platform.operatingSystem,
+      typography: await FontService.shared.read(),
       localPreferences: {
         'syncSelection': await loadLocalJson(
           'sync_scope_${accountUid ?? "local"}_device',
@@ -698,6 +700,13 @@ class SettingsService {
     PortableSettings snapshot, {
     String? accountUid,
   }) async {
+    if (snapshot.typography != null) {
+      final current = await FontService.shared.read();
+      if (current.appFontId != snapshot.typography!.appFontId ||
+          current.launchFontId != snapshot.typography!.launchFontId) {
+        await FontService.shared.prepare(snapshot.typography!);
+      }
+    }
     final prefs = await _prefsInstance();
     for (final e in snapshot.localPreferences.entries) {
       if (e.key == 'syncSelection') {
@@ -784,6 +793,14 @@ class SettingsService {
             ),
           ),
     );
+    if (snapshot.typography != null) {
+      final current = await FontService.shared.read();
+      await FontService.shared.save(
+        snapshot.typography!.copyWith(
+          imports: {...current.imports, ...snapshot.typography!.imports},
+        ),
+      );
+    }
     await save(snapshot.reminders);
     await saveScheduleDisplaySettings(snapshot.scheduleDisplay);
     await saveCourseColorOverrides(

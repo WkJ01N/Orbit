@@ -1,3 +1,6 @@
+import 'package:orbit/features/settings/typography_settings_page.dart';
+import 'package:orbit/providers/typography_providers.dart';
+import 'package:orbit/models/typography_settings.dart';
 import 'package:orbit/providers/background_providers.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/features/statistics/statistics_page.dart';
@@ -40,6 +43,7 @@ class OrbitApp extends ConsumerWidget {
         ref.read(backgroundSettingsProvider).valueOrNull ??
         const BackgroundSettings();
     final locale = ref.watch(localeProvider);
+    final typography = ref.watch(typographySettingsProvider);
     final seed = ref.watch(themeColorProvider);
 
     final themeMode = ref.watch(themeModeProvider);
@@ -67,7 +71,10 @@ class OrbitApp extends ConsumerWidget {
                     child: _AccountSyncLifecycleHost(
                       child: NotificationPermissionHost(
                         navigatorKey: _navigatorKey,
-                        child: child!,
+                        child: TypographyWarningHost(
+                          navigatorKey: _navigatorKey,
+                          child: child!,
+                        ),
                       ),
                     ),
                   ),
@@ -84,12 +91,24 @@ class OrbitApp extends ConsumerWidget {
         style: themeStyle,
         multicolor: multicolor,
         useWindowsCjkFont: useWindowsCjkFont,
+        fontFamily: typography.appFontId == 'system'
+            ? null
+            : FontCatalog.family(typography.appFontId),
+        fontFallback: typography.appFontId == 'system'
+            ? null
+            : FontCatalog.fallback(typography.appFontId),
       ),
       darkTheme: AppTheme.dark(
         seed: seed,
         style: themeStyle,
         multicolor: multicolor,
         useWindowsCjkFont: useWindowsCjkFont,
+        fontFamily: typography.appFontId == 'system'
+            ? null
+            : FontCatalog.family(typography.appFontId),
+        fontFallback: typography.appFontId == 'system'
+            ? null
+            : FontCatalog.fallback(typography.appFontId),
       ),
       themeMode: themeMode,
       locale: locale,

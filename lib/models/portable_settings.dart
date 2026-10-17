@@ -1,3 +1,4 @@
+import 'package:orbit/models/typography_settings.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/models/reminder_settings.dart';
 import 'package:orbit/models/archive_settings.dart';
@@ -28,11 +29,13 @@ class PortableSettings {
     this.localPreferences = const {},
     this.sourcePlatform,
     this.backgrounds,
+    this.typography,
   });
 
   final Map<String, dynamic> localPreferences;
   final String? sourcePlatform;
   final BackgroundSettings? backgrounds;
+  final TypographySettings? typography;
   final ArchiveSettings archive;
   final String locale;
   final ImportConfiguration? importConfiguration;
@@ -92,6 +95,9 @@ class PortableSettings {
       ...automaticCourseColorIds,
     };
     data['localPreferences'] = {...local.localPreferences, ...localPreferences};
+    if (typography == null && local.typography != null) {
+      data['typography'] = local.typography!.toJson(usedOnly: true);
+    }
     return PortableSettings.fromJson(data);
   }
 
@@ -99,6 +105,7 @@ class PortableSettings {
     localPreferences: localPreferences,
     sourcePlatform: sourcePlatform,
     backgrounds: backgrounds,
+    typography: typography,
     locale: locale,
     themeColor: themeColor,
     themeMode: themeMode,
@@ -121,6 +128,7 @@ class PortableSettings {
     'localPreferences': localPreferences,
     'sourcePlatform': sourcePlatform,
     if (backgrounds != null) 'backgrounds': backgrounds!.toJson(),
+    if (typography != null) 'typography': typography!.toJson(usedOnly: true),
     'archive': archive.toJson(),
     'locale': locale,
     if (importConfiguration != null)
@@ -197,6 +205,11 @@ class PortableSettings {
         json['localPreferences'] as Map? ?? {},
       ),
       sourcePlatform: json['sourcePlatform'] as String?,
+      typography: json['typography'] == null
+          ? null
+          : TypographySettings.fromJson(
+              Map<String, dynamic>.from(json['typography'] as Map),
+            ),
       backgrounds: json['backgrounds'] == null
           ? null
           : BackgroundSettings.fromJson(

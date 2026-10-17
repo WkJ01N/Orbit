@@ -1,3 +1,6 @@
+import 'package:orbit/services/launch_icon_service.dart';
+import 'package:orbit/providers/typography_providers.dart';
+import 'package:orbit/services/font_service.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -22,6 +25,15 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
+    for (final entry in {
+      'Resource Han Rounded': 'ResourceHanRounded-OFL.txt',
+      'jf open huninn': 'Huninn-OFL.txt',
+      'Kingnam Maiyuan': 'Maiyuan-OFL.txt',
+    }.entries) {
+      yield LicenseEntryWithLineBreaks([
+        entry.key,
+      ], await rootBundle.loadString('assets/fonts/${entry.value}'));
+    }
     yield LicenseEntryWithLineBreaks([
       'Nunito',
     ], await rootBundle.loadString('assets/fonts/OFL.txt'));
@@ -39,6 +51,7 @@ Future<void> main(List<String> args) async {
       Platform.isWindows && args.contains('--notification-action');
 
   // Window setup and the database do not depend on each other.
+  final typographyFuture = FontService.shared.initialize();
   final databaseFuture = openAppDatabase();
   final settingsService = SettingsService();
   final presentationFuture = LaunchSnapshot.load(settingsService)
@@ -51,7 +64,10 @@ Future<void> main(List<String> args) async {
       );
   await Future.wait<void>([
     databaseFuture.then((_) {}),
-    presentationFuture.then((_) {}),
+    typographyFuture.then((_) {}),
+    presentationFuture.then(
+      (value) => primeLaunchImages(value?.settings.iconPath),
+    ),
     if (Platform.isWindows && !maintenance && !notificationAction)
       initializeDesktopWindow(startHidden: startHidden),
     if (Platform.isAndroid) _initializeAndroidGuard(),
@@ -92,6 +108,7 @@ Future<void> main(List<String> args) async {
         appDatabaseProvider.overrideWithValue(database),
         settingsServiceProvider.overrideWithValue(settingsService),
         launchSnapshotProvider.overrideWithValue(presentation),
+        typographySnapshotProvider.overrideWithValue(await typographyFuture),
         launchAnimationsEnabledProvider.overrideWithValue(
           !startHidden &&
               !maintenance &&

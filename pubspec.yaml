@@ -75,7 +75,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
-    - assets/fonts/OFL.txt
+    - assets/fonts/
   fonts:
     - family: OrbitBrand
       fonts:

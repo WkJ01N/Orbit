@@ -1,3 +1,4 @@
+import 'package:orbit/providers/typography_providers.dart';
 import 'package:orbit/services/background_package_service.dart';
 import 'package:orbit/services/backup_file_export.dart';
 import 'package:orbit/providers/background_providers.dart';
@@ -294,6 +295,9 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
           await ScheduleBackupService().discardImportedAudio(
             restoredSettings.importedFiles,
           );
+          for (final font in restoredSettings.importedFonts) {
+            await ref.read(fontServiceProvider).deleteFile(font);
+          }
         }
       }
       rethrow;
@@ -317,6 +321,8 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       if (restoredSettings.soundFallback && context.mounted) {
         _showSnackBar(context, l10n.reminderSoundFallback);
       }
+      final typography = await ref.read(fontServiceProvider).initialize();
+      ref.read(typographySettingsProvider.notifier).restoreLoaded(typography);
       ref.invalidate(backgroundSettingsProvider);
       ref.invalidate(localeProvider);
       ref.invalidate(themeColorProvider);

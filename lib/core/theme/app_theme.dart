@@ -51,6 +51,8 @@ class AppTheme {
     AppColorScheme scheme = AppColorScheme.original,
     bool useWindowsCjkFont = false,
     MulticolorSettings? multicolor,
+    String? fontFamily,
+    List<String>? fontFallback,
   }) {
     final colorScheme = multicolor?.enabled == true
         ? multicolor!.colors(Brightness.light)
@@ -64,6 +66,8 @@ class AppTheme {
       style,
       useWindowsCjkFont,
       multicolor: multicolor?.enabled == true,
+      fontFamily: fontFamily,
+      fontFallback: fontFallback,
     );
   }
 
@@ -73,6 +77,8 @@ class AppTheme {
     AppColorScheme scheme = AppColorScheme.original,
     bool useWindowsCjkFont = false,
     MulticolorSettings? multicolor,
+    String? fontFamily,
+    List<String>? fontFallback,
   }) {
     final colorScheme = multicolor?.enabled == true
         ? multicolor!.colors(Brightness.dark)
@@ -86,6 +92,8 @@ class AppTheme {
       style,
       useWindowsCjkFont,
       multicolor: multicolor?.enabled == true,
+      fontFamily: fontFamily,
+      fontFallback: fontFallback,
     );
   }
 
@@ -94,6 +102,8 @@ class AppTheme {
     AppThemeStyle style,
     bool useWindowsCjkFont, {
     bool multicolor = false,
+    String? fontFamily,
+    List<String>? fontFallback,
   }) {
     return ThemeData(
       colorScheme: colorScheme,
@@ -108,10 +118,11 @@ class AppTheme {
           ),
         },
       ),
-      fontFamily: useWindowsCjkFont ? 'Microsoft YaHei UI' : null,
-      fontFamilyFallback: useWindowsCjkFont
-          ? const ['Microsoft YaHei', 'Segoe UI']
-          : null,
+      fontFamily:
+          fontFamily ?? (useWindowsCjkFont ? 'Microsoft YaHei UI' : null),
+      fontFamilyFallback:
+          fontFallback ??
+          (useWindowsCjkFont ? const ['Microsoft YaHei', 'Segoe UI'] : null),
       appBarTheme: AppBarTheme(
         centerTitle: true,
         backgroundColor: colorScheme.surface,

@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
+import 'package:orbit/services/font_service.dart';
+import 'package:orbit/models/typography_settings.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
@@ -17,6 +21,7 @@ class OrbitBackup {
     this.deadlines = const [],
     this.settings,
     this.audio = const {},
+    this.fonts = const {},
     this.statistics = const [],
     this.sessionAliases = const {},
     this.seriesMemberships = const {},
@@ -31,6 +36,7 @@ class OrbitBackup {
   final List<Deadline> deadlines;
   final PortableSettings? settings;
   final Map<String, Map<String, dynamic>> audio;
+  final Map<String, Map<String, dynamic>> fonts;
 }
 
 class ScheduleBackupException implements Exception {
@@ -43,7 +49,10 @@ class ScheduleBackupException implements Exception {
 }
 
 class ScheduleBackupService {
-  static const backupVersion = 10;
+  ScheduleBackupService({FontService? fonts})
+    : fontService = fonts ?? FontService.shared;
+  final FontService fontService;
+  static const backupVersion = 11;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
@@ -142,6 +151,9 @@ class ScheduleBackupService {
             )
             as Map<String, dynamic>;
     json['audio'] = audio;
+    if (settings.typography != null) {
+      json['fonts'] = await fontService.exportFonts(settings.typography!);
+    }
     json['sessionAliases'] = sessionAliases;
     json['seriesMemberships'] = seriesMemberships;
     return const JsonEncoder.withIndent('  ').convert(json);
@@ -152,12 +164,25 @@ class ScheduleBackupService {
       PortableSettings settings,
       bool soundFallback,
       List<String> importedFiles,
+      List<ImportedFont> importedFonts,
     })
   >
   restoreAudio(OrbitBackup backup) async {
     var fallback = false;
     final refs = <String, ReminderSound>{};
+    final createdFonts = <ImportedFont>[];
     try {
+      for (final entry in backup.fonts.values) {
+        final source = ImportedFont.fromJson(entry);
+        final result = await fontService.importBytes(
+          '${source.name}.${source.extension}',
+          base64Decode(entry['data'] as String),
+        );
+        if (result.font.id != source.id) {
+          throw const FormatException('Font hash mismatch');
+        }
+        if (result.created) createdFonts.add(result.font);
+      }
       for (final entry in backup.audio.entries) {
         final info = entry.value;
         final imported = await ReminderAudioService.importBytes(
@@ -171,7 +196,13 @@ class ScheduleBackupService {
         );
       }
     } catch (_) {
-      await discardImportedAudio(refs.values.map((s) => s.value).toList());
+      try {
+        await discardImportedAudio(refs.values.map((s) => s.value).toList());
+      } finally {
+        for (final font in createdFonts) {
+          await fontService.deleteFile(font);
+        }
+      }
       rethrow;
     }
     ReminderSound restore(ReminderSound sound) {
@@ -213,10 +244,12 @@ class ScheduleBackupService {
       settings: settings,
       soundFallback: fallback,
       importedFiles: refs.values.map((s) => s.value).toList(),
+      importedFonts: createdFonts,
     );
   }
 
   Future<void> discardImportedAudio(List<String> paths) async {
+    if (paths.isEmpty) return;
     final root = p.normalize(
       p.absolute((await ReminderAudioService.audioDirectory()).path),
     );
@@ -371,6 +404,49 @@ class ScheduleBackupService {
     } catch (_) {
       throw ScheduleBackupException('invalid_format');
     }
+    final fonts = <String, Map<String, dynamic>>{};
+    try {
+      final raw = decoded['fonts'] ?? <String, dynamic>{};
+      if (raw is! Map || raw.length > 2) {
+        throw const FormatException('Font backup');
+      }
+      var total = 0;
+      for (final entry in raw.entries) {
+        final item = Map<String, dynamic>.from(entry.value as Map);
+        final font = ImportedFont.fromJson(item);
+        final encoded = item['data'];
+        if (entry.key != font.id ||
+            encoded is! String ||
+            encoded.length > ((FontService.maxFileBytes + 2) ~/ 3) * 4) {
+          throw const FormatException('Font backup size');
+        }
+        final bytes = base64Decode(encoded);
+        FontService.validate(bytes);
+        total += bytes.length;
+        if (total > FontService.maxBackupBytes ||
+            sha256.convert(bytes).toString() != font.id ||
+            (ByteData.sublistView(bytes).getUint32(0) == 0x4f54544f
+                    ? 'otf'
+                    : 'ttf') !=
+                font.extension ||
+            settings?.typography?.imports[font.id]?.extension !=
+                font.extension ||
+            !(settings?.typography?.selected.contains(font.id) ?? false)) {
+          throw const FormatException('Invalid backup font');
+        }
+        fonts[font.id] = item;
+      }
+      if (settings?.typography != null) {
+        for (final id in settings!.typography!.selected) {
+          if (settings.typography!.imports.containsKey(id) &&
+              !fonts.containsKey(id)) {
+            throw const FormatException('Missing backup font');
+          }
+        }
+      }
+    } catch (_) {
+      throw ScheduleBackupException('invalid_format');
+    }
     final List<Map<String, dynamic>> statistics;
     final Map<String, String> aliases;
     final Map<String, List<String>> memberships;
@@ -438,6 +514,7 @@ class ScheduleBackupService {
       deadlines: deadlines,
       settings: settings,
       audio: audio,
+      fonts: fonts,
     );
   }
 

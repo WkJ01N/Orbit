@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/typography_settings_page.dart';
+import 'package:orbit/models/typography_text.dart';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -107,6 +109,17 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              ListTile(
+                leading: const Icon(Icons.font_download_outlined),
+                title: Text(TypographyText(context).launch),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const FontPickerPage(launch: true),
+                  ),
+                ),
+              ),
               Center(child: LaunchIcon(path: settings.iconPath)),
               const SizedBox(height: 16),
               Text(text.icon, style: Theme.of(context).textTheme.titleMedium),

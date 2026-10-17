@@ -1,9 +1,43 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:orbit/services/avatar_image_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+/// Resolve the actual first-frame artwork while other startup work runs. This
+/// needs no BuildContext and avoids displaying a blank brand frame after Android.
+Future<void> primeLaunchImages(String? path) async {
+  Future<void> prime(ImageProvider provider) async {
+    final stream = provider.resolve(ImageConfiguration.empty);
+    final ready = Completer<void>();
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (image, _) {
+        image.dispose();
+        if (!ready.isCompleted) ready.complete();
+      },
+      onError: (Object _, StackTrace? _) {
+        if (!ready.isCompleted) ready.complete();
+      },
+    );
+    stream.addListener(listener);
+    try {
+      await ready.future.timeout(const Duration(seconds: 2));
+    } catch (_) {
+      /* Artwork failure must not prevent startup. */
+    } finally {
+      stream.removeListener(listener);
+    }
+  }
+
+  await Future.wait([
+    prime(const AssetImage('assets/icons/orbit.png')),
+    if (path != null) prime(FileImage(File(path))),
+  ]);
+}
 
 /// Persist a new, immutable file so a failed preferences write leaves the old
 /// image intact and Flutter's image cache cannot retain a replaced image.

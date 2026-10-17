@@ -27,9 +27,13 @@ the device; they are excluded from portable settings and cloud sync.
 
 The Flutter brand screen uses the saved theme color and selected image. The
 Android system splash uses the default brand color/icon before Flutter is ready.
-The `OrbitBrand` font currently contains Nunito ExtraBold; its OFL notice is
-included in the Flutter license registry. A future licensed wordmark can replace
-the brand text in the host without changing the motion choreography.
+The startup wordmark has its own typography selection, defaulting to Nunito.
+It does not inherit the interface font. See `typography.md` for import and backup
+behavior. Android 12+ uses a dedicated circular splash resource with transparent
+safe padding; the launcher icon itself is unchanged. Startup images are decoded
+while initialization runs. The first Flutter brand frame retains the visible icon
+at screen center, independent of wordmark metrics, to avoid an empty flash.
+The Android launcher's own launch motion remains controlled by the system.
 
 Validation:
 

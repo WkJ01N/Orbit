@@ -1,0 +1,392 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:orbit/core/widgets/app_snack_bar.dart';
+import 'package:orbit/models/typography_settings.dart';
+import 'package:orbit/models/typography_text.dart';
+import 'package:orbit/providers/typography_providers.dart';
+import 'package:orbit/services/font_service.dart';
+
+class TypographySettingsPage extends ConsumerStatefulWidget {
+  const TypographySettingsPage({super.key});
+  @override
+  ConsumerState<TypographySettingsPage> createState() =>
+      _TypographySettingsPageState();
+}
+
+class _TypographySettingsPageState
+    extends ConsumerState<TypographySettingsPage> {
+  bool _busy = false;
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(TypographyText(context).failed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _import() => _run(() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['ttf', 'otf'],
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty || !mounted) return;
+    final source = result.files.single;
+    if (source.size > FontService.maxFileBytes) {
+      throw const FormatException('Font size');
+    }
+    final bytes =
+        source.bytes ??
+        (source.path == null ? null : await File(source.path!).readAsBytes());
+    if (bytes == null) throw const FormatException('Font unavailable');
+    final service = ref.read(fontServiceProvider);
+    final imported = await service.importBytes(source.name, bytes);
+    try {
+      await ref.read(typographySettingsProvider.notifier).update((value) {
+        if (value.imports.containsKey(imported.font.id)) return value;
+        if (value.imports.length >= 100) {
+          throw const FormatException('Font library full');
+        }
+        return value.copyWith(
+          imports: {...value.imports, imported.font.id: imported.font},
+        );
+      });
+    } catch (_) {
+      if (imported.created) await service.deleteFile(imported.font);
+      rethrow;
+    }
+  });
+
+  Future<void> _rename(ImportedFont font) async {
+    final text = TypographyText(context);
+    final controller = TextEditingController(text: font.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(text.rename),
+        content: TextField(
+          controller: controller,
+          maxLength: 120,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(text.cancel),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(context, controller.text.trim());
+              }
+            },
+            child: Text(text.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || !mounted) return;
+    await _run(
+      () => ref
+          .read(typographySettingsProvider.notifier)
+          .update(
+            (value) => value.copyWith(
+              imports: {
+                ...value.imports,
+                font.id: ImportedFont(
+                  id: font.id,
+                  name: name,
+                  extension: font.extension,
+                ),
+              },
+            ),
+          ),
+    );
+  }
+
+  Future<void> _delete(ImportedFont font) async {
+    final text = TypographyText(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${text.delete} ${font.name}'),
+        content: Text(text.deleteHint),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(text.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(text.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _run(
+        () => ref.read(typographySettingsProvider.notifier).remove(font.id),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = TypographyText(context);
+    final value = ref.watch(typographySettingsProvider);
+    return Scaffold(
+      appBar: AppBar(title: Text(text.title)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(text.independent),
+              if (value.loadWarning)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(text.warning),
+                ),
+              for (final launch in [false, true])
+                ListTile(
+                  key: Key(launch ? 'launch-font-choice' : 'app-font-choice'),
+                  enabled: !_busy,
+                  title: Text(launch ? text.launch : text.app),
+                  subtitle: Text(
+                    text.name(
+                      launch ? value.launchFontId : value.appFontId,
+                      value
+                          .imports[launch
+                              ? value.launchFontId
+                              : value.appFontId]
+                          ?.name,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => FontPickerPage(launch: launch),
+                    ),
+                  ),
+                ),
+              const Divider(),
+              FilledButton.tonalIcon(
+                onPressed: _busy ? null : _import,
+                icon: const Icon(Icons.file_upload_outlined),
+                label: Text(text.importFont),
+              ),
+              const SizedBox(height: 8),
+              Text(text.importHint),
+              const SizedBox(height: 20),
+              Text(
+                text.imported,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              for (final font in value.imports.values)
+                ListTile(
+                  title: Text(font.name),
+                  subtitle: Text(font.extension.toUpperCase()),
+                  trailing: PopupMenuButton<String>(
+                    enabled: !_busy,
+                    onSelected: (value) =>
+                        value == 'rename' ? _rename(font) : _delete(font),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'rename', child: Text(text.rename)),
+                      PopupMenuItem(value: 'delete', child: Text(text.delete)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FontPickerPage extends ConsumerStatefulWidget {
+  const FontPickerPage({super.key, required this.launch});
+  final bool launch;
+  @override
+  ConsumerState<FontPickerPage> createState() => _FontPickerPageState();
+}
+
+class _FontPickerPageState extends ConsumerState<FontPickerPage> {
+  late String _selected;
+  bool _busy = false;
+  @override
+  void initState() {
+    super.initState();
+    final value = ref.read(typographySettingsProvider);
+    _selected = widget.launch ? value.launchFontId : value.appFontId;
+  }
+
+  Future<void> _select(String id, {bool apply = false}) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      TypographySettings next(TypographySettings value) => widget.launch
+          ? value.copyWith(launchFontId: id)
+          : value.copyWith(appFontId: id);
+      if (apply) {
+        await ref.read(typographySettingsProvider.notifier).update(next);
+        if (mounted) Navigator.pop(context);
+      } else {
+        await ref
+            .read(fontServiceProvider)
+            .prepare(next(ref.read(typographySettingsProvider)));
+        if (mounted) setState(() => _selected = id);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(TypographyText(context).failed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = TypographyText(context);
+    final value = ref.watch(typographySettingsProvider);
+    final family = _selected == 'system'
+        ? FontCatalog.systemFamily(
+            defaultTargetPlatform,
+            Localizations.localeOf(context),
+          )
+        : FontCatalog.family(_selected);
+    final sample = TextStyle(
+      inherit: false,
+      fontFamily: family,
+      fontFamilyFallback: FontCatalog.fallback(_selected),
+      fontSize: 17,
+      color: Theme.of(context).colorScheme.onSurface,
+      height: 1.5,
+    );
+    final choices = [
+      'system',
+      if (widget.launch) 'nunito',
+      'rounded',
+      'huninn',
+      'maiyuan',
+      ...value.imports.keys,
+    ];
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.launch ? text.launch : text.app)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Orbit',
+                        style: sample.copyWith(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text('大学课表 · 接下来的课程', style: sample),
+                      Text('大學課表 · 接下來的課程', style: sample),
+                      Text('Mathematics · 09:00–10:30 · A101', style: sample),
+                      const SizedBox(height: 12),
+                      Text(
+                        '高等数学／高等數學',
+                        style: sample.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text('周一／週一  2026-10-17  0123456789', style: sample),
+                    ],
+                  ),
+                ),
+              ),
+              FilledButton(
+                key: const Key('apply-font'),
+                onPressed: _busy ? null : () => _select(_selected, apply: true),
+                child: Text(text.apply),
+              ),
+              if (_busy) const LinearProgressIndicator(),
+              for (final id in choices)
+                ListTile(
+                  key: ValueKey('font-option-$id'),
+                  enabled: !_busy,
+                  leading: Icon(
+                    _selected == id
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                  ),
+                  title: Text(text.name(id, value.imports[id]?.name)),
+                  onTap: () => _select(id),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Report recovery once without blocking the first screen or notification route.
+class TypographyWarningHost extends ConsumerStatefulWidget {
+  const TypographyWarningHost({
+    super.key,
+    required this.navigatorKey,
+    required this.child,
+  });
+  final GlobalKey<NavigatorState> navigatorKey;
+  final Widget child;
+  @override
+  ConsumerState<TypographyWarningHost> createState() =>
+      _TypographyWarningHostState();
+}
+
+class _TypographyWarningHostState extends ConsumerState<TypographyWarningHost> {
+  bool _reported = false;
+  @override
+  Widget build(BuildContext context) {
+    final value = ref.watch(typographySettingsProvider);
+    if (value.loadWarning && !_reported) {
+      _reported = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final text = TypographyText(context);
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            content: Text(text.warning),
+            action: SnackBarAction(
+              label: text.title,
+              onPressed: () => widget.navigatorKey.currentState?.push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const TypographySettingsPage(),
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+    }
+    return widget.child;
+  }
+}

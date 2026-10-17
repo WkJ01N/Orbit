@@ -1,3 +1,5 @@
+import 'package:orbit/features/settings/typography_settings_page.dart';
+import 'package:orbit/models/typography_text.dart';
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/features/settings/theme_scheme_page.dart';
@@ -31,6 +33,18 @@ class SettingsAppearanceSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.sectionAppearance,
           children: [
+            ListTile(
+              key: const Key('typography-settings'),
+              leading: const Icon(Icons.font_download_outlined),
+              title: Text(TypographyText(context).title),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const TypographySettingsPage(),
+                ),
+              ),
+            ),
             ListTile(
               key: const Key('launch-animation-settings'),
               leading: const Icon(Icons.animation_rounded),

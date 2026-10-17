@@ -177,14 +177,14 @@ void main() {
   });
 
   test(
-    'v10 JSON preserves backgrounds; legacy imports leave local backgrounds intact; cloud excludes them',
+    'v11 JSON preserves backgrounds; legacy imports leave local backgrounds intact; cloud excludes them',
     () async {
       final service = SettingsService();
       await service.saveBackgroundSettings(sample());
       final portable = await service.exportPortableSettings();
       final backupService = ScheduleBackupService();
       final json = backupService.encodeToJson([], settings: portable);
-      expect(backupService.decodeBackup(json).version, 10);
+      expect(backupService.decodeBackup(json).version, 11);
       expect(
         backupService.decodeBackup(json).settings!.backgrounds!.toJson(),
         sample().toJson(),

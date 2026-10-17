@@ -5,30 +5,30 @@
   "assets": {
     "android": {
       "name": "orbit-v1.6.0-android.apk",
-      "size": 118143942,
-      "sha256": "b7dcb49cba85d0e8785b091eaed08959dd7b33a93ba04264cfd320dea2a8b441"
+      "size": 140658554,
+      "sha256": "f2d122d33a0f4515745872af92fcb78bf5c8c94f8f96b90df15d622abfba3876"
     },
     "windows": {
       "name": "orbit-v1.6.0-windows-x64.zip",
-      "size": 37469778,
-      "sha256": "7e380854a9b5ccd4863425dc080ac356c6758bc7f1cb509374a11818dd886035"
+      "size": 59666214,
+      "sha256": "3ba962ec64725909627872fa15e0ea0e563a9feacb28abcdaf2b17973e654ec4"
     }
   },
   "androidAbis": {
     "arm64-v8a": {
       "name": "orbit-v1.6.0-arm64-v8a.apk",
-      "size": 39936166,
-      "sha256": "151f56ceacb16fb40361e6ad62e2caf39ed7a3fc61292c3c4714f9852ae37d51"
+      "size": 62385246,
+      "sha256": "d53febf2d01e67aca475d1e83d5c3a161f9b7ff82a68718e08c3194442b74ca8"
     },
     "armeabi-v7a": {
       "name": "orbit-v1.6.0-armeabi-v7a.apk",
-      "size": 37559938,
-      "sha256": "f3293d85ffd8fec6ff496f80d6c6220b49551ba1ef0d8d67b09905da3c1e1659"
+      "size": 60009018,
+      "sha256": "67817e47b92d8a172c34d645618416a07c65c82b23c85c5ca22f2af192bc5ef1"
     },
     "x86_64": {
       "name": "orbit-v1.6.0-x86_64.apk",
-      "size": 45021204,
-      "sha256": "dc3381dd76bb8ef07de942304d27a0e8ad84199cce84140ff49ccbe64f6aed91"
+      "size": 67404744,
+      "sha256": "c18b0d255f47036d4139980127ce696b465317a0b472b27841e3fec4cb688d22"
     }
   }
 }
