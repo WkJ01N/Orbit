@@ -280,6 +280,21 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    // These consumers and their page trees stay unchanged on animation ticks.
+    final destinations = <int, Widget>{
+      for (final index in _visited)
+        index: RepaintBoundary(
+          child: Consumer(
+            builder: (context, ref, _) => BackgroundPageTheme(
+              settings:
+                  ref.watch(backgroundSettingsProvider).valueOrNull ??
+                  const BackgroundSettings(),
+              owner: BackgroundPage.values[index],
+              child: widget.children[index],
+            ),
+          ),
+        ),
+    };
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
@@ -298,9 +313,14 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
           fit: StackFit.expand,
           children: [
             for (final index in hiddenIndexes)
-              _destinationLayer(index: index, offstage: true),
+              _destinationLayer(
+                index: index,
+                child: destinations[index]!,
+                offstage: true,
+              ),
             _destinationLayer(
               index: _activeIndex,
+              child: destinations[_activeIndex]!,
               offset: Offset(_direction * (1 - progress) * 14, 0),
               scale: 0.996 + progress * 0.004,
               interactive: true,
@@ -308,6 +328,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
             if (!reduceMotion && _previousIndex != null)
               _destinationLayer(
                 index: _previousIndex!,
+                child: destinations[_previousIndex]!,
                 opacity: 1 - progress,
                 offset: Offset(-_direction * progress * 6, 0),
               ),
@@ -319,6 +340,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
 
   Widget _destinationLayer({
     required int index,
+    required Widget child,
     bool offstage = false,
     bool interactive = false,
     double opacity = 1,
@@ -342,15 +364,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
                   child: Transform.scale(
                     scale: scale,
                     alignment: Alignment.center,
-                    child: Consumer(
-                      builder: (context, ref, _) => BackgroundPageTheme(
-                        settings:
-                            ref.watch(backgroundSettingsProvider).valueOrNull ??
-                            const BackgroundSettings(),
-                        owner: BackgroundPage.values[index],
-                        child: widget.children[index],
-                      ),
-                    ),
+                    child: child,
                   ),
                 ),
               ),

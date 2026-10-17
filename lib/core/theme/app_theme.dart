@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_color_utilities/hct/hct.dart';
+import 'package:orbit/core/background/background_routes.dart';
 
 /// Default brand color — #39C5BB
 const kDefaultThemeColor = Color(0xFF39C5BB);
@@ -97,6 +98,16 @@ class AppTheme {
     return ThemeData(
       colorScheme: colorScheme,
       useMaterial3: true,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: BackgroundPageTransitionsBuilder(
+            platform: TargetPlatform.android,
+          ),
+          TargetPlatform.windows: BackgroundPageTransitionsBuilder(
+            platform: TargetPlatform.windows,
+          ),
+        },
+      ),
       fontFamily: useWindowsCjkFont ? 'Microsoft YaHei UI' : null,
       fontFamilyFallback: useWindowsCjkFont
           ? const ['Microsoft YaHei', 'Segoe UI']

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/background/background_media.dart';
@@ -833,9 +834,23 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     final effective = _draft.resolved(_page);
     final frame = effective.framing;
     final canFrame = !_busy && !_following;
+    final desktop = defaultTargetPlatform == TargetPlatform.windows;
+    final zoomControls = [
+      IconButton(
+        tooltip: t.t('Zoom out', '缩小', '縮小'),
+        onPressed: canFrame ? () => _zoom(frame.zoom / 1.1) : null,
+        icon: const Icon(Icons.remove),
+      ),
+      Text('${frame.zoom.toStringAsFixed(2)}×'),
+      IconButton(
+        tooltip: t.t('Zoom in', '放大'),
+        onPressed: canFrame ? () => _zoom(frame.zoom * 1.1) : null,
+        icon: const Icon(Icons.add),
+      ),
+    ];
     return SingleChildScrollView(
       key: ValueKey('controls-${_page.name}-$_step'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: desktop ? 16 : 12, vertical: 6),
       child: Column(
         children: [
           if (_step == 2) ...[
@@ -871,6 +886,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
             ),
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          if (desktop) const SizedBox(height: 12),
           TextButton(
             onPressed: _busy ? null : () => setState(() => _browse = !_browse),
             child: Text(
@@ -879,6 +895,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                   : t.t('Browse preview', '浏览预览', '瀏覽預覽'),
             ),
           ),
+          if (desktop) const SizedBox(height: 12),
           if (_page != BackgroundPage.grid)
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -927,7 +944,9 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
             ),
           if (_step == 1) ...[
             Wrap(
-              spacing: 4,
+              key: const Key('background-region-controls'),
+              spacing: desktop ? 8 : 4,
+              runSpacing: desktop ? 8 : 0,
               children: [
                 for (final region in backgroundRegions(_page))
                   FilterChip(
@@ -943,26 +962,24 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                   ),
               ],
             ),
+            if (desktop) const SizedBox(height: 12),
             TextButton.icon(
               onPressed: canFrame ? _pick : null,
               icon: const Icon(Icons.image_outlined),
               label: Text(t.t('Change media', '更换素材', '更換素材')),
             ),
+            if (desktop) const SizedBox(height: 12),
           ],
           Wrap(
+            key: const Key('background-framing-controls'),
             crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: desktop ? 8 : 0,
+            runSpacing: desktop ? 8 : 0,
             children: [
-              IconButton(
-                tooltip: t.t('Zoom out', '缩小', '縮小'),
-                onPressed: canFrame ? () => _zoom(frame.zoom / 1.1) : null,
-                icon: const Icon(Icons.remove),
-              ),
-              Text('${frame.zoom.toStringAsFixed(2)}×'),
-              IconButton(
-                tooltip: t.t('Zoom in', '放大'),
-                onPressed: canFrame ? () => _zoom(frame.zoom * 1.1) : null,
-                icon: const Icon(Icons.add),
-              ),
+              if (desktop)
+                Row(mainAxisSize: MainAxisSize.min, children: zoomControls)
+              else
+                ...zoomControls,
               TextButton(
                 onPressed: canFrame
                     ? () => _updateFrame(frame.copyWith(x: 0, y: 0))
@@ -977,6 +994,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
               ),
             ],
           ),
+          if (desktop) const SizedBox(height: 12),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(t.t('Allow image edges', '允许露出图片边缘', '允許露出圖片邊緣')),

@@ -85,6 +85,118 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
+    'Windows editor groups controls with readable spacing at both widths',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final asset = BackgroundAsset(
+        id: 'a' * 64,
+        name: 'test.png',
+        kind: BackgroundMediaKind.image,
+        width: 800,
+        height: 600,
+      );
+      final settings = BackgroundSettings(
+        enabled: true,
+        assets: {asset.id: asset},
+        pages: {BackgroundPage.grid: PageBackgroundSettings(assetId: asset.id)},
+      );
+      if (const bool.fromEnvironment('ORBIT_CAPTURE_EDITOR')) {
+        await tester.runAsync(() async {
+          for (final entry in {
+            'Segoe UI': Platform.environment['ORBIT_SCREENSHOT_FONT'],
+            'Roboto': Platform.environment['ORBIT_SCREENSHOT_FONT'],
+            'MaterialIcons': Platform.environment['ORBIT_SCREENSHOT_ICON_FONT'],
+          }.entries) {
+            if (entry.value == null) continue;
+            final bytes = await File(entry.value!).readAsBytes();
+            await (FontLoader(
+              entry.key,
+            )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+          }
+        });
+      }
+      for (final width in [800.0, 1200.0]) {
+        for (final scale in [1.0, 2.0]) {
+          tester.view.physicalSize = Size(width, 900);
+          await tester.binding.setSurfaceSize(Size(width, 900));
+          final capture = GlobalKey();
+          await tester.pumpWidget(
+            ProviderScope(
+              key: ValueKey('$width-$scale'),
+              overrides: [
+                backgroundAssetServiceProvider.overrideWithValue(
+                  _MediaService(Directory.systemTemp),
+                ),
+                reminderSettingsProvider.overrideWith(_QuietReminders.new),
+                sessionsProvider.overrideWith((ref) async => []),
+                weekGridProvider.overrideWith((ref) => null),
+                upcomingSessionsProvider.overrideWith((ref) async => []),
+              ],
+              child: MaterialApp(
+                locale: const Locale.fromSubtags(
+                  languageCode: 'zh',
+                  scriptCode: 'Hans',
+                ),
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(scale)),
+                  child: child!,
+                ),
+                home: RepaintBoundary(
+                  key: capture,
+                  child: BackgroundEditorPage(initial: settings),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('background-next-save')));
+          await tester.pumpAndSettle();
+          final regions = tester.widget<Wrap>(
+            find.byKey(const Key('background-region-controls')),
+          );
+          expect(regions.spacing, 8);
+          expect(regions.runSpacing, 8);
+          final framingFinder = find.byKey(
+            const Key('background-framing-controls'),
+          );
+          await tester.ensureVisible(framingFinder);
+          await tester.pumpAndSettle();
+          final framing = tester.widget<Wrap>(framingFinder);
+          expect(framing.spacing, 8);
+          expect(framing.runSpacing, 8);
+          final zoomGroup = framing.children.first as Row;
+          expect(zoomGroup.children.whereType<IconButton>().length, 2);
+          expect(zoomGroup.mainAxisSize, MainAxisSize.min);
+          expect(tester.takeException(), isNull);
+          if (const bool.fromEnvironment('ORBIT_CAPTURE_EDITOR')) {
+            await tester.runAsync(() async {
+              final boundary =
+                  capture.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary;
+              final image = await boundary.toImage();
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              await File(
+                'build/background-editor-windows-${width.toInt()}-$scale.png',
+              ).writeAsBytes(bytes!.buffer.asUint8List());
+              image.dispose();
+            });
+          }
+        }
+      }
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.windows),
+  );
+
+  testWidgets(
     'shared plane remains stationary and mounted; independent transitions keep at most two states',
     (tester) async {
       Widget app(String id, int page) => MaterialApp(
