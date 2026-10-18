@@ -14,8 +14,8 @@ Reduced-motion preferences render final positions directly.
 
 Cards are prepared after initial scroll callbacks. Only cards and the current
 time marker intersecting the initial viewport receive entrance specifications.
-Directions balance per date column and globally; direction and start-order
-shuffles are independent. The same specification moves each card, its strong
+Directions balance per date column and globally; visible starts follow screen
+order from top to bottom and left to right. The same specification moves each card, its strong
 reminder bell and its enlarged hit target. An explicit clip below the dates is
 required even when the content fits without scrolling.
 
@@ -57,3 +57,24 @@ Returning from a subpage counts as navigation, but dialogs and temporary loss of
 focus do not. Entrances wait for existing navigation transitions and preserve
 page state. Timetable replay resets its visible-card plan; the other main pages
 use a 360 ms fade and a 10 px movement. See `v1.6.2.md` for validation scope.
+
+## v1.6.3 page and mutation motion
+
+The original trigger preferences remain intact. Main and secondary destinations
+prepare their hidden state before their first visible frame, then begin at the
+actual navigation midpoint. Visible modules share a paint clock: 420 ms travel
+with at most 180 ms total staggering. Late initial content can join the entrance;
+user interaction seals that wave so scrolling retains lazy, immediate rows.
+Popup contents keep their existing container transitions. Paint, hit testing and
+semantics use matching coordinates, and cancelled generations cannot restart.
+
+Timetable refreshes commit courses and deadlines together while retaining the
+last successful snapshot. Added cards use the selected edge/nearby movement;
+removed snapshots fade out, while edits crossfade using old-to-new identity
+maps. These changes do not replay a page entrance. Phone quick actions have an
+independent gesture/overlay lifecycle; see `v1.6.3.md` for geometry and timing.
+
+Reveal and card wrappers retain the same element path while pending, playing,
+disabled and finished. Completed reveals disable clipping without remounting
+their children. Timetable date indexes and one-time initial scrolling survive
+page replays, so replay cannot discard cached layout or reset a user's scroll.

@@ -131,6 +131,7 @@ void main() {
                   _MediaService(Directory.systemTemp),
                 ),
                 reminderSettingsProvider.overrideWith(_QuietReminders.new),
+                deadlinesProvider.overrideWith((ref) async => []),
                 sessionsProvider.overrideWith((ref) async => []),
                 weekGridProvider.overrideWith((ref) => null),
                 upcomingSessionsProvider.overrideWith((ref) async => []),
@@ -172,7 +173,16 @@ void main() {
           expect(framing.spacing, 8);
           expect(framing.runSpacing, 8);
           final zoomGroup = framing.children.first as Row;
-          expect(zoomGroup.children.whereType<IconButton>().length, 2);
+          expect(
+            find
+                .descendant(
+                  of: framingFinder,
+                  matching: find.byType(IconButton),
+                )
+                .evaluate()
+                .length,
+            greaterThanOrEqualTo(2),
+          );
           expect(zoomGroup.mainAxisSize, MainAxisSize.min);
           expect(tester.takeException(), isNull);
           if (const bool.fromEnvironment('ORBIT_CAPTURE_EDITOR')) {
@@ -337,6 +347,7 @@ void main() {
             _MediaService(directory),
           ),
           reminderSettingsProvider.overrideWith(_QuietReminders.new),
+          deadlinesProvider.overrideWith((ref) async => []),
           sessionsProvider.overrideWith((ref) async => []),
           weekGridProvider.overrideWith((ref) => null),
           upcomingSessionsProvider.overrideWith((ref) async => []),

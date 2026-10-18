@@ -275,54 +275,65 @@ extension StatisticsDatabase on AppDatabase {
     String semesterId,
     String name,
   ) async {
-    await _db.transaction((txn) async {
-      final owner = await _statisticsOwner(txn);
-      for (final id in sessionIds.toSet()) {
-        final rows = await txn.query(
-          'course_sessions',
-          where: 'id=?',
-          whereArgs: [id],
-        );
-        if (rows.isEmpty) continue;
-        final session = CourseSession.fromMap(
-          rows.first,
-        ).copyWith(semesterId: semesterId, semester: name);
-        await txn.update(
-          'course_sessions',
-          {'semester_id': semesterId, 'semester': name},
-          where: 'id=?',
-          whereArgs: [id],
-        );
-        await AppDatabase._queueCourseMutation(
-          txn,
-          session,
-          SyncOperation.upsert,
-        );
-        final alias = await txn.query(
-          'reminder_session_alias',
-          where: 'session_id=?',
-          whereArgs: [id],
-        );
-        final key =
-            '${session.isExam ? 'exam' : 'course'}|${alias.isEmpty ? id : alias.first['stable_id']}';
-        final snapshots = await txn.query(
-          'statistics_records',
-          where: 'owner=? AND id=?',
-          whereArgs: [owner, key],
-        );
-        if (snapshots.isNotEmpty) {
-          final value = Map<String, dynamic>.from(
-            jsonDecode(snapshots.first['payload'] as String) as Map,
-          )..remove('updatedAt');
-          await _writeStatistic(txn, owner, key, {
-            ...value,
-            'semesterId': semesterId,
-            'semester': name,
-          });
-        }
-      }
-    });
+    await _db.transaction(
+      (txn) => _assignSemesterInTransaction(txn, sessionIds, semesterId, name),
+    );
     _syncChanges.add(null);
+  }
+
+  Future<void> _assignSemesterInTransaction(
+    Transaction txn,
+    List<String> sessionIds,
+    String semesterId,
+    String name,
+  ) async {
+    final owner = await _statisticsOwner(txn);
+    for (final id in sessionIds.toSet()) {
+      final rows = await txn.query(
+        'course_sessions',
+        where: 'id=?',
+        whereArgs: [id],
+      );
+      if (rows.isEmpty) continue;
+      final session = CourseSession.fromMap(
+        rows.first,
+      ).copyWith(semesterId: semesterId, semester: name);
+      await txn.update(
+        'course_sessions',
+        {'semester_id': semesterId, 'semester': name},
+        where: 'id=?',
+        whereArgs: [id],
+      );
+      await AppDatabase._queueCourseMutation(
+        txn,
+        session,
+        SyncOperation.upsert,
+      );
+      final alias = await txn.query(
+        'reminder_session_alias',
+        where: 'session_id=?',
+        whereArgs: [id],
+      );
+      final key =
+          '${session.isExam ? 'exam' : 'course'}|${alias.isEmpty ? id : alias.first['stable_id']}';
+      final snapshots = await txn.query(
+        'statistics_records',
+        where: 'owner=? AND id=?',
+        whereArgs: [owner, key],
+      );
+      if (snapshots.isNotEmpty) {
+        final value = Map<String, dynamic>.from(
+          jsonDecode(snapshots.first['payload'] as String) as Map,
+        )..remove('updatedAt');
+        await _writeStatistic(txn, owner, key, {
+          ...value,
+          'semesterId': semesterId,
+          'semester': name,
+          if (!session.isExam)
+            'courseKey': '$name|${session.courseCode}|${session.courseName}',
+        });
+      }
+    }
   }
 
   Future<void> renameSemesterStatistics(

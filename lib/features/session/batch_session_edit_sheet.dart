@@ -11,6 +11,7 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/orbit_feature_text.dart';
 import 'package:orbit/features/session/existing_course_picker.dart';
+import 'package:orbit/features/session/semester_field.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class BatchSessionEditSheet extends ConsumerStatefulWidget {
@@ -63,6 +64,8 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
   final _sectionController = TextEditingController(text: '1');
   final _teachersController = TextEditingController();
   final _facultyController = TextEditingController();
+  final _semesterController = TextEditingController();
+  String? _semesterId;
   late DateTime _firstWeekMonday;
   int _totalWeeks = 18;
   Set<int> _selectedWeeks = {for (var week = 1; week <= 18; week++) week};
@@ -91,6 +94,8 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
       _sectionController.text = course.section;
       _teachersController.text = course.teachers.join(', ');
       _facultyController.text = course.faculty;
+      _semesterController.text = course.semester;
+      _semesterId = course.semesterId;
       for (final meeting in _meetings) {
         meeting.roomController.text = course.room;
       }
@@ -102,6 +107,8 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
     _nameController.clear();
     _codeController.clear();
     _sectionController.text = '1';
+    _semesterController.clear();
+    _semesterId = null;
   });
 
   Future<void> _loadDefaults() async {
@@ -142,6 +149,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
     _sectionController.dispose();
     _teachersController.dispose();
     _facultyController.dispose();
+    _semesterController.dispose();
     for (final meeting in _meetings) {
       meeting.dispose();
     }
@@ -284,6 +292,12 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
     setState(() => _saving = true);
     try {
       final seriesId = _selectedCourse?.recurrenceSeriesId ?? _additionId;
+      final semester = resolveFormSemester(
+        ref,
+        _semesterController.text,
+        _firstWeekMonday,
+        id: _semesterId,
+      );
       final generated = generateBatchCourseSessions(
         BatchCourseDraft(
           courseName: _nameController.text,
@@ -293,7 +307,8 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
           faculty: _facultyController.text,
           periodTimePlanId: _selectedCourse?.periodTimePlanId,
           classType: _selectedCourse?.classType ?? l10n.defaultClassType,
-          semester: _selectedCourse?.semester ?? '',
+          semester: semester.name,
+          semesterId: semester.id,
           linkedCourseKey: _selectedCourse == null
               ? null
               : CourseSeriesKey.fromSession(_selectedCourse!).value,
@@ -423,6 +438,12 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  SemesterField(
+                    controller: _semesterController,
+                    enabled: !_saving,
+                    onSelected: (id) => _semesterId = id,
+                  ),
+                  const SizedBox(height: 8),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(l10n.batchFirstWeekMonday),
@@ -546,7 +567,7 @@ class _BatchSessionEditSheetState extends ConsumerState<BatchSessionEditSheet> {
           const SizedBox(height: 12),
           FilledButton(
             key: const Key('batch-create'),
-            onPressed: _saving ? null : _save,
+            onPressed: _saving || formSemesterLoading(ref) ? null : _save,
             child: _saving
                 ? const SizedBox(
                     width: 20,

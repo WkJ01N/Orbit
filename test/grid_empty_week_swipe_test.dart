@@ -47,6 +47,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deadlinesProvider.overrideWith((ref) async => []),
           sessionsProvider.overrideWith((ref) async => []),
           selectedWeekStartProvider.overrideWith((ref) => staleWeekStart),
         ],
@@ -80,6 +81,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deadlinesProvider.overrideWith((ref) async => []),
           sessionsProvider.overrideWith((ref) async => []),
           weekGridProvider.overrideWith((ref) => emptyGrid),
         ],
@@ -113,6 +115,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          deadlinesProvider.overrideWith((ref) async => []),
           sessionsProvider.overrideWith((ref) async => [_sessionOnOtherWeek()]),
           selectedWeekStartProvider.overrideWith((ref) => emptyWeekStart),
         ],

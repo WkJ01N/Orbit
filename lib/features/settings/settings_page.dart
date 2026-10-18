@@ -1,3 +1,6 @@
+import 'package:orbit/core/motion/page_module.dart';
+import 'package:orbit/features/settings/course_quick_action_settings_page.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/models/deadline_strong_text.dart';
 import 'package:orbit/features/settings/update_page.dart';
@@ -47,14 +50,18 @@ class SettingsPage extends ConsumerWidget {
     final settingsAsync = ref.watch(reminderSettingsProvider);
 
     return Scaffold(
-      appBar: BackgroundAppBar(child: AppBar(title: Text(l10n.settingsTitle))),
+      appBar: BackgroundAppBar(
+        child: AppBar(title: PageModule(child: Text(l10n.settingsTitle))),
+      ),
       body: settingsAsync.when(
         data: (settings) => _SettingsBody(settings: settings),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorState(
-          message: l10n.settingsLoadFailed('$e'),
-          retryLabel: l10n.actionRetry,
-          onRetry: () => ref.invalidate(reminderSettingsProvider),
+        error: (e, _) => PageModule(
+          child: ErrorState(
+            message: l10n.settingsLoadFailed('$e'),
+            retryLabel: l10n.actionRetry,
+            onRetry: () => ref.invalidate(reminderSettingsProvider),
+          ),
         ),
       ),
     );
@@ -73,9 +80,43 @@ class _SettingsBody extends ConsumerStatefulWidget {
 class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   int _selectedCategory = 0;
   int _transitionDirection = 1;
+  final _categoryBodyKey = GlobalKey();
+  Animation<double>? _categoryAnimation;
+  VoidCallback? _categoryListener;
+  Rect? _categoryRegion;
+  ModuleEntrance? _categoryMotion;
+  int _categoryEpoch = 0;
+
+  void _cancelCategoryEntrance() {
+    final listener = _categoryListener;
+    if (listener != null) _categoryAnimation?.removeListener(listener);
+    _categoryAnimation = null;
+    _categoryListener = null;
+    _categoryRegion = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelCategoryEntrance();
+    super.dispose();
+  }
 
   void _selectCategory(int value) {
     if (value == _selectedCategory) return;
+    _cancelCategoryEntrance();
+    final settings = ref.read(launchSettingsProvider);
+    final box = _categoryBodyKey.currentContext?.findRenderObject();
+    if (settings.onPageSwitch &&
+        settings.pageEnabled[3] &&
+        ref.read(launchAnimationsEnabledProvider) &&
+        !MediaQuery.disableAnimationsOf(context) &&
+        box is RenderBox &&
+        box.hasSize) {
+      _categoryRegion = box.localToGlobal(Offset.zero) & box.size;
+      _categoryMotion = ModuleEntranceScope.maybeOf(context);
+      _categoryMotion?.reset(region: _categoryRegion);
+      _categoryEpoch = _categoryMotion?.generation ?? 0;
+    }
     setState(() {
       _transitionDirection = value > _selectedCategory ? 1 : -1;
       _selectedCategory = value;
@@ -84,6 +125,9 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(appNavIndexProvider, (_, next) {
+      if (next != 3) _cancelCategoryEntrance();
+    });
     final l10n = AppLocalizations.of(context)!;
     final settings = widget.settings;
     final currentLocale = ref.watch(localeProvider);
@@ -101,6 +145,7 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
           ),
         ),
         Expanded(
+          key: _categoryBodyKey,
           child: AnimatedSwitcher(
             duration: reduceMotion
                 ? Duration.zero
@@ -123,6 +168,32 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
               final direction = incoming
                   ? _transitionDirection.toDouble()
                   : -_transitionDirection.toDouble();
+              if (incoming && _categoryRegion != null) {
+                final navigation = animation is CurvedAnimation
+                    ? animation.parent
+                    : animation;
+                if (!identical(navigation, _categoryAnimation)) {
+                  final listener = _categoryListener;
+                  if (listener != null) {
+                    _categoryAnimation?.removeListener(listener);
+                  }
+                  _categoryAnimation = navigation;
+                  _categoryListener = () {
+                    if (_categoryMotion?.generation != _categoryEpoch) {
+                      _cancelCategoryEntrance();
+                      return;
+                    }
+                    if (navigation.value < .5 ||
+                        !mounted ||
+                        _categoryRegion == null) {
+                      return;
+                    }
+                    _categoryMotion?.start(_categoryRegion!);
+                    _cancelCategoryEntrance();
+                  };
+                  navigation.addListener(_categoryListener!);
+                }
+              }
               return FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
@@ -135,20 +206,25 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
               );
             },
             child: BackgroundRegion(
+              key: Key('settings-category-content-$_selectedCategory'),
               region: BackgroundRegionId.content,
               child: ListView(
-                key: Key('settings-category-content-$_selectedCategory'),
+                key: PageStorageKey(
+                  'settings-category-scroll-$_selectedCategory',
+                ),
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   if (_selectedCategory == 0) ...[
-                    ListTile(
-                      leading: const Icon(Icons.system_update),
-                      title: Text(SyncUpdateText.of(context).check),
-                      subtitle: const Text('$kAppVersion ($kAppBuildNumber)'),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (_) => const UpdatePage(),
+                    PageModule(
+                      child: ListTile(
+                        leading: const Icon(Icons.system_update),
+                        title: Text(SyncUpdateText.of(context).check),
+                        subtitle: const Text('$kAppVersion ($kAppBuildNumber)'),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => const UpdatePage(),
+                          ),
                         ),
                       ),
                     ),
@@ -217,13 +293,17 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                     ),
                     SettingsGroup(
                       title: l10n.settingsLayoutGroup,
-                      children: const [
+                      children: [
                         _GridDensityTile(),
                         _ScheduleVerticalScaleTile(),
                         _ScheduleNarrowLayoutTile(),
                         _ScheduleMultiDayCountTile(),
                         _ScheduleShowEmptyDaysTile(),
                         _StrongCardGradientTile(),
+                        if (Theme.of(context).platform ==
+                                TargetPlatform.android ||
+                            Theme.of(context).platform == TargetPlatform.iOS)
+                          CourseQuickActionSettingsTile(),
                       ],
                     ),
                     SettingsGroup(
@@ -247,14 +327,16 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                     SettingsGroup(
                       title: l10n.strongClassLead,
                       children: [
-                        SwitchListTile(
-                          title: Text(l10n.enableReminders),
-                          subtitle: Text(l10n.enableRemindersSubtitle),
-                          value: settings.enabled,
-                          onChanged: (enabled) => applyReminderUpdate(
-                            context,
-                            ref,
-                            () => notifier.setEnabled(enabled),
+                        PageModule(
+                          child: SwitchListTile(
+                            title: Text(l10n.enableReminders),
+                            subtitle: Text(l10n.enableRemindersSubtitle),
+                            value: settings.enabled,
+                            onChanged: (enabled) => applyReminderUpdate(
+                              context,
+                              ref,
+                              () => notifier.setEnabled(enabled),
+                            ),
                           ),
                         ),
                         SettingsChoiceTile(
@@ -286,118 +368,136 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                                 .toList(),
                           ),
                         ),
-                        ListTile(
-                          enabled: settings.enabled,
-                          title: Text(l10n.classLeadCustomizeTemplates),
-                          subtitle: Text(
-                            l10n.classLeadCustomizeTemplatesSubtitle,
+                        PageModule(
+                          child: ListTile(
+                            enabled: settings.enabled,
+                            title: Text(l10n.classLeadCustomizeTemplates),
+                            subtitle: Text(
+                              l10n.classLeadCustomizeTemplatesSubtitle,
+                            ),
+                            trailing: const Icon(Icons.edit_outlined),
+                            onTap: settings.enabled
+                                ? () => ClassLeadTemplateSheet.show(
+                                    context,
+                                    settings: settings,
+                                  )
+                                : null,
                           ),
-                          trailing: const Icon(Icons.edit_outlined),
-                          onTap: settings.enabled
-                              ? () => ClassLeadTemplateSheet.show(
-                                  context,
-                                  settings: settings,
-                                )
-                              : null,
                         ),
                       ],
                     ),
                     SettingsGroup(
                       title: l10n.strongCheckIn,
                       children: [
-                        SwitchListTile(
-                          title: Text(l10n.enableCheckInReminder),
-                          subtitle: Text(l10n.enableCheckInReminderSubtitle),
-                          value: settings.checkInReminderEnabled,
-                          onChanged: (enabled) async {
-                            if (enabled) {
-                              await applyReminderUpdate(
-                                context,
-                                ref,
-                                () => notifier.setCheckInReminderEnabled(true),
-                              );
-                              return;
-                            }
-                            final confirmed =
-                                await confirmDisableCheckInReminder(context);
-                            if (confirmed && context.mounted) {
-                              await applyReminderUpdate(
-                                context,
-                                ref,
-                                () => notifier.setCheckInReminderEnabled(false),
-                              );
-                            }
-                          },
-                        ),
-                        ListTile(
-                          enabled: settings.checkInReminderEnabled,
-                          title: Text(l10n.checkInCustomizeTemplates),
-                          subtitle: Text(
-                            l10n.checkInCustomizeTemplatesSubtitle,
-                          ),
-                          trailing: const Icon(Icons.edit_outlined),
-                          onTap: settings.checkInReminderEnabled
-                              ? () => CheckInTemplateSheet.show(
+                        PageModule(
+                          child: SwitchListTile(
+                            title: Text(l10n.enableCheckInReminder),
+                            subtitle: Text(l10n.enableCheckInReminderSubtitle),
+                            value: settings.checkInReminderEnabled,
+                            onChanged: (enabled) async {
+                              if (enabled) {
+                                await applyReminderUpdate(
                                   context,
-                                  settings: settings,
-                                )
-                              : null,
+                                  ref,
+                                  () =>
+                                      notifier.setCheckInReminderEnabled(true),
+                                );
+                                return;
+                              }
+                              final confirmed =
+                                  await confirmDisableCheckInReminder(context);
+                              if (confirmed && context.mounted) {
+                                await applyReminderUpdate(
+                                  context,
+                                  ref,
+                                  () =>
+                                      notifier.setCheckInReminderEnabled(false),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        PageModule(
+                          child: ListTile(
+                            enabled: settings.checkInReminderEnabled,
+                            title: Text(l10n.checkInCustomizeTemplates),
+                            subtitle: Text(
+                              l10n.checkInCustomizeTemplatesSubtitle,
+                            ),
+                            trailing: const Icon(Icons.edit_outlined),
+                            onTap: settings.checkInReminderEnabled
+                                ? () => CheckInTemplateSheet.show(
+                                    context,
+                                    settings: settings,
+                                  )
+                                : null,
+                          ),
                         ),
                       ],
                     ),
                     SettingsGroup(
                       title: l10n.strongSummary,
                       children: [
-                        SwitchListTile(
-                          title: Text(l10n.enableNextDaySummary),
-                          subtitle: Text(l10n.enableNextDaySummarySubtitle),
-                          value: settings.nextDaySummaryEnabled,
-                          onChanged: (enabled) => applyReminderUpdate(
-                            context,
-                            ref,
-                            () => notifier.setNextDaySummaryEnabled(enabled),
-                          ),
-                        ),
-                        ListTile(
-                          enabled: settings.nextDaySummaryEnabled,
-                          title: Text(l10n.nextDaySummaryTimeTitle),
-                          subtitle: Text(
-                            l10n.nextDaySummaryTimeSubtitle(
-                              settings.nextDaySummaryTimeLabel,
+                        PageModule(
+                          child: SwitchListTile(
+                            title: Text(l10n.enableNextDaySummary),
+                            subtitle: Text(l10n.enableNextDaySummarySubtitle),
+                            value: settings.nextDaySummaryEnabled,
+                            onChanged: (enabled) => applyReminderUpdate(
+                              context,
+                              ref,
+                              () => notifier.setNextDaySummaryEnabled(enabled),
                             ),
                           ),
-                          trailing: const Icon(Icons.schedule),
-                          onTap: settings.nextDaySummaryEnabled
-                              ? () => _pickNextDaySummaryTime(context, ref)
-                              : null,
                         ),
-                        SwitchListTile(
-                          title: Text(l10n.nextDayRemindWhenNoClass),
-                          subtitle: Text(l10n.nextDayRemindWhenNoClassSubtitle),
-                          value: settings.nextDayRemindWhenNoClass,
-                          onChanged: settings.nextDaySummaryEnabled
-                              ? (enabled) => applyReminderUpdate(
-                                  context,
-                                  ref,
-                                  () => notifier.setNextDayRemindWhenNoClass(
-                                    enabled,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        ListTile(
-                          enabled: settings.nextDaySummaryEnabled,
-                          title: Text(l10n.nextDayCustomizeTemplates),
-                          subtitle: Text(
-                            l10n.nextDayCustomizeTemplatesSubtitle,
+                        PageModule(
+                          child: ListTile(
+                            enabled: settings.nextDaySummaryEnabled,
+                            title: Text(l10n.nextDaySummaryTimeTitle),
+                            subtitle: Text(
+                              l10n.nextDaySummaryTimeSubtitle(
+                                settings.nextDaySummaryTimeLabel,
+                              ),
+                            ),
+                            trailing: const Icon(Icons.schedule),
+                            onTap: settings.nextDaySummaryEnabled
+                                ? () => _pickNextDaySummaryTime(context, ref)
+                                : null,
                           ),
-                          trailing: const Icon(Icons.edit_outlined),
-                          onTap: settings.nextDaySummaryEnabled
-                              ? () => NextDaySummaryTemplateSheet.show(
-                                  context,
-                                  settings: settings,
-                                )
-                              : null,
+                        ),
+                        PageModule(
+                          child: SwitchListTile(
+                            title: Text(l10n.nextDayRemindWhenNoClass),
+                            subtitle: Text(
+                              l10n.nextDayRemindWhenNoClassSubtitle,
+                            ),
+                            value: settings.nextDayRemindWhenNoClass,
+                            onChanged: settings.nextDaySummaryEnabled
+                                ? (enabled) => applyReminderUpdate(
+                                    context,
+                                    ref,
+                                    () => notifier.setNextDayRemindWhenNoClass(
+                                      enabled,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                        PageModule(
+                          child: ListTile(
+                            enabled: settings.nextDaySummaryEnabled,
+                            title: Text(l10n.nextDayCustomizeTemplates),
+                            subtitle: Text(
+                              l10n.nextDayCustomizeTemplatesSubtitle,
+                            ),
+                            trailing: const Icon(Icons.edit_outlined),
+                            onTap: settings.nextDaySummaryEnabled
+                                ? () => NextDaySummaryTemplateSheet.show(
+                                    context,
+                                    settings: settings,
+                                  )
+                                : null,
+                          ),
                         ),
                       ],
                     ),
@@ -407,20 +507,22 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
                       children: [
                         const NotificationPermissionSettingsTiles(),
                         const Divider(indent: 16, endIndent: 16),
-                        ListTile(
-                          enabled:
-                              settings.enabled ||
-                              settings.checkInReminderEnabled ||
-                              settings.nextDaySummaryEnabled,
-                          title: Text(l10n.resyncReminders),
-                          subtitle: Text(l10n.resyncRemindersSubtitle),
-                          trailing: const Icon(Icons.refresh),
-                          onTap:
-                              (settings.enabled ||
-                                  settings.checkInReminderEnabled ||
-                                  settings.nextDaySummaryEnabled)
-                              ? () => _resyncReminders(context, ref)
-                              : null,
+                        PageModule(
+                          child: ListTile(
+                            enabled:
+                                settings.enabled ||
+                                settings.checkInReminderEnabled ||
+                                settings.nextDaySummaryEnabled,
+                            title: Text(l10n.resyncReminders),
+                            subtitle: Text(l10n.resyncRemindersSubtitle),
+                            trailing: const Icon(Icons.refresh),
+                            onTap:
+                                (settings.enabled ||
+                                    settings.checkInReminderEnabled ||
+                                    settings.nextDaySummaryEnabled)
+                                ? () => _resyncReminders(context, ref)
+                                : null,
+                          ),
                         ),
                       ],
                     ),
@@ -500,7 +602,11 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
         syncError != null && !syncError.startsWith('partial:');
     if (!isFullFailure) {
       ScaffoldMessenger.of(context).showAppSnackBar(
-        SnackBar(content: Text(reminderResyncSuccessMessage(l10n, ref))),
+        SnackBar(
+          content: PageModule(
+            child: Text(reminderResyncSuccessMessage(l10n, ref)),
+          ),
+        ),
       );
     }
   }
@@ -585,67 +691,72 @@ class _SettingsCategoryTabs extends StatelessWidget {
             if (constraints.maxWidth < 520) {
               return SizedBox(
                 height: 56,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Stack(
                   children: [
-                    for (var index = 0; index < items.length; index++)
-                      Expanded(
-                        child: Tooltip(
-                          message: items[index].label,
-                          child: Semantics(
-                            selected: selectedIndex == index,
-                            label: items[index].label,
-                            button: true,
-                            child: InkWell(
-                              key: Key('settings-category-$index'),
-                              onTap: () => onSelected(index),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 160),
-                                    switchInCurve: Curves.easeOutCubic,
-                                    switchOutCurve: Curves.easeInCubic,
-                                    child: Icon(
-                                      selectedIndex == index
-                                          ? items[index].selectedIcon
-                                          : items[index].icon,
-                                      key: ValueKey(selectedIndex == index),
-                                      size: 21,
-                                      color: selectedIndex == index
-                                          ? colors.primary
-                                          : colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    child: AnimatedContainer(
-                                      key: selectedIndex == index
-                                          ? Key(
-                                              'settings-category-indicator-$index',
-                                            )
-                                          : null,
-                                      duration: const Duration(
-                                        milliseconds: 180,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var index = 0; index < items.length; index++)
+                          Expanded(
+                            child: Tooltip(
+                              message: items[index].label,
+                              child: Semantics(
+                                selected: selectedIndex == index,
+                                label: items[index].label,
+                                button: true,
+                                child: InkWell(
+                                  key: Key('settings-category-$index'),
+                                  onTap: () => onSelected(index),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 160,
+                                        ),
+                                        switchInCurve: Curves.easeOutCubic,
+                                        switchOutCurve: Curves.easeInCubic,
+                                        child: Icon(
+                                          selectedIndex == index
+                                              ? items[index].selectedIcon
+                                              : items[index].icon,
+                                          key: ValueKey(selectedIndex == index),
+                                          size: 21,
+                                          color: selectedIndex == index
+                                              ? colors.primary
+                                              : colors.onSurfaceVariant,
+                                        ),
                                       ),
-                                      curve: Curves.easeOutCubic,
-                                      width: selectedIndex == index ? 32 : 0,
-                                      height: 3,
-                                      decoration: BoxDecoration(
-                                        color: colors.primary,
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(3),
-                                            ),
-                                      ),
-                                    ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
+                      ],
+                    ),
+                    AnimatedPositioned(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 260),
+                      curve: Curves.easeOutCubic,
+                      left:
+                          (constraints.maxWidth / items.length) *
+                              (selectedIndex + .5) -
+                          16,
+                      bottom: 0,
+                      width: 32,
+                      height: 3,
+                      child: DecoratedBox(
+                        key: Key('settings-category-indicator-$selectedIndex'),
+                        decoration: BoxDecoration(
+                          color: colors.primary,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(3),
+                          ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               );
@@ -689,7 +800,9 @@ class _SettingsTab extends StatelessWidget {
         children: [
           Icon(icon, size: 19),
           const SizedBox(height: 4),
-          Text(label, maxLines: 1, overflow: TextOverflow.fade),
+          PageModule(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.fade),
+          ),
         ],
       ),
     );
@@ -828,62 +941,75 @@ class _ScheduleVerticalScaleTile extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  l10n.scheduleVerticalScaleTitle,
-                  style: Theme.of(context).textTheme.titleMedium,
+                child: PageModule(
+                  child: Text(
+                    l10n.scheduleVerticalScaleTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                '$percent%',
-                key: const Key('schedule-vertical-scale-value'),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+              PageModule(
+                child: Text(
+                  '$percent%',
+                  key: const Key('schedule-vertical-scale-value'),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            l10n.scheduleVerticalScaleSubtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          PageModule(
+            child: Text(
+              l10n.scheduleVerticalScaleSubtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            key: const Key('schedule-fit-to-page'),
-            title: Text(l10n.scheduleFitPage),
-            subtitle: Text(l10n.scheduleFitPageHint),
-            value: fit,
-            onChanged: notifier.setFitToPage,
+          PageModule(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              key: const Key('schedule-fit-to-page'),
+              title: Text(l10n.scheduleFitPage),
+              subtitle: Text(l10n.scheduleFitPageHint),
+              value: fit,
+              onChanged: notifier.setFitToPage,
+            ),
           ),
           Semantics(
             label: l10n.scheduleVerticalScaleTitle,
-            child: Slider(
-              key: const Key('schedule-vertical-scale-slider'),
-              min: ScheduleDisplaySettings.minVerticalScalePercent.toDouble(),
-              max: ScheduleDisplaySettings.maxVerticalScalePercent.toDouble(),
-              divisions:
-                  (ScheduleDisplaySettings.maxVerticalScalePercent -
-                      ScheduleDisplaySettings.minVerticalScalePercent) ~/
-                  ScheduleDisplaySettings.verticalScaleStep,
-              value: percent.toDouble(),
-              label: '$percent%',
-              semanticFormatterCallback: (value) => '${value.round()}%',
-              onChanged: fit
-                  ? null
-                  : (value) => notifier.setVerticalScalePercent(value.round()),
+            child: PageModule(
+              child: Slider(
+                key: const Key('schedule-vertical-scale-slider'),
+                min: ScheduleDisplaySettings.minVerticalScalePercent.toDouble(),
+                max: ScheduleDisplaySettings.maxVerticalScalePercent.toDouble(),
+                divisions:
+                    (ScheduleDisplaySettings.maxVerticalScalePercent -
+                        ScheduleDisplaySettings.minVerticalScalePercent) ~/
+                    ScheduleDisplaySettings.verticalScaleStep,
+                value: percent.toDouble(),
+                label: '$percent%',
+                semanticFormatterCallback: (value) => '${value.round()}%',
+                onChanged: fit
+                    ? null
+                    : (value) =>
+                          notifier.setVerticalScalePercent(value.round()),
+              ),
             ),
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
-              key: const Key('schedule-vertical-scale-reset'),
-              onPressed: percent == 100 && !fit
-                  ? null
-                  : notifier.resetVerticalScale,
-              child: Text(l10n.scheduleVerticalScaleReset),
+            child: PageModule(
+              child: TextButton(
+                key: const Key('schedule-vertical-scale-reset'),
+                onPressed: percent == 100 && !fit
+                    ? null
+                    : notifier.resetVerticalScale,
+                child: Text(l10n.scheduleVerticalScaleReset),
+              ),
             ),
           ),
         ],
@@ -971,15 +1097,17 @@ class _ScheduleShowEmptyDaysTile extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final adaptive = settings.narrowLayout == NarrowScheduleLayout.adaptive;
-    return SwitchListTile(
-      title: Text(l10n.scheduleShowEmptyDaysTitle),
-      subtitle: Text(l10n.scheduleShowEmptyDaysSubtitle),
-      value: settings.showEmptyDays,
-      onChanged: adaptive
-          ? (value) => ref
-                .read(scheduleDisplaySettingsProvider.notifier)
-                .setShowEmptyDays(value)
-          : null,
+    return PageModule(
+      child: SwitchListTile(
+        title: Text(l10n.scheduleShowEmptyDaysTitle),
+        subtitle: Text(l10n.scheduleShowEmptyDaysSubtitle),
+        value: settings.showEmptyDays,
+        onChanged: adaptive
+            ? (value) => ref
+                  .read(scheduleDisplaySettingsProvider.notifier)
+                  .setShowEmptyDays(value)
+            : null,
+      ),
     );
   }
 }
@@ -991,13 +1119,15 @@ class _UpcomingCourseDateTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final settings = ref.watch(scheduleDisplaySettingsProvider);
-    return SwitchListTile(
-      title: Text(l10n.upcomingShowCourseDateTitle),
-      subtitle: Text(l10n.upcomingShowCourseDateSubtitle),
-      value: settings.showUpcomingCourseDate,
-      onChanged: (value) => ref
-          .read(scheduleDisplaySettingsProvider.notifier)
-          .setShowUpcomingCourseDate(value),
+    return PageModule(
+      child: SwitchListTile(
+        title: Text(l10n.upcomingShowCourseDateTitle),
+        subtitle: Text(l10n.upcomingShowCourseDateSubtitle),
+        value: settings.showUpcomingCourseDate,
+        onChanged: (value) => ref
+            .read(scheduleDisplaySettingsProvider.notifier)
+            .setShowUpcomingCourseDate(value),
+      ),
     );
   }
 }
@@ -1144,7 +1274,11 @@ class _AndroidBackgroundSectionState
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(l10n.androidTestBackgroundReminderFailed)),
+          SnackBar(
+            content: PageModule(
+              child: Text(l10n.androidTestBackgroundReminderFailed),
+            ),
+          ),
         );
       }
     } finally {
@@ -1163,7 +1297,7 @@ class _AndroidBackgroundSectionState
     final message = _permissionStatusMessage(l10n, status);
     ScaffoldMessenger.of(
       context,
-    ).showAppSnackBar(SnackBar(content: Text(message)));
+    ).showAppSnackBar(SnackBar(content: PageModule(child: Text(message))));
     if (!status.allGranted) {
       await AndroidReminderGuard.instance.openNotificationSettings();
     }
@@ -1205,76 +1339,90 @@ class _AndroidBackgroundSectionState
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            l10n.androidBackgroundSubtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          child: PageModule(
+            child: Text(
+              l10n.androidBackgroundSubtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
-        ListTile(
-          title: Text(l10n.androidCheckReminderPermissions),
-          subtitle: _permissionStatus == null
-              ? null
-              : Text(_permissionStatusMessage(l10n, _permissionStatus!)),
-          trailing: const Icon(Icons.notifications_active_outlined),
-          onTap: _checkPermissions,
-        ),
-        SwitchListTile(
-          title: Text(l10n.androidBatteryOptimization),
-          subtitle: Text(
-            _isIgnoringBatteryOptimizations
-                ? l10n.androidBatteryOptimizationSubtitleOn
-                : l10n.androidBatteryOptimizationSubtitleOff,
+        PageModule(
+          child: ListTile(
+            title: Text(l10n.androidCheckReminderPermissions),
+            subtitle: _permissionStatus == null
+                ? null
+                : Text(_permissionStatusMessage(l10n, _permissionStatus!)),
+            trailing: const Icon(Icons.notifications_active_outlined),
+            onTap: _checkPermissions,
           ),
-          value: _isIgnoringBatteryOptimizations,
-          onChanged: _onBatteryOptimizationChanged,
+        ),
+        PageModule(
+          child: SwitchListTile(
+            title: Text(l10n.androidBatteryOptimization),
+            subtitle: Text(
+              _isIgnoringBatteryOptimizations
+                  ? l10n.androidBatteryOptimizationSubtitleOn
+                  : l10n.androidBatteryOptimizationSubtitleOff,
+            ),
+            value: _isIgnoringBatteryOptimizations,
+            onChanged: _onBatteryOptimizationChanged,
+          ),
         ),
         if (_reliabilityStatus?.forcedStopDetected == true)
-          Card(
-            margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            color: Theme.of(context).colorScheme.errorContainer,
-            child: ListTile(
-              leading: Icon(
-                Icons.report_problem_outlined,
-                color: Theme.of(context).colorScheme.onErrorContainer,
+          PageModule(
+            child: Card(
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: ListTile(
+                leading: Icon(
+                  Icons.report_problem_outlined,
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+                title: Text(l10n.androidForcedStopDetected),
+                subtitle: Text(l10n.androidForcedStopDetectedSubtitle),
               ),
-              title: Text(l10n.androidForcedStopDetected),
-              subtitle: Text(l10n.androidForcedStopDetectedSubtitle),
             ),
           ),
-        SwitchListTile(
-          secondary: const Icon(Icons.shield_outlined),
-          title: Text(l10n.androidEnhancedReminder),
-          subtitle: Text(
-            '${l10n.androidEnhancedReminderSubtitle}\n'
-            '${l10n.androidEnhancedReminderLimit}',
+        PageModule(
+          child: SwitchListTile(
+            secondary: const Icon(Icons.shield_outlined),
+            title: Text(l10n.androidEnhancedReminder),
+            subtitle: Text(
+              '${l10n.androidEnhancedReminderSubtitle}\n'
+              '${l10n.androidEnhancedReminderLimit}',
+            ),
+            value: _reliabilityStatus?.enhancedMode ?? false,
+            onChanged: _changingEnhancedMode ? null : _setEnhancedMode,
           ),
-          value: _reliabilityStatus?.enhancedMode ?? false,
-          onChanged: _changingEnhancedMode ? null : _setEnhancedMode,
         ),
-        ListTile(
-          leading: const Icon(Icons.fact_check_outlined),
-          title: Text(l10n.androidReminderReliability),
-          subtitle: _reliabilityStatus == null
-              ? null
-              : Text(
-                  l10n.androidReminderReliabilityStatus(
-                    _reliabilityStatus!.registeredReminderCount,
-                    _reliabilityStatus!.storedReminderCount,
+        PageModule(
+          child: ListTile(
+            leading: const Icon(Icons.fact_check_outlined),
+            title: Text(l10n.androidReminderReliability),
+            subtitle: _reliabilityStatus == null
+                ? null
+                : Text(
+                    l10n.androidReminderReliabilityStatus(
+                      _reliabilityStatus!.registeredReminderCount,
+                      _reliabilityStatus!.storedReminderCount,
+                    ),
                   ),
-                ),
-          trailing: IconButton(
-            onPressed: _refreshStatuses,
-            icon: const Icon(Icons.refresh),
+            trailing: IconButton(
+              onPressed: _refreshStatuses,
+              icon: const Icon(Icons.refresh),
+            ),
           ),
         ),
-        ListTile(
-          leading: const Icon(Icons.phonelink_setup_outlined),
-          title: Text(l10n.androidOriginOsSettings),
-          subtitle: Text(l10n.androidOriginOsSettingsSubtitle),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: AndroidNativeReminderService.instance.openAutostartSettings,
+        PageModule(
+          child: ListTile(
+            leading: const Icon(Icons.phonelink_setup_outlined),
+            title: Text(l10n.androidOriginOsSettings),
+            subtitle: Text(l10n.androidOriginOsSettingsSubtitle),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: AndroidNativeReminderService.instance.openAutostartSettings,
+          ),
         ),
       ],
     );
@@ -1293,7 +1441,7 @@ class _SettingsFooter extends StatelessWidget {
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
           duration: const Duration(seconds: 6),
-          content: Text(l10n.settingsGithubOpenFailed),
+          content: PageModule(child: Text(l10n.settingsGithubOpenFailed)),
         ),
       );
     }
@@ -1310,23 +1458,33 @@ class _SettingsFooter extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       child: Column(
         children: [
-          Text(
-            l10n.settingsVersion(kAppVersion),
-            style: mutedStyle,
-            textAlign: TextAlign.center,
+          PageModule(
+            child: Text(
+              l10n.settingsVersion(kAppVersion),
+              style: mutedStyle,
+              textAlign: TextAlign.center,
+            ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _openGithub(context),
-            icon: const Icon(Icons.code, size: 18),
-            label: Text(l10n.settingsGithub),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: colorScheme.onSurfaceVariant,
-              side: BorderSide(color: colorScheme.outlineVariant),
+          PageModule(
+            child: OutlinedButton.icon(
+              onPressed: () => _openGithub(context),
+              icon: const Icon(Icons.code, size: 18),
+              label: Text(l10n.settingsGithub),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colorScheme.onSurfaceVariant,
+                side: BorderSide(color: colorScheme.outlineVariant),
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          Text(l10n.appTagline, style: mutedStyle, textAlign: TextAlign.center),
+          PageModule(
+            child: Text(
+              l10n.appTagline,
+              style: mutedStyle,
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
@@ -1366,27 +1524,29 @@ class _PageVisibilityTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final t = DeadlineStrongText.of(context);
-    return SwitchListTile(
-      key: ValueKey(upcoming ? 'hide-upcoming-page' : 'hide-import-page'),
-      title: Text(upcoming ? t.hideUpcoming : t.hideImport),
-      subtitle: Text(t.navigationHint),
-      value: upcoming ? settings.hideUpcomingPage : settings.hideImportPage,
-      onChanged: (value) async {
-        try {
-          final notifier = ref.read(scheduleDisplaySettingsProvider.notifier);
-          if (upcoming) {
-            await notifier.setHideUpcomingPage(value);
-          } else {
-            await notifier.setHideImportPage(value);
+    return PageModule(
+      child: SwitchListTile(
+        key: ValueKey(upcoming ? 'hide-upcoming-page' : 'hide-import-page'),
+        title: Text(upcoming ? t.hideUpcoming : t.hideImport),
+        subtitle: Text(t.navigationHint),
+        value: upcoming ? settings.hideUpcomingPage : settings.hideImportPage,
+        onChanged: (value) async {
+          try {
+            final notifier = ref.read(scheduleDisplaySettingsProvider.notifier);
+            if (upcoming) {
+              await notifier.setHideUpcomingPage(value);
+            } else {
+              await notifier.setHideImportPage(value);
+            }
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showAppSnackBar(SnackBar(content: Text(t.failed)));
+            }
           }
-        } catch (_) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showAppSnackBar(SnackBar(content: Text(t.failed)));
-          }
-        }
-      },
+        },
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -117,12 +118,14 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
       children: [
         AppBar(
           automaticallyImplyLeading: false,
-          title: Text(widget.title ?? text.title),
+          title: PageModule(child: Text(widget.title ?? text.title)),
           actions: [
-            IconButton(
-              tooltip: text.cancel,
-              onPressed: _busy ? null : () => Navigator.pop(context),
-              icon: const Icon(Icons.close),
+            PageModule(
+              child: IconButton(
+                tooltip: text.cancel,
+                onPressed: _busy ? null : () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
             ),
           ],
         ),
@@ -198,31 +201,39 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
             child: Column(
               children: [
                 if (!widget.circular)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(text.squareCrop),
-                    subtitle: Text(text.squareCropHint),
-                    value: _square,
-                    onChanged: _busy || !_canCrop ? null : _setSquare,
+                  PageModule(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(text.squareCrop),
+                      subtitle: Text(text.squareCropHint),
+                      value: _square,
+                      onChanged: _busy || !_canCrop ? null : _setSquare,
+                    ),
                   ),
                 if (!_square) ...[
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(text.stretch),
-                    subtitle: Text(text.stretchHint),
-                    value: _stretch,
-                    onChanged: _busy || !_canCrop ? null : _setStretch,
+                  PageModule(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(text.stretch),
+                      subtitle: Text(text.stretchHint),
+                      value: _stretch,
+                      onChanged: _busy || !_canCrop ? null : _setStretch,
+                    ),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(text.fill),
-                    subtitle: Text(text.fillHint),
-                    value: _fill,
-                    onChanged: _busy || !_canCrop ? null : _setFill,
+                  PageModule(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(text.fill),
+                      subtitle: Text(text.fillHint),
+                      value: _fill,
+                      onChanged: _busy || !_canCrop ? null : _setFill,
+                    ),
                   ),
                 ],
                 if (_error != null)
-                  Text(_error!, style: TextStyle(color: colors.error)),
+                  PageModule(
+                    child: Text(_error!, style: TextStyle(color: colors.error)),
+                  ),
               ],
             ),
           ),
@@ -235,19 +246,23 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
             spacing: 8,
             overflowSpacing: 8,
             children: [
-              TextButton(
-                onPressed: _busy ? null : () => Navigator.pop(context),
-                child: Text(text.cancel),
+              PageModule(
+                child: TextButton(
+                  onPressed: _busy ? null : () => Navigator.pop(context),
+                  child: Text(text.cancel),
+                ),
               ),
-              FilledButton.icon(
-                onPressed: !_canCrop || _busy ? null : _crop,
-                icon: _busy
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.crop),
-                label: Text(text.useImage),
+              PageModule(
+                child: FilledButton.icon(
+                  onPressed: !_canCrop || _busy ? null : _crop,
+                  icon: _busy
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.crop),
+                  label: Text(text.useImage),
+                ),
               ),
             ],
           ),

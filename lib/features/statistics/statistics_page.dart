@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/statistics/semester_management_page.dart';
 import 'package:orbit/models/v162_text.dart';
 import 'package:orbit/services/semester_service.dart';
@@ -177,24 +178,26 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
     });
     return BackgroundScaffold(
       appBar: AppBar(
-        title: Text(t.title),
+        title: PageModule(child: Text(t.title)),
         actions: [
-          IconButton(
-            tooltip: v.manageSemesters,
-            icon: const Icon(Icons.edit_calendar_outlined),
-            onPressed: () async {
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SemesterManagementPage(),
-                ),
-              );
-              if (mounted) {
-                setState(() {
-                  _data = _load();
-                });
-              }
-            },
+          PageModule(
+            child: IconButton(
+              tooltip: v.manageSemesters,
+              icon: const Icon(Icons.edit_calendar_outlined),
+              onPressed: () async {
+                await Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SemesterManagementPage(),
+                  ),
+                );
+                if (mounted) {
+                  setState(() {
+                    _data = _load();
+                  });
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -202,7 +205,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         future: _data,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('${snapshot.error}'));
+            return Center(child: PageModule(child: Text('${snapshot.error}')));
           }
           final all = snapshot.data;
           if (all == null) {
@@ -231,96 +234,105 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   }).toList(),
                 );
           final learned = s.learnedCourses;
-          Widget metric(String label, String value) => Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label),
-                  const SizedBox(height: 8),
-                  Text(value, style: Theme.of(context).textTheme.headlineSmall),
-                ],
+          Widget metric(String label, String value) => PageModule(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label),
+                    const SizedBox(height: 8),
+                    Text(
+                      value,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ],
+                ),
               ),
             ),
           );
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              DropdownButtonFormField<String>(
-                key: ValueKey(_selection),
-                initialValue:
-                    [
-                      'current',
-                      'all',
-                      'unknown',
-                      ..._semesters.semesters.map((s) => s.id),
-                    ].contains(_selection)
-                    ? _selection
-                    : 'current',
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: v.semester,
-                  prefixIcon: const Icon(Icons.calendar_month_outlined),
-                  border: const OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem(value: 'all', child: Text(v.allSemesters)),
-                  DropdownMenuItem(
-                    value: 'current',
-                    child: Text(
-                      '${v.currentSemester} · ${_semesters.current(DateTime.now()).name}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              PageModule(
+                child: DropdownButtonFormField<String>(
+                  key: ValueKey(_selection),
+                  initialValue:
+                      [
+                        'current',
+                        'all',
+                        'unknown',
+                        ..._semesters.semesters.map((s) => s.id),
+                      ].contains(_selection)
+                      ? _selection
+                      : 'current',
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: v.semester,
+                    prefixIcon: const Icon(Icons.calendar_month_outlined),
+                    border: const OutlineInputBorder(),
                   ),
-                  for (final item in _semesters.semesters)
+                  items: [
+                    DropdownMenuItem(value: 'all', child: Text(v.allSemesters)),
                     DropdownMenuItem(
-                      value: item.id,
-                      child: Text(item.name, overflow: TextOverflow.ellipsis),
+                      value: 'current',
+                      child: Text(
+                        '${v.currentSemester} · ${_semesters.current(DateTime.now()).name}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  DropdownMenuItem(
-                    value: 'unknown',
-                    child: Text(v.unknownSemester),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _selection = value);
-                  unawaited(
-                    SharedPreferences.getInstance().then(
-                      (p) => p.setString('statistics_semester_v1', value),
+                    for (final item in _semesters.semesters)
+                      DropdownMenuItem(
+                        value: item.id,
+                        child: Text(item.name, overflow: TextOverflow.ellipsis),
+                      ),
+                    DropdownMenuItem(
+                      value: 'unknown',
+                      child: Text(v.unknownSemester),
                     ),
-                  );
-                },
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _selection = value);
+                    unawaited(
+                      SharedPreferences.getInstance().then(
+                        (p) => p.setString('statistics_semester_v1', value),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 12),
               metric(t.activeDays, '${s.activeDays}'),
-              Card(
-                child: ListTile(
-                  title: Text("${t.firstUsed} · ${v.lifetime}"),
-                  subtitle: Text(all.firstUsedDate ?? '—'),
-                  trailing: const Icon(Icons.edit_calendar_outlined),
-                  onTap: () async {
-                    final today = DateTime.now();
-                    final initial =
-                        DateTime.tryParse(all.firstUsedDate ?? '') ?? today;
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: initial.isAfter(today) ? today : initial,
-                      firstDate: DateTime(1970),
-                      lastDate: today,
-                    );
-                    if (date != null) {
-                      await ref
-                          .read(appDatabaseProvider)
-                          .setFirstUsedDate(date);
-                      if (mounted) {
-                        setState(() {
-                          _data = _load();
-                        });
+              PageModule(
+                child: Card(
+                  child: ListTile(
+                    title: Text("${t.firstUsed} · ${v.lifetime}"),
+                    subtitle: Text(all.firstUsedDate ?? '—'),
+                    trailing: const Icon(Icons.edit_calendar_outlined),
+                    onTap: () async {
+                      final today = DateTime.now();
+                      final initial =
+                          DateTime.tryParse(all.firstUsedDate ?? '') ?? today;
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: initial.isAfter(today) ? today : initial,
+                        firstDate: DateTime(1970),
+                        lastDate: today,
+                      );
+                      if (date != null) {
+                        await ref
+                            .read(appDatabaseProvider)
+                            .setFirstUsedDate(date);
+                        if (mounted) {
+                          setState(() {
+                            _data = _load();
+                          });
+                        }
                       }
-                    }
-                  },
+                    },
+                  ),
                 ),
               ),
               metric(t.sessions, '${s.attendedSessions}'),
@@ -329,41 +341,47 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
               metric(v.exams, '${s.completedExams}'),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  '${t.learned} · ${learned.length}',
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: PageModule(
+                  child: Text(
+                    '${t.learned} · ${learned.length}',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
               ),
-              if (learned.isEmpty) Text(t.noLearnedCourses),
+              if (learned.isEmpty) PageModule(child: Text(t.noLearnedCourses)),
               for (final course in learned.take(5))
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.school_outlined),
-                    title: Text(course.name),
-                    subtitle: Text(course.semester),
+                PageModule(
+                  child: Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.school_outlined),
+                      title: Text(course.name),
+                      subtitle: Text(course.semester),
+                    ),
                   ),
                 ),
               if (learned.isNotEmpty)
                 Align(
                   alignment: AlignmentDirectional.centerEnd,
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FinishedCoursesPage(
-                          courses: learned,
-                          scope: _selection == 'all'
-                              ? v.allSemesters
-                              : info?.name ?? v.unknownSemester,
+                  child: PageModule(
+                    child: TextButton.icon(
+                      onPressed: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FinishedCoursesPage(
+                            courses: learned,
+                            scope: _selection == 'all'
+                                ? v.allSemesters
+                                : info?.name ?? v.unknownSemester,
+                          ),
                         ),
                       ),
+                      icon: const Icon(Icons.chevron_right),
+                      label: Text(v.viewAll),
                     ),
-                    icon: const Icon(Icons.chevron_right),
-                    label: Text(v.viewAll),
                   ),
                 ),
               const SizedBox(height: 16),
-              Text(t.statisticsHint),
+              PageModule(child: Text(t.statisticsHint)),
             ],
           );
         },
@@ -382,7 +400,9 @@ class FinishedCoursesPage extends StatelessWidget {
   final String scope;
   @override
   Widget build(BuildContext context) => BackgroundScaffold(
-    appBar: AppBar(title: Text(V162Text.of(context).allCourses)),
+    appBar: AppBar(
+      title: PageModule(child: Text(V162Text.of(context).allCourses)),
+    ),
     body: ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: courses.length + 1,
@@ -390,15 +410,17 @@ class FinishedCoursesPage extends StatelessWidget {
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text('$scope · ${courses.length}'),
+            child: PageModule(child: Text('$scope · ${courses.length}')),
           );
         }
         final course = courses[index - 1];
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.school_outlined),
-            title: Text(course.name),
-            subtitle: Text(course.semester),
+        return PageModule(
+          child: Card(
+            child: ListTile(
+              leading: const Icon(Icons.school_outlined),
+              title: Text(course.name),
+              subtitle: Text(course.semester),
+            ),
           ),
         );
       },

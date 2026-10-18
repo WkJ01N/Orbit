@@ -39,14 +39,23 @@ bool isSameScheduleDate(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 List<DateTime> courseDates(List<CourseSession> sessions) {
-  final dates =
-      sessions.map((session) => dateOnly(session.date)).toSet().toList()
-        ..sort();
-  return dates;
+  final normalized = <(int, bool), DateTime>{};
+  for (final session in sessions) {
+    final date = session.date;
+    normalized.putIfAbsent((
+      date.millisecondsSinceEpoch,
+      date.isUtc,
+    ), () => dateOnly(date));
+  }
+  return normalized.values.toSet().toList()..sort();
 }
 
-DateTime nearestCourseDate(DateTime anchor, List<CourseSession> sessions) {
-  final dates = courseDates(sessions);
+DateTime nearestCourseDate(
+  DateTime anchor,
+  List<CourseSession> sessions, {
+  List<DateTime>? availableCourseDates,
+}) {
+  final dates = availableCourseDates ?? courseDates(sessions);
   if (dates.isEmpty) {
     return dateOnly(anchor);
   }
@@ -62,6 +71,7 @@ DateTime nearestCourseDate(DateTime anchor, List<CourseSession> sessions) {
 }
 
 List<DateTime> visibleScheduleDates({
+  List<DateTime>? availableCourseDates,
   required DateTime anchor,
   required ScheduleViewportMode mode,
   required int preferredMultiDayCount,
@@ -82,7 +92,10 @@ List<DateTime> visibleScheduleDates({
     if (showEmptyDays) {
       return dates;
     }
-    final available = {...courseDates(sessions), ...eventDates.map(dateOnly)};
+    final available = {
+      ...(availableCourseDates ?? courseDates(sessions)),
+      ...eventDates.map(dateOnly),
+    };
     return dates.where(available.contains).toList();
   }
 
@@ -95,8 +108,10 @@ List<DateTime> visibleScheduleDates({
     ];
   }
 
-  final dates = {...courseDates(sessions), ...eventDates.map(dateOnly)}.toList()
-    ..sort();
+  final dates = {
+    ...(availableCourseDates ?? courseDates(sessions)),
+    ...eventDates.map(dateOnly),
+  }.toList()..sort();
   if (dates.isEmpty) {
     return const [];
   }
@@ -108,6 +123,7 @@ List<DateTime> visibleScheduleDates({
 }
 
 DateTime navigateScheduleAnchor({
+  List<DateTime>? availableCourseDates,
   required DateTime anchor,
   required int direction,
   required ScheduleViewportMode mode,
@@ -129,8 +145,10 @@ DateTime navigateScheduleAnchor({
     return normalized.add(Duration(days: direction * step));
   }
 
-  final dates = {...courseDates(sessions), ...eventDates.map(dateOnly)}.toList()
-    ..sort();
+  final dates = {
+    ...(availableCourseDates ?? courseDates(sessions)),
+    ...eventDates.map(dateOnly),
+  }.toList()..sort();
   if (dates.isEmpty) {
     return normalized;
   }

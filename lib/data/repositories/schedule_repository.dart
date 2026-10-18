@@ -289,6 +289,10 @@ class ScheduleRepository {
     return CourseOperationResult(
       affectedCount: prepared.targets.length,
       conflictCount: prepared.conflictIds.length,
+      identityChanges: {
+        for (var i = 0; i < prepared.targets.length; i++)
+          prepared.targets[i].id: prepared.updated[i].id,
+      },
     );
   }
 
@@ -477,6 +481,10 @@ class ScheduleRepository {
     return CourseOperationResult(
       affectedCount: prepared.targets.length,
       conflictCount: prepared.conflictIds.length,
+      identityChanges: {
+        for (var i = 0; i < prepared.targets.length; i++)
+          prepared.targets[i].id: prepared.updated[i].id,
+      },
     );
   }
 
@@ -698,6 +706,8 @@ class ScheduleRepository {
         room: changes.room,
         teachers: changes.teachers,
         faculty: changes.faculty,
+        semester: changes.semester,
+        semesterId: changes.semesterId,
         startAt: startAt,
         endAt: endAt,
         clearDeletedAt: true,
@@ -785,6 +795,7 @@ class ScheduleRepository {
         faculty: changes.faculty,
         classType: changes.classType,
         semester: changes.semester,
+        semesterId: changes.semesterId,
         startAt: startAt,
         endAt: endAt,
         clearDeletedAt: true,

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/v162_text.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
@@ -51,9 +52,11 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
       await action();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showAppSnackBar(SnackBar(content: Text(LaunchText(context).failed)));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(
+            content: PageModule(child: Text(LaunchText(context).failed)),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -69,9 +72,11 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
     if (result == null || result.files.isEmpty || !mounted) return;
     final file = result.files.single;
     if (file.size > 10 * 1024 * 1024) {
-      ScaffoldMessenger.of(
-        context,
-      ).showAppSnackBar(SnackBar(content: Text(LaunchText(context).tooLarge)));
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(
+          content: PageModule(child: Text(LaunchText(context).tooLarge)),
+        ),
+      );
       return;
     }
     final bytes =
@@ -103,147 +108,196 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
     final v = V162Text.of(context);
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(v.animationTitle)),
+      appBar: AppBar(title: PageModule(child: Text(v.animationTitle))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              SwitchListTile(
-                title: Text(v.brandAnimation),
-                value: settings.brandEnabled,
-                onChanged: _busy
-                    ? null
-                    : (b) =>
-                          _run(() => _save(settings.copyWith(brandEnabled: b))),
-              ),
-              Text(
-                v.pageAnimations,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              for (var i = 0; i < 4; i++)
-                SwitchListTile(
-                  title: Text(
-                    [
-                      l10n.navGrid,
-                      l10n.navUpcoming,
-                      l10n.navImport,
-                      l10n.navSettings,
-                    ][i],
-                  ),
-                  value: settings.pageEnabled[i],
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(v.brandAnimation),
+                  value: settings.brandEnabled,
                   onChanged: _busy
                       ? null
-                      : (b) {
-                          final pages = [...settings.pageEnabled];
-                          pages[i] = b;
-                          _run(
-                            () => _save(settings.copyWith(pageEnabled: pages)),
-                          );
-                        },
+                      : (b) => _run(
+                          () => _save(settings.copyWith(brandEnabled: b)),
+                        ),
+                ),
+              ),
+              PageModule(
+                child: Text(
+                  v.pageAnimations,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              for (var i = 0; i < 4; i++)
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(
+                      [
+                        l10n.navGrid,
+                        l10n.navUpcoming,
+                        l10n.navImport,
+                        l10n.navSettings,
+                      ][i],
+                    ),
+                    value: settings.pageEnabled[i],
+                    onChanged: _busy
+                        ? null
+                        : (b) {
+                            final pages = [...settings.pageEnabled];
+                            pages[i] = b;
+                            _run(
+                              () =>
+                                  _save(settings.copyWith(pageEnabled: pages)),
+                            );
+                          },
+                  ),
                 ),
               const Divider(),
-              Text(
-                v.animationTriggers,
-                style: Theme.of(context).textTheme.titleMedium,
+              PageModule(
+                child: Text(
+                  v.animationTriggers,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
-              SwitchListTile(
-                title: Text(v.onStartup),
-                value: settings.onStartup,
-                onChanged: _busy
-                    ? null
-                    : (b) => _run(() => _save(settings.copyWith(onStartup: b))),
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(v.onStartup),
+                  value: settings.onStartup,
+                  onChanged: _busy
+                      ? null
+                      : (b) =>
+                            _run(() => _save(settings.copyWith(onStartup: b))),
+                ),
               ),
-              SwitchListTile(
-                title: Text(v.onResume),
-                value: settings.onResume,
-                onChanged: _busy
-                    ? null
-                    : (b) => _run(() => _save(settings.copyWith(onResume: b))),
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(v.onResume),
+                  value: settings.onResume,
+                  onChanged: _busy
+                      ? null
+                      : (b) =>
+                            _run(() => _save(settings.copyWith(onResume: b))),
+                ),
               ),
-              SwitchListTile(
-                title: Text(v.onSwitch),
-                value: settings.onPageSwitch,
-                onChanged: _busy
-                    ? null
-                    : (b) =>
-                          _run(() => _save(settings.copyWith(onPageSwitch: b))),
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(v.onSwitch),
+                  value: settings.onPageSwitch,
+                  onChanged: _busy
+                      ? null
+                      : (b) => _run(
+                          () => _save(settings.copyWith(onPageSwitch: b)),
+                        ),
+                ),
               ),
               const Divider(),
-              ListTile(
-                leading: const Icon(Icons.font_download_outlined),
-                title: Text(TypographyText(context).launch),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => const FontPickerPage(launch: true),
+              PageModule(
+                child: ListTile(
+                  leading: const Icon(Icons.font_download_outlined),
+                  title: Text(TypographyText(context).launch),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FontPickerPage(launch: true),
+                    ),
                   ),
                 ),
               ),
               Center(child: LaunchIcon(path: settings.iconPath)),
               const SizedBox(height: 16),
-              Text(text.icon, style: Theme.of(context).textTheme.titleMedium),
+              PageModule(
+                child: Text(
+                  text.icon,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(text.iconHint),
+              PageModule(child: Text(text.iconHint)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
                 children: [
-                  FilledButton.tonalIcon(
-                    onPressed: _busy ? null : _pick,
-                    icon: const Icon(Icons.image_outlined),
-                    label: Text(text.choose),
+                  PageModule(
+                    child: FilledButton.tonalIcon(
+                      onPressed: _busy ? null : _pick,
+                      icon: const Icon(Icons.image_outlined),
+                      label: Text(text.choose),
+                    ),
                   ),
-                  TextButton(
-                    onPressed: _busy || settings.iconPath == null
-                        ? null
-                        : () => _run(
-                            () => _save(settings.copyWith(clearIcon: true)),
-                          ),
-                    child: Text(text.restore),
+                  PageModule(
+                    child: TextButton(
+                      onPressed: _busy || settings.iconPath == null
+                          ? null
+                          : () => _run(
+                              () => _save(settings.copyWith(clearIcon: true)),
+                            ),
+                      child: Text(text.restore),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 28),
-              Text(text.cards, style: Theme.of(context).textTheme.titleMedium),
+              PageModule(
+                child: Text(
+                  text.cards,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
               const SizedBox(height: 8),
               for (final mode in CardEntranceMode.values)
-                ListTile(
-                  key: ValueKey('launch-mode-${mode.name}'),
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    settings.cardEntrance == mode
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
+                PageModule(
+                  child: ListTile(
+                    key: ValueKey('launch-mode-${mode.name}'),
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      settings.cardEntrance == mode
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                    ),
+                    title: Text(
+                      mode == CardEntranceMode.edge ? text.edge : text.nearby,
+                    ),
+                    onTap: _busy
+                        ? null
+                        : () => _run(
+                            () => _save(settings.copyWith(cardEntrance: mode)),
+                          ),
                   ),
-                  title: Text(
-                    mode == CardEntranceMode.edge ? text.edge : text.nearby,
-                  ),
-                  onTap: _busy
-                      ? null
-                      : () => _run(
-                          () => _save(settings.copyWith(cardEntrance: mode)),
-                        ),
                 ),
-              Text(text.stagger, style: Theme.of(context).textTheme.bodySmall),
+              PageModule(
+                child: Text(
+                  text.stagger,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
               const SizedBox(height: 24),
-              FilledButton.icon(
-                key: const Key('launch-preview'),
-                onPressed: _busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const _LaunchPreview(),
+              PageModule(
+                child: FilledButton.icon(
+                  key: const Key('launch-preview'),
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const _LaunchPreview(),
+                          ),
                         ),
-                      ),
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: Text(text.preview),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: Text(text.preview),
+                ),
               ),
               const SizedBox(height: 12),
-              Text(text.hint, style: Theme.of(context).textTheme.bodySmall),
+              PageModule(
+                child: Text(
+                  text.hint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             ],
           ),
         ),
@@ -294,7 +348,7 @@ class _LaunchPreviewState extends ConsumerState<_LaunchPreview> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(LaunchText(context).preview)),
+    appBar: AppBar(title: PageModule(child: Text(LaunchText(context).preview))),
     body: ProviderScope(
       overrides: [
         launchAnimationsEnabledProvider.overrideWithValue(true),

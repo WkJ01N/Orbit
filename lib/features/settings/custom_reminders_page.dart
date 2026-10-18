@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
@@ -46,11 +47,13 @@ class CustomRemindersPage extends ConsumerWidget {
         context,
         title: l.customReminders,
         actions: [
-          IconButton(
-            key: const Key('custom-reminder-add'),
-            tooltip: l.reminderAdd,
-            onPressed: () => edit(null),
-            icon: const Icon(Icons.add),
+          PageModule(
+            child: IconButton(
+              key: const Key('custom-reminder-add'),
+              tooltip: l.reminderAdd,
+              onPressed: () => edit(null),
+              icon: const Icon(Icons.add),
+            ),
           ),
         ],
       ),
@@ -59,13 +62,15 @@ class CustomRemindersPage extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(l.reminderEmpty),
+                  PageModule(child: Text(l.reminderEmpty)),
                   const SizedBox(height: 16),
-                  FilledButton.icon(
-                    key: const Key('custom-reminder-empty-add'),
-                    onPressed: () => edit(null),
-                    icon: const Icon(Icons.add),
-                    label: Text(l.reminderAdd),
+                  PageModule(
+                    child: FilledButton.icon(
+                      key: const Key('custom-reminder-empty-add'),
+                      onPressed: () => edit(null),
+                      icon: const Icon(Icons.add),
+                      label: Text(l.reminderAdd),
+                    ),
                   ),
                 ],
               ),
@@ -90,68 +95,73 @@ class CustomRemindersPage extends ConsumerWidget {
                   l.reminderNormal,
                   l.reminderStrong,
                 ][rule.strength.index];
-                return ListTile(
-                  title: Text(rule.name),
-                  subtitle: Text(
-                    '$basis · '
-                    '${rule.basis == ReminderTimeBasis.date ? rule.dayOffset : rule.offsetSeconds} '
-                    '${rule.basis == ReminderTimeBasis.date ? '${l.reminderDays} · ${(rule.secondOfDay ~/ 3600).toString().padLeft(2, '0')}:${(rule.secondOfDay % 3600 ~/ 60).toString().padLeft(2, '0')}:${(rule.secondOfDay % 60).toString().padLeft(2, '0')}' : l.reminderSeconds}\n'
-                    '$scope · ${rule.sendCount} × ${rule.intervalSeconds}s · $strength',
-                  ),
-                  onTap: () => edit(rule),
-                  leading: Semantics(
-                    label: rule.name,
-                    child: Switch(
-                      value: rule.enabled,
-                      onChanged: (enabled) async {
-                        await save([
-                          for (final r
-                              in ref
-                                  .read(reminderSettingsProvider)
-                                  .value!
-                                  .customRules)
-                            r.id == rule.id
-                                ? r.copyWith(
-                                    enabled: enabled,
-                                    activeFrom: enabled
-                                        ? DateTime.now()
-                                        : r.activeFrom,
-                                  )
-                                : r,
-                        ]);
-                      },
+                return PageModule(
+                  child: ListTile(
+                    title: Text(rule.name),
+                    subtitle: Text(
+                      '$basis · '
+                      '${rule.basis == ReminderTimeBasis.date ? rule.dayOffset : rule.offsetSeconds} '
+                      '${rule.basis == ReminderTimeBasis.date ? '${l.reminderDays} · ${(rule.secondOfDay ~/ 3600).toString().padLeft(2, '0')}:${(rule.secondOfDay % 3600 ~/ 60).toString().padLeft(2, '0')}:${(rule.secondOfDay % 60).toString().padLeft(2, '0')}' : l.reminderSeconds}\n'
+                      '$scope · ${rule.sendCount} × ${rule.intervalSeconds}s · $strength',
                     ),
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (action) async {
-                      final latest = ref
-                          .read(reminderSettingsProvider)
-                          .value!
-                          .customRules;
-                      if (action == 'copy') {
-                        await save([
-                          ...latest,
-                          rule.copyWith(
-                            enabled: true,
-                            id: newReminderId(),
-                            name: '${rule.name} (${l.reminderCopy})',
-                            activeFrom: DateTime.now(),
-                          ),
-                        ]);
-                      }
-                      if (action == 'delete') {
-                        await save(
-                          latest.where((r) => r.id != rule.id).toList(),
-                        );
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: 'copy', child: Text(l.reminderCopy)),
-                      PopupMenuItem(
-                        value: 'delete',
-                        child: Text(l.reminderDelete),
+                    onTap: () => edit(rule),
+                    leading: Semantics(
+                      label: rule.name,
+                      child: Switch(
+                        value: rule.enabled,
+                        onChanged: (enabled) async {
+                          await save([
+                            for (final r
+                                in ref
+                                    .read(reminderSettingsProvider)
+                                    .value!
+                                    .customRules)
+                              r.id == rule.id
+                                  ? r.copyWith(
+                                      enabled: enabled,
+                                      activeFrom: enabled
+                                          ? DateTime.now()
+                                          : r.activeFrom,
+                                    )
+                                  : r,
+                          ]);
+                        },
                       ),
-                    ],
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (action) async {
+                        final latest = ref
+                            .read(reminderSettingsProvider)
+                            .value!
+                            .customRules;
+                        if (action == 'copy') {
+                          await save([
+                            ...latest,
+                            rule.copyWith(
+                              enabled: true,
+                              id: newReminderId(),
+                              name: '${rule.name} (${l.reminderCopy})',
+                              activeFrom: DateTime.now(),
+                            ),
+                          ]);
+                        }
+                        if (action == 'delete') {
+                          await save(
+                            latest.where((r) => r.id != rule.id).toList(),
+                          );
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'copy',
+                          child: Text(l.reminderCopy),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text(l.reminderDelete),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -290,18 +300,22 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
         await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: Text(l.reminderDiscard),
+                title: PageModule(child: Text(l.reminderDiscard)),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(l.reminderKeepEditing),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(ctx).colorScheme.error,
+                  PageModule(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(l.reminderKeepEditing),
                     ),
-                    child: Text(l.reminderDiscardAction),
+                  ),
+                  PageModule(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(ctx).colorScheme.error,
+                      ),
+                      child: Text(l.reminderDiscardAction),
+                    ),
                   ),
                 ],
               ),
@@ -334,17 +348,19 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
     List<T> values,
     List<String> labels,
     ValueChanged<T> change,
-  ) => DropdownButtonFormField<T>(
-    initialValue: value,
-    decoration: InputDecoration(labelText: label),
-    isExpanded: true,
-    items: [
-      for (var i = 0; i < values.length; i++)
-        DropdownMenuItem(value: values[i], child: Text(labels[i])),
-    ],
-    onChanged: (v) {
-      if (v != null) setState(() => change(v));
-    },
+  ) => PageModule(
+    child: DropdownButtonFormField<T>(
+      initialValue: value,
+      decoration: InputDecoration(labelText: label),
+      isExpanded: true,
+      items: [
+        for (var i = 0; i < values.length; i++)
+          DropdownMenuItem(value: values[i], child: Text(labels[i])),
+      ],
+      onChanged: (v) {
+        if (v != null) setState(() => change(v));
+      },
+    ),
   );
   Future<void> _courses(List<CourseSession> sessions) async {
     final result = await showReminderCourseSelection(
@@ -398,31 +414,33 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
           context,
           title: widget.rule == null ? l.reminderAdd : l.reminderEdit,
           actions: [
-            TextButton(
-              onPressed: () {
-                final draft = _draft();
-                if (!_form.currentState!.validate() ||
-                    !_validNumbers() ||
-                    invalidReminderVariables(
-                      draft.titleTemplate + draft.bodyTemplate,
-                    ).isNotEmpty) {
-                  ScaffoldMessenger.of(context).showAppSnackBar(
-                    SnackBar(
-                      duration: const Duration(seconds: 6),
-                      content: Text(l.reminderInvalid),
-                    ),
+            PageModule(
+              child: TextButton(
+                onPressed: () {
+                  final draft = _draft();
+                  if (!_form.currentState!.validate() ||
+                      !_validNumbers() ||
+                      invalidReminderVariables(
+                        draft.titleTemplate + draft.bodyTemplate,
+                      ).isNotEmpty) {
+                    ScaffoldMessenger.of(context).showAppSnackBar(
+                      SnackBar(
+                        duration: const Duration(seconds: 6),
+                        content: Text(l.reminderInvalid),
+                      ),
+                    );
+                    return;
+                  }
+                  setState(() => _allowPop = true);
+                  Navigator.pop(
+                    context,
+                    widget.rule == null
+                        ? draft.copyWith(activeFrom: DateTime.now())
+                        : draft,
                   );
-                  return;
-                }
-                setState(() => _allowPop = true);
-                Navigator.pop(
-                  context,
-                  widget.rule == null
-                      ? draft.copyWith(activeFrom: DateTime.now())
-                      : draft,
-                );
-              },
-              child: Text(l.reminderSave),
+                },
+                child: Text(l.reminderSave),
+              ),
             ),
           ],
         ),
@@ -455,7 +473,7 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                 ),
                 if (_dateDirection != 0) _number('dateDays', l.reminderDays),
                 const SizedBox(height: 12),
-                Text(l.reminderFixedTime),
+                PageModule(child: Text(l.reminderFixedTime)),
                 Wrap(
                   spacing: 12,
                   runSpacing: 8,
@@ -493,20 +511,24 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                 (v) => _rule = _rule.copyWith(scope: v, courseKeys: []),
               ),
               if (_rule.scope != ReminderCourseScope.all)
-                ListTile(
-                  title: Text(l.reminderScope),
-                  subtitle: Text('${_rule.courseKeys.length}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _courses(sessions),
+                PageModule(
+                  child: ListTile(
+                    title: Text(l.reminderScope),
+                    subtitle: Text('${_rule.courseKeys.length}'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _courses(sessions),
+                  ),
                 ),
               const SizedBox(height: 16),
-              Text(l.reminderWeekdays),
+              PageModule(child: Text(l.reminderWeekdays)),
               Wrap(
                 spacing: 8,
                 children: [
                   for (var d = 1; d <= 7; d++)
                     FilterChip(
-                      label: Text(l.reminderFilterWeekdays.split('|')[d - 1]),
+                      label: PageModule(
+                        child: Text(l.reminderFilterWeekdays.split('|')[d - 1]),
+                      ),
                       selected: _rule.weekdays.contains(d),
                       onSelected: (v) => setState(
                         () => _rule = _rule.copyWith(
@@ -518,13 +540,13 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                     ),
                 ],
               ),
-              Text(l.reminderTypes),
+              PageModule(child: Text(l.reminderTypes)),
               Wrap(
                 spacing: 8,
                 children: [
                   for (final t in sessions.map((s) => s.classType).toSet())
                     FilterChip(
-                      label: Text(t),
+                      label: PageModule(child: Text(t)),
                       selected: _rule.classTypes.contains(t),
                       onSelected: (v) => setState(
                         () => _rule = _rule.copyWith(
@@ -536,40 +558,45 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                     ),
                 ],
               ),
-              ListTile(
-                title: Text(l.reminderDateRange),
-                subtitle: Text(
-                  '${_rule.dateFrom ?? ''} – ${_rule.dateTo ?? ''}',
-                ),
-                trailing: const Icon(Icons.date_range),
-                onTap: () async {
-                  final range = await showDateRangePicker(
-                    context: context,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                    initialDateRange:
-                        _rule.dateFrom != null && _rule.dateTo != null
-                        ? DateTimeRange(
-                            start: _rule.dateFrom!,
-                            end: _rule.dateTo!,
-                          )
-                        : null,
-                  );
-                  if (range != null && mounted) {
-                    setState(
-                      () => _rule = _rule.copyWith(
-                        dateFrom: range.start,
-                        dateTo: range.end,
-                      ),
+              PageModule(
+                child: ListTile(
+                  title: Text(l.reminderDateRange),
+                  subtitle: Text(
+                    '${_rule.dateFrom ?? ''} – ${_rule.dateTo ?? ''}',
+                  ),
+                  trailing: const Icon(Icons.date_range),
+                  onTap: () async {
+                    final range = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      initialDateRange:
+                          _rule.dateFrom != null && _rule.dateTo != null
+                          ? DateTimeRange(
+                              start: _rule.dateFrom!,
+                              end: _rule.dateTo!,
+                            )
+                          : null,
                     );
-                  }
-                },
+                    if (range != null && mounted) {
+                      setState(
+                        () => _rule = _rule.copyWith(
+                          dateFrom: range.start,
+                          dateTo: range.end,
+                        ),
+                      );
+                    }
+                  },
+                ),
               ),
               if (_rule.dateFrom != null)
-                TextButton(
-                  onPressed: () =>
-                      setState(() => _rule = _rule.copyWith(clearDates: true)),
-                  child: Text(l.reminderClearFilter),
+                PageModule(
+                  child: TextButton(
+                    onPressed: () => setState(
+                      () => _rule = _rule.copyWith(clearDates: true),
+                    ),
+                    child: Text(l.reminderClearFilter),
+                  ),
                 ),
               for (final entry in {
                 'title': l.reminderTitle,
@@ -617,14 +644,17 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                   ),
                 ],
               ),
-              SwitchListTile(
-                title: Text(l.reminderUntilAck),
-                value: _rule.repeatMode == ReminderRepeatMode.untilAcknowledged,
-                onChanged: (v) => setState(
-                  () => _rule = _rule.copyWith(
-                    repeatMode: v
-                        ? ReminderRepeatMode.untilAcknowledged
-                        : ReminderRepeatMode.fixed,
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(l.reminderUntilAck),
+                  value:
+                      _rule.repeatMode == ReminderRepeatMode.untilAcknowledged,
+                  onChanged: (v) => setState(
+                    () => _rule = _rule.copyWith(
+                      repeatMode: v
+                          ? ReminderRepeatMode.untilAcknowledged
+                          : ReminderRepeatMode.fixed,
+                    ),
                   ),
                 ),
               ),
@@ -636,54 +666,62 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                 (v) => _rule = _rule.copyWith(strength: v),
               ),
               if (_rule.strength != ReminderStrength.normal) ...[
-                SwitchListTile(
-                  title: Text(l.reminderOverride),
-                  value: _rule.strongOverride != null,
-                  onChanged: (v) => setState(
-                    () => _rule = _rule.copyWith(
-                      strongOverride: v
-                          ? ref.read(reminderSettingsProvider).value!.strong
-                          : null,
-                      clearStrongOverride: !v,
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(l.reminderOverride),
+                    value: _rule.strongOverride != null,
+                    onChanged: (v) => setState(
+                      () => _rule = _rule.copyWith(
+                        strongOverride: v
+                            ? ref.read(reminderSettingsProvider).value!.strong
+                            : null,
+                        clearStrongOverride: !v,
+                      ),
                     ),
                   ),
                 ),
                 if (_rule.strongOverride != null)
-                  ListTile(
-                    title: Text(l.reminderStrongConfig),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final value =
-                          await Navigator.push<StrongReminderSettings>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => StrongReminderPage(
-                                initial: _rule.strongOverride!,
-                                showTargets: false,
+                  PageModule(
+                    child: ListTile(
+                      title: Text(l.reminderStrongConfig),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final value =
+                            await Navigator.push<StrongReminderSettings>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StrongReminderPage(
+                                  initial: _rule.strongOverride!,
+                                  showTargets: false,
+                                ),
                               ),
-                            ),
+                            );
+                        if (value != null && mounted) {
+                          setState(
+                            () => _rule = _rule.copyWith(strongOverride: value),
                           );
-                      if (value != null && mounted) {
-                        setState(
-                          () => _rule = _rule.copyWith(strongOverride: value),
-                        );
-                      }
-                    },
+                        }
+                      },
+                    ),
                   ),
               ],
               const SizedBox(height: 20),
-              Text(
-                '${l.reminderPreview} (${matches.length})',
-                style: Theme.of(context).textTheme.titleMedium,
+              PageModule(
+                child: Text(
+                  '${l.reminderPreview} (${matches.length})',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               for (final spec in preview.take(5))
-                ListTile(
-                  title: Text(spec.title),
-                  subtitle: Text(
-                    '${reminderTimestamp(spec.fireAt)}\n${spec.body}',
+                PageModule(
+                  child: ListTile(
+                    title: Text(spec.title),
+                    subtitle: Text(
+                      '${reminderTimestamp(spec.fireAt)}\n${spec.body}',
+                    ),
                   ),
                 ),
-              Text(l.reminderTimingNotice),
+              PageModule(child: Text(l.reminderTimingNotice)),
               const SizedBox(height: 24),
             ],
           ),
@@ -704,14 +742,18 @@ class CustomRemindersSettingsTiles extends ConsumerWidget {
         SettingsGroup(
           title: l.customReminders,
           children: [
-            ListTile(
-              leading: const Icon(Icons.edit_notifications_outlined),
-              title: Text(l.customReminders),
-              subtitle: Text(l.customRemindersSubtitle),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CustomRemindersPage()),
+            PageModule(
+              child: ListTile(
+                leading: const Icon(Icons.edit_notifications_outlined),
+                title: Text(l.customReminders),
+                subtitle: Text(l.customRemindersSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CustomRemindersPage(),
+                  ),
+                ),
               ),
             ),
           ],
@@ -719,41 +761,45 @@ class CustomRemindersSettingsTiles extends ConsumerWidget {
         SettingsGroup(
           title: l.reminderStrong,
           children: [
-            SwitchListTile(
-              title: Text(l.reminderStrong),
-              subtitle: Text(l.reminderStrongDescription),
-              value: strong.enabled,
-              onChanged: (v) => applyReminderUpdate(
-                context,
-                ref,
-                () => ref
-                    .read(reminderSettingsProvider.notifier)
-                    .setStrong(strong.copyWith(enabled: v)),
+            PageModule(
+              child: SwitchListTile(
+                title: Text(l.reminderStrong),
+                subtitle: Text(l.reminderStrongDescription),
+                value: strong.enabled,
+                onChanged: (v) => applyReminderUpdate(
+                  context,
+                  ref,
+                  () => ref
+                      .read(reminderSettingsProvider.notifier)
+                      .setStrong(strong.copyWith(enabled: v)),
+                ),
               ),
             ),
-            ListTile(
-              title: Text(l.reminderStrongConfig),
-              subtitle: Text(l.strongTargets),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () async {
-                final value = await Navigator.push<StrongReminderSettings>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StrongReminderPage(initial: strong),
-                  ),
-                );
-                if (value != null) {
-                  if (context.mounted) {
-                    await applyReminderUpdate(
-                      context,
-                      ref,
-                      () => ref
-                          .read(reminderSettingsProvider.notifier)
-                          .setStrong(value),
-                    );
+            PageModule(
+              child: ListTile(
+                title: Text(l.reminderStrongConfig),
+                subtitle: Text(l.strongTargets),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final value = await Navigator.push<StrongReminderSettings>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StrongReminderPage(initial: strong),
+                    ),
+                  );
+                  if (value != null) {
+                    if (context.mounted) {
+                      await applyReminderUpdate(
+                        context,
+                        ref,
+                        () => ref
+                            .read(reminderSettingsProvider.notifier)
+                            .setStrong(value),
+                      );
+                    }
                   }
-                }
-              },
+                },
+              ),
             ),
           ],
         ),

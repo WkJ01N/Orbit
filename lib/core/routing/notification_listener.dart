@@ -223,6 +223,7 @@ class _OrbitNotificationListenerState
       return;
     }
 
+    ref.read(selectedScheduleDateProvider.notifier).state = session.date;
     ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
       session.date,
     );

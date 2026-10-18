@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orbit/models/course_session.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:flutter/services.dart';
@@ -26,6 +27,28 @@ class GridPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final sessionsAsync = ref.watch(sessionsProvider);
+    final ddlAsync = ref.watch(deadlinesProvider);
+    final snapshot = ref.watch(schedulePresentationProvider);
+    final AsyncValue<List<CourseSession>> displayAsync = snapshot != null
+        ? AsyncData(snapshot.sessions)
+        : sessionsAsync.hasError
+        ? sessionsAsync
+        : ddlAsync.hasError
+        ? AsyncError(ddlAsync.error!, ddlAsync.stackTrace!)
+        : const AsyncLoading();
+    void reportRefreshError(
+      AsyncValue<dynamic>? previous,
+      AsyncValue<dynamic> next,
+    ) {
+      if (snapshot != null && next.hasError && previous?.error != next.error) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(l10n.gridLoadFailed('${next.error}'))),
+        );
+      }
+    }
+
+    ref.listen(sessionsProvider, reportRefreshError);
+    ref.listen(deadlinesProvider, reportRefreshError);
     final grid = ref.watch(weekGridProvider);
     final selection = ref.watch(gridSelectionProvider);
     final interceptBack =
@@ -75,30 +98,32 @@ class GridPage extends ConsumerWidget {
           ),
           body: LaunchReveal(
             startMs: 400,
-            child: sessionsAsync.when(
-              data: (sessions) {
-                if (grid == null) {
-                  final motion = LaunchMotionScope.maybeOf(context);
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) motion?.skipGridEntrance();
-                  });
-                  return BackgroundRegion(
-                    region: BackgroundRegionId.content,
-                    child: _EmptyState(
-                      onImport: () => _goToImport(context, ref),
-                    ),
-                  );
-                }
-                return WeekGridView(
-                  grid: grid,
-                  sessions: sessions.where((s) => s.visible).toList(),
-                );
-              },
-              loading: () => const _GridSkeleton(),
-              error: (error, _) => ErrorState(
-                message: l10n.gridLoadFailed('$error'),
-                retryLabel: l10n.actionRetry,
-                onRetry: () => ref.invalidate(sessionsProvider),
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              child: displayAsync.when(
+                data: (sessions) {
+                  if (grid == null) {
+                    final motion = LaunchMotionScope.maybeOf(context);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (context.mounted) motion?.skipGridEntrance();
+                    });
+                    return BackgroundRegion(
+                      region: BackgroundRegionId.content,
+                      child: _EmptyState(
+                        onImport: () => _goToImport(context, ref),
+                      ),
+                    );
+                  }
+                  return WeekGridView(grid: grid, sessions: sessions);
+                },
+                loading: () => const _GridSkeleton(),
+                error: (error, _) => ErrorState(
+                  message: l10n.gridLoadFailed('$error'),
+                  retryLabel: l10n.actionRetry,
+                  onRetry: () => ref.invalidate(sessionsProvider),
+                ),
               ),
             ),
           ),

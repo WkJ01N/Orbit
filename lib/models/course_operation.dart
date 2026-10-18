@@ -60,10 +60,12 @@ class CourseOperationResult {
   const CourseOperationResult({
     required this.affectedCount,
     this.conflictCount = 0,
+    this.identityChanges = const {},
   });
 
   final int affectedCount;
   final int conflictCount;
+  final Map<String, String> identityChanges;
 }
 
 class RestoreDeletedResult {

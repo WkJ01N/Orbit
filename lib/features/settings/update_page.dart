@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:orbit/features/settings/downgrade_page.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
@@ -221,24 +222,30 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
       context: context,
       builder: (c) => StatefulBuilder(
         builder: (c, setDialog) => AlertDialog(
-          title: Text(t.custom),
-          content: TextField(
-            controller: controller,
-            onChanged: (_) => setDialog(() {}),
-            decoration: const InputDecoration(
-              hintText: 'https://mirror.example/',
+          title: PageModule(child: Text(t.custom)),
+          content: PageModule(
+            child: TextField(
+              controller: controller,
+              onChanged: (_) => setDialog(() {}),
+              decoration: const InputDecoration(
+                hintText: 'https://mirror.example/',
+              ),
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c),
-              child: Text(t.cancel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: Text(t.cancel),
+              ),
             ),
-            FilledButton(
-              onPressed: DownloadSource.validPrefix(controller.text.trim())
-                  ? () => Navigator.pop(c, controller.text.trim())
-                  : null,
-              child: Text(t.confirm),
+            PageModule(
+              child: FilledButton(
+                onPressed: DownloadSource.validPrefix(controller.text.trim())
+                    ? () => Navigator.pop(c, controller.text.trim())
+                    : null,
+                child: Text(t.confirm),
+              ),
             ),
           ],
         ),
@@ -263,58 +270,68 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
     final extra = NavigationAssistText.of(context);
     final newer = _release?.newerThan(kAppVersion, kAppBuildNumber) ?? false;
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(t.check)),
+      appBar: AppBar(title: PageModule(child: Text(t.check))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            '${t.current}: $kAppVersion ($kAppBuildNumber)',
-            style: Theme.of(context).textTheme.titleMedium,
+          PageModule(
+            child: Text(
+              '${t.current}: $kAppVersion ($kAppBuildNumber)',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(t.autoCheck),
-            value: _prefs['automatic'] != false,
-            onChanged: (value) async {
-              await ref.read(appUpdateServiceProvider).savePreferences({
-                ..._prefs,
-                'automatic': value,
-              });
-              await _load();
-            },
+          PageModule(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(t.autoCheck),
+              value: _prefs['automatic'] != false,
+              onChanged: (value) async {
+                await ref.read(appUpdateServiceProvider).savePreferences({
+                  ..._prefs,
+                  'automatic': value,
+                });
+                await _load();
+              },
+            ),
           ),
-          FilledButton.icon(
-            onPressed: _busy ? null : _check,
-            icon: const Icon(Icons.system_update),
-            label: Text(t.check),
+          PageModule(
+            child: FilledButton.icon(
+              onPressed: _busy ? null : _check,
+              icon: const Icon(Icons.system_update),
+              label: Text(t.check),
+            ),
           ),
           Wrap(
             spacing: 8,
             children: [
-              OutlinedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _run(() async {
-                        final current = await ref
-                            .read(appUpdateServiceProvider)
-                            .release(kAppVersion);
-                        if (mounted) {
-                          setState(() {
-                            _release = current;
-                            _assetName = null;
-                            _file = null;
-                            _latencies = {};
-                            _progress = null;
-                          });
-                        }
-                      }),
-                child: Text(
-                  extra.pick('Reinstall this version', '重新安装此版本', '重新安裝此版本'),
+              PageModule(
+                child: OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () => _run(() async {
+                          final current = await ref
+                              .read(appUpdateServiceProvider)
+                              .release(kAppVersion);
+                          if (mounted) {
+                            setState(() {
+                              _release = current;
+                              _assetName = null;
+                              _file = null;
+                              _latencies = {};
+                              _progress = null;
+                            });
+                          }
+                        }),
+                  child: Text(
+                    extra.pick('Reinstall this version', '重新安装此版本', '重新安裝此版本'),
+                  ),
                 ),
               ),
-              TextButton(
-                onPressed: _busy ? null : _chooseRelease,
-                child: Text(extra.pick('Version history', '历史版本', '歷史版本')),
+              PageModule(
+                child: TextButton(
+                  onPressed: _busy ? null : _chooseRelease,
+                  child: Text(extra.pick('Version history', '历史版本', '歷史版本')),
+                ),
               ),
             ],
           ),
@@ -326,150 +343,175 @@ class _UpdatePageState extends ConsumerState<UpdatePage> {
           if (_error != null) SelectableText('${t.failed}\n$_error'),
           if (_release != null) ...[
             const SizedBox(height: 16),
-            Text(
-              newer
-                  ? '${t.available}: ${_release!.version} (${_release!.buildNumber})'
-                  : _older
-                  ? '${extra.pick('Older version', '旧版本', '舊版本')}: ${_release!.version}'
-                  : t.latest,
+            PageModule(
+              child: Text(
+                newer
+                    ? '${t.available}: ${_release!.version} (${_release!.buildNumber})'
+                    : _older
+                    ? '${extra.pick('Older version', '旧版本', '舊版本')}: ${_release!.version}'
+                    : t.latest,
+              ),
             ),
             SelectableText(_release!.notes),
           ] else if (_checked)
-            Text(t.latest),
+            PageModule(child: Text(t.latest)),
           if (_asset != null) ...[
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              key: ValueKey('asset-${_release!.version}-${_asset!.name}'),
-              initialValue: _asset!.name,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: extra.pick('Package type', '安装包类型', '安裝包類型'),
-              ),
-              items: [
-                for (final item in _release!.assets.where(
-                  (e) => e.platform == Platform.operatingSystem,
-                ))
-                  DropdownMenuItem(
-                    value: item.name,
-                    enabled:
-                        item.abi == null || _supportedAbis.contains(item.abi),
-                    child: Text(
-                      '${item.abi ?? (item.platform == 'android' ? 'Universal APK' : 'Windows x64')}${item.abi != null && !_supportedAbis.contains(item.abi) ? ' · ${extra.pick('Incompatible', '不兼容', '不相容')}' : ''}',
-                      overflow: TextOverflow.ellipsis,
+            PageModule(
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('asset-${_release!.version}-${_asset!.name}'),
+                initialValue: _asset!.name,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: extra.pick('Package type', '安装包类型', '安裝包類型'),
+                ),
+                items: [
+                  for (final item in _release!.assets.where(
+                    (e) => e.platform == Platform.operatingSystem,
+                  ))
+                    DropdownMenuItem(
+                      value: item.name,
+                      enabled:
+                          item.abi == null || _supportedAbis.contains(item.abi),
+                      child: Text(
+                        '${item.abi ?? (item.platform == 'android' ? 'Universal APK' : 'Windows x64')}${item.abi != null && !_supportedAbis.contains(item.abi) ? ' · ${extra.pick('Incompatible', '不兼容', '不相容')}' : ''}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (value) => setState(() {
-                      _assetName = value;
-                      _file = null;
-                      _progress = null;
-                      _latencies = {};
-                    }),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (value) => setState(() {
+                        _assetName = value;
+                        _file = null;
+                        _progress = null;
+                        _latencies = {};
+                      }),
+              ),
             ),
             if (_older)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  extra.pick(
-                    'Downgrading needs an external backup. Android normally requires uninstalling first; unsupported data cannot be restored.',
-                    '降级前必须导出外部备份。Android 通常需要先卸载再安装；旧版不支持的数据无法恢复。',
-                    '降級前必須匯出外部備份。Android 通常需要先解除安裝再安裝；舊版不支援的資料無法恢復。',
+                child: PageModule(
+                  child: Text(
+                    extra.pick(
+                      'Downgrading needs an external backup. Android normally requires uninstalling first; unsupported data cannot be restored.',
+                      '降级前必须导出外部备份。Android 通常需要先卸载再安装；旧版不支持的数据无法恢复。',
+                      '降級前必須匯出外部備份。Android 通常需要先解除安裝再安裝；舊版不支援的資料無法恢復。',
+                    ),
                   ),
                 ),
               ),
-            Text(
-              '${_asset!.name}${_asset!.platform == 'android' && _asset!.abi == null ? ' (Universal APK)' : ''} · ${(_asset!.size / 1024 / 1024).toStringAsFixed(1)} MB',
+            PageModule(
+              child: Text(
+                '${_asset!.name}${_asset!.platform == 'android' && _asset!.abi == null ? ' (Universal APK)' : ''} · ${(_asset!.size / 1024 / 1024).toStringAsFixed(1)} MB',
+              ),
             ),
             if (!_asset!.verifiable) ...[
-              Text(t.unverified),
-              TextButton(
-                onPressed: () => launchUrl(
-                  Uri.parse(_release!.releaseUrl),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text(
-                  extra.pick('View official release', '查看官方发布页', '查看官方發佈頁'),
+              PageModule(child: Text(t.unverified)),
+              PageModule(
+                child: TextButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse(_release!.releaseUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: Text(
+                    extra.pick('View official release', '查看官方发布页', '查看官方發佈頁'),
+                  ),
                 ),
               ),
             ],
-            DropdownButtonFormField<String>(
-              initialValue: _source ?? 'automatic',
-              isExpanded: true,
-              decoration: InputDecoration(labelText: t.source),
-              items: [
-                DropdownMenuItem(
-                  value: 'automatic',
-                  child: Text(t.automatic, overflow: TextOverflow.ellipsis),
-                ),
-                for (final source in _sources)
+            PageModule(
+              child: DropdownButtonFormField<String>(
+                initialValue: _source ?? 'automatic',
+                isExpanded: true,
+                decoration: InputDecoration(labelText: t.source),
+                items: [
                   DropdownMenuItem(
-                    value: source.prefix,
-                    child: Text(source.name),
+                    value: 'automatic',
+                    child: Text(t.automatic, overflow: TextOverflow.ellipsis),
                   ),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (value) async {
-                      setState(
-                        () => _source = value == 'automatic' ? null : value,
-                      );
-                      await ref.read(appUpdateServiceProvider).savePreferences({
-                        ..._prefs,
-                        'source': _source,
-                      });
-                      await _load();
-                    },
+                  for (final source in _sources)
+                    DropdownMenuItem(
+                      value: source.prefix,
+                      child: Text(source.name),
+                    ),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (value) async {
+                        setState(
+                          () => _source = value == 'automatic' ? null : value,
+                        );
+                        await ref
+                            .read(appUpdateServiceProvider)
+                            .savePreferences({..._prefs, 'source': _source});
+                        await _load();
+                      },
+              ),
             ),
             Wrap(
               spacing: 8,
               children: [
-                OutlinedButton(
-                  onPressed: _busy
-                      ? null
-                      : () => _run(() async {
-                          await _test();
-                        }),
-                  child: Text(t.probe),
+                PageModule(
+                  child: OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _run(() async {
+                            await _test();
+                          }),
+                    child: Text(t.probe),
+                  ),
                 ),
-                TextButton(
-                  onPressed: _busy ? null : _addSource,
-                  child: Text(t.custom),
+                PageModule(
+                  child: TextButton(
+                    onPressed: _busy ? null : _addSource,
+                    child: Text(t.custom),
+                  ),
                 ),
               ],
             ),
             for (final r in _latencies.values)
-              ListTile(
-                dense: true,
-                title: Text(r.source.name),
-                subtitle: Text(
-                  '${r.testedAt.toLocal()}${r.error == null ? '' : '\n${r.error}'}',
-                ),
-                trailing: Text(
-                  r.milliseconds == null ? t.failed : '${r.milliseconds} ms',
+              PageModule(
+                child: ListTile(
+                  dense: true,
+                  title: Text(r.source.name),
+                  subtitle: Text(
+                    '${r.testedAt.toLocal()}${r.error == null ? '' : '\n${r.error}'}',
+                  ),
+                  trailing: Text(
+                    r.milliseconds == null ? t.failed : '${r.milliseconds} ms',
+                  ),
                 ),
               ),
             if (_progress != null) ...[
               LinearProgressIndicator(value: _progress),
-              Text('${(_progress! * 100).toStringAsFixed(1)}%'),
-            ],
-            if (_file != null) ...[
-              Text(t.verified),
-              if (Platform.isWindows) Text(t.zipHelp),
-              FilledButton(
-                onPressed: _busy ? null : _install,
-                child: Text(t.install),
+              PageModule(
+                child: Text('${(_progress! * 100).toStringAsFixed(1)}%'),
               ),
             ],
-            FilledButton(
-              onPressed: _busy || !_asset!.verifiable ? null : _download,
-              child: Text(t.download),
+            if (_file != null) ...[
+              PageModule(child: Text(t.verified)),
+              if (Platform.isWindows) PageModule(child: Text(t.zipHelp)),
+              PageModule(
+                child: FilledButton(
+                  onPressed: _busy ? null : _install,
+                  child: Text(t.install),
+                ),
+              ),
+            ],
+            PageModule(
+              child: FilledButton(
+                onPressed: _busy || !_asset!.verifiable ? null : _download,
+                child: Text(t.download),
+              ),
             ),
             if (_operation != null)
-              TextButton(
-                onPressed: () => _operation?.cancel(),
-                child: Text(t.cancel),
+              PageModule(
+                child: TextButton(
+                  onPressed: () => _operation?.cancel(),
+                  child: Text(t.cancel),
+                ),
               ),
           ],
         ],
@@ -528,23 +570,34 @@ class _ReleaseHistoryPageState extends ConsumerState<_ReleaseHistoryPage> {
   Widget build(BuildContext context) {
     final t = NavigationAssistText.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t.pick('Version history', '历史版本', '歷史版本'))),
+      appBar: AppBar(
+        title: PageModule(
+          child: Text(t.pick('Version history', '历史版本', '歷史版本')),
+        ),
+      ),
       body: ListView(
         children: [
           for (final item in _items)
-            ListTile(
-              title: Text('v${item.version}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.pop(context, item.version),
+            PageModule(
+              child: ListTile(
+                title: Text('v${item.version}'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pop(context, item.version),
+              ),
             ),
           if (_error != null)
-            Padding(padding: const EdgeInsets.all(16), child: Text(_error!)),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: PageModule(child: Text(_error!)),
+            ),
           if (_busy)
             const LinearProgressIndicator()
           else if (_more)
-            TextButton(
-              onPressed: _load,
-              child: Text(t.pick('Load more', '加载更多', '載入更多')),
+            PageModule(
+              child: TextButton(
+                onPressed: _load,
+                child: Text(t.pick('Load more', '加载更多', '載入更多')),
+              ),
             ),
         ],
       ),

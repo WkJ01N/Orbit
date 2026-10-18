@@ -1,3 +1,4 @@
+import 'package:orbit/providers/quick_action_providers.dart';
 import 'package:orbit/services/launch_icon_service.dart';
 import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/providers/typography_providers.dart';
@@ -338,6 +339,7 @@ Future<void> restoreFromBackup(BuildContext context, WidgetRef ref) async {
       final typography = await ref.read(fontServiceProvider).initialize();
       ref.read(typographySettingsProvider.notifier).restoreLoaded(typography);
       ref.invalidate(launchSettingsProvider);
+      ref.invalidate(courseQuickActionsProvider);
       ref.invalidate(backgroundSettingsProvider);
       ref.invalidate(localeProvider);
       ref.invalidate(themeColorProvider);

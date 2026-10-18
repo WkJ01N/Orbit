@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/motion/launch_motion.dart';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
 import 'package:orbit/providers/launch_providers.dart';
@@ -9,11 +9,12 @@ import 'package:orbit/providers/notification_providers.dart';
 
 class PageEntranceRouteObserver extends RouteObserver<PageRoute<dynamic>> {
   Duration returnDelay = const Duration(milliseconds: 320);
+  Animation<double>? returningAnimation;
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     if (route is PageRoute<dynamic>) {
-      returnDelay =
-          route.reverseTransitionDuration + const Duration(milliseconds: 16);
+      returnDelay = route.reverseTransitionDuration;
+      returningAnimation = route.animation;
     }
     super.didPop(route, previousRoute);
   }
@@ -21,8 +22,7 @@ class PageEntranceRouteObserver extends RouteObserver<PageRoute<dynamic>> {
 
 final pageEntranceRoutes = PageEntranceRouteObserver();
 
-/// One activation produces one entrance, after navigation has settled. Kept
-/// pages retain their controllers, scroll positions, and form state.
+/// Prepare while the destination is still hidden; start at navigation midpoint.
 class PageEntranceHost extends ConsumerStatefulWidget {
   const PageEntranceHost({
     super.key,
@@ -30,22 +30,32 @@ class PageEntranceHost extends ConsumerStatefulWidget {
     required this.active,
     required this.child,
     this.startup = true,
+    this.secondary = false,
+    this.navigation,
   });
   final int index;
-  final bool active;
-  final bool startup;
+  final bool active, startup, secondary;
   final Widget child;
+  final Animation<double>? navigation;
   @override
   ConsumerState<PageEntranceHost> createState() => _PageEntranceHostState();
 }
 
 class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
-  late final AnimationController _controller;
+  late final _clock = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+    value: 1,
+  );
+  late final _modules = ModuleEntrance(_clock);
   LaunchMotion? _gridMotion;
   PageRoute<dynamic>? _route;
-  Timer? _pending;
-  bool _background = false, _initialized = false;
+  Animation<double>? _waiting;
+  bool _reverse = false, _background = false, _initialized = false;
+  int _generation = 0;
+  Size? _lastSize;
+  bool get _grid => widget.index == 0 && !widget.secondary;
   bool get _allowed =>
       mounted &&
       widget.active &&
@@ -56,20 +66,19 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       ref.read(pendingNotificationPayloadProvider) == null &&
       !ref.read(strongConfirmationVisibleProvider) &&
       ref.read(deadlineStrongEventsProvider).isEmpty;
+
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 360),
-      value: 1,
-    );
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final size = MediaQuery.sizeOf(context);
+    if (_lastSize != null && _lastSize != size) _finish();
+    _lastSize = size;
     final route = ModalRoute.of(context);
     if (route is PageRoute<dynamic> && route != _route) {
       pageEntranceRoutes.unsubscribe(this);
@@ -79,51 +88,87 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     if (!_initialized) {
       _initialized = true;
       final settings = ref.read(launchSettingsProvider);
-      if (widget.index == 0 &&
-          (!settings.onStartup || !settings.pageEnabled[0])) {
+      if (_grid && (!settings.onStartup || !settings.pageEnabled[0])) {
         _gridMotion = LaunchMotion(vsync: this, settings: settings)..finish();
       }
-      if (widget.active &&
-          widget.startup &&
-          widget.index != 0 &&
-          settings.onStartup) {
-        _queue(const Duration(milliseconds: 480));
-      } else if (widget.active && !widget.startup && settings.onPageSwitch) {
-        _queue(const Duration(milliseconds: 270));
+      if (_grid &&
+          _gridMotion == null &&
+          LaunchMotionScope.maybeOf(context) == null) {
+        _gridMotion = LaunchMotion(vsync: this, settings: settings)..finish();
       }
+      if (widget.active && widget.startup && !_grid && settings.onStartup) {
+        final startup = LaunchMotionScope.maybeOf(context);
+        _arm(startup?.timeline, startup: startup != null);
+      } else if (widget.active && !widget.startup && settings.onPageSwitch) {
+        _arm(widget.navigation ?? _route?.animation);
+      }
+    } else if (!_allowed) {
+      _finish();
     }
   }
 
+  void _detachWait() {
+    _waiting?.removeListener(_checkProgress);
+    _waiting = null;
+  }
+
   void _finish() {
-    _pending?.cancel();
-    _controller.value = 1;
+    _generation++;
+    _detachWait();
+    _modules.finish();
     _gridMotion?.finish();
   }
 
-  void _queue(Duration delay) {
-    _pending?.cancel();
-    if (!_allowed) return;
-    _pending = Timer(delay, () {
-      if (!_allowed) return;
-      if (widget.index == 0) {
-        final old = _gridMotion;
-        final next = LaunchMotion(
-          vsync: this,
-          settings: ref.read(launchSettingsProvider),
-          startup: false,
-        );
-        setState(() => _gridMotion = next);
-        // Descendants must first detach listeners from the previous clock.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          old?.dispose();
-          if (mounted && identical(_gridMotion, next) && _allowed) {
-            next.timeline.forward(from: 500 / 1150);
-          }
-        });
-      } else {
-        _controller.forward(from: 0);
-      }
+  bool _startupWait = false;
+  void _arm(
+    Animation<double>? navigation, {
+    bool reverse = false,
+    bool startup = false,
+  }) {
+    _detachWait();
+    if (!_allowed) {
+      _finish();
+      return;
+    }
+    _generation++;
+    _modules.reset();
+    _reverse = reverse;
+    _startupWait = startup;
+    if (_grid) {
+      final old = _gridMotion;
+      _gridMotion = LaunchMotion(
+        vsync: this,
+        settings: ref.read(launchSettingsProvider),
+        startup: false,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => old?.dispose());
+    }
+    _waiting = navigation;
+    _waiting?.addListener(_checkProgress);
+    final generation = _generation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && generation == _generation) _checkProgress();
     });
+  }
+
+  void _checkProgress() {
+    if (!_allowed) {
+      _finish();
+      return;
+    }
+    final animation = _waiting;
+    final threshold = _startupWait ? 480 / 1150 : .5;
+    final ready =
+        animation == null ||
+        (_reverse ? animation.value <= .5 : animation.value >= threshold);
+    if (!ready) return;
+    _detachWait();
+    if (!_modules.pending) return;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    _modules.start(box.localToGlobal(Offset.zero) & box.size);
+    _gridMotion?.timeline.forward(from: 500 / 1150);
+    setState(() {});
   }
 
   @override
@@ -132,7 +177,7 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     if (old.active != widget.active) {
       _finish();
       if (widget.active && ref.read(launchSettingsProvider).onPageSwitch) {
-        _queue(const Duration(milliseconds: 270));
+        _arm(widget.navigation ?? _route?.animation);
       }
     }
   }
@@ -142,7 +187,9 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
   @override
   void didPopNext() {
     if (ref.read(launchSettingsProvider).onPageSwitch) {
-      _queue(pageEntranceRoutes.returnDelay);
+      setState(
+        () => _arm(pageEntranceRoutes.returningAnimation, reverse: true),
+      );
     }
   }
 
@@ -155,16 +202,17 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     }
     if (state == AppLifecycleState.resumed && _background) {
       _background = false;
-      if (ref.read(launchSettingsProvider).onResume) _queue(Duration.zero);
+      if (ref.read(launchSettingsProvider).onResume) setState(() => _arm(null));
     }
   }
 
   @override
   void dispose() {
-    _pending?.cancel();
+    _detachWait();
     pageEntranceRoutes.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
-    _controller.dispose();
+    _modules.dispose();
+    _clock.dispose();
     _gridMotion?.dispose();
     super.dispose();
   }
@@ -183,29 +231,36 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     ref.listen(launchSettingsProvider, (_, next) {
       if (!next.pageEnabled[widget.index]) _finish();
     });
-    final settings = ref.watch(launchSettingsProvider);
-    Widget child = widget.child;
-    if (widget.index == 0 && _gridMotion != null) {
-      child = LaunchMotionScope(motion: _gridMotion!, child: child);
+    Widget child = ModuleEntranceScope(
+      motion: _modules,
+      child: Listener(
+        onPointerDown: (_) => _modules.sealLate(),
+        onPointerSignal: (_) => _modules.sealLate(),
+        child: NotificationListener<ScrollStartNotification>(
+          onNotification: (notification) {
+            if (notification.dragDetails != null) _modules.sealLate();
+            return false;
+          },
+          child: widget.child,
+        ),
+      ),
+    );
+    if (_grid) {
+      child = LaunchMotionScope(
+        motion: _gridMotion ?? LaunchMotionScope.maybeOf(context)!,
+        child: child,
+      );
     }
-    if (widget.index == 0) return child;
     return AnimatedBuilder(
-      animation: _controller,
+      animation: _modules,
       child: child,
-      builder: (context, child) {
-        final progress =
-            settings.pageEnabled[widget.index] &&
-                !MediaQuery.disableAnimationsOf(context)
-            ? Curves.easeOutCubic.transform(_controller.value)
-            : 1.0;
-        return Opacity(
-          opacity: progress,
-          child: Transform.translate(
-            offset: Offset(0, 10 * (1 - progress)),
-            child: child,
-          ),
-        );
-      },
+      builder: (_, child) => IgnorePointer(
+        ignoring: _modules.pending && _modules.gatePage,
+        child: Opacity(
+          opacity: _modules.pending && _modules.gatePage ? 0 : 1,
+          child: child,
+        ),
+      ),
     );
   }
 }

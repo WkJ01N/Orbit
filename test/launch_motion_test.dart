@@ -80,6 +80,8 @@ Future<ProviderContainer> _pump(
   bool reduced = false,
   bool hideUpcoming = false,
   bool hideImport = false,
+  bool onPageSwitch = false,
+  bool fitToPage = true,
   String? payload,
   bool strong = false,
   Future<List<CourseSession>>? data,
@@ -96,7 +98,11 @@ Future<ProviderContainer> _pump(
       launchAnimationsEnabledProvider.overrideWithValue(enabled),
       launchSettingsProvider.overrideWith(
         () => _LaunchSettings(
-          LaunchSettings(cardEntrance: mode, iconPath: iconPath),
+          LaunchSettings(
+            cardEntrance: mode,
+            iconPath: iconPath,
+            onPageSwitch: onPageSwitch,
+          ),
         ),
       ),
       reminderSettingsProvider.overrideWith(_Reminders.new),
@@ -105,7 +111,7 @@ Future<ProviderContainer> _pump(
           ScheduleDisplaySettings(
             hideUpcomingPage: hideUpcoming,
             hideImportPage: hideImport,
-            fitToPage: true,
+            fitToPage: fitToPage,
           ),
         ),
       ),
@@ -115,6 +121,9 @@ Future<ProviderContainer> _pump(
       ),
       selectedWeekStartProvider.overrideWith((ref) => DateTime(2026, 10, 12)),
       sessionsProvider.overrideWith((ref) => data ?? Future.value(_courses())),
+      upcomingSessionsProvider.overrideWith(
+        (ref) => data ?? Future.value(_courses()),
+      ),
       deadlinesProvider.overrideWith((ref) async => []),
       strongCourseIdsProvider.overrideWith((ref) async => {'course-0-0'}),
       pendingNotificationPayloadProvider.overrideWith((ref) => payload),
@@ -170,6 +179,40 @@ Future<void> _ready(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'grid replay retains its timetable state, layout cache and scroll position',
+    (tester) async {
+      final container = await _pump(
+        tester,
+        onPageSwitch: true,
+        fitToPage: false,
+      );
+      await _ready(tester);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+      final state = tester.state<WeekGridViewState>(find.byType(WeekGridView));
+      final body = find
+          .descendant(
+            of: find.byKey(const Key('adjacent-page-current')),
+            matching: find.byKey(const Key('schedule-vertical-body')),
+          )
+          .first;
+      final scroll = tester.widget<SingleChildScrollView>(body).controller!;
+      final offset = scroll.position.maxScrollExtent.clamp(0.0, 100.0);
+      scroll.jumpTo(offset);
+      await tester.pump();
+      container.read(appNavIndexProvider.notifier).state = 1;
+      await tester.pumpAndSettle();
+      container.read(appNavIndexProvider.notifier).state = 0;
+      await tester.pumpAndSettle();
+      expect(
+        tester.state<WeekGridViewState>(find.byType(WeekGridView)),
+        same(state),
+      );
+      expect(scroll.offset, closeTo(offset, .1));
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'startup system font is isolated from interface font and icon stays visible at first frame',
     (tester) async {

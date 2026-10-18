@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
@@ -66,7 +67,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
             duration: const Duration(seconds: 6),
-            content: Text(l10n.searchFailed('$e')),
+            content: PageModule(child: Text(l10n.searchFailed('$e'))),
           ),
         );
       }
@@ -74,6 +75,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
   }
 
   Future<void> _openSession(CourseSession session) async {
+    ref.read(selectedScheduleDateProvider.notifier).state = session.date;
     ref.read(selectedWeekStartProvider.notifier).state = weekStartFor(
       session.date,
     );
@@ -91,32 +93,36 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
     final l10n = AppLocalizations.of(context)!;
 
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(l10n.searchSessions)),
+      appBar: AppBar(title: PageModule(child: Text(l10n.searchSessions))),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: l10n.searchHint,
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _search,
+            child: PageModule(
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.searchHint,
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: _search,
+                  ),
                 ),
+                onSubmitted: (_) => _search(),
               ),
-              onSubmitted: (_) => _search(),
             ),
           ),
           if (!_loading && _results.length >= _resultLimit)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                l10n.searchResultsTruncated(_resultLimit),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              child: PageModule(
+                child: Text(
+                  l10n.searchResultsTruncated(_resultLimit),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -125,10 +131,12 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
                 ? Center(
-                    child: Text(
-                      _searched ? l10n.searchNoResults : l10n.searchHint,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    child: PageModule(
+                      child: Text(
+                        _searched ? l10n.searchNoResults : l10n.searchHint,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   )
@@ -137,14 +145,16 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final session = _results[index];
-                      return ListTile(
-                        title: Text(session.displayName),
-                        subtitle: Text(
-                          '${formatIsoDate(session.date)} · '
-                          '${formatTimeHm(session.startAt)} · ${session.room}',
+                      return PageModule(
+                        child: ListTile(
+                          title: Text(session.displayName),
+                          subtitle: Text(
+                            '${formatIsoDate(session.date)} · '
+                            '${formatTimeHm(session.startAt)} · ${session.room}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _openSession(session),
                         ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _openSession(session),
                       );
                     },
                   ),

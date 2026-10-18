@@ -106,7 +106,7 @@ void main() {
           expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
           expect(find.byType(GridSessionChip), findsWidgets);
           final scope = tester.widget<LaunchMotionScope>(
-            find.byType(LaunchMotionScope),
+            find.byType(LaunchMotionScope).first,
           );
           expect(scope.motion.cardsComplete, isTrue);
           expect(tester.takeException(), isNull);

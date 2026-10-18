@@ -15,8 +15,8 @@ import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
-
-enum SessionAction { edit, note, archive, delete }
+import 'package:orbit/models/course_quick_actions.dart';
+export 'package:orbit/models/course_quick_actions.dart' show SessionAction;
 
 class SessionActionMenu {
   static Future<void> show({
@@ -33,6 +33,22 @@ class SessionActionMenu {
       return;
     }
 
+    await perform(
+      context: context,
+      ref: ref,
+      session: session,
+      action: action,
+      onDeleted: onDeleted,
+    );
+  }
+
+  static Future<bool> perform({
+    required BuildContext context,
+    required WidgetRef ref,
+    required CourseSession session,
+    required SessionAction action,
+    VoidCallback? onDeleted,
+  }) async {
     switch (action) {
       case SessionAction.edit:
         await SessionEditSheet.showEdit(context, session);
@@ -50,7 +66,9 @@ class SessionActionMenu {
         if (deleted) {
           onDeleted?.call();
         }
+        return deleted;
     }
+    return false;
   }
 
   static Future<SessionAction?> _pickAction(

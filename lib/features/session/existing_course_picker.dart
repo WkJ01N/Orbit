@@ -1,19 +1,23 @@
+import 'package:orbit/services/semester_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/orbit_feature_text.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/services/course_catalog.dart';
+import 'package:orbit/features/session/course_history_list.dart';
 
 /// Uses the latest occurrence as a template; historical rows are never edited.
 List<({CourseSession course, bool archivedOnly})> existingCourses(
   List<CourseSession> sessions,
 ) {
   final groups = <String, List<CourseSession>>{};
+  final semesters = SemesterService(sessions: sessions);
   for (final s in sessions.where((s) => !s.isExam && s.deletedAt == null)) {
     groups
         .putIfAbsent(
-          '${s.semester}|${CourseSeriesKey.fromSession(s).value}',
+          '${semesters.resolve(name: s.semester, id: s.semesterId, at: s.startAt)!.id}|${CourseSeriesKey.fromSession(s).value}',
           () => [],
         )
         .add(s);
@@ -49,10 +53,13 @@ class _ExistingCoursePicker extends ConsumerStatefulWidget {
 
 class _ExistingCoursePickerState extends ConsumerState<_ExistingCoursePicker> {
   String _query = '';
+  List<CourseSession>? _source;
+  List<({CourseSession course, bool archivedOnly})> _courses = const [];
   @override
   Widget build(BuildContext context) {
     final text = OrbitFeatureText.of(context);
     final sessions = ref.watch(sessionsProvider);
+    final catalog = ref.watch(courseCatalogProvider);
     return AlertDialog(
       title: Text(text.existing),
       content: SizedBox(
@@ -79,7 +86,11 @@ class _ExistingCoursePickerState extends ConsumerState<_ExistingCoursePicker> {
                   ),
                 ),
                 data: (values) {
-                  final courses = existingCourses(values)
+                  if (!identical(values, _source)) {
+                    _source = values;
+                    _courses = existingCourses(values);
+                  }
+                  final courses = _courses
                       .where(
                         (c) =>
                             '${c.course.courseName} ${c.course.courseCode} ${c.course.section} ${c.course.semester}'
@@ -90,18 +101,15 @@ class _ExistingCoursePickerState extends ConsumerState<_ExistingCoursePicker> {
                   if (courses.isEmpty) {
                     return Center(child: Text(text.noCourses));
                   }
-                  return ListView.builder(
-                    itemCount: courses.length,
-                    itemBuilder: (_, i) {
-                      final item = courses[i];
+                  return CourseHistoryList(
+                    items: courses,
+                    isEnded: (item) => catalog.isEnded(item.course),
+                    itemBuilder: (_, item) {
                       final s = item.course;
-                      final heading =
-                          i == 0 ||
-                          courses[i - 1].archivedOnly != item.archivedOnly;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (heading)
+                          if (item.archivedOnly)
                             Padding(
                               padding: const EdgeInsets.all(8),
                               child: Text(

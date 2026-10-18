@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/providers/database_providers.dart';
 import 'package:orbit/data/database/app_database.dart';
@@ -43,7 +44,7 @@ class _AccountSyncPageState extends ConsumerState<AccountSyncPage> {
       });
     }
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(text.title)),
+      appBar: AppBar(title: PageModule(child: Text(text.title))),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorView(
@@ -77,16 +78,20 @@ class _SignedOutBody extends ConsumerWidget {
           color: Theme.of(context).colorScheme.primary,
         ),
         const SizedBox(height: 20),
-        Text(
-          configured ? text.optionalIntro : text.notAvailable,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium,
+        PageModule(
+          child: Text(
+            configured ? text.optionalIntro : text.notAvailable,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
         const SizedBox(height: 12),
-        Text(
-          text.offlineWorks,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium,
+        PageModule(
+          child: Text(
+            text.offlineWorks,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ),
         const SizedBox(height: 32),
         Center(
@@ -95,22 +100,30 @@ class _SignedOutBody extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilledButton(
-                  onPressed: configured
-                      ? () => _showAuth(context, ref, register: false)
-                      : null,
-                  child: _buttonText(text.signIn),
+                PageModule(
+                  child: FilledButton(
+                    onPressed: configured
+                        ? () => _showAuth(context, ref, register: false)
+                        : null,
+                    child: _buttonText(text.signIn),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: configured
-                      ? () => _showAuth(context, ref, register: true)
-                      : null,
-                  child: _buttonText(text.register),
+                PageModule(
+                  child: OutlinedButton(
+                    onPressed: configured
+                        ? () => _showAuth(context, ref, register: true)
+                        : null,
+                    child: _buttonText(text.register),
+                  ),
                 ),
-                TextButton(
-                  onPressed: configured ? () => _showReset(context, ref) : null,
-                  child: _buttonText(text.forgotPassword),
+                PageModule(
+                  child: TextButton(
+                    onPressed: configured
+                        ? () => _showReset(context, ref)
+                        : null,
+                    child: _buttonText(text.forgotPassword),
+                  ),
                 ),
               ],
             ),
@@ -132,81 +145,93 @@ class _SignedInBody extends ConsumerWidget {
     final syncing = status.phase == SyncPhase.syncing;
     return ListView(
       children: [
-        ListTile(
-          leading: _AccountAvatar(account: status.account!, radius: 24),
-          title: Text(status.account!.username ?? status.account!.email),
-          subtitle: Text(
-            status.account!.username == null
-                ? text.accountReady
-                : status.account!.email,
+        PageModule(
+          child: ListTile(
+            leading: _AccountAvatar(account: status.account!, radius: 24),
+            title: Text(status.account!.username ?? status.account!.email),
+            subtitle: Text(
+              status.account!.username == null
+                  ? text.accountReady
+                  : status.account!.email,
+            ),
+            trailing: const Icon(Icons.edit_outlined),
+            onTap: () async {
+              await ref.read(accountSyncProvider.notifier).refreshProfile();
+              if (!context.mounted) return;
+              final account = ref.read(accountSyncProvider).value?.account;
+              if (account != null) await _showProfileEditor(context, account);
+            },
           ),
-          trailing: const Icon(Icons.edit_outlined),
-          onTap: () async {
-            await ref.read(accountSyncProvider.notifier).refreshProfile();
-            if (!context.mounted) return;
-            final account = ref.read(accountSyncProvider).value?.account;
-            if (account != null) await _showProfileEditor(context, account);
-          },
         ),
         const Divider(),
-        ListTile(
-          leading: syncing
-              ? const SizedBox.square(
-                  dimension: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(_statusIcon(status.phase)),
-          title: Text(_statusLabel(text, status)),
-          subtitle: Text(
-            status.lastSyncedAt == null
-                ? text.neverSynced
-                : text.lastSync(status.lastSyncedAt!),
-          ),
-          trailing: IconButton(
-            tooltip: text.syncNow,
-            onPressed: syncing
-                ? null
-                : () => ref.read(accountSyncProvider.notifier).syncNow(),
-            icon: const Icon(Icons.refresh),
+        PageModule(
+          child: ListTile(
+            leading: syncing
+                ? const SizedBox.square(
+                    dimension: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(_statusIcon(status.phase)),
+            title: Text(_statusLabel(text, status)),
+            subtitle: Text(
+              status.lastSyncedAt == null
+                  ? text.neverSynced
+                  : text.lastSync(status.lastSyncedAt!),
+            ),
+            trailing: IconButton(
+              tooltip: text.syncNow,
+              onPressed: syncing
+                  ? null
+                  : () => ref.read(accountSyncProvider.notifier).syncNow(),
+              icon: const Icon(Icons.refresh),
+            ),
           ),
         ),
         if (status.pendingCount > 0)
-          ListTile(
-            leading: const Icon(Icons.upload_outlined),
-            title: Text(text.pending(status.pendingCount)),
+          PageModule(
+            child: ListTile(
+              leading: const Icon(Icons.upload_outlined),
+              title: Text(text.pending(status.pendingCount)),
+            ),
           ),
         if (status.conflictCount > 0)
-          ListTile(
-            leading: Icon(
-              Icons.warning_amber_rounded,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            title: Text(text.conflicts(status.conflictCount)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => const SyncConflictsPage(),
+          PageModule(
+            child: ListTile(
+              leading: Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(text.conflicts(status.conflictCount)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const SyncConflictsPage(),
+                ),
               ),
             ),
           ),
         if (status.phase == SyncPhase.needsInitialMerge)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: FilledButton.icon(
-              onPressed: () => _resumeInitialMerge(context, ref),
-              icon: const Icon(Icons.merge_outlined),
-              label: Text(text.reviewMerge),
+            child: PageModule(
+              child: FilledButton.icon(
+                onPressed: () => _resumeInitialMerge(context, ref),
+                icon: const Icon(Icons.merge_outlined),
+                label: Text(text.reviewMerge),
+              ),
             ),
           ),
         const Divider(),
-        ListTile(
-          leading: const Icon(Icons.tune),
-          title: Text(SyncUpdateText.of(context).content),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(builder: (_) => const SyncContentPage()),
+        PageModule(
+          child: ListTile(
+            leading: const Icon(Icons.tune),
+            title: Text(SyncUpdateText.of(context).content),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const SyncContentPage()),
+            ),
           ),
         ),
         FutureBuilder<Map<String, dynamic>>(
@@ -214,22 +239,26 @@ class _SignedInBody extends ConsumerWidget {
               .read(settingsServiceProvider)
               .loadLocalJson('sync_sound_reselect'),
           builder: (context, snapshot) => snapshot.data?['required'] == true
-              ? ListTile(
-                  leading: const Icon(Icons.volume_up_outlined),
-                  title: Text(SyncUpdateText.of(context).soundHint),
+              ? PageModule(
+                  child: ListTile(
+                    leading: const Icon(Icons.volume_up_outlined),
+                    title: Text(SyncUpdateText.of(context).soundHint),
+                  ),
                 )
               : const SizedBox.shrink(),
         ),
         FutureBuilder(
           future: ref.read(syncScopeServiceProvider).pendingCategories(),
           builder: (context, snapshot) => snapshot.data?.isNotEmpty == true
-              ? ListTile(
-                  leading: const Icon(Icons.merge),
-                  title: Text(SyncUpdateText.of(context).preview),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SyncContentPage(),
+              ? PageModule(
+                  child: ListTile(
+                    leading: const Icon(Icons.merge),
+                    title: Text(SyncUpdateText.of(context).preview),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SyncContentPage(),
+                      ),
                     ),
                   ),
                 )
@@ -237,20 +266,24 @@ class _SignedInBody extends ConsumerWidget {
         ),
         const _AutoSyncSection(),
         const Divider(),
-        ListTile(
-          leading: const Icon(Icons.logout),
-          title: Text(text.signOut),
-          subtitle: Text(text.signOutKeepsData),
-          onTap: () => _confirmSignOut(context, ref),
-        ),
-        ListTile(
-          leading: Icon(
-            Icons.person_remove_outlined,
-            color: Theme.of(context).colorScheme.error,
+        PageModule(
+          child: ListTile(
+            leading: const Icon(Icons.logout),
+            title: Text(text.signOut),
+            subtitle: Text(text.signOutKeepsData),
+            onTap: () => _confirmSignOut(context, ref),
           ),
-          title: Text(text.deleteAccount),
-          subtitle: Text(text.deleteAccountHint),
-          onTap: () => _confirmDeleteAccount(context, ref),
+        ),
+        PageModule(
+          child: ListTile(
+            leading: Icon(
+              Icons.person_remove_outlined,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(text.deleteAccount),
+            subtitle: Text(text.deleteAccountHint),
+            onTap: () => _confirmDeleteAccount(context, ref),
+          ),
         ),
       ],
     );
@@ -269,13 +302,15 @@ class _AutoSyncSection extends ConsumerWidget {
         padding: EdgeInsets.all(24),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (_, _) => ListTile(
-        leading: const Icon(Icons.sync_problem_outlined),
-        title: Text(text.autoSyncSettingsFailed),
-        trailing: IconButton(
-          tooltip: text.retry,
-          onPressed: () => ref.invalidate(autoSyncSettingsProvider),
-          icon: const Icon(Icons.refresh),
+      error: (_, _) => PageModule(
+        child: ListTile(
+          leading: const Icon(Icons.sync_problem_outlined),
+          title: Text(text.autoSyncSettingsFailed),
+          trailing: IconButton(
+            tooltip: text.retry,
+            onPressed: () => ref.invalidate(autoSyncSettingsProvider),
+            icon: const Icon(Icons.refresh),
+          ),
         ),
       ),
       data: (value) => Column(
@@ -283,70 +318,85 @@ class _AutoSyncSection extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              text.autoSync,
-              style: Theme.of(context).textTheme.titleMedium,
+            child: PageModule(
+              child: Text(
+                text.autoSync,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
           ),
-          SwitchListTile(
-            title: Text(text.autoSync),
-            subtitle: Text(text.autoSyncHint),
-            value: value.enabled,
-            onChanged: (enabled) =>
-                _save(ref, value.copyWith(enabled: enabled)),
+          PageModule(
+            child: SwitchListTile(
+              title: Text(text.autoSync),
+              subtitle: Text(text.autoSyncHint),
+              value: value.enabled,
+              onChanged: (enabled) =>
+                  _save(ref, value.copyWith(enabled: enabled)),
+            ),
           ),
-          SwitchListTile(
-            title: Text(text.syncOnStartup),
-            value: value.onStartup,
-            onChanged: value.enabled
-                ? (enabled) => _save(ref, value.copyWith(onStartup: enabled))
-                : null,
+          PageModule(
+            child: SwitchListTile(
+              title: Text(text.syncOnStartup),
+              value: value.onStartup,
+              onChanged: value.enabled
+                  ? (enabled) => _save(ref, value.copyWith(onStartup: enabled))
+                  : null,
+            ),
           ),
-          SwitchListTile(
-            title: Text(text.syncOnResume),
-            value: value.onAppResume,
-            onChanged: value.enabled
-                ? (enabled) => _save(ref, value.copyWith(onAppResume: enabled))
-                : null,
+          PageModule(
+            child: SwitchListTile(
+              title: Text(text.syncOnResume),
+              value: value.onAppResume,
+              onChanged: value.enabled
+                  ? (enabled) =>
+                        _save(ref, value.copyWith(onAppResume: enabled))
+                  : null,
+            ),
           ),
-          SwitchListTile(
-            title: Text(text.syncOnLocalChange),
-            value: value.onLocalChange,
-            onChanged: value.enabled
-                ? (enabled) =>
-                      _save(ref, value.copyWith(onLocalChange: enabled))
-                : null,
+          PageModule(
+            child: SwitchListTile(
+              title: Text(text.syncOnLocalChange),
+              value: value.onLocalChange,
+              onChanged: value.enabled
+                  ? (enabled) =>
+                        _save(ref, value.copyWith(onLocalChange: enabled))
+                  : null,
+            ),
           ),
-          SwitchListTile(
-            title: Text(text.syncOnNetworkRestored),
-            value: value.onNetworkRestored,
-            onChanged: value.enabled
-                ? (enabled) =>
-                      _save(ref, value.copyWith(onNetworkRestored: enabled))
-                : null,
+          PageModule(
+            child: SwitchListTile(
+              title: Text(text.syncOnNetworkRestored),
+              value: value.onNetworkRestored,
+              onChanged: value.enabled
+                  ? (enabled) =>
+                        _save(ref, value.copyWith(onNetworkRestored: enabled))
+                  : null,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: DropdownButtonFormField<SyncNetworkPolicy>(
-              initialValue: value.networkPolicy,
-              decoration: InputDecoration(labelText: text.syncNetwork),
-              items: [
-                DropdownMenuItem(
-                  value: SyncNetworkPolicy.any,
-                  child: Text(text.syncNetworkAny),
-                ),
-                DropdownMenuItem(
-                  value: SyncNetworkPolicy.unmetered,
-                  child: Text(text.syncNetworkUnmetered),
-                ),
-              ],
-              onChanged: value.enabled
-                  ? (policy) {
-                      if (policy != null) {
-                        _save(ref, value.copyWith(networkPolicy: policy));
+            child: PageModule(
+              child: DropdownButtonFormField<SyncNetworkPolicy>(
+                initialValue: value.networkPolicy,
+                decoration: InputDecoration(labelText: text.syncNetwork),
+                items: [
+                  DropdownMenuItem(
+                    value: SyncNetworkPolicy.any,
+                    child: Text(text.syncNetworkAny),
+                  ),
+                  DropdownMenuItem(
+                    value: SyncNetworkPolicy.unmetered,
+                    child: Text(text.syncNetworkUnmetered),
+                  ),
+                ],
+                onChanged: value.enabled
+                    ? (policy) {
+                        if (policy != null) {
+                          _save(ref, value.copyWith(networkPolicy: policy));
+                        }
                       }
-                    }
-                  : null,
+                    : null,
+              ),
             ),
           ),
         ],
@@ -383,7 +433,7 @@ class _SyncConflictsPageState extends ConsumerState<SyncConflictsPage> {
   Widget build(BuildContext context) {
     final text = _SyncText.of(context);
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(text.conflictTitle)),
+      appBar: AppBar(title: PageModule(child: Text(text.conflictTitle))),
       body: FutureBuilder<List<SyncConflict>>(
         future: _conflicts,
         builder: (context, snapshot) {
@@ -392,40 +442,42 @@ class _SyncConflictsPageState extends ConsumerState<SyncConflictsPage> {
           }
           final conflicts = snapshot.data!;
           if (conflicts.isEmpty) {
-            return Center(child: Text(text.noConflicts));
+            return Center(child: PageModule(child: Text(text.noConflicts)));
           }
           return ListView.builder(
             itemCount: conflicts.length,
             itemBuilder: (context, index) {
               final conflict = conflicts[index];
-              return Card(
-                margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _entityTitle(conflict.local.entity),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(text.conflictHint),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          OutlinedButton(
-                            onPressed: () => _resolve(conflict, true),
-                            child: Text(text.useLocal),
-                          ),
-                          FilledButton(
-                            onPressed: () => _resolve(conflict, false),
-                            child: Text(text.useCloud),
-                          ),
-                        ],
-                      ),
-                    ],
+              return PageModule(
+                child: Card(
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _entityTitle(conflict.local.entity),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(text.conflictHint),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            OutlinedButton(
+                              onPressed: () => _resolve(conflict, true),
+                              child: Text(text.useLocal),
+                            ),
+                            FilledButton(
+                              onPressed: () => _resolve(conflict, false),
+                              child: Text(text.useCloud),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -639,7 +691,7 @@ class _ProfileEditorDialogState extends ConsumerState<_ProfileEditorDialog> {
         ? _AccountAvatar(account: widget.account, radius: 42)
         : CircleAvatar(radius: 42, backgroundImage: MemoryImage(_avatarBytes!));
     return AlertDialog(
-      title: Text(text.editProfile),
+      title: PageModule(child: Text(text.editProfile)),
       content: SingleChildScrollView(
         child: SizedBox(
           width: 420,
@@ -647,31 +699,41 @@ class _ProfileEditorDialogState extends ConsumerState<_ProfileEditorDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               preview,
-              TextButton.icon(
-                onPressed: _busy ? null : _pickAvatar,
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: _buttonText(text.chooseAvatar),
+              PageModule(
+                child: TextButton.icon(
+                  onPressed: _busy ? null : _pickAvatar,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: _buttonText(text.chooseAvatar),
+                ),
               ),
-              Text(
-                text.avatarHint,
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
+              PageModule(
+                child: Text(
+                  text.avatarHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _username,
-                enabled: !_busy,
-                maxLength: 24,
-                decoration: InputDecoration(
-                  labelText: text.usernameOptional,
-                  helperText: text.usernameHint,
-                  helperMaxLines: 2,
+              PageModule(
+                child: TextField(
+                  controller: _username,
+                  enabled: !_busy,
+                  maxLength: 24,
+                  decoration: InputDecoration(
+                    labelText: text.usernameOptional,
+                    helperText: text.usernameHint,
+                    helperMaxLines: 2,
+                  ),
                 ),
               ),
               if (_error != null)
-                Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                PageModule(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -679,18 +741,22 @@ class _ProfileEditorDialogState extends ConsumerState<_ProfileEditorDialog> {
       ),
       actionsOverflowButtonSpacing: 8,
       actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context),
-          child: _buttonText(text.cancel),
+        PageModule(
+          child: TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context),
+            child: _buttonText(text.cancel),
+          ),
         ),
-        FilledButton(
-          onPressed: _busy ? null : _save,
-          child: _busy
-              ? const SizedBox.square(
-                  dimension: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : _buttonText(text.save),
+        PageModule(
+          child: FilledButton(
+            onPressed: _busy ? null : _save,
+            child: _busy
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : _buttonText(text.save),
+          ),
         ),
       ],
     );
@@ -715,70 +781,80 @@ Future<void> _showAuth(
     barrierDismissible: false,
     builder: (dialogContext) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
-        title: Text(register ? text.register : text.signIn),
+        title: PageModule(child: Text(register ? text.register : text.signIn)),
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: email,
-                  enabled: !busy,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: InputDecoration(labelText: text.email),
+                PageModule(
+                  child: TextField(
+                    controller: email,
+                    enabled: !busy,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    decoration: InputDecoration(labelText: text.email),
+                  ),
                 ),
                 if (register)
-                  TextField(
-                    controller: username,
-                    enabled: !busy,
-                    maxLength: 24,
-                    decoration: InputDecoration(
-                      labelText: text.usernameOptional,
-                      helperText: text.usernameHint,
-                      helperMaxLines: 2,
+                  PageModule(
+                    child: TextField(
+                      controller: username,
+                      enabled: !busy,
+                      maxLength: 24,
+                      decoration: InputDecoration(
+                        labelText: text.usernameOptional,
+                        helperText: text.usernameHint,
+                        helperMaxLines: 2,
+                      ),
                     ),
                   ),
-                TextField(
-                  controller: password,
-                  enabled: !busy,
-                  obscureText: obscure,
-                  maxLength: 20,
-                  inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                  autofillHints: register
-                      ? const [AutofillHints.newPassword]
-                      : const [AutofillHints.password],
-                  decoration: InputDecoration(
-                    labelText: text.password,
-                    helperText: register ? text.passwordRule : null,
-                    helperMaxLines: 2,
-                    suffixIcon: IconButton(
-                      onPressed: () => setState(() => obscure = !obscure),
-                      icon: Icon(
-                        obscure ? Icons.visibility : Icons.visibility_off,
+                PageModule(
+                  child: TextField(
+                    controller: password,
+                    enabled: !busy,
+                    obscureText: obscure,
+                    maxLength: 20,
+                    inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                    autofillHints: register
+                        ? const [AutofillHints.newPassword]
+                        : const [AutofillHints.password],
+                    decoration: InputDecoration(
+                      labelText: text.password,
+                      helperText: register ? text.passwordRule : null,
+                      helperMaxLines: 2,
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() => obscure = !obscure),
+                        icon: Icon(
+                          obscure ? Icons.visibility : Icons.visibility_off,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 if (register)
-                  TextField(
-                    controller: confirm,
-                    enabled: !busy,
-                    obscureText: true,
-                    maxLength: 20,
-                    inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                    decoration: InputDecoration(
-                      labelText: text.confirmPassword,
+                  PageModule(
+                    child: TextField(
+                      controller: confirm,
+                      enabled: !busy,
+                      obscureText: true,
+                      maxLength: 20,
+                      inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                      decoration: InputDecoration(
+                        labelText: text.confirmPassword,
+                      ),
                     ),
                   ),
                 if (error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    child: PageModule(
+                      child: Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
                       ),
                     ),
                   ),
@@ -787,73 +863,77 @@ Future<void> _showAuth(
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: busy ? null : () => Navigator.pop(dialogContext),
-            child: _buttonText(text.cancel),
+          PageModule(
+            child: TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogContext),
+              child: _buttonText(text.cancel),
+            ),
           ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () async {
-                    if (!email.text.contains('@') ||
-                        !isValidOrbitPassword(password.text)) {
-                      setState(() => error = text.invalidCredentials);
-                      return;
-                    }
-                    if (register && !isValidOrbitUsername(username.text)) {
-                      setState(() => error = text.invalidUsername);
-                      return;
-                    }
-                    if (register && password.text != confirm.text) {
-                      setState(() => error = text.passwordMismatch);
-                      return;
-                    }
-                    setState(() {
-                      busy = true;
-                      error = null;
-                    });
-                    try {
-                      InitialSyncPreview preview;
-                      if (register) {
-                        final challenge = await ref
-                            .read(accountSyncProvider.notifier)
-                            .signUp(
-                              email.text,
-                              password.text,
-                              username: username.text,
-                            );
-                        if (!dialogContext.mounted) return;
-                        var code = '';
-                        if (challenge.requiresCode) {
-                          final entered = await _askCode(
-                            dialogContext,
-                            challenge,
-                          );
-                          if (entered == null) {
-                            setState(() => busy = false);
-                            return;
-                          }
-                          code = entered;
-                        }
-                        preview = await ref
-                            .read(accountSyncProvider.notifier)
-                            .finishVerification(challenge, code);
-                      } else {
-                        preview = await ref
-                            .read(accountSyncProvider.notifier)
-                            .signIn(email.text, password.text);
+          PageModule(
+            child: FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (!email.text.contains('@') ||
+                          !isValidOrbitPassword(password.text)) {
+                        setState(() => error = text.invalidCredentials);
+                        return;
                       }
-                      if (!dialogContext.mounted) return;
-                      Navigator.pop(dialogContext);
-                      await _showMergePreview(context, ref, preview);
-                    } catch (value) {
+                      if (register && !isValidOrbitUsername(username.text)) {
+                        setState(() => error = text.invalidUsername);
+                        return;
+                      }
+                      if (register && password.text != confirm.text) {
+                        setState(() => error = text.passwordMismatch);
+                        return;
+                      }
                       setState(() {
-                        busy = false;
-                        error = _friendlyError(text, value);
+                        busy = true;
+                        error = null;
                       });
-                    }
-                  },
-            child: _buttonText(register ? text.register : text.signIn),
+                      try {
+                        InitialSyncPreview preview;
+                        if (register) {
+                          final challenge = await ref
+                              .read(accountSyncProvider.notifier)
+                              .signUp(
+                                email.text,
+                                password.text,
+                                username: username.text,
+                              );
+                          if (!dialogContext.mounted) return;
+                          var code = '';
+                          if (challenge.requiresCode) {
+                            final entered = await _askCode(
+                              dialogContext,
+                              challenge,
+                            );
+                            if (entered == null) {
+                              setState(() => busy = false);
+                              return;
+                            }
+                            code = entered;
+                          }
+                          preview = await ref
+                              .read(accountSyncProvider.notifier)
+                              .finishVerification(challenge, code);
+                        } else {
+                          preview = await ref
+                              .read(accountSyncProvider.notifier)
+                              .signIn(email.text, password.text);
+                        }
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        await _showMergePreview(context, ref, preview);
+                      } catch (value) {
+                        setState(() {
+                          busy = false;
+                          error = _friendlyError(text, value);
+                        });
+                      }
+                    },
+              child: _buttonText(register ? text.register : text.signIn),
+            ),
           ),
         ],
       ),
@@ -945,52 +1025,62 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
   Widget build(BuildContext context) {
     final text = _SyncText.of(context);
     return AlertDialog(
-      title: Text(text.verificationCode),
+      title: PageModule(child: Text(text.verificationCode)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(8),
-            ],
-            decoration: InputDecoration(hintText: text.codeHint),
+          PageModule(
+            child: TextField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(8),
+              ],
+              decoration: InputDecoration(hintText: text.codeHint),
+            ),
           ),
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: TextButton(
-              onPressed: _seconds == 0 && !_resending ? _resend : null,
-              child: _buttonText(
-                _resending
-                    ? text.sendingCode
-                    : _seconds > 0
-                    ? text.resendIn(_seconds)
-                    : text.resendCode,
+            child: PageModule(
+              child: TextButton(
+                onPressed: _seconds == 0 && !_resending ? _resend : null,
+                child: _buttonText(
+                  _resending
+                      ? text.sendingCode
+                      : _seconds > 0
+                      ? text.resendIn(_seconds)
+                      : text.resendCode,
+                ),
               ),
             ),
           ),
           if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            PageModule(
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ),
         ],
       ),
       actionsOverflowButtonSpacing: 8,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: _buttonText(text.cancel),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: _buttonText(text.cancel),
+          ),
         ),
-        FilledButton(
-          onPressed: _controller.text.trim().isEmpty
-              ? null
-              : () => Navigator.pop(context, _controller.text.trim()),
-          child: _buttonText(text.confirm),
+        PageModule(
+          child: FilledButton(
+            onPressed: _controller.text.trim().isEmpty
+                ? null
+                : () => Navigator.pop(context, _controller.text.trim()),
+            child: _buttonText(text.confirm),
+          ),
         ),
       ],
     );
@@ -1018,7 +1108,7 @@ Future<void> _showMergePreview(
           (conflict) => choices.containsKey(conflict.id),
         );
         return AlertDialog(
-          title: Text(text.mergeTitle),
+          title: PageModule(child: Text(text.mergeTitle)),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -1026,24 +1116,30 @@ Future<void> _showMergePreview(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    text.mergeCounts(
-                      preview.localOnly.length,
-                      preview.remoteOnly.length,
-                      preview.identical.length,
-                      preview.conflicts.length,
+                  PageModule(
+                    child: Text(
+                      text.mergeCounts(
+                        preview.localOnly.length,
+                        preview.remoteOnly.length,
+                        preview.identical.length,
+                        preview.conflicts.length,
+                      ),
                     ),
                   ),
                   if (hasGuestStatistics)
-                    CheckboxListTile(
-                      value: mergeGuestStatistics,
-                      title: Text(StatisticsText.of(context).mergeGuest),
-                      onChanged: (v) =>
-                          setState(() => mergeGuestStatistics = v ?? false),
+                    PageModule(
+                      child: CheckboxListTile(
+                        value: mergeGuestStatistics,
+                        title: Text(StatisticsText.of(context).mergeGuest),
+                        onChanged: (v) =>
+                            setState(() => mergeGuestStatistics = v ?? false),
+                      ),
                     ),
                   for (final conflict in preview.conflicts) ...[
                     const Divider(),
-                    Text(_entityTitle(conflict.local.entity)),
+                    PageModule(
+                      child: Text(_entityTitle(conflict.local.entity)),
+                    ),
                     RadioGroup<bool>(
                       groupValue: choices[conflict.id],
                       onChanged: (value) {
@@ -1055,11 +1151,11 @@ Future<void> _showMergePreview(
                         children: [
                           RadioListTile<bool>(
                             value: true,
-                            title: Text(text.useLocal),
+                            title: PageModule(child: Text(text.useLocal)),
                           ),
                           RadioListTile<bool>(
                             value: false,
-                            title: Text(text.useCloud),
+                            title: PageModule(child: Text(text.useCloud)),
                           ),
                         ],
                       ),
@@ -1070,13 +1166,17 @@ Future<void> _showMergePreview(
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: _buttonText(text.cancel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: _buttonText(text.cancel),
+              ),
             ),
-            FilledButton(
-              onPressed: complete ? () => Navigator.pop(context, true) : null,
-              child: _buttonText(text.startSync),
+            PageModule(
+              child: FilledButton(
+                onPressed: complete ? () => Navigator.pop(context, true) : null,
+                child: _buttonText(text.startSync),
+              ),
             ),
           ],
         );
@@ -1103,7 +1203,11 @@ Future<void> _resumeInitialMerge(BuildContext context, WidgetRef ref) async {
   } catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyError(_SyncText.of(context), error))),
+        SnackBar(
+          content: PageModule(
+            child: Text(_friendlyError(_SyncText.of(context), error)),
+          ),
+        ),
       );
     }
   }
@@ -1116,20 +1220,26 @@ Future<void> _showReset(BuildContext context, WidgetRef ref) async {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: Text(text.forgotPassword),
-      content: TextField(
-        controller: email,
-        keyboardType: TextInputType.emailAddress,
-        decoration: InputDecoration(labelText: text.email),
+      title: PageModule(child: Text(text.forgotPassword)),
+      content: PageModule(
+        child: TextField(
+          controller: email,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(labelText: text.email),
+        ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: _buttonText(text.cancel),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: _buttonText(text.cancel),
+          ),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: _buttonText(text.sendCode),
+        PageModule(
+          child: FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: _buttonText(text.sendCode),
+          ),
         ),
       ],
     ),
@@ -1144,15 +1254,15 @@ Future<void> _showReset(BuildContext context, WidgetRef ref) async {
     if (values == null) return;
     await challenge.complete(values.$1, values.$2);
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(text.passwordResetDone)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: PageModule(child: Text(text.passwordResetDone))),
+      );
     }
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_friendlyError(text, error))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: PageModule(child: Text(_friendlyError(text, error)))),
+      );
     }
   }
 }
@@ -1244,65 +1354,79 @@ class _PasswordResetDialogState extends State<_PasswordResetDialog> {
     final valid =
         _code.text.trim().isNotEmpty && isValidOrbitPassword(_password.text);
     return AlertDialog(
-      title: Text(text.resetPassword),
+      title: PageModule(child: Text(text.resetPassword)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _code,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(8),
-              ],
-              decoration: InputDecoration(labelText: text.verificationCode),
+            PageModule(
+              child: TextField(
+                controller: _code,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(8),
+                ],
+                decoration: InputDecoration(labelText: text.verificationCode),
+              ),
             ),
-            TextField(
-              controller: _password,
-              obscureText: true,
-              maxLength: 20,
-              inputFormatters: [LengthLimitingTextInputFormatter(20)],
-              decoration: InputDecoration(
-                labelText: text.newPassword,
-                helperText: text.passwordRule,
-                helperMaxLines: 2,
+            PageModule(
+              child: TextField(
+                controller: _password,
+                obscureText: true,
+                maxLength: 20,
+                inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                decoration: InputDecoration(
+                  labelText: text.newPassword,
+                  helperText: text.passwordRule,
+                  helperMaxLines: 2,
+                ),
               ),
             ),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                onPressed: _seconds == 0 && !_resending ? _resend : null,
-                child: _buttonText(
-                  _resending
-                      ? text.sendingCode
-                      : _seconds > 0
-                      ? text.resendIn(_seconds)
-                      : text.resendCode,
+              child: PageModule(
+                child: TextButton(
+                  onPressed: _seconds == 0 && !_resending ? _resend : null,
+                  child: _buttonText(
+                    _resending
+                        ? text.sendingCode
+                        : _seconds > 0
+                        ? text.resendIn(_seconds)
+                        : text.resendCode,
+                  ),
                 ),
               ),
             ),
             if (_error != null)
-              Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              PageModule(
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
           ],
         ),
       ),
       actionsOverflowButtonSpacing: 8,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: _buttonText(text.cancel),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: _buttonText(text.cancel),
+          ),
         ),
-        FilledButton(
-          onPressed: valid
-              ? () =>
-                    Navigator.pop(context, (_code.text.trim(), _password.text))
-              : null,
-          child: _buttonText(text.confirm),
+        PageModule(
+          child: FilledButton(
+            onPressed: valid
+                ? () => Navigator.pop(context, (
+                    _code.text.trim(),
+                    _password.text,
+                  ))
+                : null,
+            child: _buttonText(text.confirm),
+          ),
         ),
       ],
     );
@@ -1315,16 +1439,20 @@ Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: Text(text.signOut),
-      content: Text(text.signOutKeepsData),
+      title: PageModule(child: Text(text.signOut)),
+      content: PageModule(child: Text(text.signOutKeepsData)),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: _buttonText(text.cancel),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: _buttonText(text.cancel),
+          ),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: _buttonText(text.signOut),
+        PageModule(
+          child: FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: _buttonText(text.signOut),
+          ),
         ),
       ],
     ),
@@ -1339,29 +1467,35 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
-      title: Text(text.deleteAccount),
+      title: PageModule(child: Text(text.deleteAccount)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(text.deleteAccountConfirm),
-          TextField(
-            controller: password,
-            obscureText: true,
-            decoration: InputDecoration(labelText: text.password),
+          PageModule(child: Text(text.deleteAccountConfirm)),
+          PageModule(
+            child: TextField(
+              controller: password,
+              obscureText: true,
+              decoration: InputDecoration(labelText: text.password),
+            ),
           ),
         ],
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: _buttonText(text.cancel),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: _buttonText(text.cancel),
           ),
-          onPressed: () => Navigator.pop(context, true),
-          child: _buttonText(text.deleteAccount),
+        ),
+        PageModule(
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: _buttonText(text.deleteAccount),
+          ),
         ),
       ],
     ),
@@ -1371,9 +1505,9 @@ Future<void> _confirmDeleteAccount(BuildContext context, WidgetRef ref) async {
     await ref.read(accountSyncProvider.notifier).deleteAccount(password.text);
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_friendlyError(text, error))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: PageModule(child: Text(_friendlyError(text, error)))),
+      );
     }
   }
 }
@@ -1391,11 +1525,13 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message, textAlign: TextAlign.center),
+          PageModule(child: Text(message, textAlign: TextAlign.center)),
           const SizedBox(height: 12),
-          FilledButton(
-            onPressed: onRetry,
-            child: Text(_SyncText.of(context).retry),
+          PageModule(
+            child: FilledButton(
+              onPressed: onRetry,
+              child: Text(_SyncText.of(context).retry),
+            ),
           ),
         ],
       ),
@@ -1442,8 +1578,9 @@ String _friendlyError(_SyncText text, Object error) {
   return '${text.operationFailed}: $value';
 }
 
-Widget _buttonText(String value) =>
-    Text(value, maxLines: 2, softWrap: true, textAlign: TextAlign.center);
+Widget _buttonText(String value) => PageModule(
+  child: Text(value, maxLines: 2, softWrap: true, textAlign: TextAlign.center),
+);
 
 class _SyncText {
   const _SyncText(this.zh, this.hant);

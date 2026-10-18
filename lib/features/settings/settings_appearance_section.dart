@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/settings/components_page.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
@@ -35,52 +36,62 @@ class SettingsAppearanceSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.sectionAppearance,
           children: [
-            ListTile(
-              key: const Key('components-settings'),
-              leading: const Icon(Icons.download_for_offline_outlined),
-              title: Text(
-                NavigationAssistText.of(
+            PageModule(
+              child: ListTile(
+                key: const Key('components-settings'),
+                leading: const Icon(Icons.download_for_offline_outlined),
+                title: Text(
+                  NavigationAssistText.of(
+                    context,
+                  ).pick('Resources & components', '资源与组件', '資源與元件'),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
                   context,
-                ).pick('Resources & components', '资源与组件', '資源與元件'),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const ComponentsPage()),
-              ),
-            ),
-            ListTile(
-              key: const Key('typography-settings'),
-              leading: const Icon(Icons.font_download_outlined),
-              title: Text(TypographyText(context).title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const TypographySettingsPage(),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ComponentsPage(),
+                  ),
                 ),
               ),
             ),
-            ListTile(
-              key: const Key('launch-animation-settings'),
-              leading: const Icon(Icons.animation_rounded),
-              title: Text(LaunchText(context).title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const LaunchSettingsPage(),
+            PageModule(
+              child: ListTile(
+                key: const Key('typography-settings'),
+                leading: const Icon(Icons.font_download_outlined),
+                title: Text(TypographyText(context).title),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const TypographySettingsPage(),
+                  ),
                 ),
               ),
             ),
-            ListTile(
-              key: const Key('page-background-settings'),
-              leading: const Icon(Icons.wallpaper),
-              title: Text(BackgroundText(context).title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const BackgroundSettingsPage(),
+            PageModule(
+              child: ListTile(
+                key: const Key('launch-animation-settings'),
+                leading: const Icon(Icons.animation_rounded),
+                title: Text(LaunchText(context).title),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const LaunchSettingsPage(),
+                  ),
+                ),
+              ),
+            ),
+            PageModule(
+              child: ListTile(
+                key: const Key('page-background-settings'),
+                leading: const Icon(Icons.wallpaper),
+                title: Text(BackgroundText(context).title),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BackgroundSettingsPage(),
+                  ),
                 ),
               ),
             ),
@@ -133,24 +144,26 @@ class SettingsAppearanceSection extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(l10n.paletteMode),
+                  PageModule(child: Text(l10n.paletteMode)),
                   const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(
-                        value: false,
-                        label: Text(l10n.paletteSingle),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text(l10n.themeMulticolor),
-                      ),
-                    ],
-                    selected: {multi.enabled},
-                    showSelectedIcon: false,
-                    onSelectionChanged: (v) => ref
-                        .read(multicolorSettingsProvider.notifier)
-                        .setValue(multi.copyWith(enabled: v.first)),
+                  PageModule(
+                    child: SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment(
+                          value: false,
+                          label: Text(l10n.paletteSingle),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text(l10n.themeMulticolor),
+                        ),
+                      ],
+                      selected: {multi.enabled},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (v) => ref
+                          .read(multicolorSettingsProvider.notifier)
+                          .setValue(multi.copyWith(enabled: v.first)),
+                    ),
                   ),
                 ],
               ),
@@ -161,24 +174,27 @@ class SettingsAppearanceSection extends ConsumerWidget {
                 onSelected: (value) =>
                     ref.read(themeColorProvider.notifier).setColor(value),
               ),
-            ListTile(
-              title: Text(l10n.themeMulticolor),
-              subtitle: Text(
-                !multi.enabled
-                    ? l10n.paletteSingle
-                    : multi.isCustom
-                    ? l10n.paletteCustom
-                    : multi.scheme == AppColorScheme.original
-                    ? l10n.paletteTonalSpot
-                    : l10n.themeSchemeNames.split('|')[multi.scheme.index - 1],
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.themeMulticolor),
+                subtitle: Text(
+                  !multi.enabled
+                      ? l10n.paletteSingle
+                      : multi.isCustom
+                      ? l10n.paletteCustom
+                      : multi.scheme == AppColorScheme.original
+                      ? l10n.paletteTonalSpot
+                      : l10n.themeSchemeNames.split('|')[multi.scheme.index -
+                            1],
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ThemeSchemePage()),
+                  );
+                },
               ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ThemeSchemePage()),
-                );
-              },
             ),
           ],
         ),
@@ -231,16 +247,20 @@ class _ThemeColorPicker extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            l10n.themeColorTitle,
-            style: Theme.of(context).textTheme.titleSmall,
+          PageModule(
+            child: Text(
+              l10n.themeColorTitle,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
           ),
           const SizedBox(height: 2),
-          Text(
-            l10n.themeColorSubtitle,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+          PageModule(
+            child: Text(
+              l10n.themeColorSubtitle,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -260,10 +280,12 @@ class _ThemeColorPicker extends StatelessWidget {
                   selected: true,
                   onTap: () => _showCustom(context),
                 ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.colorize, size: 18),
-                label: Text(l10n.themeColorCustom),
-                onPressed: () => _showCustom(context),
+              PageModule(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.colorize, size: 18),
+                  label: Text(l10n.themeColorCustom),
+                  onPressed: () => _showCustom(context),
+                ),
               ),
             ],
           ),
@@ -344,26 +366,28 @@ class _LaunchAtStartupTileState extends ConsumerState<_LaunchAtStartupTile> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return SwitchListTile(
-      title: Text(l10n.launchAtStartup),
-      subtitle: Text(l10n.launchAtStartupSubtitle),
-      value: _enabled ?? false,
-      onChanged: _enabled == null
-          ? null
-          : (value) async {
-              try {
-                await ref.read(startupServiceProvider).setEnabled(value);
-                if (mounted) setState(() => _enabled = value);
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showAppSnackBar(
-                    SnackBar(
-                      content: Text(l10n.launchAtStartupFailed('$error')),
-                    ),
-                  );
+    return PageModule(
+      child: SwitchListTile(
+        title: Text(l10n.launchAtStartup),
+        subtitle: Text(l10n.launchAtStartupSubtitle),
+        value: _enabled ?? false,
+        onChanged: _enabled == null
+            ? null
+            : (value) async {
+                try {
+                  await ref.read(startupServiceProvider).setEnabled(value);
+                  if (mounted) setState(() => _enabled = value);
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showAppSnackBar(
+                      SnackBar(
+                        content: Text(l10n.launchAtStartupFailed('$error')),
+                      ),
+                    );
+                  }
                 }
-              }
-            },
+              },
+      ),
     );
   }
 }

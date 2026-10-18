@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:async';
@@ -78,7 +80,11 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(OrbitFeatureText.of(context).refreshFailed)),
+          SnackBar(
+            content: PageModule(
+              child: Text(OrbitFeatureText.of(context).refreshFailed),
+            ),
+          ),
         );
       }
     }
@@ -137,24 +143,30 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
           leading: widget.showBackButton
               ? const BackButton()
               : upcomingAsync.hasValue
-              ? IconButton(
-                  key: const Key('upcoming-add-session'),
-                  icon: const Icon(Icons.add, size: 21),
-                  tooltip: l10n.addSession,
-                  onPressed: () => showSessionAddAction(context),
+              ? PageModule(
+                  child: IconButton(
+                    key: const Key('upcoming-add-session'),
+                    icon: const Icon(Icons.add, size: 21),
+                    tooltip: l10n.addSession,
+                    onPressed: () => showSessionAddAction(context),
+                  ),
                 )
               : null,
-          title: Text(l10n.upcomingTitle),
+          title: PageModule(child: Text(l10n.upcomingTitle)),
           actions: [
-            IconButton(
-              tooltip: OrbitFeatureText.of(context).refresh,
-              icon: const Icon(Icons.refresh),
-              onPressed: _refresh,
+            PageModule(
+              child: IconButton(
+                tooltip: OrbitFeatureText.of(context).refresh,
+                icon: const Icon(Icons.refresh),
+                onPressed: _refresh,
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: l10n.searchSessions,
-              onPressed: () => SessionSearchPage.show(context),
+            PageModule(
+              child: IconButton(
+                icon: const Icon(Icons.search),
+                tooltip: l10n.searchSessions,
+                onPressed: () => SessionSearchPage.show(context),
+              ),
             ),
           ],
         ),
@@ -168,10 +180,12 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
                   return list(sessions);
                 },
                 loading: () => const _UpcomingSkeleton(),
-                error: (error, _) => ErrorState(
-                  message: l10n.upcomingLoadFailed('$error'),
-                  retryLabel: l10n.actionRetry,
-                  onRetry: () => ref.invalidate(upcomingSessionsProvider),
+                error: (error, _) => PageModule(
+                  child: ErrorState(
+                    message: l10n.upcomingLoadFailed('$error'),
+                    retryLabel: l10n.actionRetry,
+                    onRetry: () => ref.invalidate(upcomingSessionsProvider),
+                  ),
                 ),
               ),
       ),
@@ -184,8 +198,11 @@ class _UpcomingPageState extends ConsumerState<UpcomingPage> {
     final tomorrow = today.add(const Duration(days: 1));
     final weekEnd = today.add(Duration(days: 7 - today.weekday));
 
-    int dateKey(DateTime date) =>
-        date.year * 10000 + date.month * 100 + date.day;
+    final dateKeys = <int, int>{};
+    int dateKey(DateTime date) => dateKeys.putIfAbsent(
+      date.millisecondsSinceEpoch,
+      () => date.year * 10000 + date.month * 100 + date.day,
+    );
     final todayKey = dateKey(today),
         tomorrowKey = dateKey(tomorrow),
         weekEndKey = dateKey(weekEnd);
@@ -305,6 +322,8 @@ class _UpcomingListState extends State<_UpcomingList>
   List<Deadline>? _flatDeadlines;
   String? _flatLocale;
   List<_FlatItem> _items = const [];
+  List<_FlatItem> _courseItems = const [];
+  List<_FlatItem> _deadlineItems = const [];
 
   void _syncTimer() {
     _timer?.cancel();
@@ -386,10 +405,37 @@ class _UpcomingListState extends State<_UpcomingList>
     final l10n = AppLocalizations.of(context)!;
     final locale = Localizations.localeOf(context).toString();
 
-    if (!identical(_flatGroups, widget.groups) ||
-        !identical(_flatDeadlines, widget.deadlines) ||
-        _flatLocale != locale) {
-      // Flatten groups into a single list so course cards remain truly lazy.
+    final courseChanged =
+        !identical(_flatGroups, widget.groups) || _flatLocale != locale;
+    final deadlineChanged =
+        !listEquals(_flatDeadlines, widget.deadlines) || _flatLocale != locale;
+    if (courseChanged) {
+      final items = <_FlatItem>[];
+      final seenWeeks = <int>{};
+      final weeksByDate = <int, ({int key, DateTime monday})>{};
+      for (final group in widget.groups) {
+        items.add(_HeaderItem(_groupLabel(l10n, group)));
+        for (final session in group.sessions) {
+          final date = session.date;
+          final week = weeksByDate.putIfAbsent(date.millisecondsSinceEpoch, () {
+            final mondayDay = date.day - (date.weekday - 1);
+            return (
+              key: DateTime.utc(
+                date.year,
+                date.month,
+                mondayDay,
+              ).millisecondsSinceEpoch,
+              monday: DateTime(date.year, date.month, mondayDay),
+            );
+          });
+          if (seenWeeks.add(week.key)) items.add(_WeekHeaderItem(week.monday));
+          items.add(_SessionItem(session));
+        }
+      }
+
+      _courseItems = items;
+    }
+    if (deadlineChanged) {
       final items = <_FlatItem>[];
       if (widget.deadlines.isNotEmpty) {
         items.add(_HeaderItem(DeadlineText.of(context).ddl));
@@ -403,29 +449,10 @@ class _UpcomingListState extends State<_UpcomingList>
           }
         }
       }
-      final seenWeeks = <int>{};
-      for (final group in widget.groups) {
-        items.add(_HeaderItem(_groupLabel(l10n, group)));
-        for (final session in group.sessions) {
-          final date = session.date;
-          // UTC is only a cheap calendar ordinal here. Construct a local date
-          // once per week marker, not twice per course (expensive on Windows).
-          final mondayDay = date.day - (date.weekday - 1);
-          final mondayKey = DateTime.utc(
-            date.year,
-            date.month,
-            mondayDay,
-          ).millisecondsSinceEpoch;
-          if (seenWeeks.add(mondayKey)) {
-            items.add(
-              _WeekHeaderItem(DateTime(date.year, date.month, mondayDay)),
-            );
-          }
-          items.add(_SessionItem(session));
-        }
-      }
-
-      _items = items;
+      _deadlineItems = items;
+    }
+    if (courseChanged || deadlineChanged) {
+      _items = [..._deadlineItems, ..._courseItems];
       _flatGroups = widget.groups;
       _flatDeadlines = widget.deadlines;
       _flatLocale = locale;
@@ -441,7 +468,9 @@ class _UpcomingListState extends State<_UpcomingList>
         itemBuilder: (context, index) {
           final item = items[index];
           return switch (item) {
-            _HeaderItem(:final label) => SectionHeader(title: label),
+            _HeaderItem(:final label) => PageModule(
+              child: SectionHeader(title: label),
+            ),
             _WeekHeaderItem(:final monday) => _WeekMarker(
               monday: monday,
               label: l10n.upcomingWeekMonday(
@@ -485,11 +514,13 @@ class _WeekMarker extends StatelessWidget {
             color: colors.primary,
           ),
           const SizedBox(width: 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+          PageModule(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -536,121 +567,125 @@ class _SessionCard extends ConsumerWidget {
     final endLabel =
         '${session.endAt.hour.toString().padLeft(2, '0')}:${session.endAt.minute.toString().padLeft(2, '0')}';
 
-    return Card(
-      color: BackgroundPageScope.surface(
-        context,
-        courseCardSurface(
-          accent: accent,
-          colorScheme: colorScheme,
-          themeStyle: themeStyle,
-          highlighted: highlight,
-          isPast: isPast,
+    return PageModule(
+      child: Card(
+        color: BackgroundPageScope.surface(
+          context,
+          courseCardSurface(
+            accent: accent,
+            colorScheme: colorScheme,
+            themeStyle: themeStyle,
+            highlighted: highlight,
+            isPast: isPast,
+          ),
         ),
-      ),
-      child: GestureDetector(
-        onLongPress: () => SessionActionMenu.show(
-          context: context,
-          ref: ref,
-          session: session,
-        ),
-        onSecondaryTapDown: (details) => SessionActionMenu.show(
-          context: context,
-          ref: ref,
-          session: session,
-          position: details.globalPosition,
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => SessionDetailSheet.show(context, session),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Fixed-height colour bar — no IntrinsicHeight needed.
-                Container(
-                  width: 4,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: isOngoing
-                        ? accent
-                        : isPast
-                        ? colorScheme.outlineVariant
-                        : accent,
-                    borderRadius: BorderRadius.circular(2),
+        child: GestureDetector(
+          onLongPress: () => SessionActionMenu.show(
+            context: context,
+            ref: ref,
+            session: session,
+          ),
+          onSecondaryTapDown: (details) => SessionActionMenu.show(
+            context: context,
+            ref: ref,
+            session: session,
+            position: details.globalPosition,
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => SessionDetailSheet.show(context, session),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Fixed-height colour bar — no IntrinsicHeight needed.
+                  Container(
+                    width: 4,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: isOngoing
+                          ? accent
+                          : isPast
+                          ? colorScheme.outlineVariant
+                          : accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        session.displayName,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: isPast ? colorScheme.onSurfaceVariant : null,
-                          decoration: isPast
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$startLabel – $endLabel  ·  ${session.room}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      StrongCourseBadge(session: session),
-                      if (session.teachers.isNotEmpty)
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
                         Text(
-                          session.teachers.join('、'),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
-                          maxLines: 1,
+                          session.displayName,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: isPast
+                                    ? colorScheme.onSurfaceVariant
+                                    : null,
+                                decoration: isPast
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 112,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (displaySettings.showUpcomingCourseDate) ...[
-                        Text(
-                          _upcomingDateLabel(
-                            context,
-                            session,
-                            displaySettings.upcomingDateDisplay,
-                          ),
-                          key: Key('upcoming-course-date-${session.id}'),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
                         const SizedBox(height: 4),
-                      ],
-                      Center(
-                        child: SessionCountdownLabel(
-                          session: session,
-                          now: now,
-                          centered: true,
+                        Text(
+                          '$startLabel – $endLabel  ·  ${session.room}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
-                      ),
-                    ],
+                        StrongCourseBadge(session: session),
+                        if (session.teachers.isNotEmpty)
+                          Text(
+                            session.teachers.join('、'),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 112,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (displaySettings.showUpcomingCourseDate) ...[
+                          Text(
+                            _upcomingDateLabel(
+                              context,
+                              session,
+                              displaySettings.upcomingDateDisplay,
+                            ),
+                            key: Key('upcoming-course-date-${session.id}'),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        Center(
+                          child: SessionCountdownLabel(
+                            session: session,
+                            now: now,
+                            centered: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -685,13 +720,15 @@ class _EmptyState extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    return EmptyState(
-      icon: Icons.check_circle_outline,
-      title: l10n.upcomingEmptyTitle,
-      subtitle: l10n.upcomingEmptySubtitle,
-      action: OutlinedButton(
-        onPressed: () => navigateToAppTab(ref, AppTab.grid, context: context),
-        child: Text(l10n.upcomingGoToGrid),
+    return PageModule(
+      child: EmptyState(
+        icon: Icons.check_circle_outline,
+        title: l10n.upcomingEmptyTitle,
+        subtitle: l10n.upcomingEmptySubtitle,
+        action: OutlinedButton(
+          onPressed: () => navigateToAppTab(ref, AppTab.grid, context: context),
+          child: Text(l10n.upcomingGoToGrid),
+        ),
       ),
     );
   }
@@ -732,26 +769,28 @@ class _SkeletonSection extends StatelessWidget {
           child: SkeletonBox(height: 14, width: 80, radius: 4),
         ),
         for (var i = 0; i < cardCount; i++)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  SkeletonBox(width: 4, height: 52, radius: 2),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SkeletonBox(height: 14, radius: 4),
-                        const SizedBox(height: 8),
-                        SkeletonBox(height: 12, width: 160, radius: 4),
-                      ],
+          PageModule(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    SkeletonBox(width: 4, height: 52, radius: 2),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(height: 14, radius: 4),
+                          const SizedBox(height: 8),
+                          SkeletonBox(height: 12, width: 160, radius: 4),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SkeletonBox(width: 60, height: 32, radius: 8),
-                ],
+                    const SizedBox(width: 8),
+                    SkeletonBox(width: 60, height: 32, radius: 8),
+                  ],
+                ),
               ),
             ),
           ),

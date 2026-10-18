@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/statistics/statistics_page.dart';
 import 'package:orbit/models/statistics_text.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
@@ -32,13 +33,17 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: StatisticsText.of(context).title,
           children: [
-            ListTile(
-              leading: const Icon(Icons.insights_outlined),
-              title: Text(StatisticsText.of(context).title),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const StatisticsPage()),
+            PageModule(
+              child: ListTile(
+                leading: const Icon(Icons.insights_outlined),
+                title: Text(StatisticsText.of(context).title),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const StatisticsPage(),
+                  ),
+                ),
               ),
             ),
           ],
@@ -46,15 +51,17 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: _accountSyncLabel(context),
           children: [
-            ListTile(
-              title: Text(_accountSyncLabel(context)),
-              subtitle: Text(_accountSyncSubtitle(context)),
-              leading: const Icon(Icons.cloud_sync_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const AccountSyncPage(),
+            PageModule(
+              child: ListTile(
+                title: Text(_accountSyncLabel(context)),
+                subtitle: Text(_accountSyncSubtitle(context)),
+                leading: const Icon(Icons.cloud_sync_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AccountSyncPage(),
+                  ),
                 ),
               ),
             ),
@@ -63,25 +70,29 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.importTemplates,
           children: [
-            ListTile(
-              title: Text(l10n.importTemplates),
-              leading: const Icon(Icons.rule),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const ImportTemplatesPage(),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.importTemplates),
+                leading: const Icon(Icons.rule),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ImportTemplatesPage(),
+                  ),
                 ),
               ),
             ),
-            ListTile(
-              title: Text(l10n.importPlans),
-              leading: const Icon(Icons.schedule),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const ImportPlansPage(),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.importPlans),
+                leading: const Icon(Icons.schedule),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ImportPlansPage(),
+                  ),
                 ),
               ),
             ),
@@ -94,13 +105,15 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: OrbitFeatureText.of(context).archive,
           children: [
-            ListTile(
-              title: Text(OrbitFeatureText.of(context).archive),
-              leading: const Icon(Icons.archive_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const ArchivePage()),
+            PageModule(
+              child: ListTile(
+                title: Text(OrbitFeatureText.of(context).archive),
+                leading: const Icon(Icons.archive_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const ArchivePage()),
+                ),
               ),
             ),
             const _ArchiveEndedCoursesTile(),
@@ -109,14 +122,16 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.trashTitle,
           children: [
-            ListTile(
-              title: Text(l10n.trashTitle),
-              subtitle: Text(l10n.trashSubtitle),
-              leading: const Icon(Icons.restore_from_trash_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const DeletedSessionsPage(),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.trashTitle),
+                subtitle: Text(l10n.trashSubtitle),
+                leading: const Icon(Icons.restore_from_trash_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const DeletedSessionsPage(),
+                  ),
                 ),
               ),
             ),
@@ -125,13 +140,15 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.settingsDiagnosticsGroup,
           children: [
-            ListTile(
-              title: Text(l10n.debugTitle),
-              subtitle: Text(l10n.debugSubtitle),
-              leading: const Icon(Icons.bug_report_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const DebugPage()),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.debugTitle),
+                subtitle: Text(l10n.debugSubtitle),
+                leading: const Icon(Icons.bug_report_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const DebugPage()),
+                ),
               ),
             ),
           ],
@@ -139,18 +156,22 @@ class SettingsDataSection extends ConsumerWidget {
         SettingsGroup(
           title: l10n.settingsDangerGroup,
           children: [
-            ListTile(
-              title: Text(l10n.deleteEndedSessions),
-              subtitle: Text(l10n.deleteEndedSessionsSubtitle),
-              leading: Icon(Icons.event_busy, color: colors.error),
-              onTap: () => deleteEndedSessionsWithFeedback(context, ref),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.deleteEndedSessions),
+                subtitle: Text(l10n.deleteEndedSessionsSubtitle),
+                leading: Icon(Icons.event_busy, color: colors.error),
+                onTap: () => deleteEndedSessionsWithFeedback(context, ref),
+              ),
             ),
             const Divider(indent: 16, endIndent: 16),
-            ListTile(
-              title: Text(l10n.clearAllData),
-              subtitle: Text(l10n.clearAllDataSubtitle),
-              leading: Icon(Icons.delete_outline, color: colors.error),
-              onTap: () => _confirmClearAll(context, ref),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.clearAllData),
+                subtitle: Text(l10n.clearAllDataSubtitle),
+                leading: Icon(Icons.delete_outline, color: colors.error),
+                onTap: () => _confirmClearAll(context, ref),
+              ),
             ),
           ],
         ),
@@ -164,25 +185,29 @@ class SettingsDataSection extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.confirmClearTitle),
+        title: PageModule(child: Text(l10n.confirmClearTitle)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(l10n.confirmClearContent),
+            PageModule(child: Text(l10n.confirmClearContent)),
             StatisticsDeletionChoice(onChanged: (v) => deleteStatistics = v),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.actionCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.actionCancel),
             ),
-            child: Text(l10n.actionClear),
+          ),
+          PageModule(
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: Text(l10n.actionClear),
+            ),
           ),
         ],
       ),
@@ -212,7 +237,7 @@ class SettingsDataSection extends ConsumerWidget {
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
             duration: const Duration(seconds: 6),
-            content: Text(l10n.clearAllFailed('$error')),
+            content: PageModule(child: Text(l10n.clearAllFailed('$error'))),
           ),
         );
       }
@@ -265,18 +290,20 @@ class _ArchiveEndedCoursesTileState
   @override
   Widget build(BuildContext context) {
     final text = OrbitFeatureText.of(context);
-    return ListTile(
-      title: Text(text.archiveAllEnded),
-      subtitle: Text(text.archiveAllEndedHint),
-      leading: const Icon(Icons.inventory_2_outlined),
-      trailing: _busy
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : null,
-      onTap: _busy ? null : _archive,
+    return PageModule(
+      child: ListTile(
+        title: Text(text.archiveAllEnded),
+        subtitle: Text(text.archiveAllEndedHint),
+        leading: const Icon(Icons.inventory_2_outlined),
+        trailing: _busy
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : null,
+        onTap: _busy ? null : _archive,
+      ),
     );
   }
 }
@@ -306,35 +333,43 @@ class _ExportBackupSectionState extends ConsumerState<_ExportBackupSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (_busy) {
-      return ListTile(
-        leading: const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
+      return PageModule(
+        child: ListTile(
+          leading: const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          title: Text(l10n.exportInProgress),
         ),
-        title: Text(l10n.exportInProgress),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
-          title: Text(l10n.exportScheduleJson),
-          subtitle: Text(l10n.backupIncludesSettings),
-          leading: const Icon(Icons.backup_outlined),
-          onTap: () => _run(() => exportScheduleJson(context, ref)),
+        PageModule(
+          child: ListTile(
+            title: Text(l10n.exportScheduleJson),
+            subtitle: Text(l10n.backupIncludesSettings),
+            leading: const Icon(Icons.backup_outlined),
+            onTap: () => _run(() => exportScheduleJson(context, ref)),
+          ),
         ),
-        ListTile(
-          title: Text(l10n.exportScheduleXlsx),
-          subtitle: Text(l10n.exportScheduleXlsxSubtitle),
-          leading: const Icon(Icons.table_view_outlined),
-          onTap: () => _run(() => exportScheduleXlsx(context, ref)),
+        PageModule(
+          child: ListTile(
+            title: Text(l10n.exportScheduleXlsx),
+            subtitle: Text(l10n.exportScheduleXlsxSubtitle),
+            leading: const Icon(Icons.table_view_outlined),
+            onTap: () => _run(() => exportScheduleXlsx(context, ref)),
+          ),
         ),
-        ListTile(
-          title: Text(l10n.restoreFromBackup),
-          subtitle: Text(l10n.restoreFromBackupSubtitle),
-          leading: const Icon(Icons.restore_outlined),
-          onTap: () => _run(() => restoreFromBackup(context, ref)),
+        PageModule(
+          child: ListTile(
+            title: Text(l10n.restoreFromBackup),
+            subtitle: Text(l10n.restoreFromBackupSubtitle),
+            leading: const Icon(Icons.restore_outlined),
+            onTap: () => _run(() => restoreFromBackup(context, ref)),
+          ),
         ),
       ],
     );

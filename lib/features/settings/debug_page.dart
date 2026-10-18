@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/settings/wemust_debug_page.dart';
 import 'package:orbit/services/wemust_launcher.dart';
 import 'package:orbit/core/background/background_scope.dart';
@@ -29,70 +30,86 @@ class _DebugPageState extends ConsumerState<DebugPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(l10n.debugTitle)),
+      appBar: AppBar(title: PageModule(child: Text(l10n.debugTitle))),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           if (ref.watch(wemustLauncherProvider).supported)
-            ListTile(
-              key: const Key('wemust-debug'),
-              title: const Text('WeMust'),
-              leading: const Icon(Icons.open_in_new),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const WemustDebugPage(),
+            PageModule(
+              child: ListTile(
+                key: const Key('wemust-debug'),
+                title: const Text('WeMust'),
+                leading: const Icon(Icons.open_in_new),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WemustDebugPage(),
+                  ),
                 ),
               ),
             ),
-          ListTile(
-            title: Text(OrbitFeatureText.of(context).strongTest),
-            subtitle: Text(OrbitFeatureText.of(context).testHint),
-            leading: const Icon(Icons.alarm),
-            enabled: !_testing,
-            onTap: () => _strongTest(context, false),
+          PageModule(
+            child: ListTile(
+              title: Text(OrbitFeatureText.of(context).strongTest),
+              subtitle: Text(OrbitFeatureText.of(context).testHint),
+              leading: const Icon(Icons.alarm),
+              enabled: !_testing,
+              onTap: () => _strongTest(context, false),
+            ),
           ),
           if ((widget.showAndroidTools ?? Platform.isAndroid) ||
               Platform.isWindows)
-            ListTile(
-              title: Text(OrbitFeatureText.of(context).backgroundStrongTest),
-              leading: const Icon(Icons.alarm_on),
-              enabled: !_testing,
-              onTap: () => _strongTest(context, true),
+            PageModule(
+              child: ListTile(
+                title: Text(OrbitFeatureText.of(context).backgroundStrongTest),
+                leading: const Icon(Icons.alarm_on),
+                enabled: !_testing,
+                onTap: () => _strongTest(context, true),
+              ),
             ),
-          ListTile(
-            title: Text(OrbitFeatureText.of(context).stopTest),
-            leading: const Icon(Icons.stop_circle_outlined),
-            enabled: !_testing,
-            onTap: () => _stopTests(context),
+          PageModule(
+            child: ListTile(
+              title: Text(OrbitFeatureText.of(context).stopTest),
+              leading: const Icon(Icons.stop_circle_outlined),
+              enabled: !_testing,
+              onTap: () => _stopTests(context),
+            ),
           ),
           if (Platform.isWindows)
-            ListTile(
-              title: Text(WindowsReminderText.of(context).diagnostics),
-              leading: const Icon(Icons.fact_check_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showWindowsDiagnostics(context),
+            PageModule(
+              child: ListTile(
+                title: Text(WindowsReminderText.of(context).diagnostics),
+                leading: const Icon(Icons.fact_check_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showWindowsDiagnostics(context),
+              ),
             ),
-          ListTile(
-            title: Text(l10n.androidTestImmediateReminder),
-            subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
-            leading: const Icon(Icons.notifications_active_outlined),
-            onTap: () => _showImmediateTestReminder(context, ref),
+          PageModule(
+            child: ListTile(
+              title: Text(l10n.androidTestImmediateReminder),
+              subtitle: Text(l10n.androidTestImmediateReminderSubtitle),
+              leading: const Icon(Icons.notifications_active_outlined),
+              onTap: () => _showImmediateTestReminder(context, ref),
+            ),
           ),
           if (widget.showAndroidTools ?? Platform.isAndroid)
-            ListTile(
-              title: Text(l10n.androidTestBackgroundReminder),
-              subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
-              leading: const Icon(Icons.alarm_on_outlined),
-              onTap: () => _scheduleBackgroundTestReminder(context, ref),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.androidTestBackgroundReminder),
+                subtitle: Text(l10n.androidTestBackgroundReminderSubtitle),
+                leading: const Icon(Icons.alarm_on_outlined),
+                onTap: () => _scheduleBackgroundTestReminder(context, ref),
+              ),
             ),
           if (widget.showAndroidTools ?? Platform.isAndroid)
-            ListTile(
-              title: Text(l10n.androidReminderDiagnostics),
-              leading: const Icon(Icons.fact_check_outlined),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showReminderDiagnostics(context),
+            PageModule(
+              child: ListTile(
+                title: Text(l10n.androidReminderDiagnostics),
+                leading: const Icon(Icons.fact_check_outlined),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showReminderDiagnostics(context),
+              ),
             ),
         ],
       ),
@@ -124,24 +141,26 @@ class _DebugPageState extends ConsumerState<DebugPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
-          content: Text(
-            !result.succeeded
-                ? _failureMessage(l, result.failure)
-                : background
-                ? l.androidTestBackgroundReminderScheduledAt(
-                    TimeOfDay.fromDateTime(result.fireAt!).format(context),
-                  )
-                : audioOnly
-                ? WindowsReminderText.of(context).audioOnly
-                : text.testShown,
+          content: PageModule(
+            child: Text(
+              !result.succeeded
+                  ? _failureMessage(l, result.failure)
+                  : background
+                  ? l.androidTestBackgroundReminderScheduledAt(
+                      TimeOfDay.fromDateTime(result.fireAt!).format(context),
+                    )
+                  : audioOnly
+                  ? WindowsReminderText.of(context).audioOnly
+                  : text.testShown,
+            ),
           ),
         ),
       );
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showAppSnackBar(SnackBar(content: Text(text.failed)));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: PageModule(child: Text(text.failed))),
+        );
       }
     } finally {
       if (mounted) setState(() => _testing = false);
@@ -155,13 +174,21 @@ class _DebugPageState extends ConsumerState<DebugPage> {
       await ref.read(reminderSchedulerProvider).stopStrongTests();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(OrbitFeatureText.of(context).testStopped)),
+          SnackBar(
+            content: PageModule(
+              child: Text(OrbitFeatureText.of(context).testStopped),
+            ),
+          ),
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(OrbitFeatureText.of(context).failed)),
+          SnackBar(
+            content: PageModule(
+              child: Text(OrbitFeatureText.of(context).failed),
+            ),
+          ),
         );
       }
     } finally {
@@ -177,11 +204,11 @@ class _DebugPageState extends ConsumerState<DebugPage> {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.androidReminderDiagnostics),
+        title: PageModule(child: Text(l10n.androidReminderDiagnostics)),
         content: SizedBox(
           width: 520,
           child: status.events.isEmpty
-              ? Text(l10n.androidReminderDiagnosticsEmpty)
+              ? PageModule(child: Text(l10n.androidReminderDiagnosticsEmpty))
               : ListView.separated(
                   shrinkWrap: true,
                   itemCount: status.events.length,
@@ -194,16 +221,20 @@ class _DebugPageState extends ConsumerState<DebugPage> {
                     final reason = event.reason == null
                         ? ''
                         : ' · ${event.reason}';
-                    return Text(
-                      '${event.timestamp.toLocal()} · ${event.stage}$alarm$reason',
+                    return PageModule(
+                      child: Text(
+                        '${event.timestamp.toLocal()} · ${event.stage}$alarm$reason',
+                      ),
                     );
                   },
                 ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+            ),
           ),
         ],
       ),
@@ -218,55 +249,68 @@ class _DebugPageState extends ConsumerState<DebugPage> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text(text.diagnostics),
+          title: PageModule(child: Text(text.diagnostics)),
           content: SizedBox(
             width: 520,
             height: MediaQuery.sizeOf(context).height * 0.5,
             child: ListView(
               children: [
-                Text(
-                  '${text.worker}: ${status['workerAlive'] == true ? text.running : text.stopped}',
+                PageModule(
+                  child: Text(
+                    '${text.worker}: ${status['workerAlive'] == true ? text.running : text.stopped}',
+                  ),
                 ),
-                Text(
-                  text.pending((status['pendingCount'] as num?)?.toInt() ?? 0),
+                PageModule(
+                  child: Text(
+                    text.pending(
+                      (status['pendingCount'] as num?)?.toInt() ?? 0,
+                    ),
+                  ),
                 ),
                 const Divider(),
-                if ((status['events'] as List? ?? []).isEmpty) Text(text.empty),
+                if ((status['events'] as List? ?? []).isEmpty)
+                  PageModule(child: Text(text.empty)),
                 for (final event in (status['events'] as List? ?? []).reversed)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      event['ok'] == true
-                          ? Icons.check_circle_outline
-                          : Icons.error_outline,
-                    ),
-                    title: Text(text.stage('${event['stage']}')),
-                    subtitle: Text(
-                      '${event['ok'] == true ? text.ok : text.failed} · ${event['hr']}\n${DateTime.fromMillisecondsSinceEpoch((event['at'] as num).toInt())}',
+                  PageModule(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        event['ok'] == true
+                            ? Icons.check_circle_outline
+                            : Icons.error_outline,
+                      ),
+                      title: Text(text.stage('${event['stage']}')),
+                      subtitle: Text(
+                        '${event['ok'] == true ? text.ok : text.failed} · ${event['hr']}\n${DateTime.fromMillisecondsSinceEpoch((event['at'] as num).toInt())}',
+                      ),
                     ),
                   ),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => ref
-                  .read(notificationPermissionServiceProvider)
-                  .openSettings(),
-              child: Text(text.settings),
+            PageModule(
+              child: TextButton(
+                onPressed: () => ref
+                    .read(notificationPermissionServiceProvider)
+                    .openSettings(),
+                child: Text(text.settings),
+              ),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+              ),
             ),
           ],
         ),
       );
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showAppSnackBar(SnackBar(content: Text(text.failed)));
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: PageModule(child: Text(text.failed))),
+        );
       }
     }
   }
@@ -296,10 +340,12 @@ class _DebugPageState extends ConsumerState<DebugPage> {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showAppSnackBar(
       SnackBar(
-        content: Text(
-          result.succeeded
-              ? l10n.androidTestImmediateReminderShown
-              : _failureMessage(l10n, result.failure),
+        content: PageModule(
+          child: Text(
+            result.succeeded
+                ? l10n.androidTestImmediateReminderShown
+                : _failureMessage(l10n, result.failure),
+          ),
         ),
       ),
     );
@@ -325,6 +371,6 @@ class _DebugPageState extends ConsumerState<DebugPage> {
         : _failureMessage(l10n, result.failure);
     ScaffoldMessenger.of(
       context,
-    ).showAppSnackBar(SnackBar(content: Text(message)));
+    ).showAppSnackBar(SnackBar(content: PageModule(child: Text(message))));
   }
 }

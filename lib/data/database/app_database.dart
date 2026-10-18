@@ -801,6 +801,14 @@ class AppDatabase {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
         await _queueCourseMutation(txn, session, SyncOperation.upsert);
+        if (session.semesterId != null) {
+          await _assignSemesterInTransaction(
+            txn,
+            [session.id],
+            session.semesterId!,
+            session.semester,
+          );
+        }
       }
     });
     _syncChanges.add(null);
@@ -815,6 +823,14 @@ class AppDatabase {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       await _queueCourseMutation(txn, session, SyncOperation.upsert);
+      if (session.semesterId != null) {
+        await _assignSemesterInTransaction(
+          txn,
+          [session.id],
+          session.semesterId!,
+          session.semester,
+        );
+      }
     });
     _syncChanges.add(null);
   }
@@ -882,6 +898,14 @@ class AppDatabase {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
         await _queueCourseMutation(txn, session, SyncOperation.upsert);
+        if (session.semesterId != null) {
+          await _assignSemesterInTransaction(
+            txn,
+            [session.id],
+            session.semesterId!,
+            session.semester,
+          );
+        }
       }
     });
     _syncChanges.add(null);

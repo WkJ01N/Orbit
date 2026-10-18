@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_entrance.dart';
 import 'package:flutter/material.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/models/background_settings.dart';
@@ -179,7 +180,14 @@ class _BackgroundRouteThemeState extends State<_BackgroundRouteTheme> {
             : BackgroundPageTheme(
                 settings: snapshot.settings,
                 owner: snapshot.owner,
-                child: widget.child,
+                child: PageEntranceHost(
+                  index: snapshot.owner.index,
+                  active: true,
+                  startup: false,
+                  secondary: true,
+                  navigation: widget.route.animation,
+                  child: widget.child,
+                ),
               ),
       );
     }

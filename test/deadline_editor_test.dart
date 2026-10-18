@@ -88,8 +88,10 @@ void main() {
   testWidgets('DDL editor fits a narrow screen and switches subjects', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(320, 600));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view.physicalSize = const Size(320, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final date = DateTime(2026, 10, 1);
     final session = CourseSession(
       id: 'math-1',
@@ -145,8 +147,13 @@ void main() {
     expect(find.text('Save'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Custom subject'));
+    await tester.ensureVisible(find.byKey(const Key('deadline-course-picker')));
+    await tester.tap(find.byKey(const Key('deadline-course-picker')));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('view-ended-courses')));
+    await tester.tap(find.byKey(const Key('view-ended-courses')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Mathematics').last);
     await tester.tap(find.text('Mathematics').last);
     await tester.pumpAndSettle();
     final fields = tester
@@ -156,7 +163,8 @@ void main() {
     expect(fields.first.readOnly, isTrue);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Mathematics').first);
+    await tester.ensureVisible(find.byKey(const Key('deadline-course-picker')));
+    await tester.tap(find.byKey(const Key('deadline-course-picker')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Custom subject').last);
     await tester.pumpAndSettle();

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
@@ -45,7 +46,9 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showAppSnackBar(
       SnackBar(
-        content: Text(l10n.trashRestoreResult(result.restored, result.skipped)),
+        content: PageModule(
+          child: Text(l10n.trashRestoreResult(result.restored, result.skipped)),
+        ),
       ),
     );
     _reload();
@@ -76,18 +79,22 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
     final l10n = AppLocalizations.of(context)!;
     return BackgroundScaffold(
       appBar: AppBar(
-        title: Text(l10n.trashTitle),
+        title: PageModule(child: Text(l10n.trashTitle)),
         actions: [
           if (_selectedIds.isNotEmpty)
-            IconButton(
-              tooltip: l10n.trashRestoreSelected,
-              icon: const Icon(Icons.restore),
-              onPressed: () => _restore(_selectedIds.toList()),
+            PageModule(
+              child: IconButton(
+                tooltip: l10n.trashRestoreSelected,
+                icon: const Icon(Icons.restore),
+                onPressed: () => _restore(_selectedIds.toList()),
+              ),
             ),
-          IconButton(
-            tooltip: l10n.trashEmptyAction,
-            icon: const Icon(Icons.delete_forever_outlined),
-            onPressed: _emptyTrash,
+          PageModule(
+            child: IconButton(
+              tooltip: l10n.trashEmptyAction,
+              icon: const Icon(Icons.delete_forever_outlined),
+              onPressed: _emptyTrash,
+            ),
           ),
         ],
       ),
@@ -98,17 +105,21 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return ErrorState(
-              message: '${snapshot.error}',
-              retryLabel: l10n.actionRetry,
-              onRetry: _reload,
+            return PageModule(
+              child: ErrorState(
+                message: '${snapshot.error}',
+                retryLabel: l10n.actionRetry,
+                onRetry: _reload,
+              ),
             );
           }
           final sessions = snapshot.data ?? const [];
           if (sessions.isEmpty) {
-            return EmptyState(
-              icon: Icons.delete_sweep_outlined,
-              title: l10n.trashEmpty,
+            return PageModule(
+              child: EmptyState(
+                icon: Icons.delete_sweep_outlined,
+                title: l10n.trashEmpty,
+              ),
             );
           }
           return Column(
@@ -120,27 +131,29 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
                   itemBuilder: (context, index) {
                     final session = sessions[index];
                     final selected = _selectedIds.contains(session.id);
-                    return CheckboxListTile(
-                      value: selected,
-                      onChanged: (value) => setState(() {
-                        if (value == true) {
-                          _selectedIds.add(session.id);
-                        } else {
-                          _selectedIds.remove(session.id);
-                        }
-                      }),
-                      title: Text(session.courseName),
-                      subtitle: Text(
-                        '${formatIsoDate(session.date)} · '
-                        '${formatTimeHm(session.startAt)}–${formatTimeHm(session.endAt)} · '
-                        '${session.room}\n'
-                        '${l10n.trashDeletedAt(formatDateTimeMinute(session.deletedAt!))}',
-                      ),
-                      isThreeLine: true,
-                      secondary: IconButton(
-                        tooltip: l10n.trashRestoreSelected,
-                        icon: const Icon(Icons.restore),
-                        onPressed: () => _restore([session.id]),
+                    return PageModule(
+                      child: CheckboxListTile(
+                        value: selected,
+                        onChanged: (value) => setState(() {
+                          if (value == true) {
+                            _selectedIds.add(session.id);
+                          } else {
+                            _selectedIds.remove(session.id);
+                          }
+                        }),
+                        title: Text(session.courseName),
+                        subtitle: Text(
+                          '${formatIsoDate(session.date)} · '
+                          '${formatTimeHm(session.startAt)}–${formatTimeHm(session.endAt)} · '
+                          '${session.room}\n'
+                          '${l10n.trashDeletedAt(formatDateTimeMinute(session.deletedAt!))}',
+                        ),
+                        isThreeLine: true,
+                        secondary: IconButton(
+                          tooltip: l10n.trashRestoreSelected,
+                          icon: const Icon(Icons.restore),
+                          onPressed: () => _restore([session.id]),
+                        ),
                       ),
                     );
                   },
@@ -150,11 +163,13 @@ class _DeletedSessionsPageState extends ConsumerState<DeletedSessionsPage> {
                 minimum: const EdgeInsets.all(16),
                 child: SizedBox(
                   width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.restore),
-                    label: Text(l10n.trashRestoreAll),
-                    onPressed: () => _restore(
-                      sessions.map((session) => session.id).toList(),
+                  child: PageModule(
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.restore),
+                      label: Text(l10n.trashRestoreAll),
+                      onPressed: () => _restore(
+                        sessions.map((session) => session.id).toList(),
+                      ),
                     ),
                   ),
                 ),

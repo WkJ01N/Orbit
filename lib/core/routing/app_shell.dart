@@ -342,6 +342,7 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
               owner: BackgroundPage.values[index],
               child: PageEntranceHost(
                 index: index,
+                navigation: _controller,
                 active: index == _activeIndex,
                 startup: _visited.length == 1,
                 child: widget.children[index],

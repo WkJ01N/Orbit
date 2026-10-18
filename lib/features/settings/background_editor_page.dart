@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/settings/components_page.dart';
 import 'package:orbit/services/component_service.dart';
 import 'dart:async';
@@ -45,8 +46,10 @@ class BackgroundSettingsPage extends ConsumerWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showAppSnackBar(
             SnackBar(
-              content: Text(
-                text.t('Could not save backgrounds', '背景保存失败', '背景儲存失敗'),
+              content: PageModule(
+                child: Text(
+                  text.t('Could not save backgrounds', '背景保存失败', '背景儲存失敗'),
+                ),
               ),
             ),
           );
@@ -55,113 +58,127 @@ class BackgroundSettingsPage extends ConsumerWidget {
     }
 
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(text.title)),
+      appBar: AppBar(title: PageModule(child: Text(text.title))),
       body: value.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => Center(child: PageModule(child: Text('$e'))),
         data: (settings) => ListView(
           children: [
-            ListTile(
-              leading: const Icon(Icons.download_for_offline_outlined),
-              title: Text(
-                text.t('Video playback component', '视频背景组件', '影片背景元件'),
-              ),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const ComponentsPage()),
-              ),
-            ),
-            SwitchListTile(
-              title: Text(
-                text.t('Enable page backgrounds', '启用页面背景', '啟用頁面背景'),
-              ),
-              value: settings.enabled,
-              onChanged: (v) => save(settings.copyWith(enabled: v)),
-            ),
-            SwitchListTile(
-              title: Text(
-                text.t('Play animated backgrounds', '播放动态背景', '播放動態背景'),
-              ),
-              subtitle: Text(
-                text.t(
-                  'Muted; paused when hidden or reduced motion is enabled',
-                  '静音；后台或系统减少动态效果时暂停',
-                  '靜音；背景或系統減少動態效果時暫停',
+            PageModule(
+              child: ListTile(
+                leading: const Icon(Icons.download_for_offline_outlined),
+                title: Text(
+                  text.t('Video playback component', '视频背景组件', '影片背景元件'),
+                ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ComponentsPage(),
+                  ),
                 ),
               ),
-              value: settings.animate,
-              onChanged: (v) => save(settings.copyWith(animate: v)),
+            ),
+            PageModule(
+              child: SwitchListTile(
+                title: Text(
+                  text.t('Enable page backgrounds', '启用页面背景', '啟用頁面背景'),
+                ),
+                value: settings.enabled,
+                onChanged: (v) => save(settings.copyWith(enabled: v)),
+              ),
+            ),
+            PageModule(
+              child: SwitchListTile(
+                title: Text(
+                  text.t('Play animated backgrounds', '播放动态背景', '播放動態背景'),
+                ),
+                subtitle: Text(
+                  text.t(
+                    'Muted; paused when hidden or reduced motion is enabled',
+                    '静音；后台或系统减少动态效果时暂停',
+                    '靜音；背景或系統減少動態效果時暫停',
+                  ),
+                ),
+                value: settings.animate,
+                onChanged: (v) => save(settings.copyWith(animate: v)),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: FilledButton.icon(
-                key: const Key('background-configure'),
-                icon: const Icon(Icons.wallpaper),
-                label: Text(
-                  text.t('Choose a page and edit', '选择页面并编辑', '選擇頁面並編輯'),
+              child: PageModule(
+                child: FilledButton.icon(
+                  key: const Key('background-configure'),
+                  icon: const Icon(Icons.wallpaper),
+                  label: Text(
+                    text.t('Choose a page and edit', '选择页面并编辑', '選擇頁面並編輯'),
+                  ),
+                  onPressed: () => edit(settings),
                 ),
-                onPressed: () => edit(settings),
               ),
             ),
             for (final page in BackgroundPage.values)
-              ListTile(
-                title: Text(text.page(page)),
-                subtitle: Text(
-                  settings.assets[settings.resolved(page).assetId]?.name ??
-                      text.t('No background', '未设置背景', '未設定背景'),
-                ),
-                leading: const Icon(Icons.image_outlined),
-                onTap: () => edit(settings, page),
-                trailing: IconButton(
-                  tooltip: text.t('Clear this page', '清除此页背景', '清除此頁背景'),
-                  icon: const Icon(Icons.clear),
-                  onPressed: () async {
-                    var next = settings;
-                    if (page == BackgroundPage.grid) {
-                      for (final other in BackgroundPage.values.where(
-                        (p) => p != page && next.page(p).followGrid,
-                      )) {
-                        next = next.detach(other);
-                      }
-                    }
-                    next = next.updatePage(
-                      page,
-                      const PageBackgroundSettings(),
-                    );
-                    await save(next);
-                  },
-                ),
-              ),
-            ListTile(
-              title: Text(
-                text.t('Restore default backgrounds', '恢复默认背景', '恢復預設背景'),
-              ),
-              leading: const Icon(Icons.restore),
-              onTap: () async {
-                final yes = await showDialog<bool>(
-                  context: context,
-                  builder: (c) => AlertDialog(
-                    title: Text(
-                      text.t(
-                        'Remove background configuration?',
-                        '清除所有页面背景设置？',
-                        '清除所有頁面背景設定？',
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(c, false),
-                        child: Text(text.t('Cancel', '取消')),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(c, true),
-                        child: Text(text.t('Restore', '恢复', '恢復')),
-                      ),
-                    ],
+              PageModule(
+                child: ListTile(
+                  title: Text(text.page(page)),
+                  subtitle: Text(
+                    settings.assets[settings.resolved(page).assetId]?.name ??
+                        text.t('No background', '未设置背景', '未設定背景'),
                   ),
-                );
-                if (yes == true) await save(const BackgroundSettings());
-              },
+                  leading: const Icon(Icons.image_outlined),
+                  onTap: () => edit(settings, page),
+                  trailing: IconButton(
+                    tooltip: text.t('Clear this page', '清除此页背景', '清除此頁背景'),
+                    icon: const Icon(Icons.clear),
+                    onPressed: () async {
+                      var next = settings;
+                      if (page == BackgroundPage.grid) {
+                        for (final other in BackgroundPage.values.where(
+                          (p) => p != page && next.page(p).followGrid,
+                        )) {
+                          next = next.detach(other);
+                        }
+                      }
+                      next = next.updatePage(
+                        page,
+                        const PageBackgroundSettings(),
+                      );
+                      await save(next);
+                    },
+                  ),
+                ),
+              ),
+            PageModule(
+              child: ListTile(
+                title: Text(
+                  text.t('Restore default backgrounds', '恢复默认背景', '恢復預設背景'),
+                ),
+                leading: const Icon(Icons.restore),
+                onTap: () async {
+                  final yes = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: Text(
+                        text.t(
+                          'Remove background configuration?',
+                          '清除所有页面背景设置？',
+                          '清除所有頁面背景設定？',
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: Text(text.t('Cancel', '取消')),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, true),
+                          child: Text(text.t('Restore', '恢复', '恢復')),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (yes == true) await save(const BackgroundSettings());
+                },
+              ),
             ),
           ],
         ),
@@ -334,8 +351,10 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
       _saved = true;
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
-          content: Text(
-            BackgroundText(context).t('Background saved', '背景已保存', '背景已儲存'),
+          content: PageModule(
+            child: Text(
+              BackgroundText(context).t('Background saved', '背景已保存', '背景已儲存'),
+            ),
           ),
         ),
       );
@@ -365,19 +384,27 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     final choice = await showDialog<String>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text(t.t('Save background changes?', '保存背景更改？', '儲存背景變更？')),
+        title: PageModule(
+          child: Text(t.t('Save background changes?', '保存背景更改？', '儲存背景變更？')),
+        ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, 'cancel'),
-            child: Text(t.t('Continue editing', '继续编辑', '繼續編輯')),
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(c, 'cancel'),
+              child: Text(t.t('Continue editing', '继续编辑', '繼續編輯')),
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(c, 'discard'),
-            child: Text(t.t('Discard', '放弃', '放棄')),
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(c, 'discard'),
+              child: Text(t.t('Discard', '放弃', '放棄')),
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(c, 'save'),
-            child: Text(t.t('Save', '保存', '儲存')),
+          PageModule(
+            child: FilledButton(
+              onPressed: () => Navigator.pop(c, 'save'),
+              child: Text(t.t('Save', '保存', '儲存')),
+            ),
           ),
         ],
       ),
@@ -592,7 +619,9 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                                           for (final p in BackgroundPage.values)
                                             NavigationRailDestination(
                                               icon: Icon(_icon(p)),
-                                              label: Text(t.page(p)),
+                                              label: PageModule(
+                                                child: Text(t.page(p)),
+                                              ),
                                             ),
                                         ],
                                       ),
@@ -713,14 +742,18 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: _busy ? null : _exit,
+          leading: PageModule(
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _busy ? null : _exit,
+            ),
           ),
-          title: Text(
-            _step == 0
-                ? t.t('Choose a page', '选择编辑页面', '選擇編輯頁面')
-                : '${t.page(_page)} · ${_step == 1 ? t.t('Layout', '区域与构图', '區域與構圖') : t.t('Effects', '效果调整', '效果調整')}',
+          title: PageModule(
+            child: Text(
+              _step == 0
+                  ? t.t('Choose a page', '选择编辑页面', '選擇編輯頁面')
+                  : '${t.page(_page)} · ${_step == 1 ? t.t('Layout', '区域与构图', '區域與構圖') : t.t('Effects', '效果调整', '效果調整')}',
+            ),
           ),
         ),
         body: Column(
@@ -729,9 +762,13 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                child: PageModule(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ),
               ),
             Expanded(
@@ -747,16 +784,18 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                   : Column(
                       children: [
                         Expanded(child: _preview(viewport, t)),
-                        TextButton.icon(
-                          onPressed: () => setState(
-                            () => _expandedControls = !_expandedControls,
+                        PageModule(
+                          child: TextButton.icon(
+                            onPressed: () => setState(
+                              () => _expandedControls = !_expandedControls,
+                            ),
+                            icon: Icon(
+                              _expandedControls
+                                  ? Icons.expand_more
+                                  : Icons.expand_less,
+                            ),
+                            label: Text(t.t('Adjustments', '调整选项', '調整選項')),
                           ),
-                          icon: Icon(
-                            _expandedControls
-                                ? Icons.expand_more
-                                : Icons.expand_less,
-                          ),
-                          label: Text(t.t('Adjustments', '调整选项', '調整選項')),
                         ),
                         SizedBox(
                           height: math.min(
@@ -775,22 +814,26 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                 child: Row(
                   children: [
                     if (_step > 0)
-                      TextButton(
-                        onPressed: _busy ? null : _previous,
-                        child: Text(t.t('Back', '上一步', '上一步')),
+                      PageModule(
+                        child: TextButton(
+                          onPressed: _busy ? null : _previous,
+                          child: Text(t.t('Back', '上一步', '上一步')),
+                        ),
                       ),
                     const Spacer(),
-                    FilledButton(
-                      key: const Key('background-next-save'),
-                      onPressed: _busy
-                          ? null
-                          : _step == 2
-                          ? () => _save()
-                          : _next,
-                      child: Text(
-                        _step == 2
-                            ? t.t('Save', '保存', '儲存')
-                            : t.t('Next', '下一步', '下一步'),
+                    PageModule(
+                      child: FilledButton(
+                        key: const Key('background-next-save'),
+                        onPressed: _busy
+                            ? null
+                            : _step == 2
+                            ? () => _save()
+                            : _next,
+                        child: Text(
+                          _step == 2
+                              ? t.t('Save', '保存', '儲存')
+                              : t.t('Next', '下一步', '下一步'),
+                        ),
                       ),
                     ),
                   ],
@@ -810,21 +853,27 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
       final discard = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: Text(
-            t.t(
-              'Discard changes before switching pages?',
-              '放弃当前更改并切换编辑页面？',
-              '放棄目前變更並切換編輯頁面？',
+          title: PageModule(
+            child: Text(
+              t.t(
+                'Discard changes before switching pages?',
+                '放弃当前更改并切换编辑页面？',
+                '放棄目前變更並切換編輯頁面？',
+              ),
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: Text(t.t('Continue editing', '继续编辑', '繼續編輯')),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: Text(t.t('Continue editing', '继续编辑', '繼續編輯')),
+              ),
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: Text(t.t('Discard', '放弃', '放棄')),
+            PageModule(
+              child: FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: Text(t.t('Discard', '放弃', '放棄')),
+              ),
             ),
           ],
         ),
@@ -842,18 +891,22 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
   Widget _pageChooser(BackgroundText t) => ListView(
     children: [
       for (final page in BackgroundPage.values)
-        ListTile(
-          key: ValueKey('background-page-${page.name}'),
-          leading: Icon(
-            _page == page ? Icons.radio_button_checked : Icons.radio_button_off,
+        PageModule(
+          child: ListTile(
+            key: ValueKey('background-page-${page.name}'),
+            leading: Icon(
+              _page == page
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_off,
+            ),
+            title: Text(t.page(page)),
+            subtitle: Text(
+              _draft.assets[_draft.resolved(page).assetId]?.name ??
+                  t.t('No background', '未设置背景', '未設定背景'),
+            ),
+            selected: _page == page,
+            onTap: _busy ? null : () => _selectPage(page),
           ),
-          title: Text(t.page(page)),
-          subtitle: Text(
-            _draft.assets[_draft.resolved(page).assetId]?.name ??
-                t.t('No background', '未设置背景', '未設定背景'),
-          ),
-          selected: _page == page,
-          onTap: _busy ? null : () => _selectPage(page),
         ),
     ],
   );
@@ -865,16 +918,20 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     final canFrame = !_busy && !_following;
     final desktop = defaultTargetPlatform == TargetPlatform.windows;
     final zoomControls = [
-      IconButton(
-        tooltip: t.t('Zoom out', '缩小', '縮小'),
-        onPressed: canFrame ? () => _zoom(frame.zoom / 1.1) : null,
-        icon: const Icon(Icons.remove),
+      PageModule(
+        child: IconButton(
+          tooltip: t.t('Zoom out', '缩小', '縮小'),
+          onPressed: canFrame ? () => _zoom(frame.zoom / 1.1) : null,
+          icon: const Icon(Icons.remove),
+        ),
       ),
-      Text('${frame.zoom.toStringAsFixed(2)}×'),
-      IconButton(
-        tooltip: t.t('Zoom in', '放大'),
-        onPressed: canFrame ? () => _zoom(frame.zoom * 1.1) : null,
-        icon: const Icon(Icons.add),
+      PageModule(child: Text('${frame.zoom.toStringAsFixed(2)}×')),
+      PageModule(
+        child: IconButton(
+          tooltip: t.t('Zoom in', '放大'),
+          onPressed: canFrame ? () => _zoom(frame.zoom * 1.1) : null,
+          icon: const Icon(Icons.add),
+        ),
       ),
     ];
     return SingleChildScrollView(
@@ -907,69 +964,79 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
               ),
             ),
           ],
-          Text(
-            t.t(
-              'Tap regions; pinch to compose. Desktop: drag / wheel.',
-              '点击区块；双指缩放拖动。桌面：拖动／滚轮。',
-              '點擊區塊；雙指縮放拖曳。桌面：拖曳／滾輪。',
+          PageModule(
+            child: Text(
+              t.t(
+                'Tap regions; pinch to compose. Desktop: drag / wheel.',
+                '点击区块；双指缩放拖动。桌面：拖动／滚轮。',
+                '點擊區塊；雙指縮放拖曳。桌面：拖曳／滾輪。',
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            style: Theme.of(context).textTheme.bodySmall,
           ),
           if (desktop) const SizedBox(height: 12),
-          TextButton(
-            onPressed: _busy ? null : () => setState(() => _browse = !_browse),
-            child: Text(
-              _browse
-                  ? t.t('Edit regions', '区域编辑', '區域編輯')
-                  : t.t('Browse preview', '浏览预览', '瀏覽預覽'),
+          PageModule(
+            child: TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => setState(() => _browse = !_browse),
+              child: Text(
+                _browse
+                    ? t.t('Edit regions', '区域编辑', '區域編輯')
+                    : t.t('Browse preview', '浏览预览', '瀏覽預覽'),
+              ),
             ),
           ),
           if (desktop) const SizedBox(height: 12),
           if (_page != BackgroundPage.grid)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                t.t('Follow schedule background', '跟随课表背景', '跟隨課表背景'),
-              ),
-              subtitle: Text(
-                _draft.page(BackgroundPage.grid).assetId == null
-                    ? t.t(
-                        'Set a schedule background first',
-                        '请先设置课表背景',
-                        '請先設定課表背景',
-                      )
-                    : t.t(
-                        'Media, framing, effects, header and navigation follow the schedule. Turn off to edit independently.',
-                        '素材、构图、效果、标题栏和主导航跟随课表；关闭后可独立编辑。',
-                        '素材、構圖、效果、標題列和主導覽跟隨課表；關閉後可獨立編輯。',
+            PageModule(
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  t.t('Follow schedule background', '跟随课表背景', '跟隨課表背景'),
+                ),
+                subtitle: Text(
+                  _draft.page(BackgroundPage.grid).assetId == null
+                      ? t.t(
+                          'Set a schedule background first',
+                          '请先设置课表背景',
+                          '請先設定課表背景',
+                        )
+                      : t.t(
+                          'Media, framing, effects, header and navigation follow the schedule. Turn off to edit independently.',
+                          '素材、构图、效果、标题栏和主导航跟随课表；关闭后可独立编辑。',
+                          '素材、構圖、效果、標題列和主導覽跟隨課表；關閉後可獨立編輯。',
+                        ),
+                ),
+                value: value.followGrid,
+                onChanged:
+                    _busy || _draft.page(BackgroundPage.grid).assetId == null
+                    ? null
+                    : (v) => setState(
+                        () => _draft = v
+                            ? _draft
+                                  .copyWith(enabled: true)
+                                  .updatePage(
+                                    _page,
+                                    value.copyWith(followGrid: true),
+                                  )
+                            : _draft.detach(_page),
                       ),
               ),
-              value: value.followGrid,
-              onChanged:
-                  _busy || _draft.page(BackgroundPage.grid).assetId == null
-                  ? null
-                  : (v) => setState(
-                      () => _draft = v
-                          ? _draft
-                                .copyWith(enabled: true)
-                                .updatePage(
-                                  _page,
-                                  value.copyWith(followGrid: true),
-                                )
-                          : _draft.detach(_page),
-                    ),
             ),
           if (_page == BackgroundPage.grid &&
               BackgroundPage.values.any(
                 (p) => p != _page && _draft.page(p).followGrid,
               ))
-            Text(
-              t.t(
-                'Changes also affect pages following the schedule.',
-                '修改会同时影响跟随课表的页面。',
-                '修改會同時影響跟隨課表的頁面。',
+            PageModule(
+              child: Text(
+                t.t(
+                  'Changes also affect pages following the schedule.',
+                  '修改会同时影响跟随课表的页面。',
+                  '修改會同時影響跟隨課表的頁面。',
+                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
               ),
-              style: TextStyle(color: Theme.of(context).colorScheme.primary),
             ),
           if (_step == 1) ...[
             Wrap(
@@ -979,7 +1046,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
               children: [
                 for (final region in backgroundRegions(_page))
                   FilterChip(
-                    label: Text(t.region(region)),
+                    label: PageModule(child: Text(t.region(region))),
                     selected: effective.regions.contains(region),
                     onSelected:
                         _busy ||
@@ -992,10 +1059,12 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
               ],
             ),
             if (desktop) const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: canFrame ? _pick : null,
-              icon: const Icon(Icons.image_outlined),
-              label: Text(t.t('Change media', '更换素材', '更換素材')),
+            PageModule(
+              child: TextButton.icon(
+                onPressed: canFrame ? _pick : null,
+                icon: const Icon(Icons.image_outlined),
+                label: Text(t.t('Change media', '更换素材', '更換素材')),
+              ),
             ),
             if (desktop) const SizedBox(height: 12),
           ],
@@ -1009,72 +1078,84 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
                 Row(mainAxisSize: MainAxisSize.min, children: zoomControls)
               else
                 ...zoomControls,
-              TextButton(
-                onPressed: canFrame
-                    ? () => _updateFrame(frame.copyWith(x: 0, y: 0))
-                    : null,
-                child: Text(t.t('Center', '居中')),
+              PageModule(
+                child: TextButton(
+                  onPressed: canFrame
+                      ? () => _updateFrame(frame.copyWith(x: 0, y: 0))
+                      : null,
+                  child: Text(t.t('Center', '居中')),
+                ),
               ),
-              TextButton(
-                onPressed: canFrame
-                    ? () => _updateFrame(frame.copyWith(zoom: 1, x: 0, y: 0))
-                    : null,
-                child: Text(t.t('Reset framing', '重置构图', '重設構圖')),
+              PageModule(
+                child: TextButton(
+                  onPressed: canFrame
+                      ? () => _updateFrame(frame.copyWith(zoom: 1, x: 0, y: 0))
+                      : null,
+                  child: Text(t.t('Reset framing', '重置构图', '重設構圖')),
+                ),
               ),
             ],
           ),
           if (desktop) const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(t.t('Allow image edges', '允许露出图片边缘', '允許露出圖片邊緣')),
-            value: frame.allowEdges,
-            onChanged: canFrame
-                ? (v) => _updateFrame(frame.copyWith(allowEdges: v))
-                : null,
+          PageModule(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(t.t('Allow image edges', '允许露出图片边缘', '允許露出圖片邊緣')),
+              value: frame.allowEdges,
+              onChanged: canFrame
+                  ? (v) => _updateFrame(frame.copyWith(allowEdges: v))
+                  : null,
+            ),
           ),
           if (_step == 2) ...[
             if (frame.allowEdges)
-              DropdownButtonFormField<BackgroundEdgeFill>(
-                initialValue: frame.fill,
-                key: ValueKey('${_page.name}-${frame.fill.name}'),
-                decoration: InputDecoration(
-                  labelText: t.t('Outside image', '图片外部填补', '圖片外部填補'),
-                ),
-                items: [
-                  DropdownMenuItem(
-                    value: BackgroundEdgeFill.theme,
-                    child: Text(t.t('Theme color', '主题底色', '主題底色')),
+              PageModule(
+                child: DropdownButtonFormField<BackgroundEdgeFill>(
+                  initialValue: frame.fill,
+                  key: ValueKey('${_page.name}-${frame.fill.name}'),
+                  decoration: InputDecoration(
+                    labelText: t.t('Outside image', '图片外部填补', '圖片外部填補'),
                   ),
-                  DropdownMenuItem(
-                    value: BackgroundEdgeFill.blur,
-                    child: Text(t.t('Blurred media', '模糊背景')),
-                  ),
-                ],
-                onChanged: canFrame
-                    ? (v) {
-                        if (v != null) _updateFrame(frame.copyWith(fill: v));
-                      }
-                    : null,
-              ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(t.t('Automatic text protection', '自动文字保护', '自動文字保護')),
-              subtitle: Text(
-                t.t(
-                  'Soft text shadows below 30% dimming',
-                  '暗化低于30%时添加柔和文字阴影',
-                  '暗化低於30%時加入柔和文字陰影',
-                ),
-              ),
-              value: value.autoTextProtection,
-              onChanged: _busy
-                  ? null
-                  : (v) => setState(
-                      () => _draft = _draft.updatePage(
-                        _page,
-                        value.copyWith(autoTextProtection: v),
-                      ),
+                  items: [
+                    DropdownMenuItem(
+                      value: BackgroundEdgeFill.theme,
+                      child: Text(t.t('Theme color', '主题底色', '主題底色')),
                     ),
+                    DropdownMenuItem(
+                      value: BackgroundEdgeFill.blur,
+                      child: Text(t.t('Blurred media', '模糊背景')),
+                    ),
+                  ],
+                  onChanged: canFrame
+                      ? (v) {
+                          if (v != null) _updateFrame(frame.copyWith(fill: v));
+                        }
+                      : null,
+                ),
+              ),
+            PageModule(
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  t.t('Automatic text protection', '自动文字保护', '自動文字保護'),
+                ),
+                subtitle: Text(
+                  t.t(
+                    'Soft text shadows below 30% dimming',
+                    '暗化低于30%时添加柔和文字阴影',
+                    '暗化低於30%時加入柔和文字陰影',
+                  ),
+                ),
+                value: value.autoTextProtection,
+                onChanged: _busy
+                    ? null
+                    : (v) => setState(
+                        () => _draft = _draft.updatePage(
+                          _page,
+                          value.copyWith(autoTextProtection: v),
+                        ),
+                      ),
+              ),
             ),
           ],
         ],
@@ -1089,12 +1170,17 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
     ValueChanged<double>? changed,
   ) => Row(
     children: [
-      SizedBox(width: 130, child: Text('$title ${(value * 100).round()}%')),
+      SizedBox(
+        width: 130,
+        child: PageModule(child: Text('$title ${(value * 100).round()}%')),
+      ),
       Expanded(
-        child: Slider(
-          value: value,
-          max: max,
-          onChanged: _busy ? null : changed,
+        child: PageModule(
+          child: Slider(
+            value: value,
+            max: max,
+            onChanged: _busy ? null : changed,
+          ),
         ),
       ),
     ],

@@ -200,6 +200,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Choose existing course'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('view-ended-courses')));
+    await tester.pumpAndSettle();
     expect(find.text('Archived courses'), findsOneWidget);
     await tester.tap(find.text('Mathematics'));
     await tester.pumpAndSettle();

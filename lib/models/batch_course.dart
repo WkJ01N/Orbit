@@ -33,10 +33,12 @@ class BatchCourseDraft {
     required this.meetings,
     this.linkedCourseKey,
     this.periodTimePlanId,
+    this.semesterId,
   });
 
   final String? linkedCourseKey;
   final String? periodTimePlanId;
+  final String? semesterId;
   final String courseName;
   final String courseCode;
   final String section;
@@ -137,6 +139,7 @@ List<CourseSession> generateBatchCourseSessions(
         teachers: draft.teachers,
         faculty: draft.faculty.trim(),
         semester: draft.semester.trim(),
+        semesterId: draft.semesterId,
         linkedCourseKey: draft.linkedCourseKey,
         periodTimePlanId: draft.periodTimePlanId,
         recurrenceSeriesId: seriesId,

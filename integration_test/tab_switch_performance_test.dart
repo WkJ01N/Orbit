@@ -10,14 +10,26 @@ import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/providers/app_providers.dart';
+import 'package:orbit/models/launch_settings.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _ProfileLaunch extends LaunchSettingsNotifier {
+  @override
+  LaunchSettings build() => const LaunchSettings(
+    brandEnabled: false,
+    onStartup: false,
+    onPageSwitch: true,
+  );
+}
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
   testWidgets('profile switching with large upcoming lists', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    for (final count in [200, 1000, 5000]) {
+    const trace = bool.fromEnvironment('ORBIT_PROFILE_TRACE');
+    for (final count in trace ? [5000] : [200, 1000, 5000]) {
       final now = DateTime.now();
       final samples = List.generate(count, (i) {
         final date = DateTime(
@@ -44,6 +56,7 @@ void main() {
       final rows = samples.map((e) => e.toMap()).toList();
       final container = ProviderContainer(
         overrides: [
+          launchSettingsProvider.overrideWith(_ProfileLaunch.new),
           sessionsProvider.overrideWith((ref) async => samples),
           upcomingSessionsProvider.overrideWith(
             (ref) async => const bool.fromEnvironment('ORBIT_PROFILE_ROWS')
@@ -73,10 +86,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       await binding.watchPerformance(() async {
-        for (var i = 0; i < 20; i++) {
+        for (var i = 0; i < (trace ? 6 : 20); i++) {
           container.read(appNavIndexProvider.notifier).state = i.isEven ? 1 : 0;
           await tester.pump();
-          await tester.pump(const Duration(milliseconds: 400));
+          await tester.pump(const Duration(milliseconds: 800));
         }
       }, reportKey: 'courses_$count');
       debugPrint(

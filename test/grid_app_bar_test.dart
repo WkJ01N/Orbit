@@ -45,6 +45,7 @@ Future<void> _pumpGridPage(WidgetTester tester, {required double width}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        deadlinesProvider.overrideWith((ref) async => []),
         sessionsProvider.overrideWith((ref) async => [session]),
         selectedWeekStartProvider.overrideWith((ref) => weekStart),
       ],

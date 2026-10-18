@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,26 +63,39 @@ class _WemustDebugPageState extends ConsumerState<WemustDebugPage> {
         'WeMust: ${_version ?? "—"}\n${WemustLauncher.targetPackage}\n${WemustLauncher.timetableUri}\n${_testedAt?.toIso8601String() ?? "—"}\n${_timetable ? "timetable" : "app"}: ${_status(t)}';
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.pick('WeMust diagnostics', 'WeMust 跳转调试', 'WeMust 跳轉偵錯')),
+        title: PageModule(
+          child: Text(
+            t.pick('WeMust diagnostics', 'WeMust 跳转调试', 'WeMust 跳轉偵錯'),
+          ),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           SelectableText(diagnostic),
           const SizedBox(height: 16),
-          Text(t.manualPath),
-          FilledButton(
-            onPressed: _busy ? null : () => _test(true),
-            child: Text(t.openTimetable),
+          PageModule(child: Text(t.manualPath)),
+          PageModule(
+            child: FilledButton(
+              onPressed: _busy ? null : () => _test(true),
+              child: Text(t.openTimetable),
+            ),
           ),
-          OutlinedButton(
-            onPressed: _busy ? null : () => _test(false),
-            child: Text(t.pick('Open WeMust only', '仅打开 WeMust', '僅開啟 WeMust')),
+          PageModule(
+            child: OutlinedButton(
+              onPressed: _busy ? null : () => _test(false),
+              child: Text(
+                t.pick('Open WeMust only', '仅打开 WeMust', '僅開啟 WeMust'),
+              ),
+            ),
           ),
           if (_busy) const LinearProgressIndicator(),
-          TextButton(
-            onPressed: () => Clipboard.setData(ClipboardData(text: diagnostic)),
-            child: Text(t.pick('Copy diagnostics', '复制诊断信息', '複製診斷資訊')),
+          PageModule(
+            child: TextButton(
+              onPressed: () =>
+                  Clipboard.setData(ClipboardData(text: diagnostic)),
+              child: Text(t.pick('Copy diagnostics', '复制诊断信息', '複製診斷資訊')),
+            ),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -158,7 +159,11 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(OrbitFeatureText.of(context).failed)),
+          SnackBar(
+            content: PageModule(
+              child: Text(OrbitFeatureText.of(context).failed),
+            ),
+          ),
         );
       }
     } finally {
@@ -172,11 +177,17 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
       enabled: !_busy,
       onSelected: (a) => _apply(entries, a),
       itemBuilder: (_) => [
-        PopupMenuItem(value: ArchiveMutation.hide, child: Text(text.hide)),
-        PopupMenuItem(value: ArchiveMutation.show, child: Text(text.show)),
+        PopupMenuItem(
+          value: ArchiveMutation.hide,
+          child: PageModule(child: Text(text.hide)),
+        ),
+        PopupMenuItem(
+          value: ArchiveMutation.show,
+          child: PageModule(child: Text(text.show)),
+        ),
         PopupMenuItem(
           value: ArchiveMutation.restore,
-          child: Text(text.restore),
+          child: PageModule(child: Text(text.restore)),
         ),
       ],
     );
@@ -225,52 +236,55 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
       final date = DateFormat.yMd(
         Localizations.localeOf(context).toString(),
       ).add_Hm().format(entry.eventTime);
-      return ListTile(
+      return PageModule(
         key: ValueKey(entry.key),
-        leading: Checkbox(
-          value: _selected.contains(entry.key),
-          onChanged: _busy
-              ? null
-              : (v) => setState(() {
-                  if (v == true) {
-                    _selected.add(entry.key);
-                  } else {
-                    _selected.remove(entry.key);
-                  }
-                }),
-        ),
-        title: Text(entry.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          '${sample == null ? '' : '${sample.courseCode} · ${sample.section} · ${sample.semester}\n'}'
-          '$date · ${text.count(entry.count)} · ${text.hide} ${entry.hiddenCount}/${entry.count}',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _actions([entry]),
-            if (manual)
-              ReorderableDragStartListener(
-                index: index,
-                child: const Icon(Icons.drag_handle),
-              ),
-          ],
-        ),
-        onTap: () {
-          if (entry.deadlines.isNotEmpty) {
-            showDeadlineDetails(context, entry.deadlines.first);
-          } else if (history == null && settings.groupCourses) {
-            Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (_) => ArchivePage(
-                  courseHistory: entry.sessions.map((s) => s.id).toList(),
+        child: ListTile(
+          key: ValueKey(entry.key),
+          leading: Checkbox(
+            value: _selected.contains(entry.key),
+            onChanged: _busy
+                ? null
+                : (v) => setState(() {
+                    if (v == true) {
+                      _selected.add(entry.key);
+                    } else {
+                      _selected.remove(entry.key);
+                    }
+                  }),
+          ),
+          title: Text(entry.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            '${sample == null ? '' : '${sample.courseCode} · ${sample.section} · ${sample.semester}\n'}'
+            '$date · ${text.count(entry.count)} · ${text.hide} ${entry.hiddenCount}/${entry.count}',
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _actions([entry]),
+              if (manual)
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle),
                 ),
-              ),
-            );
-          } else {
-            SessionDetailSheet.show(context, entry.sessions.first);
-          }
-        },
+            ],
+          ),
+          onTap: () {
+            if (entry.deadlines.isNotEmpty) {
+              showDeadlineDetails(context, entry.deadlines.first);
+            } else if (history == null && settings.groupCourses) {
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => ArchivePage(
+                    courseHistory: entry.sessions.map((s) => s.id).toList(),
+                  ),
+                ),
+              );
+            } else {
+              SessionDetailSheet.show(context, entry.sessions.first);
+            }
+          },
+        ),
       );
     }
 
@@ -284,24 +298,28 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
         settingsAsync.hasError;
     return BackgroundScaffold(
       appBar: AppBar(
-        title: Text(text.archive),
+        title: PageModule(child: Text(text.archive)),
         actions: [
-          IconButton(
-            tooltip: text.refresh,
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              refreshSchedule(ref);
-              ref.invalidate(archiveSettingsProvider);
-            },
+          PageModule(
+            child: IconButton(
+              tooltip: text.refresh,
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                refreshSchedule(ref);
+                ref.invalidate(archiveSettingsProvider);
+              },
+            ),
           ),
           if (history == null)
-            IconButton(
-              tooltip: text.settings,
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const ArchiveSettingsPage(),
+            PageModule(
+              child: IconButton(
+                tooltip: text.settings,
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ArchiveSettingsPage(),
+                  ),
                 ),
               ),
             ),
@@ -312,53 +330,63 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
           if (history == null)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(value: false, label: Text(text.courses)),
-                  const ButtonSegment(value: true, label: Text('DDL')),
-                ],
-                selected: {_ddl},
-                onSelectionChanged: _busy
-                    ? null
-                    : (v) => setState(() {
-                        _ddl = v.first;
-                        _selected.clear();
-                      }),
+              child: PageModule(
+                child: SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(value: false, label: Text(text.courses)),
+                    const ButtonSegment(value: true, label: Text('DDL')),
+                  ],
+                  selected: {_ddl},
+                  onSelectionChanged: _busy
+                      ? null
+                      : (v) => setState(() {
+                          _ddl = v.first;
+                          _selected.clear();
+                        }),
+                ),
               ),
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                labelText: text.search,
+            child: PageModule(
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  labelText: text.search,
+                ),
+                onChanged: (q) => setState(() {
+                  _query = q;
+                  _selected.clear();
+                }),
               ),
-              onChanged: (q) => setState(() {
-                _query = q;
-                _selected.clear();
-              }),
             ),
           ),
           Row(
             children: [
-              TextButton(
-                onPressed: _busy
-                    ? null
-                    : () => setState(() {
-                        if (selected.length == filtered.length) {
-                          _selected.clear();
-                        } else {
-                          _selected.addAll(filtered.map((e) => e.key));
-                        }
-                      }),
-                child: Text(
-                  selected.isNotEmpty && selected.length == filtered.length
-                      ? text.clearSelection
-                      : text.selectAll,
+              PageModule(
+                child: TextButton(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                          if (selected.length == filtered.length) {
+                            _selected.clear();
+                          } else {
+                            _selected.addAll(filtered.map((e) => e.key));
+                          }
+                        }),
+                  child: Text(
+                    selected.isNotEmpty && selected.length == filtered.length
+                        ? text.clearSelection
+                        : text.selectAll,
+                  ),
                 ),
               ),
               if (selected.isNotEmpty) ...[
-                Text(text.count(selected.fold(0, (n, e) => n + e.count))),
+                PageModule(
+                  child: Text(
+                    text.count(selected.fold(0, (n, e) => n + e.count)),
+                  ),
+                ),
                 _actions(selected),
               ],
             ],
@@ -367,18 +395,20 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
           Expanded(
             child: error
                 ? Center(
-                    child: TextButton(
-                      onPressed: () {
-                        refreshSchedule(ref);
-                        ref.invalidate(archiveSettingsProvider);
-                      },
-                      child: Text(text.refresh),
+                    child: PageModule(
+                      child: TextButton(
+                        onPressed: () {
+                          refreshSchedule(ref);
+                          ref.invalidate(archiveSettingsProvider);
+                        },
+                        child: Text(text.refresh),
+                      ),
                     ),
                   )
                 : loading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
-                ? Center(child: Text(text.empty))
+                ? Center(child: PageModule(child: Text(text.empty)))
                 : manual
                 ? ReorderableListView.builder(
                     buildDefaultDragHandles: false,
@@ -405,7 +435,9 @@ class _ArchivePageState extends ConsumerState<ArchivePage> {
                       } catch (_) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showAppSnackBar(
-                            SnackBar(content: Text(text.failed)),
+                            SnackBar(
+                              content: PageModule(child: Text(text.failed)),
+                            ),
                           );
                         }
                       }
@@ -435,7 +467,11 @@ class ArchiveSettingsPage extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(OrbitFeatureText.of(context).failed)),
+          SnackBar(
+            content: PageModule(
+              child: Text(OrbitFeatureText.of(context).failed),
+            ),
+          ),
         );
       }
     }
@@ -453,26 +489,32 @@ class ArchiveSettingsPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: Text(text.customDays),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
+          title: PageModule(child: Text(text.customDays)),
+          content: PageModule(
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
+            ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+              ),
             ),
-            FilledButton(
-              onPressed:
-                  int.tryParse(controller.text) != null &&
-                      int.parse(controller.text) <= 36500
-                  ? () => Navigator.pop(ctx, int.parse(controller.text))
-                  : null,
-              child: Text(MaterialLocalizations.of(ctx).okButtonLabel),
+            PageModule(
+              child: FilledButton(
+                onPressed:
+                    int.tryParse(controller.text) != null &&
+                        int.parse(controller.text) <= 36500
+                    ? () => Navigator.pop(ctx, int.parse(controller.text))
+                    : null,
+                child: Text(MaterialLocalizations.of(ctx).okButtonLabel),
+              ),
             ),
           ],
         ),
@@ -491,135 +533,149 @@ class ArchiveSettingsPage extends ConsumerWidget {
     final text = OrbitFeatureText.of(context);
     final value = ref.watch(archiveSettingsProvider);
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(text.settings)),
+      appBar: AppBar(title: PageModule(child: Text(text.settings))),
       body: value.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
-          child: TextButton(
-            onPressed: () => ref.invalidate(archiveSettingsProvider),
-            child: Text(text.refresh),
+          child: PageModule(
+            child: TextButton(
+              onPressed: () => ref.invalidate(archiveSettingsProvider),
+              child: Text(text.refresh),
+            ),
           ),
         ),
         data: (s) => ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            SwitchListTile(
-              title: Text(text.group),
-              subtitle: Text(text.groupHint),
-              value: s.groupCourses,
-              onChanged: (v) => _save(context, ref, {'groupCourses': v}),
+            PageModule(
+              child: SwitchListTile(
+                title: Text(text.group),
+                subtitle: Text(text.groupHint),
+                value: s.groupCourses,
+                onChanged: (v) => _save(context, ref, {'groupCourses': v}),
+              ),
             ),
             for (final ddl in [false, true]) ...[
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(
-                  ddl ? 'DDL' : text.courses,
-                  style: Theme.of(context).textTheme.titleMedium,
+                child: PageModule(
+                  child: Text(
+                    ddl ? 'DDL' : text.courses,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DropdownButtonFormField<ArchiveSort>(
-                  isExpanded: true,
-                  key: ValueKey(
-                    '${ddl}_${ddl ? s.deadlineSort : s.courseSort}',
-                  ),
-                  initialValue: ddl ? s.deadlineSort : s.courseSort,
-                  items: [
-                    for (final sort in ArchiveSort.values)
-                      DropdownMenuItem(
-                        value: sort,
-                        child: Text(
-                          text.sortName(sort.name),
-                          overflow: TextOverflow.ellipsis,
+                child: PageModule(
+                  child: DropdownButtonFormField<ArchiveSort>(
+                    isExpanded: true,
+                    key: ValueKey(
+                      '${ddl}_${ddl ? s.deadlineSort : s.courseSort}',
+                    ),
+                    initialValue: ddl ? s.deadlineSort : s.courseSort,
+                    items: [
+                      for (final sort in ArchiveSort.values)
+                        DropdownMenuItem(
+                          value: sort,
+                          child: Text(
+                            text.sortName(sort.name),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) {
-                      _save(context, ref, {
-                        ddl ? 'deadlineSort' : 'courseSort': v.name,
-                      });
-                    }
-                  },
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        _save(context, ref, {
+                          ddl ? 'deadlineSort' : 'courseSort': v.name,
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
               if ((ddl ? s.deadlineSort : s.courseSort) != ArchiveSort.manual)
-                SwitchListTile(
-                  title: Text(
-                    (ddl ? s.deadlineDescending : s.courseDescending)
-                        ? text.descending
-                        : text.ascending,
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(
+                      (ddl ? s.deadlineDescending : s.courseDescending)
+                          ? text.descending
+                          : text.ascending,
+                    ),
+                    value: ddl ? s.deadlineDescending : s.courseDescending,
+                    onChanged: (v) => _save(context, ref, {
+                      ddl ? 'deadlineDescending' : 'courseDescending': v,
+                    }),
                   ),
-                  value: ddl ? s.deadlineDescending : s.courseDescending,
+                ),
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(ddl ? text.autoDeadlines : text.autoCourses),
+                  value: ddl ? s.autoDeadlines : s.autoCourses,
                   onChanged: (v) => _save(context, ref, {
-                    ddl ? 'deadlineDescending' : 'courseDescending': v,
+                    ddl ? 'autoDeadlines' : 'autoCourses': v,
                   }),
                 ),
-              SwitchListTile(
-                title: Text(ddl ? text.autoDeadlines : text.autoCourses),
-                value: ddl ? s.autoDeadlines : s.autoCourses,
-                onChanged: (v) => _save(context, ref, {
-                  ddl ? 'autoDeadlines' : 'autoCourses': v,
-                }),
               ),
-              ListTile(
-                title: Text(text.delay),
-                trailing: DropdownButton<int>(
-                  value:
-                      [
-                        0,
-                        1,
-                        7,
-                      ].contains(ddl ? s.deadlineDelayDays : s.courseDelayDays)
-                      ? (ddl ? s.deadlineDelayDays : s.courseDelayDays)
-                      : -1,
-                  items: [
-                    for (final days in [0, 1, 7])
-                      DropdownMenuItem(
-                        value: days,
-                        child: Text(text.days(days)),
-                      ),
-                    DropdownMenuItem(
-                      value: -1,
-                      child: Text(
+              PageModule(
+                child: ListTile(
+                  title: Text(text.delay),
+                  trailing: DropdownButton<int>(
+                    value:
                         [0, 1, 7].contains(
-                              ddl ? s.deadlineDelayDays : s.courseDelayDays,
-                            )
-                            ? text.custom
-                            : text.days(
+                          ddl ? s.deadlineDelayDays : s.courseDelayDays,
+                        )
+                        ? (ddl ? s.deadlineDelayDays : s.courseDelayDays)
+                        : -1,
+                    items: [
+                      for (final days in [0, 1, 7])
+                        DropdownMenuItem(
+                          value: days,
+                          child: Text(text.days(days)),
+                        ),
+                      DropdownMenuItem(
+                        value: -1,
+                        child: Text(
+                          [0, 1, 7].contains(
                                 ddl ? s.deadlineDelayDays : s.courseDelayDays,
-                              ),
+                              )
+                              ? text.custom
+                              : text.days(
+                                  ddl ? s.deadlineDelayDays : s.courseDelayDays,
+                                ),
+                        ),
                       ),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    if (v == -1) {
-                      _delay(
-                        context,
-                        ref,
-                        ddl ? 'deadlineDelayDays' : 'courseDelayDays',
-                        ddl ? s.deadlineDelayDays : s.courseDelayDays,
-                      );
-                    } else if (v != null) {
-                      _save(context, ref, {
-                        ddl ? 'deadlineDelayDays' : 'courseDelayDays': v,
-                      });
-                    }
-                  },
+                    ],
+                    onChanged: (v) {
+                      if (v == -1) {
+                        _delay(
+                          context,
+                          ref,
+                          ddl ? 'deadlineDelayDays' : 'courseDelayDays',
+                          ddl ? s.deadlineDelayDays : s.courseDelayDays,
+                        );
+                      } else if (v != null) {
+                        _save(context, ref, {
+                          ddl ? 'deadlineDelayDays' : 'courseDelayDays': v,
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
-              SwitchListTile(
-                title: Text(text.hideAuto),
-                value: ddl ? s.hideDeadlines : s.hideCourses,
-                onChanged: (v) => _save(context, ref, {
-                  ddl ? 'hideDeadlines' : 'hideCourses': v,
-                }),
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(text.hideAuto),
+                  value: ddl ? s.hideDeadlines : s.hideCourses,
+                  onChanged: (v) => _save(context, ref, {
+                    ddl ? 'hideDeadlines' : 'hideCourses': v,
+                  }),
+                ),
               ),
             ],
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(text.autoHint),
+              child: PageModule(child: Text(text.autoHint)),
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:orbit/models/v162_text.dart';
+import 'package:orbit/features/session/semester_field.dart';
 import 'package:uuid/uuid.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
@@ -159,6 +160,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   }
 
   CourseSession? _selectedCourse;
+  String? _semesterId;
   Future<void> _chooseCourse() async {
     final course = await chooseExistingCourse(context);
     if (course == null || !mounted) return;
@@ -171,6 +173,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       _teachersController.text = course.teachers.join(', ');
       _facultyController.text = course.faculty;
       _semesterController.text = course.semester;
+      _semesterId = course.semesterId;
       _classTypeController.text = course.classType;
     });
   }
@@ -181,6 +184,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     _courseCodeController.clear();
     _sectionController.text = '1';
     _semesterController.clear();
+    _semesterId = null;
   });
 
   Future<void> _pickDate() async {
@@ -253,10 +257,16 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
         : _sectionController.text.trim();
 
     final base = widget.session;
+    final semester = resolveFormSemester(
+      ref,
+      _semesterController.text,
+      startAt,
+      id: _semesterId ?? _selectedCourse?.semesterId ?? base?.semesterId,
+    );
     final session = CourseSession(
       id: widget.isExam ? base?.id ?? 'exam|${const Uuid().v4()}' : '',
       kind: widget.isExam ? SessionKind.exam : SessionKind.course,
-      semesterId: _selectedCourse?.semesterId ?? base?.semesterId,
+      semesterId: semester.id,
       examReminderEnabled: _examReminder,
       examStrongReminder: _examStrong,
       examLeadMinutes: _examLead,
@@ -277,7 +287,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           ? const []
           : _parseTeachers(_teachersController.text),
       faculty: _facultyController.text.trim(),
-      semester: _semesterController.text.trim(),
+      semester: semester.name,
       archivedAt: base?.archivedAt,
       archiveHidden: base?.archiveHidden ?? false,
       autoArchivePaused: base != null && base.endAt == endAt
@@ -497,6 +507,8 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           deleteStatistics: deleteStatistics,
         );
       }
+      ref.read(scheduleIdentityChangesProvider.notifier).state =
+          operationResult?.identityChanges ?? const {};
       refreshSchedule(ref);
 
       if (mounted) {
@@ -637,6 +649,12 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               ),
             ),
             const SizedBox(height: 12),
+            SemesterField(
+              controller: _semesterController,
+              enabled: !_saving,
+              onSelected: (id) => _semesterId = id,
+            ),
+            const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.fieldStartTime),
@@ -694,7 +712,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
             ],
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _saving ? null : _save,
+              onPressed: _saving || formSemesterLoading(ref) ? null : _save,
               child: _saving
                   ? const SizedBox(
                       width: 20,

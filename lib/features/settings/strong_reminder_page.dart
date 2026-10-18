@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
@@ -67,18 +68,22 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
         await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: Text(l.reminderDiscard),
+                title: PageModule(child: Text(l.reminderDiscard)),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(l.reminderKeepEditing),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(ctx).colorScheme.error,
+                  PageModule(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(l.reminderKeepEditing),
                     ),
-                    child: Text(l.reminderDiscardAction),
+                  ),
+                  PageModule(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(ctx).colorScheme.error,
+                      ),
+                      child: Text(l.reminderDiscardAction),
+                    ),
                   ),
                 ],
               ),
@@ -142,7 +147,9 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
             duration: const Duration(seconds: 6),
-            content: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
+            content: PageModule(
+              child: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
+            ),
           ),
         );
       }
@@ -175,7 +182,9 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
         setState(() => _playing = false);
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
+            content: PageModule(
+              child: Text(AppLocalizations.of(context)!.reminderAudioInvalid),
+            ),
           ),
         );
       }
@@ -197,16 +206,18 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
           context,
           title: l.reminderStrongConfig,
           actions: [
-            TextButton(
-              onPressed: () {
-                if (!_form.currentState!.validate()) return;
-                setState(() => _allowPop = true);
-                Navigator.pop(
-                  context,
-                  _value.copyWith(durationSeconds: int.parse(_duration.text)),
-                );
-              },
-              child: Text(l.reminderSave),
+            PageModule(
+              child: TextButton(
+                onPressed: () {
+                  if (!_form.currentState!.validate()) return;
+                  setState(() => _allowPop = true);
+                  Navigator.pop(
+                    context,
+                    _value.copyWith(durationSeconds: int.parse(_duration.text)),
+                  );
+                },
+                child: Text(l.reminderSave),
+              ),
             ),
           ],
         ),
@@ -215,7 +226,7 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text(l.reminderStrongDescription),
+              PageModule(child: Text(l.reminderStrongDescription)),
               SettingsGroup(
                 title: WakeText.of(context).task,
                 horizontalMargin: 0,
@@ -224,190 +235,217 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        DropdownButtonFormField<StrongDismissTask>(
-                          initialValue: _value.dismissTask,
-                          isExpanded: true,
-                          items: [
-                            DropdownMenuItem(
-                              value: StrongDismissTask.arithmetic,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(WakeText.of(context).arithmetic),
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: StrongDismissTask.sequence,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(WakeText.of(context).sequence),
-                              ),
-                            ),
-                            DropdownMenuItem(
-                              value: StrongDismissTask.mixed,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: Text(WakeText.of(context).mixed),
-                              ),
-                            ),
-                          ],
-                          onChanged: (v) {
-                            if (v != null) {
-                              setState(
-                                () => _value = _value.copyWith(dismissTask: v),
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          key: ValueKey(_value.dismissTask),
-                          initialValue: switch (_value.dismissTask) {
-                            StrongDismissTask.arithmetic =>
-                              _value.arithmeticRounds,
-                            StrongDismissTask.sequence => _value.sequenceRounds,
-                            StrongDismissTask.mixed => _value.mixedRounds,
-                          },
-                          decoration: InputDecoration(
-                            labelText: WakeText.of(context).rounds,
-                          ),
-                          items: [
-                            for (var n = 1; n <= 10; n++)
-                              DropdownMenuItem(value: n, child: Text('$n')),
-                          ],
-                          onChanged: (n) {
-                            if (n != null) {
-                              setState(
-                                () => _value = switch (_value.dismissTask) {
-                                  StrongDismissTask.arithmetic =>
-                                    _value.copyWith(arithmeticRounds: n),
-                                  StrongDismissTask.sequence => _value.copyWith(
-                                    sequenceRounds: n,
-                                  ),
-                                  StrongDismissTask.mixed => _value.copyWith(
-                                    mixedRounds: n,
-                                  ),
-                                },
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        if (_value.dismissTask == StrongDismissTask.mixed) ...[
-                          Text(
-                            WakeText.of(context).mixedHint,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        if (_value.dismissTask !=
-                            StrongDismissTask.arithmetic) ...[
-                          DropdownButtonFormField<int>(
-                            key: const Key('strong-number-count'),
-                            initialValue: _value.sequenceNumberCount,
+                        PageModule(
+                          child: DropdownButtonFormField<StrongDismissTask>(
+                            initialValue: _value.dismissTask,
                             isExpanded: true,
+                            items: [
+                              DropdownMenuItem(
+                                value: StrongDismissTask.arithmetic,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).arithmetic),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: StrongDismissTask.sequence,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).sequence),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: StrongDismissTask.mixed,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(WakeText.of(context).mixed),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(
+                                  () =>
+                                      _value = _value.copyWith(dismissTask: v),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PageModule(
+                          child: DropdownButtonFormField<int>(
+                            key: ValueKey(_value.dismissTask),
+                            initialValue: switch (_value.dismissTask) {
+                              StrongDismissTask.arithmetic =>
+                                _value.arithmeticRounds,
+                              StrongDismissTask.sequence =>
+                                _value.sequenceRounds,
+                              StrongDismissTask.mixed => _value.mixedRounds,
+                            },
                             decoration: InputDecoration(
-                              labelText: WakeText.of(context).numberCount,
+                              labelText: WakeText.of(context).rounds,
                             ),
                             items: [
-                              for (var n = 4; n <= 25; n++)
+                              for (var n = 1; n <= 10; n++)
                                 DropdownMenuItem(value: n, child: Text('$n')),
                             ],
                             onChanged: (n) {
                               if (n != null) {
                                 setState(
-                                  () => _value = _value.copyWith(
-                                    sequenceNumberCount: n,
-                                  ),
+                                  () => _value = switch (_value.dismissTask) {
+                                    StrongDismissTask.arithmetic =>
+                                      _value.copyWith(arithmeticRounds: n),
+                                    StrongDismissTask.sequence =>
+                                      _value.copyWith(sequenceRounds: n),
+                                    StrongDismissTask.mixed => _value.copyWith(
+                                      mixedRounds: n,
+                                    ),
+                                  },
                                 );
                               }
                             },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_value.dismissTask == StrongDismissTask.mixed) ...[
+                          PageModule(
+                            child: Text(
+                              WakeText.of(context).mixedHint,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (_value.dismissTask !=
+                            StrongDismissTask.arithmetic) ...[
+                          PageModule(
+                            child: DropdownButtonFormField<int>(
+                              key: const Key('strong-number-count'),
+                              initialValue: _value.sequenceNumberCount,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: WakeText.of(context).numberCount,
+                              ),
+                              items: [
+                                for (var n = 4; n <= 25; n++)
+                                  DropdownMenuItem(value: n, child: Text('$n')),
+                              ],
+                              onChanged: (n) {
+                                if (n != null) {
+                                  setState(
+                                    () => _value = _value.copyWith(
+                                      sequenceNumberCount: n,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
                           ),
                           const SizedBox(height: 12),
                         ],
                         if (_value.dismissTask !=
                             StrongDismissTask.sequence) ...[
-                          DropdownButtonFormField<ArithmeticDifficulty>(
-                            key: const Key('strong-arithmetic-difficulty'),
-                            initialValue: _value.arithmeticDifficulty,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: WakeText.of(context).difficulty,
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: ArithmeticDifficulty.simple,
-                                child: Text(WakeText.of(context).simple),
-                              ),
-                              DropdownMenuItem(
-                                value: ArithmeticDifficulty.medium,
-                                child: Text(WakeText.of(context).medium),
-                              ),
-                              DropdownMenuItem(
-                                value: ArithmeticDifficulty.hard,
-                                child: Text(WakeText.of(context).hard),
-                              ),
-                            ],
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => _value = _value.copyWith(
-                                    arithmeticDifficulty: v,
+                          PageModule(
+                            child:
+                                DropdownButtonFormField<ArithmeticDifficulty>(
+                                  key: const Key(
+                                    'strong-arithmetic-difficulty',
                                   ),
-                                );
-                              }
-                            },
+                                  initialValue: _value.arithmeticDifficulty,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: WakeText.of(context).difficulty,
+                                  ),
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: ArithmeticDifficulty.simple,
+                                      child: Text(WakeText.of(context).simple),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: ArithmeticDifficulty.medium,
+                                      child: Text(WakeText.of(context).medium),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: ArithmeticDifficulty.hard,
+                                      child: Text(WakeText.of(context).hard),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(
+                                        () => _value = _value.copyWith(
+                                          arithmeticDifficulty: v,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            WakeText.of(context).difficultyHint,
-                            style: Theme.of(context).textTheme.bodySmall,
+                          PageModule(
+                            child: Text(
+                              WakeText.of(context).difficultyHint,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<ArithmeticAnswerMode>(
-                            key: const Key('strong-arithmetic-answer-mode'),
-                            initialValue: _value.arithmeticAnswerMode,
-                            isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: WakeText.of(context).answerMode,
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: ArithmeticAnswerMode.input,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(WakeText.of(context).manualInput),
-                                ),
-                              ),
-                              DropdownMenuItem(
-                                value: ArithmeticAnswerMode.choice3,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(WakeText.of(context).choice3),
-                                ),
-                              ),
-                              DropdownMenuItem(
-                                value: ArithmeticAnswerMode.choice6,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(WakeText.of(context).choice6),
-                                ),
-                              ),
-                            ],
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(
-                                  () => _value = _value.copyWith(
-                                    arithmeticAnswerMode: v,
+                          PageModule(
+                            child:
+                                DropdownButtonFormField<ArithmeticAnswerMode>(
+                                  key: const Key(
+                                    'strong-arithmetic-answer-mode',
                                   ),
-                                );
-                              }
-                            },
+                                  initialValue: _value.arithmeticAnswerMode,
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: WakeText.of(context).answerMode,
+                                  ),
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: ArithmeticAnswerMode.input,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          WakeText.of(context).manualInput,
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: ArithmeticAnswerMode.choice3,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          WakeText.of(context).choice3,
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: ArithmeticAnswerMode.choice6,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          WakeText.of(context).choice6,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(
+                                        () => _value = _value.copyWith(
+                                          arithmeticAnswerMode: v,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -458,7 +496,9 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                         ),
                         Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Text(WakeText.of(context).timing),
+                          child: PageModule(
+                            child: Text(WakeText.of(context).timing),
+                          ),
                         ),
                       ],
                     ),
@@ -467,106 +507,116 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
               ),
 
               if (widget.showTargets) ...[
-                SwitchListTile(
-                  title: Text(OrbitFeatureText.of(context).onlyFirst),
-                  value: _value.onlyFirstClass,
-                  onChanged: (v) => setState(
-                    () => _value = _value.copyWith(onlyFirstClass: v),
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(OrbitFeatureText.of(context).onlyFirst),
+                    value: _value.onlyFirstClass,
+                    onChanged: (v) => setState(
+                      () => _value = _value.copyWith(onlyFirstClass: v),
+                    ),
                   ),
                 ),
                 if (_value.onlyFirstClass) ...[
-                  DropdownButtonFormField<FirstClassMode>(
-                    isExpanded: true,
-                    initialValue: _value.firstClassMode,
-                    items: [
-                      for (final m in FirstClassMode.values)
-                        DropdownMenuItem(
-                          value: m,
-                          child: Text(
-                            m == FirstClassMode.firstPeriod
-                                ? OrbitFeatureText.of(context).firstPeriod
-                                : OrbitFeatureText.of(context).beforeTime,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: (m) {
-                      if (m != null) {
-                        setState(
-                          () => _value = _value.copyWith(firstClassMode: m),
-                        );
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: Text(OrbitFeatureText.of(context).cutoff),
-                    trailing: Text(
-                      TimeOfDay(
-                        hour: _value.cutoffMinute ~/ 60,
-                        minute: _value.cutoffMinute % 60,
-                      ).format(context),
-                    ),
-                    onTap: () async {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                          hour: _value.cutoffMinute ~/ 60,
-                          minute: _value.cutoffMinute % 60,
-                        ),
-                      );
-                      if (time != null && mounted) {
-                        setState(
-                          () => _value = _value.copyWith(
-                            cutoffMinute: time.hour * 60 + time.minute,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  if (_value.firstClassMode == FirstClassMode.firstPeriod)
-                    DropdownButtonFormField<String>(
+                  PageModule(
+                    child: DropdownButtonFormField<FirstClassMode>(
                       isExpanded: true,
-                      initialValue:
-                          (ref
-                                      .watch(importConfigurationProvider)
-                                      .valueOrNull
-                                      ?.periodTimes ??
-                                  [])
-                              .any((p) => p.id == _value.periodTimePlanId)
-                          ? _value.periodTimePlanId
-                          : '',
-                      decoration: InputDecoration(
-                        labelText: OrbitFeatureText.of(context).plan,
-                      ),
+                      initialValue: _value.firstClassMode,
                       items: [
-                        DropdownMenuItem(
-                          value: '',
-                          child: Text(OrbitFeatureText.of(context).automatic),
-                        ),
-                        for (final p
-                            in ref
-                                    .watch(importConfigurationProvider)
-                                    .valueOrNull
-                                    ?.periodTimes ??
-                                [])
+                        for (final m in FirstClassMode.values)
                           DropdownMenuItem(
-                            value: p.id,
+                            value: m,
                             child: Text(
-                              p.name,
+                              m == FirstClassMode.firstPeriod
+                                  ? OrbitFeatureText.of(context).firstPeriod
+                                  : OrbitFeatureText.of(context).beforeTime,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                       ],
-                      onChanged: (id) => setState(
-                        () => _value = _value.copyWith(
-                          periodTimePlanId: id,
-                          clearPeriodPlan: id == '',
+                      onChanged: (m) {
+                        if (m != null) {
+                          setState(
+                            () => _value = _value.copyWith(firstClassMode: m),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  PageModule(
+                    child: ListTile(
+                      title: Text(OrbitFeatureText.of(context).cutoff),
+                      trailing: Text(
+                        TimeOfDay(
+                          hour: _value.cutoffMinute ~/ 60,
+                          minute: _value.cutoffMinute % 60,
+                        ).format(context),
+                      ),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                            hour: _value.cutoffMinute ~/ 60,
+                            minute: _value.cutoffMinute % 60,
+                          ),
+                        );
+                        if (time != null && mounted) {
+                          setState(
+                            () => _value = _value.copyWith(
+                              cutoffMinute: time.hour * 60 + time.minute,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  if (_value.firstClassMode == FirstClassMode.firstPeriod)
+                    PageModule(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue:
+                            (ref
+                                        .watch(importConfigurationProvider)
+                                        .valueOrNull
+                                        ?.periodTimes ??
+                                    [])
+                                .any((p) => p.id == _value.periodTimePlanId)
+                            ? _value.periodTimePlanId
+                            : '',
+                        decoration: InputDecoration(
+                          labelText: OrbitFeatureText.of(context).plan,
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: '',
+                            child: Text(OrbitFeatureText.of(context).automatic),
+                          ),
+                          for (final p
+                              in ref
+                                      .watch(importConfigurationProvider)
+                                      .valueOrNull
+                                      ?.periodTimes ??
+                                  [])
+                            DropdownMenuItem(
+                              value: p.id,
+                              child: Text(
+                                p.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (id) => setState(
+                          () => _value = _value.copyWith(
+                            periodTimePlanId: id,
+                            clearPeriodPlan: id == '',
+                          ),
                         ),
                       ),
                     ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(OrbitFeatureText.of(context).firstHint),
+                    child: PageModule(
+                      child: Text(OrbitFeatureText.of(context).firstHint),
+                    ),
                   ),
                 ],
               ],
@@ -576,21 +626,23 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                   title: l.strongTargets,
                   children: [
                     for (final type in StrongReminderType.values)
-                      CheckboxListTile(
-                        title: Text(
-                          [
-                            l.strongClassLead,
-                            l.strongCheckIn,
-                            l.strongSummary,
-                            l.strongCustom,
-                          ][type.index],
+                      PageModule(
+                        child: CheckboxListTile(
+                          title: Text(
+                            [
+                              l.strongClassLead,
+                              l.strongCheckIn,
+                              l.strongSummary,
+                              l.strongCustom,
+                            ][type.index],
+                          ),
+                          value: _value.types.contains(type),
+                          onChanged: (v) => setState(() {
+                            final types = {..._value.types};
+                            v == true ? types.add(type) : types.remove(type);
+                            _value = _value.copyWith(types: types);
+                          }),
                         ),
-                        value: _value.types.contains(type),
-                        onChanged: (v) => setState(() {
-                          final types = {..._value.types};
-                          v == true ? types.add(type) : types.remove(type);
-                          _value = _value.copyWith(types: types);
-                        }),
                       ),
                   ],
                 ),
@@ -599,21 +651,23 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                     horizontalMargin: 0,
                     title: l.strongCustom,
                     children: [
-                      SwitchListTile(
-                        title: Text(l.strongAllRules),
-                        value: _value.ruleIds == null,
-                        onChanged: (v) => setState(
-                          () => _value = _value.copyWith(
-                            allRules: v,
-                            ruleIds: v
-                                ? null
-                                : (ref
-                                              .read(reminderSettingsProvider)
-                                              .value
-                                              ?.customRules ??
-                                          [])
-                                      .map((r) => r.id)
-                                      .toSet(),
+                      PageModule(
+                        child: SwitchListTile(
+                          title: Text(l.strongAllRules),
+                          value: _value.ruleIds == null,
+                          onChanged: (v) => setState(
+                            () => _value = _value.copyWith(
+                              allRules: v,
+                              ruleIds: v
+                                  ? null
+                                  : (ref
+                                                .read(reminderSettingsProvider)
+                                                .value
+                                                ?.customRules ??
+                                            [])
+                                        .map((r) => r.id)
+                                        .toSet(),
+                            ),
                           ),
                         ),
                       ),
@@ -624,23 +678,26 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                                     .value
                                     ?.customRules ??
                                 <CustomReminderRule>[])
-                          CheckboxListTile(
-                            title: Text(rule.name),
-                            subtitle: rule.strength == ReminderStrength.inherit
-                                ? null
-                                : Text(
-                                    rule.strength == ReminderStrength.strong
-                                        ? l.reminderStrong
-                                        : l.reminderNormal,
-                                  ),
-                            value: _value.ruleIds!.contains(rule.id),
-                            onChanged: (v) => setState(() {
-                              final ids = {..._value.ruleIds!};
-                              v == true
-                                  ? ids.add(rule.id)
-                                  : ids.remove(rule.id);
-                              _value = _value.copyWith(ruleIds: ids);
-                            }),
+                          PageModule(
+                            child: CheckboxListTile(
+                              title: Text(rule.name),
+                              subtitle:
+                                  rule.strength == ReminderStrength.inherit
+                                  ? null
+                                  : Text(
+                                      rule.strength == ReminderStrength.strong
+                                          ? l.reminderStrong
+                                          : l.reminderNormal,
+                                    ),
+                              value: _value.ruleIds!.contains(rule.id),
+                              onChanged: (v) => setState(() {
+                                final ids = {..._value.ruleIds!};
+                                v == true
+                                    ? ids.add(rule.id)
+                                    : ids.remove(rule.id);
+                                _value = _value.copyWith(ruleIds: ids);
+                              }),
+                            ),
                           ),
                     ],
                   ),
@@ -650,67 +707,74 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: DropdownButtonFormField<ReminderCourseScope>(
-                        initialValue: _value.courseScope,
-                        isExpanded: true,
-                        decoration: InputDecoration(labelText: l.reminderScope),
-                        items: [
-                          for (final scope in ReminderCourseScope.values)
-                            DropdownMenuItem(
-                              value: scope,
-                              child: Text(
-                                [
-                                  l.reminderAll,
-                                  l.reminderSeries,
-                                  l.reminderSessions,
-                                ][scope.index],
+                      child: PageModule(
+                        child: DropdownButtonFormField<ReminderCourseScope>(
+                          initialValue: _value.courseScope,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: l.reminderScope,
+                          ),
+                          items: [
+                            for (final scope in ReminderCourseScope.values)
+                              DropdownMenuItem(
+                                value: scope,
+                                child: Text(
+                                  [
+                                    l.reminderAll,
+                                    l.reminderSeries,
+                                    l.reminderSessions,
+                                  ][scope.index],
+                                ),
                               ),
-                            ),
-                        ],
-                        onChanged: (scope) {
-                          if (scope != null) {
-                            setState(
-                              () => _value = _value.copyWith(
-                                courseScope: scope,
-                                courseKeys: [],
-                              ),
-                            );
-                          }
-                        },
+                          ],
+                          onChanged: (scope) {
+                            if (scope != null) {
+                              setState(
+                                () => _value = _value.copyWith(
+                                  courseScope: scope,
+                                  courseKeys: [],
+                                ),
+                              );
+                            }
+                          },
+                        ),
                       ),
                     ),
                     if (_value.courseScope != ReminderCourseScope.all)
-                      ListTile(
-                        title: Text(l.strongCourses),
-                        subtitle: Text('${_value.courseKeys.length}'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () async {
-                          final sessions = await ref.read(
-                            sessionsProvider.future,
-                          );
-                          if (!context.mounted) return;
-                          final keys = await showReminderCourseSelection(
-                            context,
-                            sessions: sessions,
-                            scope: _value.courseScope,
-                            selected: _value.courseKeys,
-                            aliases: _aliases,
-                            memberships: _memberships,
-                          );
-                          if (keys != null && mounted) {
-                            setState(
-                              () => _value = _value.copyWith(courseKeys: keys),
+                      PageModule(
+                        child: ListTile(
+                          title: Text(l.strongCourses),
+                          subtitle: Text('${_value.courseKeys.length}'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            final sessions = await ref.read(
+                              sessionsProvider.future,
                             );
-                          }
-                        },
+                            if (!context.mounted) return;
+                            final keys = await showReminderCourseSelection(
+                              context,
+                              sessions: sessions,
+                              scope: _value.courseScope,
+                              selected: _value.courseKeys,
+                              aliases: _aliases,
+                              memberships: _memberships,
+                            );
+                            if (keys != null && mounted) {
+                              setState(
+                                () =>
+                                    _value = _value.copyWith(courseKeys: keys),
+                              );
+                            }
+                          },
+                        ),
                       ),
                     Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(l.strongSummaryNotice),
+                      child: PageModule(child: Text(l.strongSummaryNotice)),
                     ),
                   ],
                 ),
-                Text(l.strongRuleOverrideNotice),
+                PageModule(child: Text(l.strongRuleOverrideNotice)),
               ],
               if (Platform.isWindows)
                 TextFormField(
@@ -725,23 +789,27 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                   },
                 ),
               if (Platform.isAndroid) ...[
-                SwitchListTile(
-                  title: Text(l.reminderSound),
-                  value: _value.soundEnabled,
-                  onChanged: (v) => setState(
-                    () => _value = _value.copyWith(
-                      soundEnabled: v,
-                      vibrationEnabled: !v ? true : _value.vibrationEnabled,
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(l.reminderSound),
+                    value: _value.soundEnabled,
+                    onChanged: (v) => setState(
+                      () => _value = _value.copyWith(
+                        soundEnabled: v,
+                        vibrationEnabled: !v ? true : _value.vibrationEnabled,
+                      ),
                     ),
                   ),
                 ),
-                SwitchListTile(
-                  title: Text(l.reminderVibration),
-                  value: _value.vibrationEnabled,
-                  onChanged: (v) => setState(
-                    () => _value = _value.copyWith(
-                      vibrationEnabled: v,
-                      soundEnabled: !v ? true : _value.soundEnabled,
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(l.reminderVibration),
+                    value: _value.vibrationEnabled,
+                    onChanged: (v) => setState(
+                      () => _value = _value.copyWith(
+                        vibrationEnabled: v,
+                        soundEnabled: !v ? true : _value.soundEnabled,
+                      ),
                     ),
                   ),
                 ),
@@ -756,26 +824,35 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                     return n == null || n < 5 || n > 300 ? '5–300' : null;
                   },
                 ),
-                ListTile(
-                  title: Text(l.reminderSystemSound),
-                  subtitle: Text(_value.sound.name),
-                  onTap: () => _audio(true),
+                PageModule(
+                  child: ListTile(
+                    title: Text(l.reminderSystemSound),
+                    subtitle: Text(_value.sound.name),
+                    onTap: () => _audio(true),
+                  ),
                 ),
-                ListTile(
-                  title: Text(l.reminderImportSound),
-                  onTap: () => _audio(false),
+                PageModule(
+                  child: ListTile(
+                    title: Text(l.reminderImportSound),
+                    onTap: () => _audio(false),
+                  ),
                 ),
-                TextButton.icon(
-                  icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
-                  label: Text(l.reminderPreviewSound),
-                  onPressed: _previewBusy ? null : _preview,
+                PageModule(
+                  child: TextButton.icon(
+                    icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
+                    label: Text(l.reminderPreviewSound),
+                    onPressed: _previewBusy ? null : _preview,
+                  ),
                 ),
               ] else if (Platform.isWindows) ...[
-                SwitchListTile(
-                  title: Text(l.reminderSound),
-                  value: _value.soundEnabled,
-                  onChanged: (v) =>
-                      setState(() => _value = _value.copyWith(soundEnabled: v)),
+                PageModule(
+                  child: SwitchListTile(
+                    title: Text(l.reminderSound),
+                    value: _value.soundEnabled,
+                    onChanged: (v) => setState(
+                      () => _value = _value.copyWith(soundEnabled: v),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 InputDecorator(
@@ -789,11 +866,17 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                       items: [
                         DropdownMenuItem(
                           value: 'system',
-                          child: Text(WindowsReminderText.of(context).system),
+                          child: PageModule(
+                            child: Text(WindowsReminderText.of(context).system),
+                          ),
                         ),
                         DropdownMenuItem(
                           value: 'file',
-                          child: Text(WindowsReminderText.of(context).imported),
+                          child: PageModule(
+                            child: Text(
+                              WindowsReminderText.of(context).imported,
+                            ),
+                          ),
                         ),
                       ],
                       onChanged: (v) async {
@@ -814,50 +897,56 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 ),
                 if (_value.sound.kind == 'system') ...[
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    initialValue: _value.windowsSound,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: l.reminderSystemSound,
+                  PageModule(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _value.windowsSound,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: l.reminderSystemSound,
+                      ),
+                      items: [
+                        for (var n = 1; n <= 10; n++)
+                          DropdownMenuItem(
+                            value: n,
+                            child: Text('${l.reminderSound} $n'),
+                          ),
+                      ],
+                      onChanged: (n) {
+                        if (n != null) {
+                          setState(
+                            () => _value = _value.copyWith(windowsSound: n),
+                          );
+                        }
+                      },
                     ),
-                    items: [
-                      for (var n = 1; n <= 10; n++)
-                        DropdownMenuItem(
-                          value: n,
-                          child: Text('${l.reminderSound} $n'),
-                        ),
-                    ],
-                    onChanged: (n) {
-                      if (n != null) {
-                        setState(
-                          () => _value = _value.copyWith(windowsSound: n),
-                        );
-                      }
-                    },
                   ),
                 ],
-                ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                  leading: const Icon(Icons.audio_file_outlined),
-                  title: Text(l.reminderImportSound),
-                  subtitle: Text(
-                    _value.sound.kind == 'file'
-                        ? _value.sound.name
-                        : WindowsReminderText.of(context).selectFile,
+                PageModule(
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    leading: const Icon(Icons.audio_file_outlined),
+                    title: Text(l.reminderImportSound),
+                    subtitle: Text(
+                      _value.sound.kind == 'file'
+                          ? _value.sound.name
+                          : WindowsReminderText.of(context).selectFile,
+                    ),
+                    onTap: () async {
+                      if (_playing) await _preview();
+                      await _audio(false);
+                    },
                   ),
-                  onTap: () async {
-                    if (_playing) await _preview();
-                    await _audio(false);
-                  },
                 ),
-                TextButton.icon(
-                  icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
-                  label: Text(
-                    _playing
-                        ? WindowsReminderText.of(context).stopPreview
-                        : WindowsReminderText.of(context).preview,
+                PageModule(
+                  child: TextButton.icon(
+                    icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
+                    label: Text(
+                      _playing
+                          ? WindowsReminderText.of(context).stopPreview
+                          : WindowsReminderText.of(context).preview,
+                    ),
+                    onPressed: _previewBusy ? null : _preview,
                   ),
-                  onPressed: _previewBusy ? null : _preview,
                 ),
               ],
             ],

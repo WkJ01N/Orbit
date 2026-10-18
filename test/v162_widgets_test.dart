@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -79,20 +80,16 @@ void main() {
           ),
         );
         double opacity() => tester
-            .widget<Opacity>(
-              find
-                  .descendant(
-                    of: find.byType(PageEntranceHost),
-                    matching: find.byType(Opacity),
-                  )
-                  .first,
-            )
-            .opacity;
+            .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
+            .motion
+            .clock
+            .value;
         expect(opacity(), 1);
         active.value = true;
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 280));
         expect(opacity(), enabled ? lessThan(.1) : 1);
+        await tester.pump(const Duration(milliseconds: 280));
+        expect(opacity(), enabled ? lessThan(1) : 1);
         await tester.pumpAndSettle();
         expect(opacity(), 1);
         await tester.pumpWidget(const SizedBox());
@@ -122,15 +119,10 @@ void main() {
       ),
     );
     double opacity() => tester
-        .widget<Opacity>(
-          find
-              .descendant(
-                of: find.byType(PageEntranceHost),
-                matching: find.byType(Opacity),
-              )
-              .first,
-        )
-        .opacity;
+        .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
+        .motion
+        .clock
+        .value;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
@@ -146,7 +138,7 @@ void main() {
   });
 
   testWidgets(
-    'return from subpage waits for route transition and ignores dialogs',
+    'return from subpage prepares before transition and ignores dialogs',
     (tester) async {
       late BuildContext pageContext;
       await tester.pumpWidget(
@@ -173,15 +165,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       double opacity() => tester
-          .widget<Opacity>(
-            find
-                .descendant(
-                  of: find.byType(PageEntranceHost),
-                  matching: find.byType(Opacity),
-                )
-                .first,
-          )
-          .opacity;
+          .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
+          .motion
+          .clock
+          .value;
       showDialog<void>(
         context: pageContext,
         builder: (_) => const AlertDialog(content: Text('Dialog')),
@@ -199,7 +186,7 @@ void main() {
       await tester.pumpAndSettle();
       Navigator.pop(pageContext);
       await tester.pump();
-      expect(opacity(), 1);
+      expect(opacity(), 0);
       await tester.pump(
         pageEntranceRoutes.returnDelay + const Duration(milliseconds: 1),
       );

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,34 +105,38 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialog) => AlertDialog(
-          title: Text(t.preview),
+          title: PageModule(child: Text(t.preview)),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    t.mergeCounts(
-                      preview.localOnly.length,
-                      preview.remoteOnly.length,
+                  PageModule(
+                    child: Text(
+                      t.mergeCounts(
+                        preview.localOnly.length,
+                        preview.remoteOnly.length,
+                      ),
                     ),
                   ),
                   for (final c in preview.conflicts)
-                    ListTile(
-                      title: Text(
-                        '${c.remote.payload['title'] ?? c.remote.payload['courseName'] ?? c.remote.id}${c.remote.deleted ? ' 🗑' : ''}',
-                      ),
-                      subtitle: Wrap(
-                        children: [
-                          for (final local in [true, false])
-                            ChoiceChip(
-                              label: Text(local ? t.local : t.cloud),
-                              selected: choices[c.id] == local,
-                              onSelected: (_) =>
-                                  setDialog(() => choices[c.id] = local),
-                            ),
-                        ],
+                    PageModule(
+                      child: ListTile(
+                        title: Text(
+                          '${c.remote.payload['title'] ?? c.remote.payload['courseName'] ?? c.remote.id}${c.remote.deleted ? ' 🗑' : ''}',
+                        ),
+                        subtitle: Wrap(
+                          children: [
+                            for (final local in [true, false])
+                              ChoiceChip(
+                                label: Text(local ? t.local : t.cloud),
+                                selected: choices[c.id] == local,
+                                onSelected: (_) =>
+                                    setDialog(() => choices[c.id] = local),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -139,15 +144,19 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(t.cancel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(t.cancel),
+              ),
             ),
-            FilledButton(
-              onPressed: choices.length == preview.conflicts.length
-                  ? () => Navigator.pop(context, choices)
-                  : null,
-              child: Text(t.confirm),
+            PageModule(
+              child: FilledButton(
+                onPressed: choices.length == preview.conflicts.length
+                    ? () => Navigator.pop(context, choices)
+                    : null,
+                child: Text(t.confirm),
+              ),
             ),
           ],
         ),
@@ -161,18 +170,24 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
         await showDialog<bool>(
               context: context,
               builder: (c) => AlertDialog(
-                title: Text(t.shared),
-                content: Text(
-                  '${t.sharedConfirm}\n\n${_selection!.enabled.map(t.category).join('、')}',
+                title: PageModule(child: Text(t.shared)),
+                content: PageModule(
+                  child: Text(
+                    '${t.sharedConfirm}\n\n${_selection!.enabled.map(t.category).join('、')}',
+                  ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(c, false),
-                    child: Text(t.cancel),
+                  PageModule(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(c, false),
+                      child: Text(t.cancel),
+                    ),
                   ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(c, true),
-                    child: Text(t.confirm),
+                  PageModule(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(c, true),
+                      child: Text(t.confirm),
+                    ),
                   ),
                 ],
               ),
@@ -198,24 +213,24 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
   Widget build(BuildContext context) {
     final t = SyncUpdateText.of(context);
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(t.content)),
+      appBar: AppBar(title: PageModule(child: Text(t.content))),
       body: _selection == null
           ? Center(
               child: _error == null
                   ? const CircularProgressIndicator()
-                  : Text(_error!),
+                  : PageModule(child: Text(_error!)),
             )
           : ListView(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Text(t.scopeHint),
+                  child: PageModule(child: Text(t.scopeHint)),
                 ),
                 if (_busy) const LinearProgressIndicator(),
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(_error!),
+                    child: PageModule(child: Text(_error!)),
                   ),
                 RadioGroup<SyncScopeMode>(
                   groupValue: _mode,
@@ -226,27 +241,31 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
                     children: [
                       RadioListTile(
                         value: SyncScopeMode.perDevice,
-                        title: Text(t.device),
+                        title: PageModule(child: Text(t.device)),
                       ),
                       RadioListTile(
                         value: SyncScopeMode.shared,
-                        title: Text(t.shared),
+                        title: PageModule(child: Text(t.shared)),
                       ),
                     ],
                   ),
                 ),
                 for (final c in _pending)
-                  ListTile(
-                    leading: const Icon(Icons.merge),
-                    title: Text('${t.preview}: ${t.category(c)}'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _busy ? null : () => _change(c, true),
+                  PageModule(
+                    child: ListTile(
+                      leading: const Icon(Icons.merge),
+                      title: Text('${t.preview}: ${t.category(c)}'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _busy ? null : () => _change(c, true),
+                    ),
                   ),
                 for (final c in SyncCategory.values)
-                  SwitchListTile(
-                    title: Text(t.category(c)),
-                    value: _selection!.enabled.contains(c),
-                    onChanged: _busy ? null : (v) => _change(c, v),
+                  PageModule(
+                    child: SwitchListTile(
+                      title: Text(t.category(c)),
+                      value: _selection!.enabled.contains(c),
+                      onChanged: _busy ? null : (v) => _change(c, v),
+                    ),
                   ),
               ],
             ),

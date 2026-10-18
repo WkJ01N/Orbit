@@ -1,4 +1,6 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/models/v162_text.dart';
+import 'package:orbit/models/v163_text.dart';
 import 'package:orbit/services/font_coverage.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'dart:async';
@@ -33,7 +35,9 @@ class _TypographySettingsPageState
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(TypographyText(context).failed)),
+          SnackBar(
+            content: PageModule(child: Text(TypographyText(context).failed)),
+          ),
         );
       }
     } finally {
@@ -83,24 +87,30 @@ class _TypographySettingsPageState
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(text.rename),
-        content: TextField(
-          controller: controller,
-          maxLength: 120,
-          autofocus: true,
+        title: PageModule(child: Text(text.rename)),
+        content: PageModule(
+          child: TextField(
+            controller: controller,
+            maxLength: 120,
+            autofocus: true,
+          ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(text.cancel),
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(text.cancel),
+            ),
           ),
-          FilledButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                Navigator.pop(context, controller.text.trim());
-              }
-            },
-            child: Text(text.save),
+          PageModule(
+            child: FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) {
+                  Navigator.pop(context, controller.text.trim());
+                }
+              },
+              child: Text(text.save),
+            ),
           ),
         ],
       ),
@@ -130,16 +140,20 @@ class _TypographySettingsPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${text.delete} ${font.name}'),
-        content: Text(text.deleteHint),
+        title: PageModule(child: Text('${text.delete} ${font.name}')),
+        content: PageModule(child: Text(text.deleteHint)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(text.cancel),
+          PageModule(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(text.cancel),
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(text.delete),
+          PageModule(
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(text.delete),
+            ),
           ),
         ],
       ),
@@ -156,81 +170,97 @@ class _TypographySettingsPageState
     final text = TypographyText(context);
     final value = ref.watch(typographySettingsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(text.title)),
+      appBar: AppBar(title: PageModule(child: Text(text.title))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(text.independent),
+              PageModule(child: Text(text.independent)),
               if (value.loadWarning)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(text.warning),
+                  child: PageModule(child: Text(text.warning)),
                 ),
               for (final launch in [false, true])
-                ListTile(
-                  key: Key(launch ? 'launch-font-choice' : 'app-font-choice'),
-                  enabled: !_busy,
-                  title: Text(launch ? text.launch : text.app),
-                  subtitle: Text(
-                    text.name(
-                      launch ? value.launchFontId : value.appFontId,
-                      value
-                          .imports[launch
-                              ? value.launchFontId
-                              : value.appFontId]
-                          ?.name,
+                PageModule(
+                  child: ListTile(
+                    key: Key(launch ? 'launch-font-choice' : 'app-font-choice'),
+                    enabled: !_busy,
+                    title: Text(launch ? text.launch : text.app),
+                    subtitle: Text(
+                      text.name(
+                        launch ? value.launchFontId : value.appFontId,
+                        value
+                            .imports[launch
+                                ? value.launchFontId
+                                : value.appFontId]
+                            ?.name,
+                      ),
                     ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => FontPickerPage(launch: launch),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => FontPickerPage(launch: launch),
+                      ),
                     ),
                   ),
                 ),
-              ListTile(
-                leading: const Icon(Icons.font_download_outlined),
-                title: Text(V162Text.of(context).fallbacks),
-                subtitle: Text(V162Text.of(context).fallbackHint),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _busy
-                    ? null
-                    : () => Navigator.push<void>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const FallbackFontsPage(),
+              PageModule(
+                child: ListTile(
+                  leading: const Icon(Icons.font_download_outlined),
+                  title: Text(V162Text.of(context).fallbacks),
+                  subtitle: Text(V163Text.of(context).fallbackDescription),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _busy
+                      ? null
+                      : () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FallbackFontsPage(),
+                          ),
                         ),
-                      ),
+                ),
               ),
               const Divider(),
-              FilledButton.tonalIcon(
-                onPressed: _busy ? null : _import,
-                icon: const Icon(Icons.file_upload_outlined),
-                label: Text(text.importFont),
+              PageModule(
+                child: FilledButton.tonalIcon(
+                  onPressed: _busy ? null : _import,
+                  icon: const Icon(Icons.file_upload_outlined),
+                  label: Text(text.importFont),
+                ),
               ),
               const SizedBox(height: 8),
-              Text(text.importHint),
+              PageModule(child: Text(text.importHint)),
               const SizedBox(height: 20),
-              Text(
-                text.imported,
-                style: Theme.of(context).textTheme.titleMedium,
+              PageModule(
+                child: Text(
+                  text.imported,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               for (final font in value.imports.values)
-                ListTile(
-                  title: Text(font.name),
-                  subtitle: Text(font.extension.toUpperCase()),
-                  trailing: PopupMenuButton<String>(
-                    enabled: !_busy,
-                    onSelected: (value) =>
-                        value == 'rename' ? _rename(font) : _delete(font),
-                    itemBuilder: (_) => [
-                      PopupMenuItem(value: 'rename', child: Text(text.rename)),
-                      PopupMenuItem(value: 'delete', child: Text(text.delete)),
-                    ],
+                PageModule(
+                  child: ListTile(
+                    title: Text(font.name),
+                    subtitle: Text(font.extension.toUpperCase()),
+                    trailing: PopupMenuButton<String>(
+                      enabled: !_busy,
+                      onSelected: (value) =>
+                          value == 'rename' ? _rename(font) : _delete(font),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'rename',
+                          child: Text(text.rename),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text(text.delete),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
@@ -247,16 +277,20 @@ Future<void> _offerFallbacks(BuildContext context, WidgetRef ref) async {
     context: context,
     barrierDismissible: false,
     builder: (c) => AlertDialog(
-      title: Text(t.fallbacks),
-      content: Text(t.noChinese),
+      title: PageModule(child: Text(t.fallbacks)),
+      content: PageModule(child: Text(t.noChinese)),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(c, false),
-          child: Text(t.systemFallback),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: Text(t.systemFallback),
+          ),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(c, true),
-          child: Text(t.fallbacks),
+        PageModule(
+          child: FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(t.fallbacks),
+          ),
         ),
       ],
     ),
@@ -291,7 +325,9 @@ class _FallbackFontsPageState extends ConsumerState<FallbackFontsPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(TypographyText(context).failed)),
+          SnackBar(
+            content: PageModule(child: Text(TypographyText(context).failed)),
+          ),
         );
       }
     } finally {
@@ -305,14 +341,14 @@ class _FallbackFontsPageState extends ConsumerState<FallbackFontsPage> {
         t = V162Text.of(context);
     final names = TypographyText(context);
     return Scaffold(
-      appBar: AppBar(title: Text(t.fallbacks)),
+      appBar: AppBar(title: PageModule(child: Text(t.fallbacks))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(t.fallbackHint),
+              PageModule(child: Text(t.fallbackHint)),
               const SizedBox(height: 16),
               ReorderableListView.builder(
                 shrinkWrap: true,
@@ -327,62 +363,71 @@ class _FallbackFontsPageState extends ConsumerState<FallbackFontsPage> {
                 },
                 itemBuilder: (_, index) {
                   final id = value.fallbackFontIds[index];
-                  return ListTile(
+                  return PageModule(
                     key: ValueKey(id),
-                    leading: CircleAvatar(child: Text('${index + 1}')),
-                    title: Text(names.name(id, value.imports[id]?.name)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: names.delete,
-                          onPressed: _busy
-                              ? null
-                              : () => _save(
-                                  value.fallbackFontIds
-                                      .where((f) => f != id)
-                                      .toList(),
-                                ),
-                          icon: const Icon(Icons.close),
-                        ),
-                        ReorderableDragStartListener(
-                          index: index,
-                          enabled: !_busy,
-                          child: const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Icon(Icons.drag_handle),
+                    child: ListTile(
+                      key: ValueKey(id),
+                      leading: CircleAvatar(child: Text('${index + 1}')),
+                      title: Text(names.name(id, value.imports[id]?.name)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: names.delete,
+                            onPressed: _busy
+                                ? null
+                                : () => _save(
+                                    value.fallbackFontIds
+                                        .where((f) => f != id)
+                                        .toList(),
+                                  ),
+                            icon: const Icon(Icons.close),
                           ),
-                        ),
-                      ],
+                          ReorderableDragStartListener(
+                            index: index,
+                            enabled: !_busy,
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.drag_handle),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
               ),
               if (value.fallbackFontIds.length < 3)
-                FilledButton.tonalIcon(
-                  onPressed: _busy
-                      ? null
-                      : () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FontPickerPage(
-                              launch: false,
-                              fallback: true,
+                PageModule(
+                  child: FilledButton.tonalIcon(
+                    onPressed: _busy
+                        ? null
+                        : () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FontPickerPage(
+                                launch: false,
+                                fallback: true,
+                              ),
                             ),
                           ),
-                        ),
-                  icon: const Icon(Icons.add),
-                  label: Text(t.addFallback),
+                    icon: const Icon(Icons.add),
+                    label: Text(t.addFallback),
+                  ),
                 ),
-              ListTile(
-                leading: const Icon(Icons.phone_android_outlined),
-                title: Text(names.name('system', null)),
-                subtitle: Text(t.systemFallback),
+              PageModule(
+                child: ListTile(
+                  leading: const Icon(Icons.phone_android_outlined),
+                  title: Text(names.name('system', null)),
+                  subtitle: Text(t.systemFallback),
+                ),
               ),
               const SizedBox(height: 20),
-              Text(
-                '大学課表 · 数学／數學 · Orbit 0123456789，。！？',
-                style: Theme.of(context).textTheme.titleLarge,
+              PageModule(
+                child: Text(
+                  '大学課表 · 数学／數學 · Orbit 0123456789，。！？',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
             ],
           ),
@@ -482,7 +527,9 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showAppSnackBar(
-          SnackBar(content: Text(TypographyText(context).failed)),
+          SnackBar(
+            content: PageModule(child: Text(TypographyText(context).failed)),
+          ),
         );
       }
     } finally {
@@ -527,12 +574,14 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.fallback
-              ? V162Text.of(context).addFallback
-              : widget.launch
-              ? text.launch
-              : text.app,
+        title: PageModule(
+          child: Text(
+            widget.fallback
+                ? V162Text.of(context).addFallback
+                : widget.launch
+                ? text.launch
+                : text.app,
+          ),
         ),
       ),
       body: Center(
@@ -541,59 +590,65 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Orbit',
-                        style: sample.copyWith(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
+              PageModule(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Orbit',
+                          style: sample.copyWith(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                      Text('大学课表 · 接下来的课程', style: sample),
-                      Text('大學課表 · 接下來的課程', style: sample),
-                      Text('Mathematics · 09:00–10:30 · A101', style: sample),
-                      const SizedBox(height: 12),
-                      Text(
-                        '高等数学／高等數學',
-                        style: sample.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      Text('周一／週一  2026-10-17  0123456789', style: sample),
-                    ],
+                        Text('大学课表 · 接下来的课程', style: sample),
+                        Text('大學課表 · 接下來的課程', style: sample),
+                        Text('Mathematics · 09:00–10:30 · A101', style: sample),
+                        const SizedBox(height: 12),
+                        Text(
+                          '高等数学／高等數學',
+                          style: sample.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        Text('周一／週一  2026-10-17  0123456789', style: sample),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              FilledButton(
-                key: const Key('apply-font'),
-                onPressed: _busy
-                    ? null
-                    : () => _select(_selected, apply: available),
-                child: Text(
-                  available
-                      ? text.apply
-                      : NavigationAssistText.of(
-                          context,
-                        ).pick('Download and preview', '下载并预览', '下載並預覽'),
+              PageModule(
+                child: FilledButton(
+                  key: const Key('apply-font'),
+                  onPressed: _busy
+                      ? null
+                      : () => _select(_selected, apply: available),
+                  child: Text(
+                    available
+                        ? text.apply
+                        : NavigationAssistText.of(
+                            context,
+                          ).pick('Download and preview', '下载并预览', '下載並預覽'),
+                  ),
                 ),
               ),
               if (_busy) const LinearProgressIndicator(),
               for (final id in choices.where(
                 (id) => !widget.fallback || !value.fallbackFontIds.contains(id),
               ))
-                ListTile(
-                  key: ValueKey('font-option-$id'),
-                  enabled: !_busy,
-                  leading: Icon(
-                    _selected == id
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
+                PageModule(
+                  child: ListTile(
+                    key: ValueKey('font-option-$id'),
+                    enabled: !_busy,
+                    leading: Icon(
+                      _selected == id
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                    ),
+                    title: Text(text.name(id, value.imports[id]?.name)),
+                    onTap: () => _select(id),
                   ),
-                  title: Text(text.name(id, value.imports[id]?.name)),
-                  onTap: () => _select(id),
                 ),
             ],
           ),
@@ -629,7 +684,7 @@ class _TypographyWarningHostState extends ConsumerState<TypographyWarningHost> {
         final text = TypographyText(context);
         ScaffoldMessenger.of(context).showAppSnackBar(
           SnackBar(
-            content: Text(text.warning),
+            content: PageModule(child: Text(text.warning)),
             action: SnackBarAction(
               label: text.title,
               onPressed: () => widget.navigatorKey.currentState?.push(

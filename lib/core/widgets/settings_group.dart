@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:flutter/material.dart';
 import 'package:orbit/core/widgets/section_header.dart';
 
@@ -20,7 +21,7 @@ class SettingsGroup extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: horizontalMargin),
-          child: SectionHeader(title: title),
+          child: PageModule(child: SectionHeader(title: title)),
         ),
         Card(
           margin: EdgeInsets.symmetric(

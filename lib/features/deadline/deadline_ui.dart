@@ -1,3 +1,6 @@
+import 'package:orbit/core/motion/page_module.dart';
+import 'package:orbit/services/course_catalog.dart';
+import 'package:orbit/features/session/course_history_list.dart';
 import 'package:orbit/models/deadline_strong_text.dart';
 import 'package:orbit/models/deadline_recurrence.dart';
 import 'package:orbit/models/deadline_batch_text.dart';
@@ -67,24 +70,28 @@ class DeadlineListTile extends StatelessWidget {
         : deadline.dueAt.isBefore(DateTime.now())
         ? text.overdue
         : null;
-    return ListTile(
-      key: Key('deadline-${deadline.id}'),
-      leading: Icon(
-        deadline.hasStrongReminder
-            ? Icons.notifications_active_outlined
-            : deadline.completed
-            ? Icons.task_alt
-            : Icons.flag_outlined,
-        color: deadline.hasStrongReminder ? theme.colorScheme.primary : null,
+    return PageModule(
+      child: ListTile(
+        key: Key('deadline-${deadline.id}'),
+        leading: Icon(
+          deadline.hasStrongReminder
+              ? Icons.notifications_active_outlined
+              : deadline.completed
+              ? Icons.task_alt
+              : Icons.flag_outlined,
+          color: deadline.hasStrongReminder ? theme.colorScheme.primary : null,
+        ),
+        title: Text(deadline.title, maxLines: 2),
+        subtitle: Text(
+          '${deadline.subject} · ${_dateTime(context, deadline.dueAt)}'
+          '${status == null ? '' : ' · $status'}',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        textColor: deadline.completed
+            ? theme.colorScheme.onSurfaceVariant
+            : null,
+        onTap: onTap ?? () => showDeadlineDetails(context, deadline),
       ),
-      title: Text(deadline.title, maxLines: 2),
-      subtitle: Text(
-        '${deadline.subject} · ${_dateTime(context, deadline.dueAt)}'
-        '${status == null ? '' : ' · $status'}',
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      textColor: deadline.completed ? theme.colorScheme.onSurfaceVariant : null,
-      onTap: onTap ?? () => showDeadlineDetails(context, deadline),
     );
   }
 }
@@ -379,7 +386,9 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                       ),
                       lastDate: DateTime.now().add(const Duration(days: 3650)),
                     );
-                    if (date != null && mounted) setState(() => _until = date);
+                    if (date != null && mounted) {
+                      setState(() => _until = date);
+                    }
                   },
           ),
       ],
@@ -541,7 +550,9 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
     final sessions =
         ref.watch(sessionsProvider).valueOrNull ?? const <CourseSession>[];
     final courses = <String, String>{};
-    for (final session in sessions) {
+    for (final session in sessions.where(
+      (s) => !s.isExam && s.deletedAt == null,
+    )) {
       final key =
           '${session.semester}|${session.courseCode}|${session.courseName}';
       courses[key] = session.courseName;
@@ -590,27 +601,118 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                       ? null
                       : (v) => setState(() => _counts = v ?? true),
                 ),
-              DropdownButtonFormField<String>(
-                key: ValueKey(_courseKey),
-                initialValue: selected,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: text.chooseSubject),
-                items: [
-                  DropdownMenuItem(value: '', child: Text(text.customSubject)),
-                  for (final entry in courses.entries)
-                    DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                onChanged: _saving
+              ListTile(
+                key: const Key('deadline-course-picker'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(text.chooseSubject),
+                subtitle: Text(courses[selected] ?? text.customSubject),
+                trailing: const Icon(Icons.arrow_drop_down),
+                onTap: _saving
                     ? null
-                    : (key) => setState(() {
-                        _courseKey = key ?? '';
-                        if (_courseKey.isNotEmpty) {
-                          _subject.text = courses[_courseKey]!;
+                    : () async {
+                        final representatives = <String, CourseSession>{};
+                        for (final s in sessions.where(
+                          (s) => !s.isExam && s.deletedAt == null,
+                        )) {
+                          representatives['${s.semester}|${s.courseCode}|${s.courseName}'] =
+                              s;
                         }
-                      }),
+                        var query = '';
+                        final catalog = CourseCatalog(
+                          sessions,
+                          DateTime.now(),
+                          clock: DateTime.now,
+                        );
+                        final picked = await showDialog<String>(
+                          context: context,
+                          builder: (c) => StatefulBuilder(
+                            builder: (c, update) => Dialog(
+                              child: SizedBox(
+                                width: 440,
+                                height:
+                                    (MediaQuery.sizeOf(c).height -
+                                            MediaQuery.viewInsetsOf(c).bottom -
+                                            64)
+                                        .clamp(220.0, 600.0),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Text(
+                                        text.chooseSubject,
+                                        style: Theme.of(c).textTheme.titleLarge,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextField(
+                                        decoration: InputDecoration(
+                                          prefixIcon: const Icon(Icons.search),
+                                          labelText: OrbitFeatureText.of(
+                                            c,
+                                          ).search,
+                                          isDense: true,
+                                        ),
+                                        onChanged: (v) => update(
+                                          () => query = v.trim().toLowerCase(),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Expanded(
+                                        child:
+                                            CourseHistoryList<
+                                              MapEntry<String, CourseSession>
+                                            >(
+                                              header: ListTile(
+                                                title: Text(text.customSubject),
+                                                onTap: () =>
+                                                    Navigator.pop(c, ''),
+                                              ),
+                                              items: representatives.entries
+                                                  .where(
+                                                    (e) =>
+                                                        '${e.value.courseName} ${e.value.courseCode} ${e.value.semester}'
+                                                            .toLowerCase()
+                                                            .contains(query),
+                                                  )
+                                                  .toList(),
+                                              isEnded: (e) =>
+                                                  catalog.isEnded(e.value),
+                                              itemBuilder: (c, e) => ListTile(
+                                                title: Text(e.value.courseName),
+                                                subtitle: Text(
+                                                  e.value.semester,
+                                                ),
+                                                onTap: () =>
+                                                    Navigator.pop(c, e.key),
+                                              ),
+                                            ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: () => Navigator.pop(c),
+                                          child: Text(text.cancel),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                        if (picked != null && mounted) {
+                          setState(() {
+                            _courseKey = picked;
+                            if (picked.isNotEmpty) {
+                              _subject.text = courses[picked]!;
+                            }
+                          });
+                        }
+                      },
               ),
               TextField(
                 controller: _subject,

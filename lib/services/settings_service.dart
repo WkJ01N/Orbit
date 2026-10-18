@@ -53,6 +53,7 @@ class SettingsService {
   static const _autoSyncSettingsKey = 'auto_sync_settings_v1';
 
   static const _backupPreferenceKeys = {
+    'course_quick_actions_v1',
     'launch_at_startup',
     'notification_warning_ignored',
     'batch_first_week_monday',
@@ -61,6 +62,17 @@ class SettingsService {
     'sync_scope_local_device',
   };
   SharedPreferences? _prefs;
+  Future<String?> loadCourseQuickActions() async =>
+      (await _prefsInstance()).getString('course_quick_actions_v1');
+  Future<void> saveCourseQuickActions(String value) async {
+    if (!await (await _prefsInstance()).setString(
+      'course_quick_actions_v1',
+      value,
+    )) {
+      throw StateError('Could not save course quick actions');
+    }
+  }
+
   Future<void> _importSaveTail = Future.value();
 
   Future<BackgroundSettings> loadBackgroundSettings() async {

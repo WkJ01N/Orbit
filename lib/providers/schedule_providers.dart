@@ -44,6 +44,45 @@ final deadlinesProvider = FutureProvider<List<Deadline>>((ref) async {
 
 final scheduleRefreshProvider = StateProvider<int>((ref) => 0);
 
+/// A presentation commit waits for both queries; refreshes never replace a
+/// populated timetable with partial or empty loading values.
+class ScheduleSnapshot {
+  const ScheduleSnapshot(this.sessions, this.deadlines);
+  final List<CourseSession> sessions;
+  final List<Deadline> deadlines;
+}
+
+final schedulePresentationProvider =
+    NotifierProvider<SchedulePresentation, ScheduleSnapshot?>(
+      SchedulePresentation.new,
+      dependencies: [sessionsProvider, deadlinesProvider],
+    );
+
+class SchedulePresentation extends Notifier<ScheduleSnapshot?> {
+  ScheduleSnapshot? _last;
+  @override
+  ScheduleSnapshot? build() {
+    final sessions = ref.watch(sessionsProvider);
+    final deadlines = ref.watch(deadlinesProvider);
+    if (!sessions.isLoading &&
+        !deadlines.isLoading &&
+        !sessions.hasError &&
+        !deadlines.hasError &&
+        sessions.hasValue &&
+        deadlines.hasValue) {
+      if (!identical(_last?.sessions, sessions.value) ||
+          !identical(_last?.deadlines, deadlines.value)) {
+        _last = ScheduleSnapshot(sessions.value!, deadlines.value!);
+      }
+    }
+    return _last;
+  }
+}
+
+final scheduleIdentityChangesProvider = StateProvider<Map<String, String>>(
+  (ref) => const {},
+);
+
 void refreshSchedule(WidgetRef ref) {
   ref.read(scheduleRefreshProvider.notifier).state++;
 }
@@ -239,8 +278,7 @@ final gridDensityMetricsProvider = Provider<GridDensityMetrics>((ref) {
 
 final weekGridProvider = Provider<WeekGrid?>((ref) {
   final sessions = ref
-      .watch(sessionsProvider)
-      .valueOrNull
+      .watch(schedulePresentationProvider.select((value) => value?.sessions))
       ?.where((s) => s.visible)
       .toList();
   if (sessions == null) {
@@ -250,9 +288,9 @@ final weekGridProvider = Provider<WeekGrid?>((ref) {
   // Refreshing unchanged DDL data must not regenerate every course grid.
   final firstDeadline = sessions.isEmpty
       ? ref.watch(
-          deadlinesProvider.select(
-            (value) => value.valueOrNull
-                ?.where((d) => !d.completed || d.archived)
+          schedulePresentationProvider.select(
+            (value) => value?.deadlines
+                .where((d) => !d.completed || d.archived)
                 .firstOrNull
                 ?.dueAt,
           ),

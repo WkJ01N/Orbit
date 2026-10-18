@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 List<Override> _testOverrides() => [
   localeProvider.overrideWith(() => _FixedLocaleNotifier()),
   reminderSettingsProvider.overrideWith(() => _FixedReminderSettingsNotifier()),
+  deadlinesProvider.overrideWith((ref) async => []),
   sessionsProvider.overrideWith((ref) async => []),
   weekGridProvider.overrideWith((ref) => null),
   upcomingSessionsProvider.overrideWith((ref) async => []),

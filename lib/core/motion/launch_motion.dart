@@ -33,6 +33,7 @@ class CardEntranceSpec {
 Map<String, CardEntranceSpec> planCardEntrances(
   Map<int, List<String>> columns, {
   required math.Random random,
+  List<String>? visualOrder,
 }) {
   final directions = <String, bool>{};
   var extraAbove = random.nextBool();
@@ -45,7 +46,7 @@ Map<String, CardEntranceSpec> planCardEntrances(
       directions[shuffled[index]] = index < aboveCount;
     }
   }
-  final order = directions.keys.toList()..shuffle(random);
+  final order = visualOrder ?? (directions.keys.toList()..shuffle(random));
   return {
     for (var index = 0; index < order.length; index++)
       order[index]: CardEntranceSpec(
@@ -166,17 +167,21 @@ class LaunchReveal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final motion = LaunchMotionScope.maybeOf(context);
-    if (motion == null ||
-        motion.finished ||
-        (motion.startup && !motion.settings.onStartup) ||
-        MediaQuery.disableAnimationsOf(context)) {
-      return child;
-    }
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    // Keep the same element path in every phase. Unwrapping a finished reveal
+    // remounts the timetable and discards its scroll position and layout cache.
     return AnimatedBuilder(
-      animation: motion.timeline,
+      animation: motion?.timeline ?? kAlwaysCompleteAnimation,
       child: child,
       builder: (context, child) {
-        final t = launchProgress(motion.milliseconds, startMs, durationMs);
+        final skip =
+            motion == null ||
+            motion.finished ||
+            (motion.startup && !motion.settings.onStartup) ||
+            reduced;
+        final t = skip
+            ? 1.0
+            : launchProgress(motion.milliseconds, startMs, durationMs);
         final p = (spring ? Curves.easeOutBack : Curves.easeOutCubic).transform(
           t,
         );
@@ -188,6 +193,7 @@ class LaunchReveal extends StatelessWidget {
         if (grow != null) {
           result = ClipRect(
             clipper: _GrowingClipper(p.clamp(0, 1), grow!),
+            clipBehavior: p >= 1 ? Clip.none : Clip.hardEdge,
             child: result,
           );
         }
@@ -230,18 +236,19 @@ class LaunchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final motion = LaunchMotionScope.maybeOf(context);
-    if (motion == null ||
-        motion.finished ||
-        MediaQuery.disableAnimationsOf(context)) {
-      return child;
-    }
-    if (pending) return IgnorePointer(child: Opacity(opacity: 0, child: child));
-    if (spec == null) return child;
+    final reduced = MediaQuery.disableAnimationsOf(context);
     return AnimatedBuilder(
-      animation: motion.cards,
+      animation: motion?.cards ?? kAlwaysCompleteAnimation,
       child: child,
       builder: (context, child) {
-        final t = launchProgress(motion.cards.value * 620, spec!.delayMs, 480);
+        final skip = motion == null || motion.finished || reduced;
+        final t = skip
+            ? 1.0
+            : pending
+            ? 0.0
+            : spec == null
+            ? 1.0
+            : launchProgress(motion.cards.value * 620, spec!.delayMs, 480);
         return IgnorePointer(
           ignoring: t < 1,
           child: Opacity(

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'dart:io';
 import 'package:archive/archive_io.dart';
@@ -125,35 +126,43 @@ class _DowngradePageState extends ConsumerState<DowngradePage> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-          title: Text(t.pick('Confirm downgrade backup', '确认降级备份', '確認降級備份')),
+          title: PageModule(
+            child: Text(t.pick('Confirm downgrade backup', '确认降级备份', '確認降級備份')),
+          ),
           content: SingleChildScrollView(
-            child: Text(
-              [
-                t.pick(
-                  'Your current data is preserved in the protection backup. Import the compatible file in the old app.',
-                  '当前数据保存在保护备份中。旧版应用应导入兼容备份。',
-                  '目前資料保存在保護備份中。舊版應匯入相容備份。',
-                ),
-                if (conversion == null)
+            child: PageModule(
+              child: Text(
+                [
                   t.pick(
-                    'Data compatibility is unverified for this version. No compatible backup will be generated.',
-                    '该版本未做数据适配，不会生成兼容备份。',
-                    '此版本未做資料適配，不會產生相容備份。',
+                    'Your current data is preserved in the protection backup. Import the compatible file in the old app.',
+                    '当前数据保存在保护备份中。旧版应用应导入兼容备份。',
+                    '目前資料保存在保護備份中。舊版應匯入相容備份。',
                   ),
-                ..._losses.map(
-                  (id) => '${_loss(t, id)} (${_lossCounts[id] ?? 0})',
-                ),
-              ].join('\n\n'),
+                  if (conversion == null)
+                    t.pick(
+                      'Data compatibility is unverified for this version. No compatible backup will be generated.',
+                      '该版本未做数据适配，不会生成兼容备份。',
+                      '此版本未做資料適配，不會產生相容備份。',
+                    ),
+                  ..._losses.map(
+                    (id) => '${_loss(t, id)} (${_lossCounts[id] ?? 0})',
+                  ),
+                ].join('\n\n'),
+              ),
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: Text(t.pick('Cancel', '取消', '取消')),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: Text(t.pick('Cancel', '取消', '取消')),
+              ),
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: Text(t.pick('Save protection bundle', '保存保护包', '儲存保護包')),
+            PageModule(
+              child: FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: Text(t.pick('Save protection bundle', '保存保护包', '儲存保護包')),
+              ),
             ),
           ],
         ),
@@ -218,65 +227,79 @@ class _DowngradePageState extends ConsumerState<DowngradePage> {
     final t = NavigationAssistText.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.pick('Downgrade protection', '降级保护', '降級保護')),
+        title: PageModule(
+          child: Text(t.pick('Downgrade protection', '降级保护', '降級保護')),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('v${widget.release.version}'),
-          Text(
-            t.pick(
-              'A lower Android version normally requires uninstalling Orbit, which removes local data. Save the backup and installer outside the app first.',
-              'Android 安装较低版本通常需要先卸载 Orbit，本地数据会被删除。请先把备份和安装包保存到应用外。',
-              'Android 安裝較低版本通常需要先解除安裝 Orbit，本機資料會被刪除。請先把備份和安裝包儲存至應用外。',
+          PageModule(child: Text('v${widget.release.version}')),
+          PageModule(
+            child: Text(
+              t.pick(
+                'A lower Android version normally requires uninstalling Orbit, which removes local data. Save the backup and installer outside the app first.',
+                'Android 安装较低版本通常需要先卸载 Orbit，本地数据会被删除。请先把备份和安装包保存到应用外。',
+                'Android 安裝較低版本通常需要先解除安裝 Orbit，本機資料會被刪除。請先把備份和安裝包儲存至應用外。',
+              ),
             ),
           ),
           if (DowngradeService.backupVersionFor(widget.release.version) == null)
-            Text(
-              t.pick(
-                'No verified data conversion for this release.',
-                '该版本未做数据适配。',
-                '此版本未做資料適配。',
+            PageModule(
+              child: Text(
+                t.pick(
+                  'No verified data conversion for this release.',
+                  '该版本未做数据适配。',
+                  '此版本未做資料適配。',
+                ),
               ),
             ),
           if (_error != null) SelectableText(_error!),
           if (_busy) const LinearProgressIndicator(),
-          FilledButton(
-            onPressed: _busy ? null : _export,
-            child: Text(
-              t.pick(
-                'Export verified protection bundle',
-                '导出并校验保护包',
-                '匯出並校驗保護包',
+          PageModule(
+            child: FilledButton(
+              onPressed: _busy ? null : _export,
+              child: Text(
+                t.pick(
+                  'Export verified protection bundle',
+                  '导出并校验保护包',
+                  '匯出並校驗保護包',
+                ),
               ),
             ),
           ),
           if (_exported) ...[
-            Text(
-              t.pick(
-                'Protection bundle saved and verified. Extract it before proceeding.',
-                '保护包已保存并校验。请先解压，再继续操作。',
-                '保護包已儲存並校驗。請先解壓，再繼續操作。',
+            PageModule(
+              child: Text(
+                t.pick(
+                  'Protection bundle saved and verified. Extract it before proceeding.',
+                  '保护包已保存并校验。请先解压，再继续操作。',
+                  '保護包已儲存並校驗。請先解壓，再繼續操作。',
+                ),
               ),
             ),
-            CheckboxListTile(
-              value: _acknowledged,
-              onChanged: (value) =>
-                  setState(() => _acknowledged = value ?? false),
-              title: Text(
-                t.pick(
-                  'I have the backup and installer, and understand the listed losses.',
-                  '我已取得备份与安装包，并理解列出的数据损失。',
-                  '我已取得備份與安裝包，並理解列出的資料損失。',
+            PageModule(
+              child: CheckboxListTile(
+                value: _acknowledged,
+                onChanged: (value) =>
+                    setState(() => _acknowledged = value ?? false),
+                title: Text(
+                  t.pick(
+                    'I have the backup and installer, and understand the listed losses.',
+                    '我已取得备份与安装包，并理解列出的数据损失。',
+                    '我已取得備份與安裝包，並理解列出的資料損失。',
+                  ),
                 ),
               ),
             ),
             if (_acknowledged)
-              Text(
-                t.pick(
-                  'Close Orbit. Follow README.txt in the exported bundle to uninstall/reinstall and restore the compatible file.',
-                  '请退出 Orbit，按保护包 README.txt 指引手动卸载重装并恢复兼容备份。',
-                  '請退出 Orbit，按保護包 README.txt 指引手動解除安裝、重裝並恢復相容備份。',
+              PageModule(
+                child: Text(
+                  t.pick(
+                    'Close Orbit. Follow README.txt in the exported bundle to uninstall/reinstall and restore the compatible file.',
+                    '请退出 Orbit，按保护包 README.txt 指引手动卸载重装并恢复兼容备份。',
+                    '請退出 Orbit，按保護包 README.txt 指引手動解除安裝、重裝並恢復相容備份。',
+                  ),
                 ),
               ),
           ],

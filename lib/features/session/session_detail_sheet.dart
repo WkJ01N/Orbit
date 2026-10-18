@@ -1,4 +1,3 @@
-import 'package:orbit/features/statistics/semester_management_page.dart';
 import 'package:orbit/models/v162_text.dart';
 import 'package:orbit/features/session/wemust_check_in_action.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
@@ -109,7 +108,6 @@ class SessionDetailSheet extends ConsumerWidget {
             const SizedBox(height: 20),
             if (fromCheckInReminder && !session.isExam)
               const WemustCheckInAction(),
-            SemesterAssignmentButton(session: session),
             _SessionActionButtons(session: session),
           ],
         ),
@@ -302,20 +300,23 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  double _iconBaseline(BuildContext context) {
+  double _firstLineCenter(BuildContext context) {
     final painter = TextPainter(
       text: TextSpan(
         text: text.isEmpty ? ' ' : text,
-        style: Theme.of(context).textTheme.bodyMedium,
+        style: DefaultTextStyle.of(
+          context,
+        ).style.merge(Theme.of(context).textTheme.bodyMedium),
       ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
+      locale: Localizations.localeOf(context),
       maxLines: 1,
     )..layout();
     final line = painter.computeLineMetrics().first;
-    final baseline = 9 + (line.ascent - line.descent) / 2;
+    final center = line.baseline - (line.ascent - line.descent) / 2;
     painter.dispose();
-    return baseline;
+    return center;
   }
 
   @override
@@ -324,17 +325,15 @@ class _DetailRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Baseline(
-            baseline: _iconBaseline(context),
-            baselineType: TextBaseline.alphabetic,
-            child: Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
-          ),
+          Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+            child: Transform.translate(
+              offset: Offset(0, 9 - _firstLineCenter(context)),
+              child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+            ),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/background/background_scope.dart';
 import 'package:orbit/core/widgets/settings_app_bar.dart';
 // Color grid, scheme selection and palette dialog interactions adapted from
@@ -28,7 +29,7 @@ class ThemeSchemePage extends ConsumerWidget {
       } catch (_) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showAppSnackBar(
-            SnackBar(content: Text(l.reminderInvalid)),
+            SnackBar(content: PageModule(child: Text(l.reminderInvalid))),
             isError: true,
           );
         }
@@ -53,9 +54,9 @@ class ThemeSchemePage extends ConsumerWidget {
         (e) => e.id != entry?.id && colorsMatchTheme(e.color, picked),
       )) {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showAppSnackBar(SnackBar(content: Text(l.paletteDuplicate)));
+          ScaffoldMessenger.of(context).showAppSnackBar(
+            SnackBar(content: PageModule(child: Text(l.paletteDuplicate))),
+          );
         }
         return;
       }
@@ -77,16 +78,20 @@ class ThemeSchemePage extends ConsumerWidget {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(l.reminderDelete),
-          content: Text(formatThemeHexColor(entry.color)),
+          title: PageModule(child: Text(l.reminderDelete)),
+          content: PageModule(child: Text(formatThemeHexColor(entry.color))),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l.actionCancel),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l.actionCancel),
+              ),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l.reminderDelete),
+            PageModule(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l.reminderDelete),
+              ),
             ),
           ],
         ),
@@ -114,49 +119,51 @@ class ThemeSchemePage extends ConsumerWidget {
         context,
         title: l.themeMulticolor,
         actions: [
-          IconButton(
-            tooltip: l.paletteReset,
-            icon: const Icon(Icons.restore),
-            onPressed: () async {
-              final reset = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(l.paletteReset),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: Text(l.actionCancel),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text(l.actionConfirm),
-                    ),
-                  ],
-                ),
-              );
-              if (reset == true) {
-                final latest = ref.read(multicolorSettingsProvider);
-                // Fresh identities prevent reset from recoloring an unrelated old slot.
-                final defaults = const MulticolorSettings();
-                await save(
-                  defaults.copyWith(
-                    enabled: latest.enabled,
-                    palette: [
-                      for (var i = 0; i < defaults.palette.length; i++)
-                        PaletteColor(
-                          latest.nextId + i,
-                          defaults.palette[i].color,
-                        ),
+          PageModule(
+            child: IconButton(
+              tooltip: l.paletteReset,
+              icon: const Icon(Icons.restore),
+              onPressed: () async {
+                final reset = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(l.paletteReset),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(l.actionCancel),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(l.actionConfirm),
+                      ),
                     ],
-                    nextId: latest.nextId + defaults.palette.length,
-                    retiredIds: {
-                      ...latest.retiredIds,
-                      ...latest.palette.map((e) => e.id),
-                    },
                   ),
                 );
-              }
-            },
+                if (reset == true) {
+                  final latest = ref.read(multicolorSettingsProvider);
+                  // Fresh identities prevent reset from recoloring an unrelated old slot.
+                  final defaults = const MulticolorSettings();
+                  await save(
+                    defaults.copyWith(
+                      enabled: latest.enabled,
+                      palette: [
+                        for (var i = 0; i < defaults.palette.length; i++)
+                          PaletteColor(
+                            latest.nextId + i,
+                            defaults.palette[i].color,
+                          ),
+                      ],
+                      nextId: latest.nextId + defaults.palette.length,
+                      retiredIds: {
+                        ...latest.retiredIds,
+                        ...latest.palette.map((e) => e.id),
+                      },
+                    ),
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -166,13 +173,15 @@ class ThemeSchemePage extends ConsumerWidget {
           SettingsGroup(
             title: l.paletteMode,
             children: [
-              SwitchListTile(
-                title: Text(l.themeMulticolor),
-                subtitle: Text(
-                  value.enabled ? l.themeMulticolor : l.paletteSingle,
+              PageModule(
+                child: SwitchListTile(
+                  title: Text(l.themeMulticolor),
+                  subtitle: Text(
+                    value.enabled ? l.themeMulticolor : l.paletteSingle,
+                  ),
+                  value: value.enabled,
+                  onChanged: (v) => save(value.copyWith(enabled: v)),
                 ),
-                value: value.enabled,
-                onChanged: (v) => save(value.copyWith(enabled: v)),
               ),
             ],
           ),
@@ -181,69 +190,75 @@ class ThemeSchemePage extends ConsumerWidget {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: DropdownButtonFormField<AppColorScheme>(
-                  initialValue: value.isCustom ? null : value.scheme,
-                  key: ValueKey((value.scheme, value.isCustom)),
-                  isExpanded: true,
-                  hint: Text(l.paletteCustom),
-                  decoration: InputDecoration(labelText: l.paletteScheme),
-                  onChanged: (scheme) {
-                    if (scheme != null) {
-                      save(value.copyWith(scheme: scheme, clearCustom: true));
-                    }
-                  },
-                  items: [
-                    for (final scheme in AppColorScheme.values)
-                      DropdownMenuItem(
-                        value: scheme,
-                        child: Row(
-                          children: [
-                            for (final color in (() {
-                              final preview = value
-                                  .copyWith(scheme: scheme, clearCustom: true)
-                                  .colors(Theme.of(context).brightness);
-                              return [
-                                preview.primary,
-                                preview.secondary,
-                                preview.tertiary,
-                              ];
-                            })())
-                              Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: _Swatch(color: color, size: 16),
-                              ),
-                            const SizedBox(width: 4),
-                            Expanded(child: Text(names[scheme.index])),
-                          ],
+                child: PageModule(
+                  child: DropdownButtonFormField<AppColorScheme>(
+                    initialValue: value.isCustom ? null : value.scheme,
+                    key: ValueKey((value.scheme, value.isCustom)),
+                    isExpanded: true,
+                    hint: Text(l.paletteCustom),
+                    decoration: InputDecoration(labelText: l.paletteScheme),
+                    onChanged: (scheme) {
+                      if (scheme != null) {
+                        save(value.copyWith(scheme: scheme, clearCustom: true));
+                      }
+                    },
+                    items: [
+                      for (final scheme in AppColorScheme.values)
+                        DropdownMenuItem(
+                          value: scheme,
+                          child: Row(
+                            children: [
+                              for (final color in (() {
+                                final preview = value
+                                    .copyWith(scheme: scheme, clearCustom: true)
+                                    .colors(Theme.of(context).brightness);
+                                return [
+                                  preview.primary,
+                                  preview.secondary,
+                                  preview.tertiary,
+                                ];
+                              })())
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: _Swatch(color: color, size: 16),
+                                ),
+                              const SizedBox(width: 4),
+                              Expanded(child: Text(names[scheme.index])),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (!value.isCustom)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Text(
-                    descriptions[value.scheme.index],
-                    style: Theme.of(context).textTheme.bodySmall,
+                  child: PageModule(
+                    child: Text(
+                      descriptions[value.scheme.index],
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
                 ),
               for (var role = 0; role < 3; role++)
-                ListTile(
-                  title: Text(roleNames[role]),
-                  subtitle: Text(
-                    !value.isCustom ||
-                            role > 0 &&
-                                (role == 1
-                                        ? value.secondary
-                                        : value.tertiary) ==
-                                    null
-                        ? l.paletteAutomatic
-                        : formatThemeHexColor(roleColors[role]),
+                PageModule(
+                  child: ListTile(
+                    title: Text(roleNames[role]),
+                    subtitle: Text(
+                      !value.isCustom ||
+                              role > 0 &&
+                                  (role == 1
+                                          ? value.secondary
+                                          : value.tertiary) ==
+                                      null
+                          ? l.paletteAutomatic
+                          : formatThemeHexColor(roleColors[role]),
+                    ),
+                    leading: _Swatch(color: roleColors[role]),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => editRole(role, roleColors[role]),
                   ),
-                  leading: _Swatch(color: roleColors[role]),
-                  trailing: const Icon(Icons.edit_outlined),
-                  onTap: () => editRole(role, roleColors[role]),
                 ),
             ],
           ),
@@ -255,7 +270,7 @@ class ThemeSchemePage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(l.paletteHint),
+                    PageModule(child: Text(l.paletteHint)),
                     const SizedBox(height: 12),
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -330,13 +345,15 @@ class ThemeSchemePage extends ConsumerWidget {
                                                       l.reminderDelete,
                                                     ),
                                                   ])
-                                                    ListTile(
-                                                      title: Text(action.$2),
-                                                      onTap: () =>
-                                                          Navigator.pop(
-                                                            ctx,
-                                                            action.$1,
-                                                          ),
+                                                    PageModule(
+                                                      child: ListTile(
+                                                        title: Text(action.$2),
+                                                        onTap: () =>
+                                                            Navigator.pop(
+                                                              ctx,
+                                                              action.$1,
+                                                            ),
+                                                      ),
                                                     ),
                                                 ],
                                               ),
@@ -396,11 +413,13 @@ class ThemeSchemePage extends ConsumerWidget {
                                     children: [
                                       _Swatch(color: entry.color),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        formatThemeHexColor(entry.color),
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.labelSmall,
+                                      PageModule(
+                                        child: Text(
+                                          formatThemeHexColor(entry.color),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -409,11 +428,13 @@ class ThemeSchemePage extends ConsumerWidget {
                             SizedBox(
                               width: width,
                               height: tileHeight,
-                              child: IconButton.filledTonal(
-                                key: const Key('palette-add'),
-                                tooltip: l.reminderAdd,
-                                onPressed: () => editEntry(null),
-                                icon: const Icon(Icons.add),
+                              child: PageModule(
+                                child: IconButton.filledTonal(
+                                  key: const Key('palette-add'),
+                                  tooltip: l.reminderAdd,
+                                  onPressed: () => editEntry(null),
+                                  icon: const Icon(Icons.add),
+                                ),
                               ),
                             ),
                           ],
@@ -557,7 +578,7 @@ class _PaletteDialogState extends State<_PaletteDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: Text(l.paletteEdit),
+      title: PageModule(child: Text(l.paletteEdit)),
       content: SizedBox(
         width: 300,
         child: SingleChildScrollView(
@@ -565,39 +586,47 @@ class _PaletteDialogState extends State<_PaletteDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _Swatch(color: _color),
-              TextField(
-                controller: _hex,
-                decoration: InputDecoration(
-                  labelText: 'HEX',
-                  errorText: parseThemeHexColor(_hex.text) == null
-                      ? l.themeColorInvalidHex
-                      : null,
+              PageModule(
+                child: TextField(
+                  controller: _hex,
+                  decoration: InputDecoration(
+                    labelText: 'HEX',
+                    errorText: parseThemeHexColor(_hex.text) == null
+                        ? l.themeColorInvalidHex
+                        : null,
+                  ),
+                  onChanged: (text) => setState(() {
+                    final color = parseThemeHexColor(text);
+                    if (color != null) _setColor(color);
+                  }),
                 ),
-                onChanged: (text) => setState(() {
-                  final color = parseThemeHexColor(text);
-                  if (color != null) _setColor(color);
-                }),
               ),
-              Text(l.paletteHue),
-              Slider(
-                value: _hue.clamp(0, 360),
-                max: 360,
-                label: l.paletteHue,
-                onChanged: (v) => _change(v, _chroma, _tone),
+              PageModule(child: Text(l.paletteHue)),
+              PageModule(
+                child: Slider(
+                  value: _hue.clamp(0, 360),
+                  max: 360,
+                  label: l.paletteHue,
+                  onChanged: (v) => _change(v, _chroma, _tone),
+                ),
               ),
-              Text(l.paletteChroma),
-              Slider(
-                value: _chroma.clamp(0, 120),
-                max: 120,
-                label: l.paletteChroma,
-                onChanged: (v) => _change(_hue, v, _tone),
+              PageModule(child: Text(l.paletteChroma)),
+              PageModule(
+                child: Slider(
+                  value: _chroma.clamp(0, 120),
+                  max: 120,
+                  label: l.paletteChroma,
+                  onChanged: (v) => _change(_hue, v, _tone),
+                ),
               ),
-              Text(l.paletteTone),
-              Slider(
-                value: _tone.clamp(0, 100),
-                max: 100,
-                label: l.paletteTone,
-                onChanged: (v) => _change(_hue, _chroma, v),
+              PageModule(child: Text(l.paletteTone)),
+              PageModule(
+                child: Slider(
+                  value: _tone.clamp(0, 100),
+                  max: 100,
+                  label: l.paletteTone,
+                  onChanged: (v) => _change(_hue, _chroma, v),
+                ),
               ),
               Wrap(
                 spacing: 8,
@@ -618,15 +647,19 @@ class _PaletteDialogState extends State<_PaletteDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l.actionCancel),
+        PageModule(
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l.actionCancel),
+          ),
         ),
-        TextButton(
-          onPressed: parseThemeHexColor(_hex.text) == null
-              ? null
-              : () => Navigator.pop(context, _color),
-          child: Text(l.actionConfirm),
+        PageModule(
+          child: TextButton(
+            onPressed: parseThemeHexColor(_hex.text) == null
+                ? null
+                : () => Navigator.pop(context, _color),
+            child: Text(l.actionConfirm),
+          ),
         ),
       ],
     );

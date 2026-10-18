@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'dart:async';
 import 'dart:io';
@@ -339,32 +340,40 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         final chosen = await showDialog<ImportMergeStrategy>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text(l.importStrategyTitle),
+            title: PageModule(child: Text(l.importStrategyTitle)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l.importStrategyMessage(overlapping.length)),
+                PageModule(
+                  child: Text(l.importStrategyMessage(overlapping.length)),
+                ),
                 StatisticsDeletionChoice(
                   onChanged: (v) => deleteStatistics = v,
                 ),
-                ListTile(
-                  title: Text(l.importStrategyReplaceWeek),
-                  subtitle: Text(l.importStrategyReplaceWeekDesc),
-                  onTap: () =>
-                      Navigator.pop(ctx, ImportMergeStrategy.replaceWeek),
+                PageModule(
+                  child: ListTile(
+                    title: Text(l.importStrategyReplaceWeek),
+                    subtitle: Text(l.importStrategyReplaceWeekDesc),
+                    onTap: () =>
+                        Navigator.pop(ctx, ImportMergeStrategy.replaceWeek),
+                  ),
                 ),
-                ListTile(
-                  title: Text(l.importStrategyMerge),
-                  subtitle: Text(l.importStrategyMergeDesc),
-                  onTap: () =>
-                      Navigator.pop(ctx, ImportMergeStrategy.mergeOverwrite),
+                PageModule(
+                  child: ListTile(
+                    title: Text(l.importStrategyMerge),
+                    subtitle: Text(l.importStrategyMergeDesc),
+                    onTap: () =>
+                        Navigator.pop(ctx, ImportMergeStrategy.mergeOverwrite),
+                  ),
                 ),
               ],
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(l.importCancel),
+              PageModule(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l.importCancel),
+                ),
               ),
             ],
           ),
@@ -389,8 +398,10 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       });
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
-          content: Text(
-            '${l.importSuccess(result.sessions.length)}${failures > 0 ? ' ${l.resyncPartialFailed(failures)}' : ''}',
+          content: PageModule(
+            child: Text(
+              '${l.importSuccess(result.sessions.length)}${failures > 0 ? ' ${l.resyncPartialFailed(failures)}' : ''}',
+            ),
           ),
           action: SnackBarAction(
             label: l.importViewGrid,
@@ -423,7 +434,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
       appBar: BackgroundAppBar(
         child: AppBar(
           leading: widget.showBackButton ? const BackButton() : null,
-          title: Text(l.importTitle),
+          title: PageModule(child: Text(l.importTitle)),
         ),
       ),
       body: BackgroundRegion(
@@ -434,10 +445,13 @@ class _ImportPageState extends ConsumerState<ImportPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(importErrorMessage(l, e)),
-                TextButton(
-                  onPressed: () => ref.invalidate(importConfigurationProvider),
-                  child: Text(l.actionRetry),
+                PageModule(child: Text(importErrorMessage(l, e))),
+                PageModule(
+                  child: TextButton(
+                    onPressed: () =>
+                        ref.invalidate(importConfigurationProvider),
+                    child: Text(l.actionRetry),
+                  ),
                 ),
               ],
             ),
@@ -448,7 +462,7 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const CircularProgressIndicator(),
-                      Text(l.importInProgress),
+                      PageModule(child: Text(l.importInProgress)),
                     ],
                   ),
                 )
@@ -456,201 +470,236 @@ class _ImportPageState extends ConsumerState<ImportPage> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     ExpansionTile(
-                      title: Text(l.importFormatTitle),
+                      title: PageModule(child: Text(l.importFormatTitle)),
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Text(l.importHelp),
+                          child: PageModule(child: Text(l.importHelp)),
                         ),
                       ],
                     ),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _pick,
-                      icon: const Icon(Icons.upload_file),
-                      label: Text(l.importPickTitle),
+                    PageModule(
+                      child: FilledButton.icon(
+                        onPressed: _busy ? null : _pick,
+                        icon: const Icon(Icons.upload_file),
+                        label: Text(l.importPickTitle),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        OutlinedButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () async {
-                                  await Navigator.push<void>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ImportTemplatesPage(),
-                                    ),
-                                  );
-                                },
-                          icon: const Icon(Icons.rule),
-                          label: Text(l.importTemplates),
+                        PageModule(
+                          child: OutlinedButton.icon(
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    await Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ImportTemplatesPage(),
+                                      ),
+                                    );
+                                  },
+                            icon: const Icon(Icons.rule),
+                            label: Text(l.importTemplates),
+                          ),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () async {
-                                  await Navigator.push<void>(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ImportPlansPage(),
-                                    ),
-                                  );
-                                },
-                          icon: const Icon(Icons.schedule),
-                          label: Text(l.importPlans),
+                        PageModule(
+                          child: OutlinedButton.icon(
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    await Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const ImportPlansPage(),
+                                      ),
+                                    );
+                                  },
+                            icon: const Icon(Icons.schedule),
+                            label: Text(l.importPlans),
+                          ),
                         ),
-                        OutlinedButton(
-                          onPressed: _busy
-                              ? null
-                              : () async {
-                                  final chosen = await chooseImportContext(
-                                    context,
-                                    c,
-                                    _context,
-                                  );
-                                  if (chosen != null && mounted) {
-                                    _invalidate();
-                                    setState(() => _context = chosen);
-                                  }
-                                },
-                          child: Text(l.importConfirmContext),
+                        PageModule(
+                          child: OutlinedButton(
+                            onPressed: _busy
+                                ? null
+                                : () async {
+                                    final chosen = await chooseImportContext(
+                                      context,
+                                      c,
+                                      _context,
+                                    );
+                                    if (chosen != null && mounted) {
+                                      _invalidate();
+                                      setState(() => _context = chosen);
+                                    }
+                                  },
+                            child: Text(l.importConfirmContext),
+                          ),
                         ),
                       ],
                     ),
                     if (_context.confirmed)
                       Padding(
                         padding: const EdgeInsets.all(8),
-                        child: Text(
-                          '${_context.semester?.name ?? ''} · ${_context.periodTimes?.name ?? ''} · ${_context.defaultWeeks.join(',')}',
+                        child: PageModule(
+                          child: Text(
+                            '${_context.semester?.name ?? ''} · ${_context.periodTimes?.name ?? ''} · ${_context.defaultWeeks.join(',')}',
+                          ),
                         ),
                       ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _encoding,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.importEncoding),
-                      items:
-                          {
-                                'auto': l.importAuto,
-                                'utf-8': 'UTF-8',
-                                'gbk': 'GBK',
-                                'gb18030': 'GB18030',
-                              }.entries
-                              .map(
-                                (e) => DropdownMenuItem(
-                                  value: e.key,
-                                  child: Text(e.value),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: _busy
-                          ? null
-                          : (v) {
-                              _encoding = v!;
-                              if (_sheets.isNotEmpty) {
-                                _redecode();
-                              } else {
-                                setState(() {});
-                              }
-                            },
+                    PageModule(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _encoding,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: l.importEncoding,
+                        ),
+                        items:
+                            {
+                                  'auto': l.importAuto,
+                                  'utf-8': 'UTF-8',
+                                  'gbk': 'GBK',
+                                  'gb18030': 'GB18030',
+                                }.entries
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.key,
+                                    child: Text(e.value),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: _busy
+                            ? null
+                            : (v) {
+                                _encoding = v!;
+                                if (_sheets.isNotEmpty) {
+                                  _redecode();
+                                } else {
+                                  setState(() {});
+                                }
+                              },
+                      ),
                     ),
-                    DropdownButtonFormField<String>(
-                      initialValue: _delimiter,
-                      isExpanded: true,
-                      decoration: InputDecoration(labelText: l.importDelimiter),
-                      items:
-                          {
-                                '': l.importAuto,
-                                ',': l.importComma,
-                                ';': l.importSemicolon,
-                                '\t': l.importTab,
-                              }.entries
-                              .map(
-                                (e) => DropdownMenuItem(
-                                  value: e.key,
-                                  child: Text(e.value),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: _busy
-                          ? null
-                          : (v) {
-                              _delimiter = v!;
-                              if (_sheets.isNotEmpty) {
-                                _redecode();
-                              } else {
-                                setState(() {});
-                              }
-                            },
+                    PageModule(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _delimiter,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: l.importDelimiter,
+                        ),
+                        items:
+                            {
+                                  '': l.importAuto,
+                                  ',': l.importComma,
+                                  ';': l.importSemicolon,
+                                  '\t': l.importTab,
+                                }.entries
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.key,
+                                    child: Text(e.value),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: _busy
+                            ? null
+                            : (v) {
+                                _delimiter = v!;
+                                if (_sheets.isNotEmpty) {
+                                  _redecode();
+                                } else {
+                                  setState(() {});
+                                }
+                              },
+                      ),
                     ),
                     const SizedBox(height: 16),
 
                     if (_busy) ...[
                       const LinearProgressIndicator(),
-                      TextButton(
-                        onPressed: _invalidate,
-                        child: Text(l.importCancelTask),
+                      PageModule(
+                        child: TextButton(
+                          onPressed: _invalidate,
+                          child: Text(l.importCancelTask),
+                        ),
                       ),
                     ],
                     for (final e in _fileErrors)
-                      Text(
-                        e,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    if (_sheets.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(l.importSelectSheet),
-                    ],
-                    for (final s in _sheets) _sheetCard(s, c),
-                    if (_sheets.isNotEmpty)
-                      FilledButton.icon(
-                        onPressed: _busy ? null : _parse,
-                        icon: const Icon(Icons.preview_outlined),
-                        label: Text(l.importPreview),
-                      ),
-                    if (_error != null)
-                      Padding(
-                        padding: const EdgeInsets.all(12),
+                      PageModule(
                         child: Text(
-                          _error!,
+                          e,
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.error,
                           ),
                         ),
                       ),
+                    if (_sheets.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      PageModule(child: Text(l.importSelectSheet)),
+                    ],
+                    for (final s in _sheets) _sheetCard(s, c),
+                    if (_sheets.isNotEmpty)
+                      PageModule(
+                        child: FilledButton.icon(
+                          onPressed: _busy ? null : _parse,
+                          icon: const Icon(Icons.preview_outlined),
+                          label: Text(l.importPreview),
+                        ),
+                      ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: PageModule(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (_result != null) ...[
-                      Text(
-                        '${l.importValid}: ${_result!.sessions.length} · ${l.importDuplicates}: ${_result!.duplicates} · ${l.importErrors}: ${_result!.diagnostics.length}',
+                      PageModule(
+                        child: Text(
+                          '${l.importValid}: ${_result!.sessions.length} · ${l.importDuplicates}: ${_result!.duplicates} · ${l.importErrors}: ${_result!.diagnostics.length}',
+                        ),
                       ),
                       for (final d in _result!.diagnostics.where(
                         (d) => d.code == 'idConflict',
                       ))
-                        Text(
-                          '${d.location}: ${importErrorMessage(l, d.code)} · ${d.detail}',
+                        PageModule(
+                          child: Text(
+                            '${d.location}: ${importErrorMessage(l, d.code)} · ${d.detail}',
+                          ),
                         ),
                       if (_result!.diagnostics.isNotEmpty && !_result!.hasFatal)
-                        CheckboxListTile(
-                          value: _skip,
-                          title: Text(l.importSkipErrors),
-                          subtitle: Text(l.importSkipDescription),
-                          onChanged: (v) => setState(() => _skip = v ?? false),
+                        PageModule(
+                          child: CheckboxListTile(
+                            value: _skip,
+                            title: Text(l.importSkipErrors),
+                            subtitle: Text(l.importSkipDescription),
+                            onChanged: (v) =>
+                                setState(() => _skip = v ?? false),
+                          ),
                         ),
-                      FilledButton.icon(
-                        onPressed:
-                            _busy ||
-                                _result!.hasFatal ||
-                                _result!.sessions.isEmpty ||
-                                (_result!.diagnostics.isNotEmpty && !_skip)
-                            ? null
-                            : _confirm,
-                        icon: const Icon(Icons.save_alt),
-                        label: Text(l.importConfirm),
+                      PageModule(
+                        child: FilledButton.icon(
+                          onPressed:
+                              _busy ||
+                                  _result!.hasFatal ||
+                                  _result!.sessions.isEmpty ||
+                                  (_result!.diagnostics.isNotEmpty && !_skip)
+                              ? null
+                              : _confirm,
+                          icon: const Icon(Icons.save_alt),
+                          label: Text(l.importConfirm),
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -672,84 +721,86 @@ class _ImportPageState extends ConsumerState<ImportPage> {
         t.id: t,
     };
     if (s.template != null) options[s.template!.id] = s.template!;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: s.selected,
-              title: Text('${s.sheet.file} · ${s.sheet.name}'),
-              subtitle: s.encoding.isEmpty ? null : Text(s.encoding),
-              onChanged: _busy
-                  ? null
-                  : (v) {
-                      _invalidate();
-                      setState(() => s.selected = v ?? false);
-                    },
-            ),
-            DropdownButtonFormField<String>(
-              key: ValueKey(
-                '${s.sheet.file}-${s.sheet.name}-${s.template?.id}',
+    return PageModule(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: s.selected,
+                title: Text('${s.sheet.file} · ${s.sheet.name}'),
+                subtitle: s.encoding.isEmpty ? null : Text(s.encoding),
+                onChanged: _busy
+                    ? null
+                    : (v) {
+                        _invalidate();
+                        setState(() => s.selected = v ?? false);
+                      },
               ),
-              initialValue: s.template?.id ?? '',
-              isExpanded: true,
-              decoration: InputDecoration(labelText: l.importTemplates),
-              items: [
-                DropdownMenuItem(
-                  value: '',
-                  child: Text(
-                    '${l.importAuto}${s.analysis.recommended == null ? '' : ' · ${templateLabel(l, s.analysis.recommended!.template)} · ${(s.analysis.recommended!.confidence * 100).round()}%'}',
-                  ),
+              DropdownButtonFormField<String>(
+                key: ValueKey(
+                  '${s.sheet.file}-${s.sheet.name}-${s.template?.id}',
                 ),
-                ...options.values.map(
-                  (t) => DropdownMenuItem(
-                    value: t.id,
+                initialValue: s.template?.id ?? '',
+                isExpanded: true,
+                decoration: InputDecoration(labelText: l.importTemplates),
+                items: [
+                  DropdownMenuItem(
+                    value: '',
                     child: Text(
-                      '${templateLabel(l, t)}${t.builtIn && t.layout == ImportLayout.list ? ' (${t.headerRow + 1})' : ''}',
-                      overflow: TextOverflow.ellipsis,
+                      '${l.importAuto}${s.analysis.recommended == null ? '' : ' · ${templateLabel(l, s.analysis.recommended!.template)} · ${(s.analysis.recommended!.confidence * 100).round()}%'}',
                     ),
                   ),
-                ),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (id) {
-                      _invalidate();
-                      setState(() {
-                        s.template = options[id];
-                        if (s.template != null) s.selected = true;
-                      });
-                    },
-            ),
-            if (s.analysis.recommended == null && s.template == null)
-              Text(
-                importErrorMessage(
-                  l,
-                  s.candidates.isNotEmpty ? 'ambiguous' : 'templateInvalid',
-                ),
+                  ...options.values.map(
+                    (t) => DropdownMenuItem(
+                      value: t.id,
+                      child: Text(
+                        '${templateLabel(l, t)}${t.builtIn && t.layout == ImportLayout.list ? ' (${t.headerRow + 1})' : ''}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (id) {
+                        _invalidate();
+                        setState(() {
+                          s.template = options[id];
+                          if (s.template != null) s.selected = true;
+                        });
+                      },
               ),
-            if (s.template == null && s.analysis.candidates.isNotEmpty)
-              for (final candidate in s.analysis.candidates.take(3))
+              if (s.analysis.recommended == null && s.template == null)
                 Text(
-                  '${templateLabel(l, candidate.template)} · ${(candidate.confidence * 100).round()}%\n${candidate.evidence.map((e) => recognitionEvidenceLabel(l, e)).join(' · ')}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  importErrorMessage(
+                    l,
+                    s.candidates.isNotEmpty ? 'ambiguous' : 'templateInvalid',
+                  ),
                 ),
-            TextButton.icon(
-              onPressed: _busy ? null : () => _edit(s, config),
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(l.importFieldsStep),
-            ),
-            ImportRawTable(sheet: s.sheet),
-            if (s.result != null) ...[
-              Text(
-                '${l.importTemplates}: ${templateLabel(l, s.template ?? s.analysis.recommended?.template ?? s.candidates.firstOrNull ?? builtinListTemplate)}',
+              if (s.template == null && s.analysis.candidates.isNotEmpty)
+                for (final candidate in s.analysis.candidates.take(3))
+                  Text(
+                    '${templateLabel(l, candidate.template)} · ${(candidate.confidence * 100).round()}%\n${candidate.evidence.map((e) => recognitionEvidenceLabel(l, e)).join(' · ')}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              TextButton.icon(
+                onPressed: _busy ? null : () => _edit(s, config),
+                icon: const Icon(Icons.edit_outlined),
+                label: Text(l.importFieldsStep),
               ),
-              ImportResultView(result: s.result!),
+              ImportRawTable(sheet: s.sheet),
+              if (s.result != null) ...[
+                Text(
+                  '${l.importTemplates}: ${templateLabel(l, s.template ?? s.analysis.recommended?.template ?? s.candidates.firstOrNull ?? builtinListTemplate)}',
+                ),
+                ImportResultView(result: s.result!),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
