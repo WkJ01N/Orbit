@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,9 +22,10 @@ class _Update extends AppUpdateService {
     buildNumber: kAppBuildNumber,
     notes: 'Current release notes',
     releaseUrl: '',
-    assets: const [
+    assets: [
       UpdateAsset(
-        platform: 'windows',
+        // The picker filters by host platform, including on Linux CI.
+        platform: Platform.operatingSystem,
         name: 'orbit-current-windows-x64.zip',
         url:
             'https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-current-windows-x64.zip',
