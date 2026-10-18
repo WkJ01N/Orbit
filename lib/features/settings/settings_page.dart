@@ -1,6 +1,7 @@
+import 'package:orbit/core/motion/retained_page_switcher.dart';
+import 'package:orbit/core/motion/category_entrance.dart';
 import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/settings/course_quick_action_settings_page.dart';
-import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/models/deadline_strong_text.dart';
 import 'package:orbit/features/settings/update_page.dart';
@@ -79,465 +80,379 @@ class _SettingsBody extends ConsumerStatefulWidget {
 
 class _SettingsBodyState extends ConsumerState<_SettingsBody> {
   int _selectedCategory = 0;
-  int _transitionDirection = 1;
-  final _categoryBodyKey = GlobalKey();
-  Animation<double>? _categoryAnimation;
-  VoidCallback? _categoryListener;
-  Rect? _categoryRegion;
-  ModuleEntrance? _categoryMotion;
-  int _categoryEpoch = 0;
-
-  void _cancelCategoryEntrance() {
-    final listener = _categoryListener;
-    if (listener != null) _categoryAnimation?.removeListener(listener);
-    _categoryAnimation = null;
-    _categoryListener = null;
-    _categoryRegion = null;
-  }
-
-  @override
-  void dispose() {
-    _cancelCategoryEntrance();
-    super.dispose();
-  }
-
   void _selectCategory(int value) {
-    if (value == _selectedCategory) return;
-    _cancelCategoryEntrance();
-    final settings = ref.read(launchSettingsProvider);
-    final box = _categoryBodyKey.currentContext?.findRenderObject();
-    if (settings.onPageSwitch &&
-        settings.pageEnabled[3] &&
-        ref.read(launchAnimationsEnabledProvider) &&
-        !MediaQuery.disableAnimationsOf(context) &&
-        box is RenderBox &&
-        box.hasSize) {
-      _categoryRegion = box.localToGlobal(Offset.zero) & box.size;
-      _categoryMotion = ModuleEntranceScope.maybeOf(context);
-      _categoryMotion?.reset(region: _categoryRegion);
-      _categoryEpoch = _categoryMotion?.generation ?? 0;
-    }
-    setState(() {
-      _transitionDirection = value > _selectedCategory ? 1 : -1;
-      _selectedCategory = value;
-    });
+    if (value != _selectedCategory) setState(() => _selectedCategory = value);
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(appNavIndexProvider, (_, next) {
-      if (next != 3) _cancelCategoryEntrance();
-    });
     final l10n = AppLocalizations.of(context)!;
     final settings = widget.settings;
     final currentLocale = ref.watch(localeProvider);
     final rescheduleError = ref.watch(lastRescheduleErrorProvider);
     final notifier = ref.read(reminderSettingsProvider.notifier);
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-
     return Column(
       children: [
-        BackgroundRegion(
-          region: BackgroundRegionId.categories,
-          child: _SettingsCategoryTabs(
-            selectedIndex: _selectedCategory,
-            onSelected: _selectCategory,
+        PageModule(
+          child: BackgroundRegion(
+            region: BackgroundRegionId.categories,
+            child: _SettingsCategoryTabs(
+              selectedIndex: _selectedCategory,
+              onSelected: _selectCategory,
+            ),
           ),
         ),
         Expanded(
-          key: _categoryBodyKey,
-          child: AnimatedSwitcher(
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 220),
-            reverseDuration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 160),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            layoutBuilder: (currentChild, previousChildren) => Stack(
-              alignment: Alignment.topCenter,
-              children: currentChild == null
-                  ? previousChildren
-                  : [...previousChildren, currentChild],
-            ),
-            transitionBuilder: (child, animation) {
-              final incoming =
-                  child.key ==
-                  Key('settings-category-content-$_selectedCategory');
-              final direction = incoming
-                  ? _transitionDirection.toDouble()
-                  : -_transitionDirection.toDouble();
-              if (incoming && _categoryRegion != null) {
-                final navigation = animation is CurvedAnimation
-                    ? animation.parent
-                    : animation;
-                if (!identical(navigation, _categoryAnimation)) {
-                  final listener = _categoryListener;
-                  if (listener != null) {
-                    _categoryAnimation?.removeListener(listener);
-                  }
-                  _categoryAnimation = navigation;
-                  _categoryListener = () {
-                    if (_categoryMotion?.generation != _categoryEpoch) {
-                      _cancelCategoryEntrance();
-                      return;
-                    }
-                    if (navigation.value < .5 ||
-                        !mounted ||
-                        _categoryRegion == null) {
-                      return;
-                    }
-                    _categoryMotion?.start(_categoryRegion!);
-                    _cancelCategoryEntrance();
-                  };
-                  navigation.addListener(_categoryListener!);
-                }
-              }
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: Offset(direction * 0.035, 0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              );
-            },
-            child: BackgroundRegion(
-              key: Key('settings-category-content-$_selectedCategory'),
-              region: BackgroundRegionId.content,
-              child: ListView(
-                key: PageStorageKey(
-                  'settings-category-scroll-$_selectedCategory',
-                ),
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  if (_selectedCategory == 0) ...[
-                    PageModule(
-                      child: ListTile(
-                        leading: const Icon(Icons.system_update),
-                        title: Text(SyncUpdateText.of(context).check),
-                        subtitle: const Text('$kAppVersion ($kAppBuildNumber)'),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => const UpdatePage(),
+          child: RetainedPageSwitcher(
+            index: _selectedCategory,
+            itemCount: 4,
+            keyPrefix: 'settings-category-layer',
+            duration: const Duration(milliseconds: 220),
+            builder: (context, category, transition) => CategoryEntranceHost(
+              transition: transition,
+              child: BackgroundRegion(
+                key: Key('settings-category-content-$category'),
+                region: BackgroundRegionId.content,
+                child: ListView(
+                  key: PageStorageKey('settings-category-scroll-$category'),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: [
+                    if (category == 0) ...[
+                      PageModule(
+                        child: ListTile(
+                          leading: const Icon(Icons.system_update),
+                          title: Text(SyncUpdateText.of(context).check),
+                          subtitle: const Text(
+                            '$kAppVersion ($kAppBuildNumber)',
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const UpdatePage(),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SettingsGroup(
-                      title: l10n.sectionLanguage,
-                      children: [
-                        SettingsChoiceTile(
-                          title: Text(l10n.languageTitle),
-                          subtitle: Text(l10n.languageSubtitle),
-                          trailing: _SettingsDropdown<Locale>(
-                            value: _matchingLocale(currentLocale),
-                            onChanged: (locale) async {
-                              if (locale == null) {
-                                return;
-                              }
-                              final targetL10n = lookupL10n(locale);
-                              await ref
-                                  .read(localeProvider.notifier)
-                                  .setLocale(locale);
-                              if (!context.mounted) {
-                                return;
-                              }
-                              await applyReminderUpdate(
+                      SettingsGroup(
+                        title: l10n.sectionLanguage,
+                        children: [
+                          SettingsChoiceTile(
+                            title: Text(l10n.languageTitle),
+                            subtitle: Text(l10n.languageSubtitle),
+                            trailing: _SettingsDropdown<Locale>(
+                              value: _matchingLocale(currentLocale),
+                              onChanged: (locale) async {
+                                if (locale == null) {
+                                  return;
+                                }
+                                final targetL10n = lookupL10n(locale);
+                                await ref
+                                    .read(localeProvider.notifier)
+                                    .setLocale(locale);
+                                if (!context.mounted) {
+                                  return;
+                                }
+                                await applyReminderUpdate(
+                                  context,
+                                  ref,
+                                  () => ref
+                                      .read(reminderSettingsProvider.notifier)
+                                      .resyncReminders(),
+                                  messages: targetL10n,
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showAppSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        targetL10n.languageChangedResynced,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              items: supportedAppLocales
+                                  .map(
+                                    (locale) => DropdownMenuItem(
+                                      value: locale,
+                                      child: Text(
+                                        languageOptionLabel(l10n, locale),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SettingsAppearanceSection(),
+                    ],
+                    if (category == 1) ...[
+                      SettingsGroup(
+                        title: l10n.settingsNavigationGroup,
+                        children: const [
+                          _GridDefaultWeekTile(),
+                          _WeekStartDayTile(),
+                          _PageVisibilityTile(upcoming: true),
+                          _PageVisibilityTile(upcoming: false),
+                        ],
+                      ),
+                      SettingsGroup(
+                        title: l10n.settingsLayoutGroup,
+                        children: [
+                          _GridDensityTile(),
+                          _ScheduleVerticalScaleTile(),
+                          _ScheduleNarrowLayoutTile(),
+                          _ScheduleMultiDayCountTile(),
+                          _ScheduleShowEmptyDaysTile(),
+                          _StrongCardGradientTile(),
+                          if (Theme.of(context).platform ==
+                                  TargetPlatform.android ||
+                              Theme.of(context).platform == TargetPlatform.iOS)
+                            CourseQuickActionSettingsTile(),
+                        ],
+                      ),
+                      SettingsGroup(
+                        title: l10n.navUpcoming,
+                        children: const [
+                          _UpcomingCourseDateTile(),
+                          _UpcomingDateDisplayTile(),
+                          _BackToTopPositionTile(),
+                        ],
+                      ),
+                    ],
+                    if (category == 2) ...[
+                      if (rescheduleError != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: ReminderResyncBanner(
+                            error: rescheduleError,
+                            onResync: () => _resyncReminders(context, ref),
+                          ),
+                        ),
+                      SettingsGroup(
+                        title: l10n.strongClassLead,
+                        children: [
+                          PageModule(
+                            child: SwitchListTile(
+                              title: Text(l10n.enableReminders),
+                              subtitle: Text(l10n.enableRemindersSubtitle),
+                              value: settings.enabled,
+                              onChanged: (enabled) => applyReminderUpdate(
                                 context,
                                 ref,
-                                () => ref
-                                    .read(reminderSettingsProvider.notifier)
-                                    .resyncReminders(),
-                                messages: targetL10n,
-                              );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showAppSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      targetL10n.languageChangedResynced,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            items: supportedAppLocales
-                                .map(
-                                  (locale) => DropdownMenuItem(
-                                    value: locale,
-                                    child: Text(
-                                      languageOptionLabel(l10n, locale),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SettingsAppearanceSection(),
-                  ],
-                  if (_selectedCategory == 1) ...[
-                    SettingsGroup(
-                      title: l10n.settingsNavigationGroup,
-                      children: const [
-                        _GridDefaultWeekTile(),
-                        _WeekStartDayTile(),
-                        _PageVisibilityTile(upcoming: true),
-                        _PageVisibilityTile(upcoming: false),
-                      ],
-                    ),
-                    SettingsGroup(
-                      title: l10n.settingsLayoutGroup,
-                      children: [
-                        _GridDensityTile(),
-                        _ScheduleVerticalScaleTile(),
-                        _ScheduleNarrowLayoutTile(),
-                        _ScheduleMultiDayCountTile(),
-                        _ScheduleShowEmptyDaysTile(),
-                        _StrongCardGradientTile(),
-                        if (Theme.of(context).platform ==
-                                TargetPlatform.android ||
-                            Theme.of(context).platform == TargetPlatform.iOS)
-                          CourseQuickActionSettingsTile(),
-                      ],
-                    ),
-                    SettingsGroup(
-                      title: l10n.navUpcoming,
-                      children: const [
-                        _UpcomingCourseDateTile(),
-                        _UpcomingDateDisplayTile(),
-                        _BackToTopPositionTile(),
-                      ],
-                    ),
-                  ],
-                  if (_selectedCategory == 2) ...[
-                    if (rescheduleError != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: ReminderResyncBanner(
-                          error: rescheduleError,
-                          onResync: () => _resyncReminders(context, ref),
-                        ),
-                      ),
-                    SettingsGroup(
-                      title: l10n.strongClassLead,
-                      children: [
-                        PageModule(
-                          child: SwitchListTile(
-                            title: Text(l10n.enableReminders),
-                            subtitle: Text(l10n.enableRemindersSubtitle),
-                            value: settings.enabled,
-                            onChanged: (enabled) => applyReminderUpdate(
-                              context,
-                              ref,
-                              () => notifier.setEnabled(enabled),
-                            ),
-                          ),
-                        ),
-                        SettingsChoiceTile(
-                          enabled: settings.enabled,
-                          title: Text(l10n.leadTimeTitle),
-                          subtitle: Text(
-                            l10n.leadTimeSubtitle(settings.leadMinutes),
-                          ),
-                          trailing: _SettingsDropdown<int>(
-                            value: _effectiveLeadMinutes(settings.leadMinutes),
-                            onChanged: settings.enabled
-                                ? (value) {
-                                    if (value != null) {
-                                      applyReminderUpdate(
-                                        context,
-                                        ref,
-                                        () => notifier.updateLeadMinutes(value),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            items: ReminderSettings.leadMinuteOptions
-                                .map(
-                                  (min) => DropdownMenuItem(
-                                    value: min,
-                                    child: Text(l10n.leadTimeOption(min)),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                        PageModule(
-                          child: ListTile(
-                            enabled: settings.enabled,
-                            title: Text(l10n.classLeadCustomizeTemplates),
-                            subtitle: Text(
-                              l10n.classLeadCustomizeTemplatesSubtitle,
-                            ),
-                            trailing: const Icon(Icons.edit_outlined),
-                            onTap: settings.enabled
-                                ? () => ClassLeadTemplateSheet.show(
-                                    context,
-                                    settings: settings,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SettingsGroup(
-                      title: l10n.strongCheckIn,
-                      children: [
-                        PageModule(
-                          child: SwitchListTile(
-                            title: Text(l10n.enableCheckInReminder),
-                            subtitle: Text(l10n.enableCheckInReminderSubtitle),
-                            value: settings.checkInReminderEnabled,
-                            onChanged: (enabled) async {
-                              if (enabled) {
-                                await applyReminderUpdate(
-                                  context,
-                                  ref,
-                                  () =>
-                                      notifier.setCheckInReminderEnabled(true),
-                                );
-                                return;
-                              }
-                              final confirmed =
-                                  await confirmDisableCheckInReminder(context);
-                              if (confirmed && context.mounted) {
-                                await applyReminderUpdate(
-                                  context,
-                                  ref,
-                                  () =>
-                                      notifier.setCheckInReminderEnabled(false),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                        PageModule(
-                          child: ListTile(
-                            enabled: settings.checkInReminderEnabled,
-                            title: Text(l10n.checkInCustomizeTemplates),
-                            subtitle: Text(
-                              l10n.checkInCustomizeTemplatesSubtitle,
-                            ),
-                            trailing: const Icon(Icons.edit_outlined),
-                            onTap: settings.checkInReminderEnabled
-                                ? () => CheckInTemplateSheet.show(
-                                    context,
-                                    settings: settings,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SettingsGroup(
-                      title: l10n.strongSummary,
-                      children: [
-                        PageModule(
-                          child: SwitchListTile(
-                            title: Text(l10n.enableNextDaySummary),
-                            subtitle: Text(l10n.enableNextDaySummarySubtitle),
-                            value: settings.nextDaySummaryEnabled,
-                            onChanged: (enabled) => applyReminderUpdate(
-                              context,
-                              ref,
-                              () => notifier.setNextDaySummaryEnabled(enabled),
-                            ),
-                          ),
-                        ),
-                        PageModule(
-                          child: ListTile(
-                            enabled: settings.nextDaySummaryEnabled,
-                            title: Text(l10n.nextDaySummaryTimeTitle),
-                            subtitle: Text(
-                              l10n.nextDaySummaryTimeSubtitle(
-                                settings.nextDaySummaryTimeLabel,
+                                () => notifier.setEnabled(enabled),
                               ),
                             ),
-                            trailing: const Icon(Icons.schedule),
-                            onTap: settings.nextDaySummaryEnabled
-                                ? () => _pickNextDaySummaryTime(context, ref)
-                                : null,
                           ),
-                        ),
-                        PageModule(
-                          child: SwitchListTile(
-                            title: Text(l10n.nextDayRemindWhenNoClass),
+                          SettingsChoiceTile(
+                            enabled: settings.enabled,
+                            title: Text(l10n.leadTimeTitle),
                             subtitle: Text(
-                              l10n.nextDayRemindWhenNoClassSubtitle,
+                              l10n.leadTimeSubtitle(settings.leadMinutes),
                             ),
-                            value: settings.nextDayRemindWhenNoClass,
-                            onChanged: settings.nextDaySummaryEnabled
-                                ? (enabled) => applyReminderUpdate(
-                                    context,
-                                    ref,
-                                    () => notifier.setNextDayRemindWhenNoClass(
-                                      enabled,
+                            trailing: _SettingsDropdown<int>(
+                              value: _effectiveLeadMinutes(
+                                settings.leadMinutes,
+                              ),
+                              onChanged: settings.enabled
+                                  ? (value) {
+                                      if (value != null) {
+                                        applyReminderUpdate(
+                                          context,
+                                          ref,
+                                          () =>
+                                              notifier.updateLeadMinutes(value),
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              items: ReminderSettings.leadMinuteOptions
+                                  .map(
+                                    (min) => DropdownMenuItem(
+                                      value: min,
+                                      child: Text(l10n.leadTimeOption(min)),
                                     ),
                                   )
-                                : null,
-                          ),
-                        ),
-                        PageModule(
-                          child: ListTile(
-                            enabled: settings.nextDaySummaryEnabled,
-                            title: Text(l10n.nextDayCustomizeTemplates),
-                            subtitle: Text(
-                              l10n.nextDayCustomizeTemplatesSubtitle,
+                                  .toList(),
                             ),
-                            trailing: const Icon(Icons.edit_outlined),
-                            onTap: settings.nextDaySummaryEnabled
-                                ? () => NextDaySummaryTemplateSheet.show(
-                                    context,
-                                    settings: settings,
-                                  )
-                                : null,
                           ),
-                        ),
-                      ],
-                    ),
-                    const CustomRemindersSettingsTiles(),
-                    SettingsGroup(
-                      title: l10n.settingsMaintenanceGroup,
-                      children: [
-                        const NotificationPermissionSettingsTiles(),
-                        const Divider(indent: 16, endIndent: 16),
-                        PageModule(
-                          child: ListTile(
-                            enabled:
-                                settings.enabled ||
-                                settings.checkInReminderEnabled ||
-                                settings.nextDaySummaryEnabled,
-                            title: Text(l10n.resyncReminders),
-                            subtitle: Text(l10n.resyncRemindersSubtitle),
-                            trailing: const Icon(Icons.refresh),
-                            onTap:
-                                (settings.enabled ||
-                                    settings.checkInReminderEnabled ||
-                                    settings.nextDaySummaryEnabled)
-                                ? () => _resyncReminders(context, ref)
-                                : null,
+                          PageModule(
+                            child: ListTile(
+                              enabled: settings.enabled,
+                              title: Text(l10n.classLeadCustomizeTemplates),
+                              subtitle: Text(
+                                l10n.classLeadCustomizeTemplatesSubtitle,
+                              ),
+                              trailing: const Icon(Icons.edit_outlined),
+                              onTap: settings.enabled
+                                  ? () => ClassLeadTemplateSheet.show(
+                                      context,
+                                      settings: settings,
+                                    )
+                                  : null,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (Platform.isAndroid)
-                      SettingsGroup(
-                        title: l10n.sectionAndroidBackground,
-                        children: [_AndroidBackgroundSection()],
+                        ],
                       ),
+                      SettingsGroup(
+                        title: l10n.strongCheckIn,
+                        children: [
+                          PageModule(
+                            child: SwitchListTile(
+                              title: Text(l10n.enableCheckInReminder),
+                              subtitle: Text(
+                                l10n.enableCheckInReminderSubtitle,
+                              ),
+                              value: settings.checkInReminderEnabled,
+                              onChanged: (enabled) async {
+                                if (enabled) {
+                                  await applyReminderUpdate(
+                                    context,
+                                    ref,
+                                    () => notifier.setCheckInReminderEnabled(
+                                      true,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                final confirmed =
+                                    await confirmDisableCheckInReminder(
+                                      context,
+                                    );
+                                if (confirmed && context.mounted) {
+                                  await applyReminderUpdate(
+                                    context,
+                                    ref,
+                                    () => notifier.setCheckInReminderEnabled(
+                                      false,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                          PageModule(
+                            child: ListTile(
+                              enabled: settings.checkInReminderEnabled,
+                              title: Text(l10n.checkInCustomizeTemplates),
+                              subtitle: Text(
+                                l10n.checkInCustomizeTemplatesSubtitle,
+                              ),
+                              trailing: const Icon(Icons.edit_outlined),
+                              onTap: settings.checkInReminderEnabled
+                                  ? () => CheckInTemplateSheet.show(
+                                      context,
+                                      settings: settings,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SettingsGroup(
+                        title: l10n.strongSummary,
+                        children: [
+                          PageModule(
+                            child: SwitchListTile(
+                              title: Text(l10n.enableNextDaySummary),
+                              subtitle: Text(l10n.enableNextDaySummarySubtitle),
+                              value: settings.nextDaySummaryEnabled,
+                              onChanged: (enabled) => applyReminderUpdate(
+                                context,
+                                ref,
+                                () =>
+                                    notifier.setNextDaySummaryEnabled(enabled),
+                              ),
+                            ),
+                          ),
+                          PageModule(
+                            child: ListTile(
+                              enabled: settings.nextDaySummaryEnabled,
+                              title: Text(l10n.nextDaySummaryTimeTitle),
+                              subtitle: Text(
+                                l10n.nextDaySummaryTimeSubtitle(
+                                  settings.nextDaySummaryTimeLabel,
+                                ),
+                              ),
+                              trailing: const Icon(Icons.schedule),
+                              onTap: settings.nextDaySummaryEnabled
+                                  ? () => _pickNextDaySummaryTime(context, ref)
+                                  : null,
+                            ),
+                          ),
+                          PageModule(
+                            child: SwitchListTile(
+                              title: Text(l10n.nextDayRemindWhenNoClass),
+                              subtitle: Text(
+                                l10n.nextDayRemindWhenNoClassSubtitle,
+                              ),
+                              value: settings.nextDayRemindWhenNoClass,
+                              onChanged: settings.nextDaySummaryEnabled
+                                  ? (enabled) => applyReminderUpdate(
+                                      context,
+                                      ref,
+                                      () => notifier
+                                          .setNextDayRemindWhenNoClass(enabled),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          PageModule(
+                            child: ListTile(
+                              enabled: settings.nextDaySummaryEnabled,
+                              title: Text(l10n.nextDayCustomizeTemplates),
+                              subtitle: Text(
+                                l10n.nextDayCustomizeTemplatesSubtitle,
+                              ),
+                              trailing: const Icon(Icons.edit_outlined),
+                              onTap: settings.nextDaySummaryEnabled
+                                  ? () => NextDaySummaryTemplateSheet.show(
+                                      context,
+                                      settings: settings,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const CustomRemindersSettingsTiles(),
+                      SettingsGroup(
+                        title: l10n.settingsMaintenanceGroup,
+                        children: [
+                          const NotificationPermissionSettingsTiles(),
+                          const Divider(indent: 16, endIndent: 16),
+                          PageModule(
+                            child: ListTile(
+                              enabled:
+                                  settings.enabled ||
+                                  settings.checkInReminderEnabled ||
+                                  settings.nextDaySummaryEnabled,
+                              title: Text(l10n.resyncReminders),
+                              subtitle: Text(l10n.resyncRemindersSubtitle),
+                              trailing: const Icon(Icons.refresh),
+                              onTap:
+                                  (settings.enabled ||
+                                      settings.checkInReminderEnabled ||
+                                      settings.nextDaySummaryEnabled)
+                                  ? () => _resyncReminders(context, ref)
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (Platform.isAndroid)
+                        SettingsGroup(
+                          title: l10n.sectionAndroidBackground,
+                          children: [_AndroidBackgroundSection()],
+                        ),
+                    ],
+                    if (category == 3) ...[
+                      const SettingsDataSection(),
+                      const SizedBox(height: 16),
+                      _SettingsFooter(l10n: l10n),
+                    ],
                   ],
-                  if (_selectedCategory == 3) ...[
-                    const SettingsDataSection(),
-                    const SizedBox(height: 16),
-                    _SettingsFooter(l10n: l10n),
-                  ],
-                ],
+                ),
               ),
             ),
           ),

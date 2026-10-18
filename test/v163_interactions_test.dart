@@ -81,21 +81,34 @@ Future<void> captureUi(WidgetTester tester, String name) async {
   if (!const bool.fromEnvironment('ORBIT_CAPTURE_V163')) return;
   final shadowsDisabled = debugDisableShadows;
   debugDisableShadows = false;
-  for (var i = 0; i < 24; i++) {
-    await tester.pump(const Duration(milliseconds: 16));
-  }
-  await tester.runAsync(() async {
-    final boundary = tester.renderObject<RenderRepaintBoundary>(
-      find.byKey(const Key('v163-capture')),
+  try {
+    void repaint(RenderObject render) {
+      render.markNeedsPaint();
+      render.visitChildren(repaint);
+    }
+
+    repaint(
+      tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(const Key('v163-capture')),
+      ),
     );
-    final result = await boundary.toImage();
-    final bytes = await result.toByteData(format: ui.ImageByteFormat.png);
-    await File(
-      'build/v163-$name.png',
-    ).writeAsBytes(bytes!.buffer.asUint8List());
-    result.dispose();
-  });
-  debugDisableShadows = shadowsDisabled;
+    for (var i = 0; i < 24; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.runAsync(() async {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(const Key('v163-capture')),
+      );
+      final result = await boundary.toImage();
+      final bytes = await result.toByteData(format: ui.ImageByteFormat.png);
+      await File(
+        'build/v163-$name.png',
+      ).writeAsBytes(bytes!.buffer.asUint8List());
+      result.dispose();
+    });
+  } finally {
+    debugDisableShadows = shadowsDisabled;
+  }
 }
 
 Widget app(Widget child) => MaterialApp(
@@ -305,6 +318,31 @@ void main() {
             cell.action,
             reason: '${placement.key}: ${cell.action} at ${cell.slot.center}',
           );
+        }
+        if (placement.key.contains('Left') || placement.key.contains('Right')) {
+          for (var i = 0; i < layout.cells.length; i++) {
+            for (var j = i + 1; j < layout.cells.length; j++) {
+              final a = layout.cells[i], b = layout.cells[j];
+              if (a.edges.single.side != b.edges.single.side) continue;
+              final ar = Rect.fromCenter(
+                center: a.slot.center,
+                width: a.slot.width * 1.06,
+                height: a.slot.height * 1.06,
+              );
+              final br = Rect.fromCenter(
+                center: b.slot.center,
+                width: b.slot.width * 1.06,
+                height: b.slot.height * 1.06,
+              );
+              final gap = [
+                br.left - ar.right,
+                ar.left - br.right,
+                br.top - ar.bottom,
+                ar.top - br.bottom,
+              ].reduce((a, b) => a > b ? a : b);
+              expect(gap, greaterThanOrEqualTo(12), reason: placement.key);
+            }
+          }
         }
       },
     );
@@ -646,6 +684,7 @@ void main() {
   Future<ProviderContainer> quickApp(
     WidgetTester tester, {
     bool floating = false,
+    Alignment? placement,
   }) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
@@ -664,6 +703,7 @@ void main() {
           ),
         ),
         sessionsProvider.overrideWith((ref) async => [session]),
+        deadlinesProvider.overrideWith((ref) async => []),
         importConfigurationProvider.overrideWith(_Config.new),
       ],
     );
@@ -675,7 +715,9 @@ void main() {
           Scaffold(
             body: CourseQuickActionViewport(
               child: Align(
-                alignment: floating ? Alignment.bottomRight : Alignment.center,
+                alignment:
+                    placement ??
+                    (floating ? Alignment.bottomRight : Alignment.center),
                 child: SizedBox(
                   width: 80,
                   height: 100,
@@ -733,7 +775,49 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(find.byType(SessionEditSheet), findsOneWidget);
+      expect(container.read(hiddenQuickActionCourseProvider), isNull);
+      await captureUi(tester, 'quick-edit-local');
+      expect(container.read(activeQuickActionCourseProvider), 'source');
+      expect(
+        tester
+            .widget<Opacity>(find.byKey(const Key('course-quick-card-copy')))
+            .opacity,
+        0,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(CourseQuickActionViewport),
+          matching: find.byKey(const Key('course-quick-action-edit')),
+        ),
+        findsOneWidget,
+      );
+      final glow = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(CourseQuickActionViewport),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is CustomPaint &&
+                w.painter.runtimeType.toString() == '_QuickGlowPainter',
+          ),
+        ),
+      );
+      final dynamic painter = glow.painter;
+      expect(
+        (painter.values as Map).values.every((value) => value == 0),
+        isTrue,
+      );
       Navigator.pop(tester.element(find.byType(SessionEditSheet)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+      final selectedOpacity = tester.widget<Opacity>(
+        find
+            .ancestor(
+              of: find.byKey(const Key('course-quick-action-edit')),
+              matching: find.byType(Opacity),
+            )
+            .first,
+      );
+      expect(selectedOpacity.opacity, 1);
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('course-quick-action-edit')), findsNothing);
       expect(container.read(activeQuickActionCourseProvider), isNull);
@@ -741,6 +825,40 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
+  testWidgets(
+    'corner buttons keep a visible gap after highlight and cancel cleanly',
+    (tester) async {
+      final container = await quickApp(
+        tester,
+        placement: Alignment.bottomRight,
+      );
+      final origin = tester.getCenter(find.byKey(const Key('quick-source')));
+      final gesture = await tester.startGesture(origin);
+      await tester.pump(const Duration(milliseconds: 550));
+      await tester.pumpAndSettle();
+      final archive = find.byKey(const Key('course-quick-action-archive'));
+      final note = find.byKey(const Key('course-quick-action-note'));
+      await gesture.moveTo(tester.getCenter(archive));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 180));
+      expect(
+        tester.getRect(archive).left - tester.getRect(note).right,
+        greaterThanOrEqualTo(12),
+      );
+      await captureUi(tester, 'quick-corner-spacing');
+      await gesture.moveTo(origin);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(container.read(activeQuickActionCourseProvider), isNull);
+      expect(
+        find.byKey(const Key('course-quick-action-archive')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
   testWidgets(
     'floating the card under a stationary finger never commits an action',
     (tester) async {

@@ -9,6 +9,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/core/motion/launch_motion.dart';
+import 'package:orbit/core/motion/page_module.dart';
+import 'package:orbit/core/widgets/adjacent_page_pager.dart';
+import 'package:orbit/core/widgets/empty_state.dart';
+import 'package:orbit/features/grid/grid_event_motion.dart';
 import 'package:orbit/core/routing/app_shell.dart';
 import 'package:orbit/core/theme/app_theme.dart';
 import 'package:orbit/features/grid/grid_week_view.dart';
@@ -180,6 +184,128 @@ Future<void> _ready(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'returning to grid starts chrome from zero at navigation midpoint and cards enter horizontally',
+    (tester) async {
+      final container = await _pump(
+        tester,
+        onPageSwitch: true,
+        mode: CardEntranceMode.nearby,
+      );
+      await _ready(tester);
+      await tester.pumpAndSettle();
+      final finalAdd = tester.getTopLeft(
+        find.byKey(const Key('grid-add-session')),
+      );
+      container.read(appNavIndexProvider.notifier).state = 1;
+      await tester.pumpAndSettle();
+      container.read(appNavIndexProvider.notifier).state = 0;
+      await tester.pump();
+      final scope = find
+          .descendant(
+            of: find.byKey(const ValueKey('app-destination-0')),
+            matching: find.byType(ModuleEntranceScope),
+          )
+          .first;
+      final modules = tester.widget<ModuleEntranceScope>(scope).motion;
+      final launchScope = find
+          .descendant(
+            of: find.byKey(const ValueKey('app-destination-0')),
+            matching: find.byType(LaunchMotionScope),
+          )
+          .first;
+      final motion = tester.widget<LaunchMotionScope>(launchScope).motion;
+      expect(modules.pending, isTrue);
+      expect(motion.milliseconds, 0);
+      await tester.pump(const Duration(milliseconds: 129));
+      expect(modules.pending, isTrue);
+      await tester.pump(const Duration(milliseconds: 2));
+      expect(modules.pending, isFalse);
+      expect(motion.milliseconds, 0);
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(
+        tester.getTopLeft(find.byKey(const Key('grid-add-session'))).dx,
+        inExclusiveRange(finalAdd.dx - 26, finalAdd.dx),
+      );
+      expect(modules.clock.value, lessThan(.3));
+      final cards = tester
+          .widgetList<LaunchCard>(
+            find.descendant(
+              of: find.byKey(const Key('adjacent-page-current')),
+              matching: find.byType(LaunchCard),
+            ),
+          )
+          .where((card) => card.spec != null)
+          .toList();
+      expect(cards, isNotEmpty);
+      expect(
+        cards.every((card) => card.travel?.dx == -48 && card.travel?.dy == 0),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byKey(const Key('grid-add-session'))),
+        finalAdd,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'week navigation never animates a newly constructed viewport as inserted courses',
+    (tester) async {
+      final first = _courses();
+      final second = first
+          .map(
+            (s) => s.copyWith(
+              id: '${s.id}-next',
+              date: s.date.add(const Duration(days: 7)),
+              startAt: s.startAt.add(const Duration(days: 7)),
+              endAt: s.endAt.add(const Duration(days: 7)),
+            ),
+          )
+          .toList();
+      final container = await _pump(
+        tester,
+        onPageSwitch: true,
+        data: Future.value([...first, ...second]),
+      );
+      await _ready(tester);
+      await tester.pumpAndSettle();
+      final pager = tester.widget<AdjacentPagePager>(
+        find.byType(AdjacentPagePager),
+      );
+      final navigation = pager.controller!.animateToNext();
+      await tester.pumpAndSettle();
+      await navigation;
+      final motions = tester.widgetList<GridEventMotion>(
+        find.byType(GridEventMotion),
+      );
+      expect(motions, isNotEmpty);
+      expect(motions.every((m) => !m.animateInitial), isTrue);
+      final nowVisible = tester.widgetList<GridSessionChip>(
+        find.descendant(
+          of: find.byKey(const Key('adjacent-page-current')),
+          matching: find.byType(GridSessionChip),
+        ),
+      );
+      expect(nowVisible.any((s) => s.session.id.endsWith('-next')), isTrue);
+      container.read(selectedScheduleDateProvider.notifier).state = DateTime(
+        2026,
+        10,
+        12,
+      );
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<GridEventMotion>(find.byType(GridEventMotion))
+            .every((m) => !m.animateInitial),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'grid replay retains its timetable state, layout cache and scroll position',
     (tester) async {
       final container = await _pump(
@@ -191,6 +317,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1600));
       await tester.pumpAndSettle();
       final state = tester.state<WeekGridViewState>(find.byType(WeekGridView));
+      final theme = Theme.of(tester.element(find.byType(WeekGridView)));
       final body = find
           .descendant(
             of: find.byKey(const Key('adjacent-page-current')),
@@ -210,6 +337,7 @@ void main() {
         same(state),
       );
       expect(scroll.offset, closeTo(offset, .1));
+      expect(Theme.of(tester.element(find.byType(WeekGridView))), theme);
       expect(tester.takeException(), isNull);
     },
   );
@@ -550,12 +678,33 @@ void main() {
   testWidgets(
     'empty first result consumes the entrance without delaying brand exit',
     (tester) async {
-      await _pump(tester, data: Future.value([]));
+      final container = await _pump(
+        tester,
+        data: Future.value([]),
+        onPageSwitch: true,
+      );
       await _ready(tester);
       expect(_motion(tester).canClaimGrid, isFalse);
       await tester.pump(const Duration(milliseconds: 1200));
       expect(find.byKey(const Key('orbit-launch-brand')), findsNothing);
       expect(find.byType(GridSessionChip), findsNothing);
+      container.read(appNavIndexProvider.notifier).state = 1;
+      await tester.pumpAndSettle();
+      container.read(appNavIndexProvider.notifier).state = 0;
+      await tester.pump();
+      final empty = find.descendant(
+        of: find.byKey(const ValueKey('app-destination-0')),
+        matching: find.byType(EmptyState),
+      );
+      expect(
+        tester
+            .widgetList<PageModule>(
+              find.ancestor(of: empty, matching: find.byType(PageModule)),
+            )
+            .any((module) => module.enabled),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox());
     },
   );

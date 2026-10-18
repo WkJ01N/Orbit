@@ -19,6 +19,7 @@ import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/core/motion/launch_motion.dart';
+import 'package:orbit/core/motion/page_module.dart';
 
 class GridPage extends ConsumerWidget {
   const GridPage({super.key});
@@ -98,6 +99,7 @@ class GridPage extends ConsumerWidget {
           ),
           body: LaunchReveal(
             startMs: 400,
+            pageModule: false,
             child: AnimatedSwitcher(
               duration: MediaQuery.disableAnimationsOf(context)
                   ? Duration.zero
@@ -109,20 +111,25 @@ class GridPage extends ConsumerWidget {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (context.mounted) motion?.skipGridEntrance();
                     });
-                    return BackgroundRegion(
-                      region: BackgroundRegionId.content,
-                      child: _EmptyState(
-                        onImport: () => _goToImport(context, ref),
+                    return _GridFallbackEntrance(
+                      child: BackgroundRegion(
+                        region: BackgroundRegionId.content,
+                        child: _EmptyState(
+                          onImport: () => _goToImport(context, ref),
+                        ),
                       ),
                     );
                   }
                   return WeekGridView(grid: grid, sessions: sessions);
                 },
-                loading: () => const _GridSkeleton(),
-                error: (error, _) => ErrorState(
-                  message: l10n.gridLoadFailed('$error'),
-                  retryLabel: l10n.actionRetry,
-                  onRetry: () => ref.invalidate(sessionsProvider),
+                loading: () =>
+                    const _GridFallbackEntrance(child: _GridSkeleton()),
+                error: (error, _) => _GridFallbackEntrance(
+                  child: ErrorState(
+                    message: l10n.gridLoadFailed('$error'),
+                    retryLabel: l10n.actionRetry,
+                    onRetry: () => ref.invalidate(sessionsProvider),
+                  ),
                 ),
               ),
             ),
@@ -296,6 +303,18 @@ class _GridAppBar extends StatelessWidget implements PreferredSizeWidget {
       ],
     );
   }
+}
+
+/// Keep outgoing placeholders on their own clock while asynchronous table
+/// modules join the same wave, without toggling an ancestor's opacity.
+class _GridFallbackEntrance extends StatelessWidget {
+  const _GridFallbackEntrance({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => PageModule(
+    enabled: LaunchMotionScope.maybeOf(context)?.startup == false,
+    child: child,
+  );
 }
 
 class _EmptyState extends StatelessWidget {

@@ -160,17 +160,50 @@ class QuickActionLayout {
               : a.compareTo(b)),
         );
       final polygon = sector(side);
-      double split = side.isEven ? card.center.dx : card.center.dy;
+      final split = side.isEven ? card.center.dx : card.center.dy;
+      final pairedCorner = corner && directions.length == 2;
+      // Include the maximum 1.06 highlight scale when reserving the gap.
+      final separation = side.isEven ? 60.0 : 72.0;
+      final centers = <Offset>[];
+      for (var i = 0; i < directions.length; i++) {
+        final distance = pairedCorner ? 36.0 + i * separation : 36.0;
+        var center = switch (side) {
+          0 => Offset(card.center.dx, card.top - distance),
+          1 => Offset(card.right + distance, card.center.dy),
+          2 => Offset(card.center.dx, card.bottom + distance),
+          _ => Offset(card.left - distance, card.center.dy),
+        };
+        if (directions.length == 2 && !corner) {
+          center = side.isEven
+              ? Offset(split + (i == 0 ? -32 : 32), center.dy)
+              : Offset(center.dx, split + (i == 0 ? -30 : 30));
+        }
+        centers.add(center);
+      }
+      final minX = centers.map((p) => p.dx).reduce(math.min) - 28 * 1.06;
+      final maxX = centers.map((p) => p.dx).reduce(math.max) + 28 * 1.06;
+      final minY = centers.map((p) => p.dy).reduce(math.min) - 22 * 1.06;
+      final maxY = centers.map((p) => p.dy).reduce(math.max) + 22 * 1.06;
+      final shiftX = minX < safe.left
+          ? safe.left - minX
+          : maxX > safe.right
+          ? safe.right - maxX
+          : 0.0;
+      final shiftY = minY < safe.top
+          ? safe.top - minY
+          : maxY > safe.bottom
+          ? safe.bottom - maxY
+          : 0.0;
+      for (var i = 0; i < centers.length; i++) {
+        centers[i] += Offset(shiftX, shiftY);
+      }
       for (var index = 0; index < directions.length; index++) {
         var zone = polygon;
         if (directions.length == 2) {
           if (corner) {
-            final boundary = switch (side) {
-              0 => card.top - 72,
-              1 => card.right + 72,
-              2 => card.bottom + 72,
-              _ => card.left - 72,
-            };
+            final boundary = side.isEven
+                ? (centers[0].dy + centers[1].dy) / 2
+                : (centers[0].dx + centers[1].dx) / 2;
             final nearSign = side == 0 || side == 3 ? -1.0 : 1.0;
             final sign = index == 0 ? nearSign : -nearSign;
             zone = _clip(
@@ -189,22 +222,7 @@ class QuickActionLayout {
             );
           }
         }
-        final distance = corner ? 36.0 + index * 56 : 36.0;
-        var center = switch (side) {
-          0 => Offset(card.center.dx, card.top - distance),
-          1 => Offset(card.right + distance, card.center.dy),
-          2 => Offset(card.center.dx, card.bottom + distance),
-          _ => Offset(card.left - distance, card.center.dy),
-        };
-        if (directions.length == 2 && !corner) {
-          center = side.isEven
-              ? Offset(split + (index == 0 ? -30 : 30), center.dy)
-              : Offset(center.dx, split + (index == 0 ? -26 : 26));
-        }
-        center = Offset(
-          center.dx.clamp(safe.left + 28, safe.right - 28),
-          center.dy.clamp(safe.top + 22, safe.bottom - 22),
-        );
+        final center = centers[index];
         final horizontal = side.isEven;
         var start = horizontal ? viewport.left : viewport.top;
         var end = horizontal ? viewport.right : viewport.bottom;

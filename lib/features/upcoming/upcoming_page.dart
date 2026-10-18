@@ -501,29 +501,29 @@ class _WeekMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Padding(
-      key: Key(
-        'upcoming-week-marker-${monday.year}-${monday.month}-${monday.day}',
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 8, 16, 2),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_view_week_outlined,
-            size: 16,
-            color: colors.primary,
-          ),
-          const SizedBox(width: 8),
-          PageModule(
-            child: Text(
+    return PageModule(
+      child: Padding(
+        key: Key(
+          'upcoming-week-marker-${monday.year}-${monday.month}-${monday.day}',
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 8, 16, 2),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_view_week_outlined,
+              size: 16,
+              color: colors.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: colors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

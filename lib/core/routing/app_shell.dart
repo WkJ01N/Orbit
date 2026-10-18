@@ -1,5 +1,5 @@
 import 'package:orbit/core/motion/page_entrance.dart';
-import 'package:flutter/rendering.dart';
+import 'package:orbit/core/motion/retained_page_switcher.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:flutter/material.dart';
@@ -290,170 +290,40 @@ class _AnimatedIndexedStack extends StatefulWidget {
   State<_AnimatedIndexedStack> createState() => _AnimatedIndexedStackState();
 }
 
-class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 260),
-    value: 1.0,
-  )..addStatusListener(_handleAnimationStatus);
-  late int _activeIndex = widget.index;
-  late final Set<int> _visited = {widget.index};
-  int? _previousIndex;
-  int _direction = 1;
-
+class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack> {
+  final _destinations = <int, Widget>{};
   @override
-  void didUpdateWidget(_AnimatedIndexedStack old) {
-    super.didUpdateWidget(old);
-    if (widget.index != _activeIndex) {
-      _previousIndex = _activeIndex;
-      _direction = widget.index > _activeIndex ? 1 : -1;
-      _activeIndex = widget.index;
-      _visited.add(_activeIndex);
-      _controller.forward(from: 0.0);
-    }
-  }
-
-  void _handleAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed && _previousIndex != null) {
-      setState(() => _previousIndex = null);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.removeStatusListener(_handleAnimationStatus);
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    // These consumers and their page trees stay unchanged on animation ticks.
-    final destinations = <int, Widget>{
-      for (final index in _visited)
-        index: RepaintBoundary(
-          child: Consumer(
-            builder: (context, ref, _) => BackgroundPageTheme(
-              settings:
-                  ref.watch(backgroundSettingsProvider).valueOrNull ??
-                  const BackgroundSettings(),
-              owner: BackgroundPage.values[index],
-              child: PageEntranceHost(
-                index: index,
-                navigation: _controller,
-                active: index == _activeIndex,
-                startup: _visited.length == 1,
-                child: widget.children[index],
-              ),
-            ),
-          ),
-        ),
-    };
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final progress = reduceMotion
-            ? 1.0
-            : Curves.easeOutCubic.transform(_controller.value);
-        final hiddenIndexes = <int>[
-          for (var index = 0; index < widget.children.length; index++)
-            if (_visited.contains(index) &&
-                index != _activeIndex &&
-                (reduceMotion || index != _previousIndex))
-              index,
-        ];
-
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            for (final index in hiddenIndexes)
-              _destinationLayer(
-                index: index,
-                child: destinations[index]!,
-                offstage: true,
-              ),
-            _destinationLayer(
-              index: _activeIndex,
-              child: destinations[_activeIndex]!,
-              offset: Offset(_direction * (1 - progress) * 14, 0),
-              interactive: true,
-            ),
-            if (!reduceMotion && _previousIndex != null)
-              _destinationLayer(
-                index: _previousIndex!,
-                child: destinations[_previousIndex]!,
-                opacity: 1 - progress,
-                offset: Offset(-_direction * progress * 6, 0),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _destinationLayer({
-    required int index,
-    required Widget child,
-    bool offstage = false,
-    bool interactive = false,
-    double opacity = 1,
-    Offset offset = Offset.zero,
-  }) {
-    child = _DeferredPageLayout(frozen: offstage, child: child);
-    return KeyedSubtree(
-      key: ValueKey('app-destination-$index'),
-      child: Offstage(
-        offstage: offstage,
-        child: TickerMode(
-          enabled: interactive,
-          child: IgnorePointer(
-            ignoring: !interactive,
-            child: ExcludeSemantics(
-              excluding: !interactive,
-              child: Opacity(
-                opacity: opacity.clamp(0.0, 1.0),
-                child: Transform.translate(offset: offset, child: child),
-              ),
+  Widget build(BuildContext context) => RetainedPageSwitcher(
+    index: widget.index,
+    itemCount: widget.children.length,
+    keyPrefix: 'app-destination',
+    builder: (context, index, _) => _destinations.putIfAbsent(
+      index,
+      () => RepaintBoundary(
+        child: Consumer(
+          builder: (context, ref, _) => BackgroundPageTheme(
+            settings:
+                ref.watch(backgroundSettingsProvider).valueOrNull ??
+                const BackgroundSettings(),
+            owner: BackgroundPage.values[index],
+            child: Builder(
+              builder: (context) {
+                final transition = PageTransitionScope.of(context);
+                return PageEntranceHost(
+                  index: index,
+                  navigation: transition.animation,
+                  navigationEpoch: transition.epoch,
+                  direction: transition.direction,
+                  continuing: transition.continuing,
+                  active: transition.active,
+                  startup: transition.epoch == 0,
+                  child: widget.children[index],
+                );
+              },
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Offstage keeps element state but normally still lays out its child. Defer
-/// hidden page layout so background provider updates do not rebuild a full grid.
-class _DeferredPageLayout extends SingleChildRenderObjectWidget {
-  const _DeferredPageLayout({required this.frozen, required super.child});
-  final bool frozen;
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _DeferredPageBox(frozen);
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _DeferredPageBox renderObject,
-  ) => renderObject.frozen = frozen;
-}
-
-class _DeferredPageBox extends RenderProxyBox {
-  _DeferredPageBox(this._frozen);
-  bool _frozen;
-  set frozen(bool value) {
-    if (_frozen == value) return;
-    _frozen = value;
-    markNeedsLayout();
-  }
-
-  @override
-  void performLayout() {
-    if (_frozen) {
-      size = constraints.constrain(Size.zero);
-    } else {
-      super.performLayout();
-    }
-  }
+    ),
+  );
 }

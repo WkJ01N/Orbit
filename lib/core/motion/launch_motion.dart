@@ -1,4 +1,5 @@
 import 'package:orbit/models/typography_settings.dart';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/providers/typography_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
@@ -76,10 +77,11 @@ class LaunchMotion {
     required this.settings,
     int? seed,
     this.startup = true,
+    this.direction = 1,
   }) : random = math.Random(seed),
        timeline = AnimationController(
          vsync: vsync,
-         duration: const Duration(milliseconds: 1150),
+         duration: Duration(milliseconds: startup ? 1150 : 680),
        ),
        cards = AnimationController(
          vsync: vsync,
@@ -88,13 +90,28 @@ class LaunchMotion {
 
   final LaunchSettings settings;
   final bool startup;
+  final int direction;
   final math.Random random;
   final AnimationController timeline;
   final AnimationController cards;
   Object? _gridOwner;
   bool _finished = false;
 
-  double get milliseconds => timeline.value * 1150;
+  double get milliseconds => timeline.value * timeline.duration!.inMilliseconds;
+  bool _pausedTimeline = false, _pausedCards = false;
+  void pause() {
+    _pausedTimeline = timeline.isAnimating;
+    _pausedCards = cards.isAnimating;
+    timeline.stop();
+    cards.stop();
+  }
+
+  void resume() {
+    if (_finished) return;
+    if (_pausedTimeline) timeline.forward();
+    if (_pausedCards) cards.forward();
+  }
+
   bool get canClaimGrid => !_finished && _gridOwner == null;
   bool get finished => _finished;
   bool get cardsComplete => _finished || cards.isCompleted;
@@ -112,7 +129,7 @@ class LaunchMotion {
   }
 
   void _startCardsWhenReady() {
-    if (_finished || milliseconds < 500) return;
+    if (_finished || milliseconds < (startup ? 500 : 60)) return;
     timeline.removeListener(_startCardsWhenReady);
     cards.forward();
   }
@@ -146,6 +163,24 @@ class LaunchMotionScope extends InheritedWidget {
       oldWidget.motion != motion;
 }
 
+/// Adjacent timetable previews are complete presentations, never entrants.
+class LaunchEntranceRegion extends InheritedWidget {
+  const LaunchEntranceRegion({
+    super.key,
+    required this.enabled,
+    required super.child,
+  });
+  final bool enabled;
+  static bool enabledOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<LaunchEntranceRegion>()
+          ?.enabled ??
+      true;
+  @override
+  bool updateShouldNotify(LaunchEntranceRegion oldWidget) =>
+      enabled != oldWidget.enabled;
+}
+
 /// The child is cached by AnimatedBuilder; only opacity/paint transforms tick.
 class LaunchReveal extends StatelessWidget {
   const LaunchReveal({
@@ -156,6 +191,7 @@ class LaunchReveal extends StatelessWidget {
     this.offset = Offset.zero,
     this.spring = false,
     this.grow,
+    this.pageModule = true,
   });
   final Widget child;
   final double startMs;
@@ -163,44 +199,52 @@ class LaunchReveal extends StatelessWidget {
   final Offset offset;
   final bool spring;
   final Axis? grow;
+  final bool pageModule;
 
   @override
   Widget build(BuildContext context) {
     final motion = LaunchMotionScope.maybeOf(context);
     final reduced = MediaQuery.disableAnimationsOf(context);
+    final participates = LaunchEntranceRegion.enabledOf(context);
     // Keep the same element path in every phase. Unwrapping a finished reveal
     // remounts the timetable and discards its scroll position and layout cache.
-    return AnimatedBuilder(
-      animation: motion?.timeline ?? kAlwaysCompleteAnimation,
-      child: child,
-      builder: (context, child) {
-        final skip =
-            motion == null ||
-            motion.finished ||
-            (motion.startup && !motion.settings.onStartup) ||
-            reduced;
-        final t = skip
-            ? 1.0
-            : launchProgress(motion.milliseconds, startMs, durationMs);
-        final p = (spring ? Curves.easeOutBack : Curves.easeOutCubic).transform(
-          t,
-        );
-        Widget result = Opacity(
-          opacity: (t * 3).clamp(0, 1),
-          alwaysIncludeSemantics: true,
-          child: Transform.translate(offset: offset * (1 - p), child: child),
-        );
-        if (grow != null) {
-          result = ClipRect(
-            clipper: _GrowingClipper(p.clamp(0, 1), grow!),
-            clipBehavior: p >= 1 ? Clip.none : Clip.hardEdge,
-            child: result,
+    return PageModule(
+      enabled: participates && motion != null && !motion.startup && pageModule,
+      child: AnimatedBuilder(
+        animation: motion != null && motion.startup
+            ? motion.timeline
+            : kAlwaysCompleteAnimation,
+        child: child,
+        builder: (context, child) {
+          final skip =
+              motion == null ||
+              motion.finished ||
+              !participates ||
+              !motion.startup ||
+              (motion.startup && !motion.settings.onStartup) ||
+              reduced;
+          final t = skip
+              ? 1.0
+              : launchProgress(motion.milliseconds, startMs, durationMs);
+          final p = (spring ? Curves.easeOutBack : Curves.easeOutCubic)
+              .transform(t);
+          Widget result = Opacity(
+            opacity: (t * 3).clamp(0, 1),
+            alwaysIncludeSemantics: true,
+            child: Transform.translate(offset: offset * (1 - p), child: child),
           );
-        }
-        // NavigationBar supplies a tab semantic role above its destination.
-        // Keep the destination's tap action even while opacity is zero.
-        return result;
-      },
+          if (grow != null) {
+            result = ClipRect(
+              clipper: _GrowingClipper(p.clamp(0, 1), grow!),
+              clipBehavior: p >= 1 ? Clip.none : Clip.hardEdge,
+              child: result,
+            );
+          }
+          // NavigationBar supplies a tab semantic role above its destination.
+          // Keep the destination's tap action even while opacity is zero.
+          return result;
+        },
+      ),
     );
   }
 }
@@ -228,10 +272,12 @@ class LaunchCard extends StatelessWidget {
     this.spec,
     this.offset = 0,
     this.pending = false,
+    this.travel,
   });
   final Widget child;
   final CardEntranceSpec? spec;
   final double offset;
+  final Offset? travel;
   final bool pending;
   @override
   Widget build(BuildContext context) {
@@ -254,10 +300,9 @@ class LaunchCard extends StatelessWidget {
           child: Opacity(
             opacity: Curves.easeOut.transform((t * 3).clamp(0.0, 1.0)),
             child: Transform.translate(
-              offset: Offset(
-                0,
-                offset * (1 - Curves.easeOutQuint.transform(t)),
-              ),
+              offset:
+                  (travel ?? Offset(0, offset)) *
+                  (1 - Curves.easeOutQuint.transform(t)),
               child: child,
             ),
           ),

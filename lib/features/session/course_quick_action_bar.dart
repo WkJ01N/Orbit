@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/scheduler.dart';
+import 'package:orbit/core/motion/page_entrance.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/quick_action_providers.dart';
 
 final activeQuickActionCourseProvider = StateProvider<String?>((ref) => null);
+final hiddenQuickActionCourseProvider = StateProvider<String?>((ref) => null);
 
 IconData quickActionIcon(SessionAction action) => switch (action) {
   SessionAction.edit => Icons.edit_outlined,
@@ -29,24 +31,70 @@ String quickActionLabel(BuildContext context, SessionAction action) {
   };
 }
 
-class CourseQuickActionViewport extends ConsumerWidget {
+class CourseQuickActionViewport extends ConsumerStatefulWidget {
   const CourseQuickActionViewport({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => PopScope(
+  ConsumerState<CourseQuickActionViewport> createState() =>
+      _CourseQuickActionViewportState();
+}
+
+class _CourseQuickActionViewportState
+    extends ConsumerState<CourseQuickActionViewport> {
+  final _overlay = GlobalKey<OverlayState>();
+  _QuickActionSession? _session;
+  Size? _size;
+  @override
+  void dispose() {
+    _session?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
     canPop: ref.watch(activeQuickActionCourseProvider) == null,
     onPopInvokedWithResult: (didPop, _) {
       if (!didPop) _activeSession?.cancel();
     },
     child: Builder(
-      builder: (context) => _QuickViewport(context: context, child: child),
+      builder: (context) => _QuickViewport(
+        context: context,
+        overlay: _overlay,
+        onOpened: (session) => _session = session,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.biggest;
+            if (_size != null && _size != size) {
+              final session = _session;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => session?.close(),
+              );
+            }
+            _size = size;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                widget.child,
+                Positioned.fill(child: Overlay(key: _overlay)),
+              ],
+            );
+          },
+        ),
+      ),
     ),
   );
 }
 
 class _QuickViewport extends InheritedWidget {
-  const _QuickViewport({required this.context, required super.child});
+  const _QuickViewport({
+    required this.context,
+    required this.overlay,
+    required this.onOpened,
+    required super.child,
+  });
   final BuildContext context;
+  final GlobalKey<OverlayState> overlay;
+  final void Function(_QuickActionSession) onOpened;
   @override
   bool updateShouldNotify(_QuickViewport oldWidget) =>
       context != oldWidget.context;
@@ -78,6 +126,7 @@ _QuickActionSession? _activeSession;
 class _CourseQuickActionGestureState
     extends ConsumerState<CourseQuickActionGesture> {
   _QuickActionSession? _session;
+  Offset Function(Offset) _toLocal = (point) => point;
   void _start(LongPressStartDetails details) {
     if (!widget.enabled) return;
     final settings = ref.read(courseQuickActionsProvider);
@@ -91,30 +140,36 @@ class _CourseQuickActionGestureState
       return;
     }
     final sourceBox = context.findRenderObject() as RenderBox;
-    final viewportContext = context
-        .dependOnInheritedWidgetOfExactType<_QuickViewport>()
-        ?.context;
+    final viewportScope = context
+        .dependOnInheritedWidgetOfExactType<_QuickViewport>();
+    final viewportContext = viewportScope?.context;
     final viewportBox = viewportContext?.findRenderObject() as RenderBox?;
-    final source =
+    final globalSource =
         widget.sourceRect?.call() ??
         (sourceBox.localToGlobal(Offset.zero) & sourceBox.size);
+    _toLocal = viewportBox == null
+        ? (point) => point
+        : viewportBox.globalToLocal;
+    final source = _toLocal(globalSource.topLeft) & globalSource.size;
     final viewport = viewportBox == null
         ? Offset.zero & MediaQuery.sizeOf(context)
-        : viewportBox.localToGlobal(Offset.zero) & viewportBox.size;
+        : Offset.zero & viewportBox.size;
     _activeSession?.close();
     final container = ProviderScope.containerOf(context);
     final navigatorContext = Navigator.of(context).context;
     final session = _QuickActionSession(container, widget.session);
     _session = session;
     _activeSession = session;
+    viewportScope?.onOpened(session);
     final layout = QuickActionLayout(
       viewport: viewport,
       source: source,
       settings: settings,
     );
+    final overlay = viewportScope?.overlay.currentState ?? Overlay.of(context);
     final themes = InheritedTheme.capture(
       from: context,
-      to: Overlay.of(context).context,
+      to: viewportContext ?? overlay.context,
     );
     session.entry = OverlayEntry(
       builder: (_) => themes.wrap(
@@ -122,13 +177,15 @@ class _CourseQuickActionGestureState
           key: session.key,
           layout: layout,
           preview: widget.preview ?? widget.child,
-          pointerOrigin: details.globalPosition,
+          pointerOrigin: _toLocal(details.globalPosition),
           onCancel: session.close,
         ),
       ),
     );
-    Overlay.of(context).insert(session.entry!);
+    overlay.insert(session.entry!);
     container.read(activeQuickActionCourseProvider.notifier).state =
+        widget.session.id;
+    container.read(hiddenQuickActionCourseProvider.notifier).state =
         widget.session.id;
     session.navigation = container.listen(
       appNavIndexProvider,
@@ -151,12 +208,12 @@ class _CourseQuickActionGestureState
   @override
   Widget build(BuildContext context) {
     final hidden =
-        ref.watch(activeQuickActionCourseProvider) == widget.session.id;
+        ref.watch(hiddenQuickActionCourseProvider) == widget.session.id;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPressStart: _start,
       onLongPressMoveUpdate: (details) =>
-          _session?.key.currentState?.move(details.globalPosition),
+          _session?.key.currentState?.move(_toLocal(details.globalPosition)),
       onLongPressEnd: (_) => unawaited(_session?.release() ?? Future.value()),
       onLongPressCancel: () => _session?.cancel(),
       child: Opacity(opacity: hidden ? 0 : 1, child: widget.child),
@@ -186,6 +243,9 @@ class _QuickActionSession {
       try {
         if (container.read(activeQuickActionCourseProvider) == courseId) {
           container.read(activeQuickActionCourseProvider.notifier).state = null;
+        }
+        if (container.read(hiddenQuickActionCourseProvider) == courseId) {
+          container.read(hiddenQuickActionCourseProvider.notifier).state = null;
         }
       } on StateError {
         /* The app/provider container was already disposed. */
@@ -218,19 +278,23 @@ class _QuickActionSession {
     }
     committed = true;
     key.currentState?.commit(action);
+    container.read(hiddenQuickActionCourseProvider.notifier).state = null;
     var deleted = false;
     var changed = false;
     try {
-      deleted = await perform!(action);
+      deleted = await pageEntranceRoutes.untilRoutesClosed(
+        () => perform!(action),
+      );
+      if (!closed &&
+          (container.read(sessionsProvider).isLoading ||
+              container.read(deadlinesProvider).isLoading)) {
+        await Future.wait([
+          container.read(sessionsProvider.future),
+          container.read(deadlinesProvider.future),
+        ]);
+      }
       if (!closed && !deleted) {
-        var courses = container.read(sessionsProvider).valueOrNull;
-        if (container.read(sessionsProvider).isLoading) {
-          await Future.wait([
-            container.read(sessionsProvider.future),
-            container.read(deadlinesProvider.future),
-          ]);
-          courses = container.read(sessionsProvider).valueOrNull;
-        }
+        final courses = container.read(sessionsProvider).valueOrNull;
         final id =
             container.read(scheduleIdentityChangesProvider)[courseId] ??
             courseId;
@@ -241,8 +305,8 @@ class _QuickActionSession {
             updated.toMap().toString() != original.toMap().toString();
         if (changed &&
             !deleted &&
-            container.read(activeQuickActionCourseProvider) == courseId) {
-          container.read(activeQuickActionCourseProvider.notifier).state = null;
+            container.read(hiddenQuickActionCourseProvider) == courseId) {
+          container.read(hiddenQuickActionCourseProvider.notifier).state = null;
         }
       }
     } catch (error) {
@@ -295,7 +359,7 @@ class _QuickActionOverlayState extends State<_QuickActionOverlay>
   );
   late final _copyFade = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 220),
+    duration: const Duration(milliseconds: 180),
     value: 1,
   );
   final _timers = <Timer>[];
@@ -375,6 +439,12 @@ class _QuickActionOverlayState extends State<_QuickActionOverlay>
 
   void commit(SessionAction action) {
     _committed = true;
+    _select(null);
+    if (_reduced) {
+      _copyFade.value = 0;
+    } else {
+      _copyFade.reverse();
+    }
     for (final timer in _timers) {
       timer.cancel();
     }
@@ -545,6 +615,7 @@ class _QuickActionOverlayState extends State<_QuickActionOverlay>
                     Positioned.fromRect(
                       rect: rect,
                       child: Opacity(
+                        key: const Key('course-quick-card-copy'),
                         opacity: _copyFade.value,
                         child: Material(
                           elevation: layout.floating ? 14 * lift : 5,

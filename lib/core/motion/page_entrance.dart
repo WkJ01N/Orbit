@@ -8,13 +8,38 @@ import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/providers/notification_providers.dart';
 
 class PageEntranceRouteObserver extends RouteObserver<PageRoute<dynamic>> {
+  final _operationRoutes = <List<Future<dynamic>>>[];
+  Future<T> untilRoutesClosed<T>(Future<T> Function() operation) async {
+    final routes = <Future<dynamic>>[];
+    _operationRoutes.add(routes);
+    try {
+      final result = await operation();
+      await Future.wait(routes);
+      return result;
+    } finally {
+      _operationRoutes.remove(routes);
+    }
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is TransitionRoute<dynamic>) {
+      for (final scope in _operationRoutes) {
+        scope.add(route.completed);
+      }
+    }
+    super.didPush(route, previousRoute);
+  }
+
   Duration returnDelay = const Duration(milliseconds: 320);
   Animation<double>? returningAnimation;
+  bool returningWasInteractive = false;
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     if (route is PageRoute<dynamic>) {
       returnDelay = route.reverseTransitionDuration;
       returningAnimation = route.animation;
+      returningWasInteractive = route.navigator?.userGestureInProgress ?? false;
     }
     super.didPop(route, previousRoute);
   }
@@ -32,11 +57,16 @@ class PageEntranceHost extends ConsumerStatefulWidget {
     this.startup = true,
     this.secondary = false,
     this.navigation,
+    this.navigationEpoch = 0,
+    this.direction = 1,
+    this.continuing = false,
   });
   final int index;
   final bool active, startup, secondary;
   final Widget child;
   final Animation<double>? navigation;
+  final int navigationEpoch, direction;
+  final bool continuing;
   @override
   ConsumerState<PageEntranceHost> createState() => _PageEntranceHostState();
 }
@@ -102,8 +132,13 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       } else if (widget.active && !widget.startup && settings.onPageSwitch) {
         _arm(widget.navigation ?? _route?.animation);
       }
-    } else if (!_allowed) {
-      _finish();
+    } else if (widget.active && !_allowed) {
+      if (_route?.isCurrent == false) {
+        _modules.pause();
+        _gridMotion?.pause();
+      } else {
+        _finish();
+      }
     }
   }
 
@@ -131,7 +166,7 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       return;
     }
     _generation++;
-    _modules.reset();
+    _modules.reset(fromDirection: reverse ? -1 : widget.direction);
     _reverse = reverse;
     _startupWait = startup;
     if (_grid) {
@@ -140,6 +175,7 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
         vsync: this,
         settings: ref.read(launchSettingsProvider),
         startup: false,
+        direction: reverse ? -1 : widget.direction,
       );
       WidgetsBinding.instance.addPostFrameCallback((_) => old?.dispose());
     }
@@ -167,26 +203,54 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
     _modules.start(box.localToGlobal(Offset.zero) & box.size);
-    _gridMotion?.timeline.forward(from: 500 / 1150);
-    setState(() {});
+    _gridMotion?.timeline.forward(from: 0);
   }
 
   @override
   void didUpdateWidget(PageEntranceHost old) {
     super.didUpdateWidget(old);
     if (old.active != widget.active) {
-      _finish();
-      if (widget.active && ref.read(launchSettingsProvider).onPageSwitch) {
+      if (!widget.active) {
+        _generation++;
+        _detachWait();
+        _modules.pause();
+        _gridMotion?.pause();
+      } else if (ref.read(launchSettingsProvider).onPageSwitch) {
+        if (widget.continuing && !_modules.pending) {
+          _modules.resume();
+          _gridMotion?.resume();
+        } else {
+          _arm(widget.navigation ?? _route?.animation);
+        }
+      } else {
+        _finish();
+      }
+    } else if (widget.active && old.navigationEpoch != widget.navigationEpoch) {
+      if (ref.read(launchSettingsProvider).onPageSwitch && !widget.continuing) {
         _arm(widget.navigation ?? _route?.animation);
       }
     }
   }
 
   @override
-  void didPushNext() => _finish();
+  void didPushNext() {
+    _generation++;
+    _detachWait();
+    _modules.pause();
+    _gridMotion?.pause();
+  }
+
   @override
   void didPopNext() {
     if (ref.read(launchSettingsProvider).onPageSwitch) {
+      final returning = pageEntranceRoutes.returningAnimation;
+      if (!_modules.pending &&
+          (pageEntranceRoutes.returningWasInteractive ||
+              (returning?.value ?? 1) < .5)) {
+        _modules.resume();
+        _gridMotion?.resume();
+        return;
+      }
       setState(
         () => _arm(pageEntranceRoutes.returningAnimation, reverse: true),
       );
@@ -229,7 +293,13 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       if (next != null) _finish();
     });
     ref.listen(launchSettingsProvider, (_, next) {
-      if (!next.pageEnabled[widget.index]) _finish();
+      if (!next.pageEnabled[widget.index] ||
+          (!_startupWait && !next.onPageSwitch)) {
+        _finish();
+      }
+    });
+    ref.listen(launchAnimationsEnabledProvider, (_, next) {
+      if (!next) _finish();
     });
     Widget child = ModuleEntranceScope(
       motion: _modules,

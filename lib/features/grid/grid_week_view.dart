@@ -1,4 +1,5 @@
 import 'package:orbit/features/grid/grid_event_motion.dart';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/session/course_quick_action_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:orbit/models/deadline.dart';
@@ -8,6 +9,7 @@ import 'package:orbit/models/wake_text.dart';
 import 'package:orbit/features/grid/grid_selection.dart';
 import 'package:orbit/core/routing/app_tab.dart';
 import 'package:orbit/models/grid_action_text.dart';
+import 'package:orbit/models/launch_settings.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'dart:math' as math;
 
@@ -198,12 +200,24 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
     }
   }
 
+  void _cancelGridEntrance() {
+    LaunchMotionScope.maybeOf(context)?.finish();
+    ModuleEntranceScope.maybeOf(context)?.finish();
+  }
+
   @override
   Widget build(BuildContext context) {
-    ref.listen(gridDefaultWeekModeProvider, (_, _) => _defaultAnchor = null);
+    ref.listen(selectedScheduleDateProvider, (previous, next) {
+      if (previous != next) _cancelGridEntrance();
+    });
+    ref.listen(gridDefaultWeekModeProvider, (_, _) {
+      _defaultAnchor = null;
+      _cancelGridEntrance();
+    });
     ref.listen(selectedWeekStartProvider, (_, next) {
       if (next != null && ref.read(selectedScheduleDateProvider) == null) {
         _defaultAnchor = dateOnly(next);
+        _cancelGridEntrance();
       }
     });
     ref.listen(appNavIndexProvider, (_, next) {
@@ -234,7 +248,11 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           constraints.maxWidth,
           narrowLayout: settings.narrowLayout,
         );
+        final previousSource = _sessionSource;
         final sessions = _sessions;
+        final animateAddition =
+            previousSource != null &&
+            !identical(previousSource, _sessionSource);
         final configuration = (
           mode,
           settings,
@@ -313,11 +331,13 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         void commitNavigation(int direction) {
           final target = direction < 0 ? previousAnchor : nextAnchor;
           if (isSameScheduleDate(target, anchor)) return;
+          _cancelGridEntrance();
           setState(() => _rangeTransitionDirection = direction);
           _setAnchor(target, weekStartDay);
         }
 
         void selectAnchor(DateTime target) {
+          _cancelGridEntrance();
           _pagerController.cancelInteraction();
           final normalized = dateOnly(target);
           if (!isSameScheduleDate(normalized, anchor)) {
@@ -338,6 +358,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         final reduceMotion = MediaQuery.disableAnimationsOf(context);
         final currentSchedulePage = _SchedulePage(
           animateEntrance: true,
+          animateAddition: animateAddition,
           data: currentPage,
           density: density,
           scrollController: _scrollController,
@@ -391,6 +412,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                   controller: _pagerController,
                   reduceMotion: reduceMotion,
                   onInteractionStart: () {
+                    _cancelGridEntrance();
                     _clearSelection();
                     _syncAdjacentScrollPositions(
                       previousPage?.layout,
@@ -499,74 +521,94 @@ class _ScheduleToolbar extends StatelessWidget {
             BackgroundRegionId.week,
             theme.colorScheme.surface,
           ),
-          border: Border(
-            bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-          ),
         ),
-        child: Row(
+        child: Stack(
+          clipBehavior: Clip.none,
+          fit: StackFit.expand,
           children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left),
-              tooltip: l10n.gridPrevWeek,
-              onPressed: onPrevious,
-            ),
-            Expanded(
-              child: LaunchReveal(
-                startMs: 420,
-                child: AnimatedSwitcher(
-                  duration: reduceMotion
-                      ? Duration.zero
-                      : const Duration(milliseconds: 160),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                    alignment: Alignment.center,
-                    children: [...previousChildren, ?currentChild],
-                  ),
-                  transitionBuilder: (child, animation) {
-                    final incoming = child.key == ValueKey(rangeKey);
-                    final direction = transitionDirection == 0
-                        ? 0.0
-                        : transitionDirection.toDouble();
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: Offset(
-                            (incoming ? direction : -direction) * 0.08,
-                            0,
-                          ),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Center(
-                    key: ValueKey(rangeKey),
-                    child: GridWeekPicker(
-                      weekStart: weekStartFor(anchor),
-                      onChanged: onSelectWeek,
-                      labelOverride: range,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 1),
+              child: Row(
+                children: [
+                  LaunchReveal(
+                    startMs: 400,
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      tooltip: l10n.gridPrevWeek,
+                      onPressed: onPrevious,
                     ),
                   ),
-                ),
+                  Expanded(
+                    child: LaunchReveal(
+                      startMs: 420,
+                      child: AnimatedSwitcher(
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 160),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: (currentChild, previousChildren) =>
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [...previousChildren, ?currentChild],
+                            ),
+                        transitionBuilder: (child, animation) {
+                          final incoming = child.key == ValueKey(rangeKey);
+                          final direction = transitionDirection == 0
+                              ? 0.0
+                              : transitionDirection.toDouble();
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: Offset(
+                                  (incoming ? direction : -direction) * 0.08,
+                                  0,
+                                ),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Center(
+                          key: ValueKey(rangeKey),
+                          child: GridWeekPicker(
+                            weekStart: weekStartFor(anchor),
+                            onChanged: onSelectWeek,
+                            labelOverride: range,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  LaunchReveal(
+                    startMs: 440,
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      tooltip: l10n.gridNextWeek,
+                      onPressed: onNext,
+                    ),
+                  ),
+                  LaunchReveal(
+                    startMs: 460,
+                    child: IconButton(
+                      icon: const Icon(Icons.today_outlined),
+                      tooltip: l10n.gridThisWeek,
+                      onPressed: onToday,
+                    ),
+                  ),
+                ],
               ),
             ),
-            LaunchReveal(
-              startMs: 440,
-              child: IconButton(
-                icon: const Icon(Icons.chevron_right),
-                tooltip: l10n.gridNextWeek,
-                onPressed: onNext,
-              ),
-            ),
-            LaunchReveal(
-              startMs: 460,
-              child: IconButton(
-                icon: const Icon(Icons.today_outlined),
-                tooltip: l10n.gridThisWeek,
-                onPressed: onToday,
+            Positioned(
+              left: -8,
+              right: -8,
+              bottom: 0,
+              height: 1,
+              child: LaunchReveal(
+                startMs: 425,
+                child: ColoredBox(color: theme.colorScheme.outlineVariant),
               ),
             ),
           ],
@@ -600,10 +642,11 @@ class _SchedulePage extends ConsumerWidget {
     this.onSelectSession,
     this.onMenu,
     this.animateEntrance = false,
+    this.animateAddition = false,
   });
 
   final _SchedulePageData data;
-  final bool animateEntrance;
+  final bool animateEntrance, animateAddition;
   final GridDensity density;
   final ScrollController scrollController;
   final bool shouldAutoScroll;
@@ -614,7 +657,12 @@ class _SchedulePage extends ConsumerWidget {
   final void Function(CourseSession, Offset?)? onMenu;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => LaunchEntranceRegion(
+    enabled: animateEntrance,
+    child: _buildContent(context, ref),
+  );
+
+  Widget _buildContent(BuildContext context, WidgetRef ref) {
     final hasDeadlines =
         (ref.watch(schedulePresentationProvider)?.deadlines ?? []).any(
           (d) =>
@@ -652,6 +700,7 @@ class _SchedulePage extends ConsumerWidget {
           : const Duration(milliseconds: 220),
       child: _ScheduleTimeline(
         animateEntrance: animateEntrance,
+        animateAddition: animateAddition,
         layout: data.layout,
         density: density,
         scrollController: scrollController,
@@ -673,33 +722,38 @@ class _NoVisibleCourses extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Center(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event_available_outlined,
-              size: 44,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(l10n.gridNoSessionsThisWeek),
-            const SizedBox(height: 6),
-            Text(
-              l10n.gridNoSessionsThisWeekSubtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+    return PageModule(
+      enabled:
+          LaunchEntranceRegion.enabledOf(context) &&
+          LaunchMotionScope.maybeOf(context)?.startup == false,
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.event_available_outlined,
+                size: 44,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: onJump,
-              icon: const Icon(Icons.near_me_outlined),
-              label: Text(l10n.scheduleJumpToNearestCourse),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(l10n.gridNoSessionsThisWeek),
+              const SizedBox(height: 6),
+              Text(
+                l10n.gridNoSessionsThisWeekSubtitle,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: onJump,
+                icon: const Icon(Icons.near_me_outlined),
+                label: Text(l10n.scheduleJumpToNearestCourse),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -717,10 +771,11 @@ class _ScheduleTimeline extends ConsumerStatefulWidget {
     required this.onSelectSession,
     required this.onMenu,
     this.animateEntrance = false,
+    this.animateAddition = false,
   });
 
   final ScheduleTimelineLayout layout;
-  final bool animateEntrance;
+  final bool animateEntrance, animateAddition;
   final GridDensity density;
   final ScrollController scrollController;
   final bool shouldAutoScroll;
@@ -738,7 +793,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   bool _entrancePrepared = false;
   bool _entranceQueued = false;
   Map<String, CardEntranceSpec> _entrances = const {};
-  Map<String, double> _entranceOffsets = const {};
+  Map<String, Offset> _entranceOffsets = const {};
 
   bool get _pendingEntrance =>
       widget.animateEntrance &&
@@ -760,7 +815,8 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
 
   Widget _entrance(String id, Widget child) => LaunchCard(
     spec: _entrances[id],
-    offset: _entranceOffsets[id] ?? 0,
+    offset: _entranceOffsets[id]?.dy ?? 0,
+    travel: _entranceOffsets[id] ?? Offset.zero,
     pending: _pendingEntrance,
     child: child,
   );
@@ -776,8 +832,10 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   ) {
     if (!_pendingEntrance || _entranceQueued) return;
     _entranceQueued = true;
+    final plannedMotion = _launch;
     // Registered after the existing scroll-position callbacks in this frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_launch, plannedMotion)) return;
       _entranceQueued = false;
       if (!mounted || !_pendingEntrance || !scrollController.hasClients) return;
       final top = scrollController.offset;
@@ -829,12 +887,25 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
         );
         _entranceOffsets = {
           for (final entry in _entrances.entries)
-            entry.key: cardEntranceOffset(
-              rect: rects[entry.key]!,
-              viewport: viewport,
-              spec: entry.value,
-              mode: motion.settings.cardEntrance,
-            ),
+            entry.key: motion.startup
+                ? Offset(
+                    0,
+                    cardEntranceOffset(
+                      rect: rects[entry.key]!,
+                      viewport: viewport,
+                      spec: entry.value,
+                      mode: motion.settings.cardEntrance,
+                    ),
+                  )
+                : Offset(
+                    motion.direction *
+                        (motion.settings.cardEntrance == CardEntranceMode.nearby
+                            ? 48
+                            : motion.direction > 0
+                            ? viewport.right - rects[entry.key]!.left + 8
+                            : rects[entry.key]!.right - viewport.left + 8),
+                    0,
+                  ),
         };
       });
     });
@@ -962,7 +1033,8 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                             Positioned.fill(
                               child: GridEventMotion(
                                 animateInitial:
-                                    _launch?.timeline.isCompleted ?? false,
+                                    widget.animateEntrance &&
+                                    widget.animateAddition,
                                 viewport: Rect.fromLTWH(
                                   kScheduleTimeRailWidth,
                                   scrollController.hasClients
@@ -1148,7 +1220,8 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                             _CurrentTimeLine(
                               entranceSpec: _entrances['@current-time'],
                               entranceOffset:
-                                  _entranceOffsets['@current-time'] ?? 0,
+                                  _entranceOffsets['@current-time'] ??
+                                  Offset.zero,
                               entrancePending: _pendingEntrance,
                               key: ValueKey(
                                 '${now.year}-${now.month}-${now.day}|$pixelsPerMinute',
@@ -1353,153 +1426,198 @@ class _DateHeader extends ConsumerWidget {
           BackgroundRegionId.dates,
           colors.surface,
         ),
-        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
       ),
-      child: Row(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          SizedBox(
-            key: const Key('schedule-corner'),
-            width: kScheduleTimeRailWidth,
-            height: double.infinity,
-            child: Icon(
-              Icons.schedule,
-              size: 18,
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          for (var dayIndex = 0; dayIndex < layout.days.length; dayIndex++)
-            Expanded(
-              child: LaunchReveal(
-                startMs: 430 + dayIndex * 20,
-                child: Builder(
-                  builder: (context) {
-                    final day = layout.days[dayIndex];
-                    final entries = deadlines
-                        .where((d) => isSameScheduleDate(d.dueAt, day.date))
-                        .toList();
-                    final counted = entries
-                        .where((d) => !d.completed || d.archived)
-                        .toList();
-                    final today = isSameScheduleDate(day.date, now);
-                    final strong = counted.any((d) => d.hasStrongReminder);
-                    return Container(
-                      key: Key(
-                        'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
-                      ),
-                      decoration: BoxDecoration(
-                        color: today
-                            ? colors.primaryContainer.withAlpha(90)
-                            : null,
-                        border: Border(
-                          left: BorderSide(color: colors.outlineVariant),
-                        ),
-                      ),
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: InkWell(
-                          key: counted.isEmpty
-                              ? null
-                              : Key(
-                                  'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
-                                ),
-                          onTap: counted.isEmpty
-                              ? null
-                              : () => showDeadlinesForDay(context, entries),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 3,
-                              vertical: 5,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 1),
+            child: Row(
+              children: [
+                SizedBox(
+                  key: const Key('schedule-corner'),
+                  width: kScheduleTimeRailWidth,
+                  height: double.infinity,
+                  child: LaunchReveal(
+                    startMs: 425,
+                    child: Icon(
+                      Icons.schedule,
+                      size: 18,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                for (
+                  var dayIndex = 0;
+                  dayIndex < layout.days.length;
+                  dayIndex++
+                )
+                  Expanded(
+                    child: LaunchReveal(
+                      startMs: 430 + dayIndex * 20,
+                      child: Builder(
+                        builder: (context) {
+                          final day = layout.days[dayIndex];
+                          final entries = deadlines
+                              .where(
+                                (d) => isSameScheduleDate(d.dueAt, day.date),
+                              )
+                              .toList();
+                          final counted = entries
+                              .where((d) => !d.completed || d.archived)
+                              .toList();
+                          final today = isSameScheduleDate(day.date, now);
+                          final strong = counted.any(
+                            (d) => d.hasStrongReminder,
+                          );
+                          return Container(
+                            key: Key(
+                              'schedule-day-${day.date.year}-${day.date.month}-${day.date.day}',
                             ),
-                            child: _FitLargeText(
-                              child: Column(
-                                mainAxisSize:
-                                    MediaQuery.textScalerOf(context).scale(12) >
-                                        12
-                                    ? MainAxisSize.min
-                                    : MainAxisSize.max,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    compact
-                                        ? weekdayLabel(l10n, day.date.weekday)
-                                        : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
-                                    textAlign: TextAlign.center,
-                                    maxLines: compact ? 1 : null,
-                                    overflow: compact
-                                        ? TextOverflow.clip
-                                        : null,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          fontSize: compact ? 10 : null,
-                                          height: compact ? 1.1 : null,
-                                          fontWeight: FontWeight.w700,
-                                          color: today
-                                              ? colors.primary
-                                              : colors.onSurface,
-                                        ),
-                                  ),
-                                  if (compact)
-                                    Text(
-                                      DateFormat.Md(locale).format(day.date),
-                                      maxLines: 1,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            fontSize: 8,
-                                            height: 1.1,
-                                            color: colors.onSurfaceVariant,
-                                          ),
-                                    )
-                                  else
-                                    Text(
-                                      l10n.scheduleCourseCount(
-                                        day.events.length,
+                            decoration: BoxDecoration(
+                              color: today
+                                  ? colors.primaryContainer.withAlpha(90)
+                                  : null,
+                              border: Border(
+                                left: BorderSide(color: colors.outlineVariant),
+                              ),
+                            ),
+                            child: Material(
+                              type: MaterialType.transparency,
+                              child: InkWell(
+                                key: counted.isEmpty
+                                    ? null
+                                    : Key(
+                                        'deadline-day-${day.date.year}-${day.date.month}-${day.date.day}',
                                       ),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: colors.onSurfaceVariant,
-                                          ),
-                                    ),
-                                  AnimatedSwitcher(
-                                    duration:
-                                        MediaQuery.disableAnimationsOf(context)
-                                        ? Duration.zero
-                                        : const Duration(milliseconds: 220),
-                                    child: counted.isEmpty
-                                        ? const SizedBox.shrink()
-                                        : Text(
-                                            'DDL ${counted.length}',
-                                            key: ValueKey(
-                                              '${day.date}|${counted.length}|$strong',
+                                onTap: counted.isEmpty
+                                    ? null
+                                    : () =>
+                                          showDeadlinesForDay(context, entries),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 3,
+                                    vertical: 5,
+                                  ),
+                                  child: _FitLargeText(
+                                    child: Column(
+                                      mainAxisSize:
+                                          MediaQuery.textScalerOf(
+                                                context,
+                                              ).scale(12) >
+                                              12
+                                          ? MainAxisSize.min
+                                          : MainAxisSize.max,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          compact
+                                              ? weekdayLabel(
+                                                  l10n,
+                                                  day.date.weekday,
+                                                )
+                                              : '${weekdayLabel(l10n, day.date.weekday)} ${DateFormat.Md(locale).format(day.date)}',
+                                          textAlign: TextAlign.center,
+                                          maxLines: compact ? 1 : null,
+                                          overflow: compact
+                                              ? TextOverflow.clip
+                                              : null,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                fontSize: compact ? 10 : null,
+                                                height: compact ? 1.1 : null,
+                                                fontWeight: FontWeight.w700,
+                                                color: today
+                                                    ? colors.primary
+                                                    : colors.onSurface,
+                                              ),
+                                        ),
+                                        if (compact)
+                                          Text(
+                                            DateFormat.Md(
+                                              locale,
+                                            ).format(day.date),
+                                            maxLines: 1,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  fontSize: 8,
+                                                  height: 1.1,
+                                                  color:
+                                                      colors.onSurfaceVariant,
+                                                ),
+                                          )
+                                        else
+                                          Text(
+                                            l10n.scheduleCourseCount(
+                                              day.events.length,
                                             ),
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .labelSmall
                                                 ?.copyWith(
-                                                  color: colors.error,
-                                                  fontSize: compact ? 8 : null,
-                                                  fontWeight: strong
-                                                      ? FontWeight.w700
-                                                      : FontWeight.w400,
+                                                  color:
+                                                      colors.onSurfaceVariant,
                                                 ),
                                           ),
+                                        AnimatedSwitcher(
+                                          duration:
+                                              MediaQuery.disableAnimationsOf(
+                                                context,
+                                              )
+                                              ? Duration.zero
+                                              : const Duration(
+                                                  milliseconds: 220,
+                                                ),
+                                          child: counted.isEmpty
+                                              ? const SizedBox.shrink()
+                                              : Text(
+                                                  'DDL ${counted.length}',
+                                                  key: ValueKey(
+                                                    '${day.date}|${counted.length}|$strong',
+                                                  ),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                        color: colors.error,
+                                                        fontSize: compact
+                                                            ? 8
+                                                            : null,
+                                                        fontWeight: strong
+                                                            ? FontWeight.w700
+                                                            : FontWeight.w400,
+                                                      ),
+                                                ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 1,
+            child: LaunchReveal(
+              startMs: 425,
+              child: ColoredBox(color: colors.outlineVariant),
+            ),
+          ),
         ],
       ),
     );
@@ -1636,12 +1754,12 @@ class _CurrentTimeLine extends StatelessWidget {
     required this.pixelsPerMinute,
     required this.topInset,
     this.entranceSpec,
-    this.entranceOffset = 0,
+    this.entranceOffset = Offset.zero,
     this.entrancePending = false,
   });
   final ScheduleTimelineLayout layout;
   final CardEntranceSpec? entranceSpec;
-  final double entranceOffset;
+  final Offset entranceOffset;
   final bool entrancePending;
   final DateTime now;
   final double dayWidth;
@@ -1679,7 +1797,8 @@ class _CurrentTimeLine extends StatelessWidget {
       child: IgnorePointer(
         child: LaunchCard(
           spec: entranceSpec,
-          offset: entranceOffset,
+          offset: entranceOffset.dy,
+          travel: entranceOffset,
           pending: entrancePending,
           child: compact
               ? Row(
