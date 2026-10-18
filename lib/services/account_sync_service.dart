@@ -486,6 +486,7 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
 
   final SyncScopeService? scope;
   bool previewAll = false;
+  bool _examServerReady = false;
 
   final OrbitApiClient _api;
 
@@ -600,11 +601,26 @@ class CloudBaseSyncBackend implements SyncBackend, OptimizedSyncBackend {
     String name,
     Map<String, dynamic> data,
   ) async {
+    final mutations = data['mutations'] as List? ?? const [];
+    final containsExam = mutations.any((m) {
+      final entity = (m as Map)['entity'] as Map;
+      final payload = entity['payload'] as Map? ?? const {};
+      return payload['kind'] == 'exam' ||
+          (entity['id'] as String).startsWith('exam|');
+    });
+    if (containsExam && !_examServerReady) {
+      final policy = await _api.syncPolicy();
+      if (policy['supportsExams'] != true) {
+        throw const AccountSyncException('sync_server_upgrade_required');
+      }
+      _examServerReady = true;
+    }
     return _api.syncRequest(name, {
       ...data,
       'supportsDeadline': true,
       'supportsSettings': true,
       'supportsStatistics': true,
+      'supportsExams': true,
       if (scope != null && !(previewAll && name == 'snapshot'))
         'selection': (await scope!.selection()).toJson(),
       if (previewAll && name == 'snapshot') 'previewAll': true,

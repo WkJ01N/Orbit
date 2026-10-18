@@ -13,6 +13,7 @@ final class CourseSeriesKey {
   const CourseSeriesKey(this.value);
 
   factory CourseSeriesKey.fromSession(CourseSession session) {
+    if (session.isExam) return CourseSeriesKey('exam|${session.id}');
     if (session.linkedCourseKey != null) {
       return CourseSeriesKey(session.linkedCourseKey!);
     }

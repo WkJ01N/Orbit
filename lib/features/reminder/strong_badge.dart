@@ -12,13 +12,16 @@ import 'package:orbit/services/strong_reminder_resolver.dart';
 
 final strongCourseIdsProvider = FutureProvider<Set<String>>((ref) async {
   final settings = await ref.watch(effectiveReminderSettingsProvider.future);
-  if (!settings.strong.enabled &&
+  final sessions = await ref.watch(sessionsProvider.future);
+  if (!sessions.any(
+        (s) => s.isExam && s.examReminderEnabled && s.examStrongReminder,
+      ) &&
+      !settings.strong.enabled &&
       !settings.customRules.any(
         (r) => r.enabled && r.strength == ReminderStrength.strong,
       )) {
     return {};
   }
-  final sessions = await ref.watch(sessionsProvider.future);
   final configuration = await ref.watch(importConfigurationProvider.future);
   final database = ref.read(appDatabaseProvider);
   final aliases = await database.reminderSessionAliases();
@@ -29,7 +32,7 @@ final strongCourseIdsProvider = FutureProvider<Set<String>>((ref) async {
     (s) => !s.archived && s.deletedAt == null,
   )) {
     for (final type in [
-      if (settings.enabled) StrongReminderType.classLead,
+      if (settings.enabled || session.isExam) StrongReminderType.classLead,
       if (settings.checkInReminderEnabled) StrongReminderType.checkIn,
     ]) {
       if (resolveStrongReminder(

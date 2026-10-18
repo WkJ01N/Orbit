@@ -72,6 +72,7 @@ bool matchesCustomReminder(
   Map<String, String> sessionAliases = const {},
   Map<String, List<String>> seriesMemberships = const {},
 }) {
+  if (session.isExam) return false;
   if (rule.scope == ReminderCourseScope.series) {
     final membership =
         seriesMemberships[sessionAliases[session.id] ?? session.id] ??

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:excel/excel.dart';
 import 'package:orbit/models/course_session.dart';
 
@@ -22,6 +23,7 @@ class XlsxExporter {
       '结束时间',
       '教师',
       '学期',
+      'Orbit metadata',
     ];
 
     for (var column = 0; column < headers.length; column++) {
@@ -62,6 +64,18 @@ class XlsxExporter {
       _timeKey(session.endAt),
       session.teachers.join(','),
       session.semester,
+      jsonEncode({
+        'version': 1,
+        'kind': session.kind.name,
+        if (session.semesterId != null) 'semesterId': session.semesterId,
+        if (session.isExam) ...{
+          'id': session.id,
+          'endDate': _dateKey(session.endAt),
+          'examReminderEnabled': session.examReminderEnabled,
+          'examStrongReminder': session.examStrongReminder,
+          'examLeadMinutes': session.examLeadMinutes,
+        },
+      }),
     ];
 
     for (var column = 0; column < values.length; column++) {

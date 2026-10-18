@@ -20,6 +20,7 @@ class DowngradeService {
     if (const ['1.5.6', '1.5.7'].contains(version)) return 10;
     if (version == '1.6.0') return 11;
     if (version == '1.6.1') return 12;
+    if (version == '1.6.2') return 13;
     return null;
   }
 
@@ -33,6 +34,57 @@ class DowngradeService {
       throw const FormatException('Conversion is for older formats only');
     }
     final settings = raw['settings'] as Map?;
+    if (version < 13) {
+      final sessions = raw['sessions'] as List? ?? [];
+      final examIds = sessions
+          .where((s) => s['kind'] == 'exam')
+          .map((s) => s['id'])
+          .toSet();
+      if (examIds.isNotEmpty) {
+        losses.add('exams');
+        counts['exams'] = examIds.length;
+      }
+      sessions.removeWhere((s) => s['kind'] == 'exam');
+      (raw['statistics'] as List?)?.removeWhere((s) => s['kind'] == 'exam');
+      for (final key in ['sessionAliases', 'seriesMemberships']) {
+        (raw[key] as Map?)?.removeWhere((id, _) => examIds.contains(id));
+      }
+      final typography = settings?['typography'] as Map?;
+      final fallback = typography?.remove('fallbackFontIds') as List? ?? [];
+      if (fallback.isNotEmpty) {
+        losses.add('fallbacks');
+        counts['fallbacks'] = fallback.length;
+      }
+      final primary = {typography?['appFontId'], typography?['launchFontId']};
+      if (typography != null) {
+        final imports = typography['imports'] as List? ?? [];
+        final removed = imports.where((f) => !primary.contains(f['id'])).length;
+        if (removed > 0) {
+          losses.add('fontLibrary');
+          counts['fontLibrary'] = removed;
+        }
+        typography['imports'] = imports
+            .where((f) => primary.contains(f['id']))
+            .toList();
+      }
+      (raw['fontComponents'] as Map?)?.removeWhere(
+        (id, _) => !primary.contains(id),
+      );
+      // Older readers permit at most two selected fonts / 100 MiB.
+      (raw['fonts'] as Map?)?.removeWhere((id, _) => !primary.contains(id));
+      final presentation = raw['localPresentation'] as Map?;
+      if (presentation != null) {
+        for (final key in [
+          'brandEnabled',
+          'onStartup',
+          'onResume',
+          'onPageSwitch',
+          'pageEnabled',
+        ]) {
+          presentation.remove(key);
+        }
+      }
+    }
     if (version < 12) {
       raw.remove('fontComponents');
       final presentation = raw.remove('localPresentation') as Map?;

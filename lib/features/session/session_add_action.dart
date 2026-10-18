@@ -1,3 +1,4 @@
+import 'package:orbit/models/v162_text.dart';
 import 'package:flutter/material.dart';
 import 'package:orbit/features/deadline/deadline_ui.dart';
 import 'package:orbit/models/deadline_text.dart';
@@ -5,7 +6,7 @@ import 'package:orbit/features/session/batch_session_edit_sheet.dart';
 import 'package:orbit/features/session/session_edit_sheet.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 
-enum SessionAddKind { single, batch, deadline }
+enum SessionAddKind { single, batch, deadline, exam }
 
 Future<void> showSessionAddAction(BuildContext context) async {
   final l10n = AppLocalizations.of(context)!;
@@ -37,6 +38,11 @@ Future<void> showSessionAddAction(BuildContext context) async {
             title: Text(DeadlineText.of(context).addDeadline),
             onTap: () => Navigator.pop(sheetContext, SessionAddKind.deadline),
           ),
+          ListTile(
+            leading: const Icon(Icons.assignment_outlined),
+            title: Text(V162Text.of(context).addExam),
+            onTap: () => Navigator.pop(sheetContext, SessionAddKind.exam),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -47,6 +53,8 @@ Future<void> showSessionAddAction(BuildContext context) async {
     await SessionEditSheet.showCreate(context);
   } else if (kind == SessionAddKind.batch) {
     await BatchSessionEditSheet.show(context);
+  } else if (kind == SessionAddKind.exam) {
+    await SessionEditSheet.showCreateExam(context);
   } else {
     await showDeadlineEditor(context);
   }

@@ -62,6 +62,7 @@ bool matchesFirstClass(
   List<PeriodTimePlan> plans,
 ) {
   if (!settings.onlyFirstClass) return true;
+  if (session.isExam) return false;
   final minute = session.startAt.hour * 60 + session.startAt.minute;
   if (settings.firstClassMode == FirstClassMode.firstPeriod) {
     if (session.startPeriod != null) return session.startPeriod == 1;
@@ -76,6 +77,7 @@ bool matchesFirstClass(
   if (minute >= settings.cutoffMinute) return false;
   final eligible = (dailySessions.isEmpty ? [session] : dailySessions).where(
     (s) =>
+        !s.isExam &&
         s.deletedAt == null &&
         !s.archived &&
         s.startAt.year == session.startAt.year &&
@@ -97,6 +99,11 @@ StrongReminderSettings resolveStrongReminder({
   Map<String, String> aliases = const {},
   Map<String, List<String>> memberships = const {},
 }) {
+  if (session?.isExam == true && type == StrongReminderType.classLead) {
+    return global.copyWith(
+      enabled: session!.examReminderEnabled && session.examStrongReminder,
+    );
+  }
   final audio = rule?.strongOverride ?? global;
   if (rule != null && rule.strength != ReminderStrength.inherit) {
     return audio.copyWith(enabled: rule.strength == ReminderStrength.strong);

@@ -56,11 +56,13 @@ function validateEntity(entity) {
   if (entity.type === 'settingGroup' && !['appearance','colors','display','reminders','strong','archive'].includes(entity.id)) {
     throw codedError('INVALID_ARGUMENT', 'Unknown settings group');
   }
+  if (entity.type === 'courseSession' && entity.payload?.kind === 'exam' && (!entity.id.startsWith('exam|') || !Number.isInteger(entity.payload.examLeadMinutes) || entity.payload.examLeadMinutes < 0 || entity.payload.examLeadMinutes > 10080 || typeof entity.payload.examReminderEnabled !== 'boolean' || typeof entity.payload.examStrongReminder !== 'boolean')) throw codedError('INVALID_ARGUMENT', 'Invalid exam');
   if (entity.type === 'statistic') {
     const p = entity.payload;
-    if (!p || !['day','course','ddl','profile'].includes(p.kind) || typeof p.updatedAt !== 'string' || !Number.isFinite(Date.parse(p.updatedAt))) throw codedError('INVALID_ARGUMENT', 'Invalid statistic');
+    if (!p || !['day','course','exam','ddl','profile'].includes(p.kind) || typeof p.updatedAt !== 'string' || !Number.isFinite(Date.parse(p.updatedAt))) throw codedError('INVALID_ARGUMENT', 'Invalid statistic');
     if (p.kind === 'day' && (entity.id !== `day|${p.date}` || !/^\d{4}-\d{2}-\d{2}$/.test(p.date))) throw codedError('INVALID_ARGUMENT', 'Invalid activity date');
     if (p.kind === 'course' && (!entity.id.startsWith('course|') || typeof p.courseKey !== 'string' || typeof p.name !== 'string' || typeof p.semester !== 'string' || !Number.isInteger(p.minutes) || p.minutes < 0 || typeof p.counted !== 'boolean')) throw codedError('INVALID_ARGUMENT', 'Invalid course statistic');
+    if (p.kind === 'exam' && (!entity.id.startsWith('exam|') || typeof p.name !== 'string' || typeof p.counted !== 'boolean' || !Number.isFinite(Date.parse(p.endAt)))) throw codedError('INVALID_ARGUMENT', 'Invalid exam statistic');
     if (p.kind === 'ddl' && !entity.id.startsWith('ddl|')) throw codedError('INVALID_ARGUMENT', 'Invalid DDL statistic');
     if (p.kind === 'profile' && (entity.id !== 'profile' || typeof p.firstUsedDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(p.firstUsedDate))) throw codedError('INVALID_ARGUMENT', 'Invalid first-use date');
     if (p.firstUsedDateAutomatic !== undefined && typeof p.firstUsedDateAutomatic !== 'boolean') throw codedError('INVALID_ARGUMENT', 'Invalid first-use mode');
@@ -85,7 +87,7 @@ function recordToEntity(record) {
 
 async function push(uid, event) {
   const mutations = Array.isArray(event.mutations) ? event.mutations : [];
-  if (mutations.some((m) => !visibleEntity(m.entity, { ...event, supportsDeadline: true, supportsSettings: true, supportsStatistics: true }))) throw codedError('SYNC_CATEGORY_DISABLED', 'Category disabled');
+  if (mutations.some((m) => !visibleEntity(m.entity, { ...event, supportsDeadline: true, supportsSettings: true, supportsStatistics: true, supportsExams: true }))) throw codedError('SYNC_CATEGORY_DISABLED', 'Category disabled');
   if (mutations.length > 100) {
     throw codedError('BATCH_TOO_LARGE', 'At most 100 mutations per request');
   }

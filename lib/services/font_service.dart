@@ -21,7 +21,7 @@ class FontService {
   static final shared = FontService();
   static const preferenceKey = 'typography_v1';
   static const maxFileBytes = 50 * 1024 * 1024;
-  static const maxBackupBytes = 100 * 1024 * 1024;
+  static const maxBackupBytes = 250 * 1024 * 1024;
   final Directory? directory;
   final ComponentService components;
   final RegisterFont _register;
@@ -148,9 +148,6 @@ class FontService {
       final id = launch ? settings.launchFontId : settings.appFontId;
       try {
         await load(id, settings.imports);
-        if (id != 'system' && id != 'nunito' && components.ready('rounded')) {
-          await load('rounded', settings.imports);
-        }
       } on ComponentMissing {
         if (!recover) rethrow;
         unavailable.add(id);
@@ -169,6 +166,14 @@ class FontService {
             /* Native fallback remains usable. */
           }
         }
+      }
+    }
+    for (final id in settings.fallbackFontIds) {
+      try {
+        await load(id, settings.imports);
+      } catch (_) {
+        unavailable.add(id);
+        settings = settings.copyWith(loadWarning: true);
       }
     }
     return settings.copyWith(unavailableFontIds: unavailable);

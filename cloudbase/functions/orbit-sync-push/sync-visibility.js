@@ -1,6 +1,7 @@
 'use strict';
 
 function visibleEntity(entity, event) {
+  if (event.supportsExams !== true && ((entity?.type === 'courseSession' && (entity.payload?.kind === 'exam' || entity.id?.startsWith('exam|'))) || (entity?.type === 'statistic' && (entity.payload?.kind === 'exam' || entity.id?.startsWith('exam|'))))) return false;
   if (entity?.type === 'statistic' && event.supportsStatistics !== true) return false;
   if (entity?.type === 'deadline' && event.supportsDeadline !== true) return false;
   if (entity?.type === 'settingGroup' && event.supportsSettings !== true) return false;
@@ -16,7 +17,7 @@ function mergeFeaturePayload(type, incoming = {}, previous = {}) {
     const incomingTime = Date.parse(incoming.updatedAt || '') || 0;
     const previousTime = Date.parse(previous.updatedAt || '') || 0;
     const next = {...(incomingTime > previousTime || (incomingTime === previousTime && JSON.stringify(incoming) > JSON.stringify(previous)) ? incoming : previous)};
-    if (next.kind === 'course') next.counted = previous.counted === true || incoming.counted === true;
+    if (next.kind === 'course' || next.kind === 'exam') next.counted = previous.counted === true || incoming.counted === true;
     if (next.kind === 'profile') {
       const oldAutomatic = previous.firstUsedDateAutomatic === true;
       const incomingAutomatic = incoming.firstUsedDateAutomatic === true;
@@ -50,9 +51,14 @@ function mergeFeaturePayload(type, incoming = {}, previous = {}) {
     }
     return {...incoming, scheduleDisplay: display};
   }
+  if (type === 'semesterPlan') {
+    const next = {...incoming};
+    for (const key of ['rangeStart', 'rangeEnd', 'source']) if (!(key in incoming) && key in previous) next[key] = previous[key];
+    return next;
+  }
   if (type !== 'courseSession' && type !== 'deadline') return incoming;
   const next = { ...incoming };
-  for (const key of ['archivedAt', 'archiveHidden', 'autoArchivePaused', 'linkedCourseKey', 'startPeriod', 'periodTimePlanId', 'countsTowardStatistics', 'batchId', 'statisticsSourceId', 'strongReminderEnabled', 'strongLeadMinutes', 'disabledReminderLeadMinutes']) {
+  for (const key of ['kind', 'semesterId', 'examReminderEnabled', 'examStrongReminder', 'examLeadMinutes', 'archivedAt', 'archiveHidden', 'autoArchivePaused', 'linkedCourseKey', 'startPeriod', 'periodTimePlanId', 'countsTowardStatistics', 'batchId', 'statisticsSourceId', 'strongReminderEnabled', 'strongLeadMinutes', 'disabledReminderLeadMinutes']) {
     if (!Object.prototype.hasOwnProperty.call(incoming, key) && Object.prototype.hasOwnProperty.call(previous, key)) {
       next[key] = previous[key];
     }

@@ -64,3 +64,10 @@ DDL 使用独立的 `deadline` 同步实体，和课程继续共用原 CloudBase
 发布前运行 `prepare-functions.ps1`，先部署 `orbit-sync-pull` 等旧客户端兼容函数，再部署 `orbit-api`，最后发布客户端。运行 `node --test cloudbase/functions/orbit-api/*.test.js` 验证兼容性。此次修改不需要新增云数据库集合。
 
 DDL 强提醒更新需先部署兼容后端：sync-visibility.js 保留旧客户端缺失的 strongReminderEnabled、strongLeadMinutes、disabledReminderLeadMinutes，以及显示设置 hideUpcomingPage／hideImportPage。运行 prepare-functions.ps1 后部署 orbit-api 和旧同步函数；JSON 备份仍使用 v9，客户端数据库升级 v11。
+
+
+## v1.6.2 考试同步兼容
+
+客户端声明 `supportsExams`，服务端按能力过滤考试、考试统计及其删除记录，避免旧客户端把考试当成普通课程。发送考试前通过同步策略接口检查服务端能力。学期定义继续使用 semesterPlan；旧客户端更新时保留稳定身份和日期范围。
+
+共享实现的权威来源是 `functions/orbit-sync-common/`，修改后运行 `prepare-functions.ps1`。发布前先更新旧客户端兼容函数，再更新 orbit-api，最后发布客户端。部署及验证记录见 [v1.6.2 部署记录](../docs/v1.6.2-cloudbase-deployment.md)。

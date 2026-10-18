@@ -10,7 +10,7 @@ List<({CourseSession course, bool archivedOnly})> existingCourses(
   List<CourseSession> sessions,
 ) {
   final groups = <String, List<CourseSession>>{};
-  for (final s in sessions.where((s) => s.deletedAt == null)) {
+  for (final s in sessions.where((s) => !s.isExam && s.deletedAt == null)) {
     groups
         .putIfAbsent(
           '${s.semester}|${CourseSeriesKey.fromSession(s).value}',

@@ -43,7 +43,7 @@ void main() {
         (jsonDecode(nine.json)['settings'] as Map).containsKey('typography'),
         isFalse,
       );
-      expect(raw['version'], 12);
+      expect(raw['version'], ScheduleBackupService.backupVersion);
       expect(raw.containsKey('localPresentation'), isTrue);
     },
   );

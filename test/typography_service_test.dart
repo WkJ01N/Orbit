@@ -229,7 +229,7 @@ void main() {
       final encoder = ScheduleBackupService(fonts: fonts);
       final json = await encoder.encodeWithAudio([], portable);
       final backup = encoder.decodeBackup(json);
-      expect(backup.version, 12);
+      expect(backup.version, ScheduleBackupService.backupVersion);
       expect(backup.fonts.keys.toList(), [selected.id]);
       expect(backup.settings!.typography!.imports.keys.toList(), [selected.id]);
       expect(json, isNot(contains(root.path.replaceAll(r'\', r'\\'))));
@@ -311,7 +311,7 @@ void main() {
         await SettingsService().exportPortableSettings(),
       );
       final backup = service.decodeBackup(encoded);
-      expect(backup.version, 12);
+      expect(backup.version, ScheduleBackupService.backupVersion);
       expect(backup.fontComponents['huninn']!['version'], 1);
       final targetComponents = ComponentService(
         directory: Directory('${root.path}/target-components'),

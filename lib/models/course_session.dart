@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+enum SessionKind { course, exam }
+
 class CourseSession {
   const CourseSession({
     required this.id,
@@ -15,6 +17,11 @@ class CourseSession {
     required this.teachers,
     required this.faculty,
     required this.semester,
+    this.kind = SessionKind.course,
+    this.semesterId,
+    this.examReminderEnabled = true,
+    this.examStrongReminder = true,
+    this.examLeadMinutes = 30,
     this.sourceFile,
     this.note,
     this.deletedAt,
@@ -28,6 +35,14 @@ class CourseSession {
     this.periodTimePlanId,
   });
 
+  final SessionKind kind;
+  final String? semesterId;
+  final bool examReminderEnabled, examStrongReminder;
+  final int examLeadMinutes;
+  bool get isExam => kind == SessionKind.exam;
+  String get displayName => isExam
+      ? "[${classType.isEmpty ? 'Exam' : classType}] $courseName"
+      : courseName;
   final String id;
   final String classType;
   final String room;
@@ -55,6 +70,13 @@ class CourseSession {
   bool get archived => archivedAt != null;
   bool get visible => !archived || !archiveHidden;
   Map<String, dynamic> get featurePayload => {
+    'kind': kind.name,
+    'semesterId': semesterId,
+    if (isExam) ...{
+      'examReminderEnabled': examReminderEnabled,
+      'examStrongReminder': examStrongReminder,
+      'examLeadMinutes': examLeadMinutes,
+    },
     'archivedAt': archivedAt?.toUtc().toIso8601String(),
     'archiveHidden': archiveHidden,
     'autoArchivePaused': autoArchivePaused,
@@ -77,6 +99,7 @@ class CourseSession {
   }
 
   String computeId() {
+    if (isExam) return id;
     return buildId(
       date: date,
       courseCode: courseCode,
@@ -87,6 +110,11 @@ class CourseSession {
 
   factory CourseSession.fromMap(Map<String, Object?> map) {
     return CourseSession(
+      kind: map['kind'] == 'exam' ? SessionKind.exam : SessionKind.course,
+      semesterId: map['semester_id'] as String?,
+      examReminderEnabled: map['exam_reminder_enabled'] != 0,
+      examStrongReminder: map['exam_strong_reminder'] != 0,
+      examLeadMinutes: map['exam_lead_minutes'] as int? ?? 30,
       id: map['id'] as String,
       classType: map['class_type'] as String,
       room: map['room'] as String,
@@ -122,6 +150,11 @@ class CourseSession {
 
   Map<String, Object?> toMap() {
     return {
+      'kind': kind.name,
+      'semester_id': semesterId,
+      'exam_reminder_enabled': examReminderEnabled ? 1 : 0,
+      'exam_strong_reminder': examStrongReminder ? 1 : 0,
+      'exam_lead_minutes': examLeadMinutes,
       'id': id,
       'class_type': classType,
       'room': room,
@@ -150,6 +183,11 @@ class CourseSession {
   }
 
   CourseSession copyWith({
+    SessionKind? kind,
+    String? semesterId,
+    bool? examReminderEnabled,
+    bool? examStrongReminder,
+    int? examLeadMinutes,
     String? id,
     String? classType,
     String? room,
@@ -181,6 +219,11 @@ class CourseSession {
     String? periodTimePlanId,
   }) {
     return CourseSession(
+      kind: kind ?? this.kind,
+      semesterId: semesterId ?? this.semesterId,
+      examReminderEnabled: examReminderEnabled ?? this.examReminderEnabled,
+      examStrongReminder: examStrongReminder ?? this.examStrongReminder,
+      examLeadMinutes: examLeadMinutes ?? this.examLeadMinutes,
       archivedAt: clearArchived ? null : archivedAt ?? this.archivedAt,
       archiveHidden: clearArchived
           ? false

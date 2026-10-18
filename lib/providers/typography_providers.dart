@@ -49,6 +49,9 @@ class TypographyNotifier extends Notifier<TypographySettings> {
       (value) => value.copyWith(
         appFontId: value.appFontId == id ? 'system' : null,
         launchFontId: value.launchFontId == id ? 'nunito' : null,
+        fallbackFontIds: value.fallbackFontIds
+            .where((font) => font != id)
+            .toList(),
         imports: {...value.imports}..remove(id),
       ),
     );

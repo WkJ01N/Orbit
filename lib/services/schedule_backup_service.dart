@@ -1,3 +1,4 @@
+import 'package:orbit/models/launch_settings.dart';
 import 'package:orbit/services/settings_service.dart';
 import 'package:orbit/services/launch_icon_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -59,7 +60,7 @@ class ScheduleBackupService {
   ScheduleBackupService({FontService? fonts})
     : fontService = fonts ?? FontService.shared;
   final FontService fontService;
-  static const backupVersion = 12;
+  static const backupVersion = 13;
 
   Future<String> encodeWithAudio(
     List<CourseSession> sessions,
@@ -175,11 +176,8 @@ class ScheduleBackupService {
         'launch_presentation_v1',
       );
       final iconPath = presentation['iconPath'] as String?;
-      final local = <String, dynamic>{
-        'cardEntrance': presentation['cardEntrance'] == 'nearby'
-            ? 'nearby'
-            : 'edge',
-      };
+      final local = LaunchSettings.fromJson(presentation).toJson()
+        ..remove('iconPath');
       if (iconPath != null) {
         final support = await getApplicationSupportDirectory();
         final root = p.join(support.path, 'launch_icons');
@@ -237,9 +235,8 @@ class ScheduleBackupService {
         if (result.created) createdFonts.add(result.font);
       }
       if (backup.localPresentation != null) {
-        launchPresentation = {
-          'cardEntrance': backup.localPresentation!['cardEntrance'],
-        };
+        launchPresentation = {...backup.localPresentation!};
+        launchPresentation.remove('iconData');
         if (backup.localPresentation!['iconData'] != null) {
           createdIcon = await saveLaunchIcon(
             base64Decode(backup.localPresentation!['iconData'] as String),
@@ -388,7 +385,12 @@ class ScheduleBackupService {
             !session.endAt.isAfter(session.startAt) ||
             session.weekday < 1 ||
             session.weekday > 7 ||
-            !_validDate(item['date'])) {
+            !_validDate(item['date']) ||
+            session.examLeadMinutes < 0 ||
+            session.examLeadMinutes > 10080 ||
+            (session.isExam && !session.id.startsWith('exam|')) ||
+            (item['kind'] != null &&
+                !['course', 'exam'].contains(item['kind']))) {
           throw const FormatException('session');
         }
         return session;
@@ -529,10 +531,38 @@ class ScheduleBackupService {
         if (version < 12 ||
             raw is! Map ||
             raw.keys.any(
-              (e) => !const ['cardEntrance', 'iconData'].contains(e),
+              (e) =>
+                  !(version >= 13
+                          ? const [
+                              'cardEntrance',
+                              'iconData',
+                              'brandEnabled',
+                              'onStartup',
+                              'onResume',
+                              'onPageSwitch',
+                              'pageEnabled',
+                            ]
+                          : const ['cardEntrance', 'iconData'])
+                      .contains(e),
             ) ||
             !const ['edge', 'nearby'].contains(raw['cardEntrance'])) {
           throw const FormatException('Presentation backup');
+        }
+        for (final key in [
+          'brandEnabled',
+          'onStartup',
+          'onResume',
+          'onPageSwitch',
+        ]) {
+          if (raw[key] != null && raw[key] is! bool) {
+            throw const FormatException('Animation switch');
+          }
+        }
+        if (raw['pageEnabled'] != null &&
+            (raw['pageEnabled'] is! List ||
+                (raw['pageEnabled'] as List).length != 4 ||
+                (raw['pageEnabled'] as List).any((v) => v is! bool))) {
+          throw const FormatException('Animation pages');
         }
         localPresentation = Map<String, dynamic>.from(raw);
         final encoded = raw['iconData'];
@@ -557,7 +587,9 @@ class ScheduleBackupService {
     final fontComponents = <String, Map<String, dynamic>>{};
     try {
       final raw = decoded['fontComponents'] ?? <String, dynamic>{};
-      if (raw is! Map || raw.length > 2 || (version < 12 && raw.isNotEmpty)) {
+      if (raw is! Map ||
+          raw.length > (version >= 13 ? 5 : 2) ||
+          (version < 12 && raw.isNotEmpty)) {
         throw const FormatException('Font components');
       }
       var total = 0;
@@ -604,7 +636,13 @@ class ScheduleBackupService {
         if (value['id'] is! String ||
             (value['id'] as String).isEmpty ||
             (value['id'] as String).length > 512 ||
-            !['day', 'course', 'ddl', 'profile'].contains(value['kind']) ||
+            ![
+              'day',
+              'course',
+              'exam',
+              'ddl',
+              'profile',
+            ].contains(value['kind']) ||
             DateTime.tryParse('${value['updatedAt']}') == null) {
           throw const FormatException('statistics');
         }
@@ -626,6 +664,13 @@ class ScheduleBackupService {
                 value['minutes'] < 0 ||
                 value['counted'] is! bool)) {
           throw const FormatException('course statistics');
+        }
+        if (value['kind'] == 'exam' &&
+            (!(value['id'] as String).startsWith('exam|') ||
+                value['name'] is! String ||
+                value['counted'] is! bool ||
+                DateTime.tryParse('${value['endAt']}') == null)) {
+          throw const FormatException('Exam statistics');
         }
         if (value['kind'] == 'ddl' &&
             !(value['id'] as String).startsWith('ddl|')) {
@@ -699,6 +744,11 @@ class ScheduleBackupService {
       deletedAt: json['deletedAt'] == null
           ? null
           : DateTime.parse(json['deletedAt'] as String).toLocal(),
+      kind: json['kind'] == 'exam' ? SessionKind.exam : SessionKind.course,
+      semesterId: json['semesterId'] as String?,
+      examReminderEnabled: json['examReminderEnabled'] as bool? ?? true,
+      examStrongReminder: json['examStrongReminder'] as bool? ?? true,
+      examLeadMinutes: json['examLeadMinutes'] as int? ?? 30,
       archivedAt: json['archivedAt'] == null
           ? null
           : DateTime.parse(json['archivedAt'] as String).toLocal(),

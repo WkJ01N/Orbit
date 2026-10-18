@@ -1,3 +1,5 @@
+import 'package:orbit/models/v162_text.dart';
+import 'package:orbit/services/font_coverage.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'dart:async';
 import 'package:orbit/features/settings/components_page.dart';
@@ -69,6 +71,9 @@ class _TypographySettingsPageState
     } catch (_) {
       if (imported.created) await service.deleteFile(imported.font);
       rethrow;
+    }
+    if (!fontContainsChinese(bytes) && mounted) {
+      await _offerFallbacks(context, ref);
     }
   });
 
@@ -187,6 +192,20 @@ class _TypographySettingsPageState
                     ),
                   ),
                 ),
+              ListTile(
+                leading: const Icon(Icons.font_download_outlined),
+                title: Text(V162Text.of(context).fallbacks),
+                subtitle: Text(V162Text.of(context).fallbackHint),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _busy
+                    ? null
+                    : () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FallbackFontsPage(),
+                        ),
+                      ),
+              ),
               const Divider(),
               FilledButton.tonalIcon(
                 onPressed: _busy ? null : _import,
@@ -222,9 +241,165 @@ class _TypographySettingsPageState
   }
 }
 
+Future<void> _offerFallbacks(BuildContext context, WidgetRef ref) async {
+  final t = V162Text.of(context);
+  final configure = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (c) => AlertDialog(
+      title: Text(t.fallbacks),
+      content: Text(t.noChinese),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(c, false),
+          child: Text(t.systemFallback),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(c, true),
+          child: Text(t.fallbacks),
+        ),
+      ],
+    ),
+  );
+  if (configure == false) {
+    await ref
+        .read(typographySettingsProvider.notifier)
+        .update((v) => v.copyWith(fallbackFontIds: []));
+  } else if (configure == true && context.mounted) {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const FallbackFontsPage()),
+    );
+  }
+}
+
+class FallbackFontsPage extends ConsumerStatefulWidget {
+  const FallbackFontsPage({super.key});
+  @override
+  ConsumerState<FallbackFontsPage> createState() => _FallbackFontsPageState();
+}
+
+class _FallbackFontsPageState extends ConsumerState<FallbackFontsPage> {
+  bool _busy = false;
+  Future<void> _save(List<String> ids) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(typographySettingsProvider.notifier)
+          .update((v) => v.copyWith(fallbackFontIds: ids));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showAppSnackBar(
+          SnackBar(content: Text(TypographyText(context).failed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final value = ref.watch(typographySettingsProvider),
+        t = V162Text.of(context);
+    final names = TypographyText(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(t.fallbacks)),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Text(t.fallbackHint),
+              const SizedBox(height: 16),
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                itemCount: value.fallbackFontIds.length,
+                onReorderItem: (old, next) {
+                  if (_busy) return;
+                  final ids = [...value.fallbackFontIds];
+                  ids.insert(next, ids.removeAt(old));
+                  _save(ids);
+                },
+                itemBuilder: (_, index) {
+                  final id = value.fallbackFontIds[index];
+                  return ListTile(
+                    key: ValueKey(id),
+                    leading: CircleAvatar(child: Text('${index + 1}')),
+                    title: Text(names.name(id, value.imports[id]?.name)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: names.delete,
+                          onPressed: _busy
+                              ? null
+                              : () => _save(
+                                  value.fallbackFontIds
+                                      .where((f) => f != id)
+                                      .toList(),
+                                ),
+                          icon: const Icon(Icons.close),
+                        ),
+                        ReorderableDragStartListener(
+                          index: index,
+                          enabled: !_busy,
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(Icons.drag_handle),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              if (value.fallbackFontIds.length < 3)
+                FilledButton.tonalIcon(
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FontPickerPage(
+                              launch: false,
+                              fallback: true,
+                            ),
+                          ),
+                        ),
+                  icon: const Icon(Icons.add),
+                  label: Text(t.addFallback),
+                ),
+              ListTile(
+                leading: const Icon(Icons.phone_android_outlined),
+                title: Text(names.name('system', null)),
+                subtitle: Text(t.systemFallback),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '大学課表 · 数学／數學 · Orbit 0123456789，。！？',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class FontPickerPage extends ConsumerStatefulWidget {
-  const FontPickerPage({super.key, required this.launch});
+  const FontPickerPage({
+    super.key,
+    required this.launch,
+    this.fallback = false,
+  });
   final bool launch;
+  final bool fallback;
   @override
   ConsumerState<FontPickerPage> createState() => _FontPickerPageState();
 }
@@ -236,7 +411,11 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
   void initState() {
     super.initState();
     final value = ref.read(typographySettingsProvider);
-    _selected = widget.launch ? value.launchFontId : value.appFontId;
+    _selected = widget.fallback
+        ? 'rounded'
+        : widget.launch
+        ? value.launchFontId
+        : value.appFontId;
     unawaited(
       ref.read(componentServiceProvider).initialize().then((_) {
         if (mounted) setState(() {});
@@ -269,11 +448,30 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
           if (!mounted || !components.ready(id)) return;
         }
       }
-      TypographySettings next(TypographySettings value) => widget.launch
+      TypographySettings next(TypographySettings value) => widget.fallback
+          ? value.copyWith(
+              fallbackFontIds: [
+                ...value.fallbackFontIds.where((f) => f != id),
+                id,
+              ],
+            )
+          : widget.launch
           ? value.copyWith(launchFontId: id)
           : value.copyWith(appFontId: id);
       if (apply) {
         await ref.read(typographySettingsProvider.notifier).update(next);
+        if (!widget.fallback &&
+            mounted &&
+            ref.read(typographySettingsProvider).imports.containsKey(id)) {
+          final font = ref.read(typographySettingsProvider).imports[id]!;
+          final bytes = await (await ref.read(fontServiceProvider).file(font))
+              .readAsBytes();
+          if (!fontContainsChinese(bytes) &&
+              mounted &&
+              ref.read(typographySettingsProvider).fallbackFontIds.isEmpty) {
+            await _offerFallbacks(context, ref);
+          }
+        }
         if (mounted) Navigator.pop(context);
       } else {
         await ref
@@ -314,21 +512,29 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
     final sample = TextStyle(
       inherit: false,
       fontFamily: family,
-      fontFamilyFallback: FontCatalog.fallback(_selected),
+      fontFamilyFallback: value.fallbackFamilies(_selected),
       fontSize: 17,
       color: Theme.of(context).colorScheme.onSurface,
       height: 1.5,
     );
     final choices = [
-      'system',
-      if (widget.launch) 'nunito',
+      if (!widget.fallback) 'system',
+      if (widget.launch || widget.fallback) 'nunito',
       'rounded',
       'huninn',
       'maiyuan',
       ...value.imports.keys,
     ];
     return Scaffold(
-      appBar: AppBar(title: Text(widget.launch ? text.launch : text.app)),
+      appBar: AppBar(
+        title: Text(
+          widget.fallback
+              ? V162Text.of(context).addFallback
+              : widget.launch
+              ? text.launch
+              : text.app,
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
@@ -375,7 +581,9 @@ class _FontPickerPageState extends ConsumerState<FontPickerPage> {
                 ),
               ),
               if (_busy) const LinearProgressIndicator(),
-              for (final id in choices)
+              for (final id in choices.where(
+                (id) => !widget.fallback || !value.fallbackFontIds.contains(id),
+              ))
                 ListTile(
                   key: ValueKey('font-option-$id'),
                   enabled: !_busy,

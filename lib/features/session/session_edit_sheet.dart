@@ -1,3 +1,5 @@
+import 'package:orbit/models/v162_text.dart';
+import 'package:uuid/uuid.dart';
 import 'package:orbit/core/widgets/statistics_deletion_choice.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
@@ -13,15 +15,20 @@ import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/providers/app_providers.dart';
 
 class SessionEditSheet extends ConsumerStatefulWidget {
-  const SessionEditSheet({super.key, this.session});
+  const SessionEditSheet({super.key, this.session, this.exam = false});
 
   final CourseSession? session;
+  final bool exam;
+  bool get isExam => exam || (session?.isExam ?? false);
 
   bool get isCreateMode => session == null;
 
   static Future<bool?> showEdit(BuildContext context, CourseSession session) {
     return _show(context, SessionEditSheet(session: session));
   }
+
+  static Future<bool?> showCreateExam(BuildContext context) =>
+      _show(context, const SessionEditSheet(exam: true));
 
   static Future<bool?> showCreate(BuildContext context) {
     return _show(context, const SessionEditSheet());
@@ -79,12 +86,20 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   bool _saving = false;
+  bool _examReminder = true, _examStrong = true, _nextDay = false;
+  bool _pickedDate = false, _pickedStart = false, _pickedEnd = false;
+  int _examLead = 30;
 
   @override
   void initState() {
     super.initState();
     final session = widget.session;
     if (session != null) {
+      _pickedDate = _pickedStart = _pickedEnd = true;
+      _examReminder = session.examReminderEnabled;
+      _examStrong = session.examStrongReminder;
+      _examLead = session.examLeadMinutes;
+      _nextDay = session.endAt.day != session.startAt.day;
       _nameController = TextEditingController(text: session.courseName);
       _roomController = TextEditingController(text: session.room);
       _teachersController = TextEditingController(
@@ -152,7 +167,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       _nameController.text = course.courseName;
       _courseCodeController.text = course.courseCode;
       _sectionController.text = course.section;
-      _roomController.text = course.room;
+      if (!widget.isExam) _roomController.text = course.room;
       _teachersController.text = course.teachers.join(', ');
       _facultyController.text = course.faculty;
       _semesterController.text = course.semester;
@@ -176,7 +191,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
-      setState(() => _date = picked);
+      setState(() {
+        _date = picked;
+        _pickedDate = true;
+      });
     }
   }
 
@@ -186,7 +204,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       initialTime: _startTime,
     );
     if (picked != null) {
-      setState(() => _startTime = picked);
+      setState(() {
+        _startTime = picked;
+        _pickedStart = true;
+      });
     }
   }
 
@@ -196,7 +217,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       initialTime: _endTime,
     );
     if (picked != null) {
-      setState(() => _endTime = picked);
+      setState(() {
+        _endTime = picked;
+        _pickedEnd = true;
+      });
     }
   }
 
@@ -215,7 +239,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   CourseSession _buildSession() {
     final l10n = AppLocalizations.of(context)!;
     final startAt = _combineDateTime(_date, _startTime);
-    final endAt = _combineDateTime(_date, _endTime);
+    final endAt = _combineDateTime(
+      _nextDay ? _date.add(const Duration(days: 1)) : _date,
+      _endTime,
+    );
     final name = _nameController.text.trim();
     final courseCode =
         _selectedCourse == null && _courseCodeController.text.trim().isEmpty
@@ -227,8 +254,15 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
 
     final base = widget.session;
     final session = CourseSession(
-      id: '',
-      classType: _classTypeController.text.trim().isEmpty
+      id: widget.isExam ? base?.id ?? 'exam|${const Uuid().v4()}' : '',
+      kind: widget.isExam ? SessionKind.exam : SessionKind.course,
+      semesterId: _selectedCourse?.semesterId ?? base?.semesterId,
+      examReminderEnabled: _examReminder,
+      examStrongReminder: _examStrong,
+      examLeadMinutes: _examLead,
+      classType: widget.isExam
+          ? V162Text.of(context).exam
+          : _classTypeController.text.trim().isEmpty
           ? l10n.defaultClassType
           : _classTypeController.text.trim(),
       room: _roomController.text.trim(),
@@ -239,7 +273,9 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       section: section,
       startAt: startAt,
       endAt: endAt,
-      teachers: _parseTeachers(_teachersController.text),
+      teachers: widget.isExam
+          ? const []
+          : _parseTeachers(_teachersController.text),
       faculty: _facultyController.text.trim(),
       semester: _semesterController.text.trim(),
       archivedAt: base?.archivedAt,
@@ -250,9 +286,12 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       linkedCourseKey: _selectedCourse == null
           ? base?.linkedCourseKey
           : CourseSeriesKey.fromSession(_selectedCourse!).value,
-      recurrenceSeriesId:
-          _selectedCourse?.recurrenceSeriesId ?? base?.recurrenceSeriesId,
-      recurrenceMeetingId: _selectedCourse?.recurrenceSeriesId == null
+      recurrenceSeriesId: widget.isExam
+          ? null
+          : _selectedCourse?.recurrenceSeriesId ?? base?.recurrenceSeriesId,
+      recurrenceMeetingId: widget.isExam
+          ? null
+          : _selectedCourse?.recurrenceSeriesId == null
           ? base?.recurrenceMeetingId
           : 'extra-${DateTime.now().microsecondsSinceEpoch}',
       startPeriod:
@@ -276,16 +315,28 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
     final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
     final room = _roomController.text.trim();
-    if (name.isEmpty || room.isEmpty) {
+    if (name.isEmpty ||
+        room.isEmpty ||
+        (widget.isExam && !(_pickedDate && _pickedStart && _pickedEnd))) {
       ScaffoldMessenger.of(context).showAppSnackBar(
         SnackBar(
           duration: const Duration(seconds: 6),
-          content: Text(l10n.sessionCreateRequiredFields),
+          content: Text(
+            widget.isExam
+                ? V162Text.of(context).examRequired
+                : l10n.sessionCreateRequiredFields,
+          ),
         ),
       );
       return;
     }
 
+    if (widget.isExam && (_examLead < 0 || _examLead > 10080)) {
+      ScaffoldMessenger.of(context).showAppSnackBar(
+        SnackBar(content: Text(V162Text.of(context).leadInvalid)),
+      );
+      return;
+    }
     final finalSession = _buildSession();
     if (!finalSession.endAt.isAfter(finalSession.startAt)) {
       ScaffoldMessenger.of(context).showAppSnackBar(
@@ -308,7 +359,10 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       CourseOperationResult? operationResult;
       int overwritten;
       final original = widget.session;
-      if (original != null) {
+      if (widget.isExam) {
+        await repository.insertSession(finalSession);
+        overwritten = 0;
+      } else if (original != null) {
         final matching = await repository.getCourseSeries(
           original,
           CourseOperationScope.all,
@@ -403,6 +457,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
         final conflicts = existing
             .where(
               (s) =>
+                  !s.isExam &&
                   s.id != finalSession.id &&
                   s.startAt.isBefore(finalSession.endAt) &&
                   finalSession.startAt.isBefore(s.endAt),
@@ -494,12 +549,17 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.isCreateMode
+              widget.isExam
+                  ? (widget.isCreateMode
+                        ? V162Text.of(context).addExam
+                        : V162Text.of(context).editExam)
+                  : widget.isCreateMode
                   ? l10n.addSessionTitle
                   : l10n.editSessionTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
+            if (widget.isExam) Text(V162Text.of(context).examHint),
             if (widget.isCreateMode) ...[
               OutlinedButton.icon(
                 onPressed: _saving ? null : _chooseCourse,
@@ -512,13 +572,15 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
                   child: Text(OrbitFeatureText.of(context).newCourse),
                 ),
             ],
-            if (widget.isCreateMode)
+            if (widget.isCreateMode || widget.isExam)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.fieldDate),
                 trailing: TextButton(
                   onPressed: _pickDate,
-                  child: Text(dateLabel),
+                  child: Text(
+                    widget.isExam && !_pickedDate ? l10n.fieldDate : dateLabel,
+                  ),
                 ),
               ),
             TextField(
@@ -558,13 +620,14 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               ),
             ],
             const SizedBox(height: 12),
-            TextField(
-              controller: _teachersController,
-              decoration: InputDecoration(
-                labelText: l10n.fieldTeachers,
-                border: const OutlineInputBorder(),
+            if (!widget.isExam)
+              TextField(
+                controller: _teachersController,
+                decoration: InputDecoration(
+                  labelText: l10n.fieldTeachers,
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
             const SizedBox(height: 12),
             TextField(
               controller: _facultyController,
@@ -579,7 +642,11 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               title: Text(l10n.fieldStartTime),
               trailing: TextButton(
                 onPressed: _pickStartTime,
-                child: Text(startLabel),
+                child: Text(
+                  widget.isExam && !_pickedStart
+                      ? l10n.fieldStartTime
+                      : startLabel,
+                ),
               ),
             ),
             ListTile(
@@ -587,9 +654,44 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
               title: Text(l10n.fieldEndTime),
               trailing: TextButton(
                 onPressed: _pickEndTime,
-                child: Text(endLabel),
+                child: Text(
+                  widget.isExam && !_pickedEnd ? l10n.fieldEndTime : endLabel,
+                ),
               ),
             ),
+            if (widget.isExam) ...[
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(V162Text.of(context).nextDay),
+                value: _nextDay,
+                onChanged: _saving ? null : (v) => setState(() => _nextDay = v),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(V162Text.of(context).reminder),
+                value: _examReminder,
+                onChanged: _saving
+                    ? null
+                    : (v) => setState(() => _examReminder = v),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(V162Text.of(context).strong),
+                value: _examStrong,
+                onChanged: !_examReminder || _saving
+                    ? null
+                    : (v) => setState(() => _examStrong = v),
+              ),
+              TextFormField(
+                initialValue: '$_examLead',
+                enabled: !_saving && _examReminder,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: V162Text.of(context).lead,
+                ),
+                onChanged: (v) => _examLead = int.tryParse(v) ?? -1,
+              ),
+            ],
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _saving ? null : _save,

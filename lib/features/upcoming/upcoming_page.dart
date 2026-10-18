@@ -587,7 +587,7 @@ class _SessionCard extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        session.courseName,
+                        session.displayName,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           color: isPast ? colorScheme.onSurfaceVariant : null,
                           decoration: isPast

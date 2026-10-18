@@ -114,7 +114,8 @@ extension StatisticsDatabase on AppDatabase {
         where: 'owner=? AND id=?',
         whereArgs: [rows.first['owner'], id],
       );
-      if (id.startsWith('course|') && previous.isNotEmpty) {
+      if ((id.startsWith('course|') || id.startsWith('exam|')) &&
+          previous.isNotEmpty) {
         final old = Map<String, dynamic>.from(
           jsonDecode(previous.first['payload'] as String) as Map,
         );
@@ -182,7 +183,7 @@ extension StatisticsDatabase on AppDatabase {
         where: 'deleted_at IS NULL',
       )) {
         final s = CourseSession.fromMap(row);
-        final id = 'course|${aliases[s.id] ?? s.id}';
+        final id = '${s.isExam ? 'exam' : 'course'}|${aliases[s.id] ?? s.id}';
         if (!await _claimStatistic(txn, id, owner)) continue;
         activeSources.add(id);
         final previous = await txn.query(
@@ -197,14 +198,29 @@ extension StatisticsDatabase on AppDatabase {
               );
         if (old['excluded'] == true) continue;
         // Freeze completed lessons; editing their identity must not count them twice.
-        if (old['counted'] == true) continue;
+        final semester = SemesterService().resolve(
+          name: s.semester,
+          id: s.semesterId,
+          at: s.startAt,
+        )!;
+        if (old['counted'] == true) {
+          if (old['semesterId'] == null) {
+            changed |= await _writeStatistic(txn, owner, id, {
+              ...old..remove('updatedAt'),
+              'semesterId': semester.id,
+            });
+          }
+          continue;
+        }
         changed |= await _writeStatistic(txn, owner, id, {
-          'kind': 'course',
+          'kind': s.isExam ? 'exam' : 'course',
+          'semesterId': semester.id,
           'name': s.courseName,
           'semester': s.semester,
           'courseKey': '${s.semester}|${s.courseCode}|${s.courseName}',
           'minutes': s.endAt.difference(s.startAt).inMinutes.clamp(0, 1440),
           'counted': !s.endAt.isAfter(at),
+          'startAt': s.startAt.toUtc().toIso8601String(),
           'endAt': s.endAt.toUtc().toIso8601String(),
         });
       }
@@ -212,8 +228,8 @@ extension StatisticsDatabase on AppDatabase {
       // snapshots too, so absent future lessons cannot block course completion.
       for (final row in await txn.query(
         'statistics_records',
-        where: 'owner=? AND id LIKE ?',
-        whereArgs: [owner, 'course|%'],
+        where: "owner=? AND (id LIKE 'course|%' OR id LIKE 'exam|%')",
+        whereArgs: [owner],
       )) {
         final value = Map<String, dynamic>.from(
           jsonDecode(row['payload'] as String) as Map,
@@ -254,6 +270,101 @@ extension StatisticsDatabase on AppDatabase {
     if (changed) _syncChanges.add(null);
   }
 
+  Future<void> assignSemester(
+    List<String> sessionIds,
+    String semesterId,
+    String name,
+  ) async {
+    await _db.transaction((txn) async {
+      final owner = await _statisticsOwner(txn);
+      for (final id in sessionIds.toSet()) {
+        final rows = await txn.query(
+          'course_sessions',
+          where: 'id=?',
+          whereArgs: [id],
+        );
+        if (rows.isEmpty) continue;
+        final session = CourseSession.fromMap(
+          rows.first,
+        ).copyWith(semesterId: semesterId, semester: name);
+        await txn.update(
+          'course_sessions',
+          {'semester_id': semesterId, 'semester': name},
+          where: 'id=?',
+          whereArgs: [id],
+        );
+        await AppDatabase._queueCourseMutation(
+          txn,
+          session,
+          SyncOperation.upsert,
+        );
+        final alias = await txn.query(
+          'reminder_session_alias',
+          where: 'session_id=?',
+          whereArgs: [id],
+        );
+        final key =
+            '${session.isExam ? 'exam' : 'course'}|${alias.isEmpty ? id : alias.first['stable_id']}';
+        final snapshots = await txn.query(
+          'statistics_records',
+          where: 'owner=? AND id=?',
+          whereArgs: [owner, key],
+        );
+        if (snapshots.isNotEmpty) {
+          final value = Map<String, dynamic>.from(
+            jsonDecode(snapshots.first['payload'] as String) as Map,
+          )..remove('updatedAt');
+          await _writeStatistic(txn, owner, key, {
+            ...value,
+            'semesterId': semesterId,
+            'semester': name,
+          });
+        }
+      }
+    });
+    _syncChanges.add(null);
+  }
+
+  Future<void> renameSemesterStatistics(
+    String id,
+    String oldName,
+    String name, {
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    await _db.transaction((txn) async {
+      final owner = await _statisticsOwner(txn);
+      for (final row in await txn.query(
+        'statistics_records',
+        where: 'owner=?',
+        whereArgs: [owner],
+      )) {
+        final value = Map<String, dynamic>.from(
+          jsonDecode(row['payload'] as String) as Map,
+        );
+        if (value['kind'] != 'course' && value['kind'] != 'exam') continue;
+        final at = SemesterService.recordDate(value);
+        final sameName =
+            SemesterService.normalize(value['semester'] as String? ?? '') ==
+            SemesterService.normalize(oldName);
+        final inRange =
+            at != null &&
+            (start == null || !at.isBefore(start)) &&
+            (end == null || at.isBefore(end.add(const Duration(days: 1))));
+        if (value['semesterId'] != id && !(sameName && inRange)) {
+          continue;
+        }
+        value.remove('updatedAt');
+        await _writeStatistic(txn, owner, row['id'] as String, {
+          ...value,
+          'semesterId': id,
+          'semester': name,
+        });
+      }
+    });
+    _syncChanges.add(null);
+  }
+
   Future<void> setFirstUsedDate(DateTime date) async {
     final day = DateTime(date.year, date.month, date.day);
     if (day.isAfter(DateTime.now())) {
@@ -283,7 +394,7 @@ extension StatisticsDatabase on AppDatabase {
         whereArgs: [source],
       );
       final id =
-          'course|${aliases.isEmpty ? source : aliases.first['stable_id']}';
+          '${source.startsWith('exam|') ? 'exam' : 'course'}|${aliases.isEmpty ? source : aliases.first['stable_id']}';
       final rows = await txn.query(
         'statistics_records',
         where: 'owner=? AND id=?',
@@ -314,7 +425,8 @@ extension StatisticsDatabase on AppDatabase {
         where: 'session_id=?',
         whereArgs: [source],
       );
-      final id = 'course|${alias.isEmpty ? source : alias.first['stable_id']}';
+      final id =
+          '${source.startsWith('exam|') ? 'exam' : 'course'}|${alias.isEmpty ? source : alias.first['stable_id']}';
       final rows = await txn.query(
         'statistics_records',
         where: 'owner=? AND id=?',
@@ -406,7 +518,7 @@ extension StatisticsDatabase on AppDatabase {
                       0)
           ? incoming
           : old;
-      if (value['kind'] == 'course') {
+      if (value['kind'] == 'course' || value['kind'] == 'exam') {
         value = {
           ...value,
           'counted': old['counted'] == true || incoming['counted'] == true,

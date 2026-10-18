@@ -696,7 +696,14 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _launch = LaunchMotionScope.maybeOf(context);
+    final next = LaunchMotionScope.maybeOf(context);
+    if (!identical(next, _launch)) {
+      _entrancePrepared = false;
+      _entranceQueued = false;
+      _entrances = const {};
+      _entranceOffsets = const {};
+    }
+    _launch = next;
   }
 
   Widget _entrance(String id, Widget child) => LaunchCard(
@@ -933,7 +940,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                         Semantics(
                                           button: true,
                                           label:
-                                              '${event.session.courseName}, ${_time(event.session.startAt)}, ${event.session.room}',
+                                              '${event.session.displayName}, ${_time(event.session.startAt)}, ${event.session.room}',
                                           child: InkWell(
                                             key: ValueKey(
                                               'grid-fit-target-${event.session.id}',
@@ -1136,7 +1143,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, candidate.session),
               child: Text(
-                '${candidate.session.courseName} · ${_time(candidate.session.startAt)}',
+                '${candidate.session.displayName} · ${_time(candidate.session.startAt)}',
               ),
             ),
         ],
@@ -1682,7 +1689,7 @@ class GridSessionChip extends ConsumerWidget {
       button: true,
       selected: selection.active ? selected : null,
       label:
-          '${session.courseName}, $time, ${session.room}, ${session.teachers.join('、')}'
+          '${session.displayName}, $time, ${session.room}, ${session.teachers.join('、')}'
           '${strong ? ', ${WakeText.of(context).strong}' : ''}'
           '${selection.active && selected ? ', ${GridActionText.of(context).selectedHint}' : ''}',
       child: GestureDetector(
@@ -1773,7 +1780,7 @@ double _resolvePixelsPerMinute(
           ? math.max(1.0, contentWidth - 4)
           : math.max(20.0, laneWidth - 22);
       final nameHeight = _textHeight(
-        event.session.courseName,
+        event.session.displayName,
         compact
             ? _compactCourseNameStyle(null, contentWidth < 32)
             : theme.textTheme.labelMedium?.copyWith(
@@ -1879,12 +1886,12 @@ class _CompactSessionChipContent extends StatelessWidget {
       return painter.height;
     }
 
-    if (availableHeight < measure(session.courseName, nameStyle, 1) + 6) {
+    if (availableHeight < measure(session.displayName, nameStyle, 1) + 6) {
       return const SizedBox.shrink();
     }
     final roomStyle = detailStyle.copyWith(fontWeight: FontWeight.w600);
     final roomHeight = measure(session.room, roomStyle, 2);
-    final nameHeight = measure(session.courseName, nameStyle, 1);
+    final nameHeight = measure(session.displayName, nameStyle, 1);
     var remaining = math.max(0.0, availableHeight - 6) - nameHeight;
     final showRoom = session.room.trim().isNotEmpty && remaining >= roomHeight;
     if (showRoom) remaining -= roomHeight;
@@ -1905,7 +1912,7 @@ class _CompactSessionChipContent extends StatelessWidget {
               child: Align(
                 alignment: Alignment.topLeft,
                 child: Text(
-                  session.courseName,
+                  session.displayName,
                   maxLines: 3,
                   overflow: TextOverflow.fade,
                   softWrap: true,
@@ -1971,7 +1978,7 @@ class _SessionChipContent extends StatelessWidget {
     );
     final width = math.max(1.0, availableWidth);
     final nameHeight = _textHeight(
-      session.courseName,
+      session.displayName,
       nameStyle,
       width,
       MediaQuery.textScalerOf(context),
@@ -1980,7 +1987,7 @@ class _SessionChipContent extends StatelessWidget {
     final scaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
     final oneLineHeight = _textHeight(
-      session.courseName,
+      session.displayName,
       nameStyle,
       width,
       scaler,
@@ -2026,7 +2033,7 @@ class _SessionChipContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            session.courseName,
+            session.displayName,
             style: nameStyle,
             maxLines: nameHeight + 10 <= availableHeight
                 ? null

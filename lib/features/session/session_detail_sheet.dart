@@ -1,3 +1,5 @@
+import 'package:orbit/features/statistics/semester_management_page.dart';
+import 'package:orbit/models/v162_text.dart';
 import 'package:orbit/features/session/wemust_check_in_action.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
@@ -76,7 +78,9 @@ class SessionDetailSheet extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             Text(
-              session.courseName,
+              session.isExam
+                  ? "${V162Text.of(context).exam} · ${session.courseName}"
+                  : session.courseName,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             Text(
@@ -93,7 +97,7 @@ class SessionDetailSheet extends ConsumerWidget {
             ),
             StrongCourseBadge(session: session),
             _DetailRow(icon: Icons.room, text: session.room),
-            if (session.teachers.isNotEmpty)
+            if (!session.isExam && session.teachers.isNotEmpty)
               _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
             if (session.faculty.trim().isNotEmpty)
               _DetailRow(icon: Icons.school, text: session.faculty),
@@ -103,7 +107,9 @@ class SessionDetailSheet extends ConsumerWidget {
                 text: session.note!,
               ),
             const SizedBox(height: 20),
-            if (fromCheckInReminder) const WemustCheckInAction(),
+            if (fromCheckInReminder && !session.isExam)
+              const WemustCheckInAction(),
+            SemesterAssignmentButton(session: session),
             _SessionActionButtons(session: session),
           ],
         ),
@@ -296,15 +302,36 @@ class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String text;
 
+  double _iconBaseline(BuildContext context) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text.isEmpty ? ' ' : text,
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final line = painter.computeLineMetrics().first;
+    final baseline = 9 + (line.ascent - line.descent) / 2;
+    painter.dispose();
+    return baseline;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
-          Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+          Baseline(
+            baseline: _iconBaseline(context),
+            baselineType: TextBaseline.alphabetic,
+            child: Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(text, style: Theme.of(context).textTheme.bodyMedium),

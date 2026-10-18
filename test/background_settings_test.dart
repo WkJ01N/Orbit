@@ -184,7 +184,10 @@ void main() {
       final portable = await service.exportPortableSettings();
       final backupService = ScheduleBackupService();
       final json = backupService.encodeToJson([], settings: portable);
-      expect(backupService.decodeBackup(json).version, 12);
+      expect(
+        backupService.decodeBackup(json).version,
+        ScheduleBackupService.backupVersion,
+      );
       expect(
         backupService.decodeBackup(json).settings!.backgrounds!.toJson(),
         sample().toJson(),

@@ -420,6 +420,11 @@ void main() {
     );
     container.read(appNavIndexProvider.notifier).state = 3;
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('launch-preview')),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('launch-preview')));
     await tester.pumpAndSettle();
     expect(find.byType(GridSessionChip), findsWidgets);

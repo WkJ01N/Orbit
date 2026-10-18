@@ -336,7 +336,7 @@ async function http(event) {
   }
   const policyRef = db.collection(collections.policy).doc(documentId(identity.uid));
   const policy = syncPolicy.normalize(documentData(await policyRef.get()) || {});
-  if (path === '/v1/sync/policy' && method === 'GET') return jsonResponse(200, policy);
+  if (path === '/v1/sync/policy' && method === 'GET') return jsonResponse(200, {...policy, supportsExams: true});
   if (path === '/v1/sync/policy' && method === 'PUT') {
     const requested = syncPolicy.normalize(jsonBody(event));
     const saved = await db.runTransaction(async (transaction) => {
@@ -363,6 +363,7 @@ async function http(event) {
       supportsDeadline: input.supportsDeadline === true,
       supportsSettings: input.supportsSettings === true,
       supportsStatistics: input.supportsStatistics === true,
+      supportsExams: input.supportsExams === true,
       selection: input.selection,
     });
     return jsonResponse(200, { ...pushed, pull: pulled }, { gzip: true });
@@ -376,6 +377,7 @@ async function http(event) {
       supportsDeadline: input.supportsDeadline === true,
       supportsSettings: input.supportsSettings === true,
       supportsStatistics: input.supportsStatistics === true,
+      supportsExams: input.supportsExams === true,
       selection: input.selection,
     }), { gzip: true });
   }

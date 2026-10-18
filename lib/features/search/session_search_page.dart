@@ -138,7 +138,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
                     itemBuilder: (context, index) {
                       final session = _results[index];
                       return ListTile(
-                        title: Text(session.courseName),
+                        title: Text(session.displayName),
                         subtitle: Text(
                           '${formatIsoDate(session.date)} · '
                           '${formatTimeHm(session.startAt)} · ${session.room}',

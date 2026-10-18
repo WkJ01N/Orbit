@@ -8,7 +8,7 @@ class LaunchText {
       : locale.scriptCode == 'Hans' || locale.countryCode == 'CN'
       ? hans
       : hant;
-  String get title => t('Startup & entrance', '启动与入场动画', '啟動與入場動畫');
+  String get title => t('Startup & page animations', '启动与页面动画', '啟動與頁面動畫');
   String get icon => t('Startup icon', '启动页图标', '啟動頁圖示');
   String get iconHint => t(
     'Choose a circular image for the startup screen.',

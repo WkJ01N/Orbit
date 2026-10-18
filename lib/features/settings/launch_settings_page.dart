@@ -1,3 +1,5 @@
+import 'package:orbit/l10n/app_localizations.dart';
+import 'package:orbit/models/v162_text.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
 import 'package:orbit/models/typography_text.dart';
 import 'dart:io';
@@ -89,10 +91,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
       return;
     }
     await _save(
-      LaunchSettings(
-        iconPath: path,
-        cardEntrance: ref.read(launchSettingsProvider).cardEntrance,
-      ),
+      ref.read(launchSettingsProvider).copyWith(iconPath: path),
       newFile: path,
     );
   });
@@ -101,14 +100,77 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
   Widget build(BuildContext context) {
     final text = LaunchText(context);
     final settings = ref.watch(launchSettingsProvider);
+    final v = V162Text.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(text.title)),
+      appBar: AppBar(title: Text(v.animationTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              SwitchListTile(
+                title: Text(v.brandAnimation),
+                value: settings.brandEnabled,
+                onChanged: _busy
+                    ? null
+                    : (b) =>
+                          _run(() => _save(settings.copyWith(brandEnabled: b))),
+              ),
+              Text(
+                v.pageAnimations,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              for (var i = 0; i < 4; i++)
+                SwitchListTile(
+                  title: Text(
+                    [
+                      l10n.navGrid,
+                      l10n.navUpcoming,
+                      l10n.navImport,
+                      l10n.navSettings,
+                    ][i],
+                  ),
+                  value: settings.pageEnabled[i],
+                  onChanged: _busy
+                      ? null
+                      : (b) {
+                          final pages = [...settings.pageEnabled];
+                          pages[i] = b;
+                          _run(
+                            () => _save(settings.copyWith(pageEnabled: pages)),
+                          );
+                        },
+                ),
+              const Divider(),
+              Text(
+                v.animationTriggers,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              SwitchListTile(
+                title: Text(v.onStartup),
+                value: settings.onStartup,
+                onChanged: _busy
+                    ? null
+                    : (b) => _run(() => _save(settings.copyWith(onStartup: b))),
+              ),
+              SwitchListTile(
+                title: Text(v.onResume),
+                value: settings.onResume,
+                onChanged: _busy
+                    ? null
+                    : (b) => _run(() => _save(settings.copyWith(onResume: b))),
+              ),
+              SwitchListTile(
+                title: Text(v.onSwitch),
+                value: settings.onPageSwitch,
+                onChanged: _busy
+                    ? null
+                    : (b) =>
+                          _run(() => _save(settings.copyWith(onPageSwitch: b))),
+              ),
+              const Divider(),
               ListTile(
                 leading: const Icon(Icons.font_download_outlined),
                 title: Text(TypographyText(context).launch),
@@ -139,11 +201,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                     onPressed: _busy || settings.iconPath == null
                         ? null
                         : () => _run(
-                            () => _save(
-                              LaunchSettings(
-                                cardEntrance: settings.cardEntrance,
-                              ),
-                            ),
+                            () => _save(settings.copyWith(clearIcon: true)),
                           ),
                     child: Text(text.restore),
                   ),
@@ -167,12 +225,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                   onTap: _busy
                       ? null
                       : () => _run(
-                          () => _save(
-                            LaunchSettings(
-                              iconPath: settings.iconPath,
-                              cardEntrance: mode,
-                            ),
-                          ),
+                          () => _save(settings.copyWith(cardEntrance: mode)),
                         ),
                 ),
               Text(text.stagger, style: Theme.of(context).textTheme.bodySmall),

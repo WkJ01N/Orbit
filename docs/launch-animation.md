@@ -3,7 +3,7 @@
 Android and Windows share `OrbitLaunchHost` and `LaunchMotion`. The host lives
 inside the home route, so notifications and other routes can take priority.
 Hidden startup and reminder maintenance bypass the animation. Resuming the app
-does not replay it; pointer input, window resizing and urgent reminders finish
+does not replay it by default; pointer input, window resizing and urgent reminders finish
 an active entrance immediately.
 
 The brand layer exits after 450 ms. Shell elements start at 350–480 ms, with
@@ -46,3 +46,14 @@ flutter drive --profile -d windows --target integration_test/launch_motion_test.
 The profile test runs 49 sample classes in both entrance modes, with in-memory
 preferences and no user database. It writes `build/launch-motion-profile.json`.
 Replace `windows` with an attached Android device ID to measure phone rendering.
+
+
+## v1.6.2 trigger controls
+
+Appearance → Startup & page animations separates the cold-start brand switch
+from the four main-page entrance switches. Page switches default on; triggering
+on startup defaults on, while foreground resume and page navigation default off.
+Returning from a subpage counts as navigation, but dialogs and temporary loss of
+focus do not. Entrances wait for existing navigation transitions and preserve
+page state. Timetable replay resets its visible-card plan; the other main pages
+use a 360 ms fade and a 10 px movement. See `v1.6.2.md` for validation scope.

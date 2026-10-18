@@ -1,3 +1,4 @@
+import 'package:orbit/services/semester_service.dart';
 import 'package:orbit/data/database/row_decoders.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/deadline.dart';
@@ -28,7 +29,7 @@ class AppDatabase {
   static Future<AppDatabase> open(String databasePath) async {
     final db = await openDatabase(
       p.join(databasePath, 'orbit.db'),
-      version: 11,
+      version: 12,
       onCreate: (database, version) async {
         await _createSchema(database);
       },
@@ -39,6 +40,7 @@ class AppDatabase {
         await _createStrongSchema(database);
         await _createStatisticsSchema(database);
         await _createDeadlineStrongSchema(database);
+        await _createExamSchema(database);
       },
       onUpgrade: (database, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -67,6 +69,7 @@ class AppDatabase {
         if (oldVersion < 9) await _createStrongSchema(database);
         if (oldVersion < 10) await _createStatisticsSchema(database);
         if (oldVersion < 11) await _createDeadlineStrongSchema(database);
+        if (oldVersion < 12) await _createExamSchema(database);
       },
     );
     return AppDatabase(db);
@@ -109,6 +112,26 @@ class AppDatabase {
     await _createStrongSchema(database);
     await _createStatisticsSchema(database);
     await _createDeadlineStrongSchema(database);
+    await _createExamSchema(database);
+  }
+
+  static Future<void> _createExamSchema(Database database) async {
+    final names = (await database.rawQuery(
+      'PRAGMA table_info(course_sessions)',
+    )).map((r) => r['name']).toSet();
+    for (final entry in {
+      'kind': "TEXT NOT NULL DEFAULT 'course'",
+      'semester_id': 'TEXT',
+      'exam_reminder_enabled': 'INTEGER NOT NULL DEFAULT 1',
+      'exam_strong_reminder': 'INTEGER NOT NULL DEFAULT 1',
+      'exam_lead_minutes': 'INTEGER NOT NULL DEFAULT 30',
+    }.entries) {
+      if (!names.contains(entry.key)) {
+        await database.execute(
+          'ALTER TABLE course_sessions ADD COLUMN ${entry.key} ${entry.value}',
+        );
+      }
+    }
   }
 
   static Future<void> _createDeadlineStrongSchema(Database database) async {

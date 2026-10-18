@@ -1,5 +1,5 @@
 class OrbitStatistics {
-  const OrbitStatistics({required this.records});
+  OrbitStatistics({required this.records});
   final List<Map<String, dynamic>> records;
   Iterable<Map<String, dynamic>> get included =>
       records.where((r) => r['excluded'] != true);
@@ -24,22 +24,37 @@ class OrbitStatistics {
   int get classMinutes => attended.fold(0, (n, r) => n + (r['minutes'] as int));
   int get completedDeadlines =>
       included.where((r) => r['kind'] == 'ddl').length;
-  List<({String name, String semester})> get learnedCourses {
+  int get completedExams =>
+      included.where((r) => r['kind'] == 'exam' && r['counted'] == true).length;
+  late final List<({String name, String semester})> learnedCourses =
+      _learnedCourses();
+  List<({String name, String semester})> _learnedCourses() {
     final groups = <String, List<Map<String, dynamic>>>{};
     for (final r in included.where(
       (r) => r['kind'] == 'course' && r['withdrawn'] != true,
     )) {
       groups.putIfAbsent(r['courseKey'] as String, () => []).add(r);
     }
+    final completed = groups.values
+        .where((g) => g.isNotEmpty && g.every((r) => r['counted'] == true))
+        .toList();
+    String lastEnd(List<Map<String, dynamic>> group) => group
+        .map((r) => r['endAt'] as String? ?? '')
+        .fold('', (a, b) => a.compareTo(b) > 0 ? a : b);
+    completed.sort((a, b) {
+      final time = lastEnd(b).compareTo(lastEnd(a));
+      return time != 0
+          ? time
+          : '${a.first['semester']}|${a.first['name']}'.compareTo(
+              '${b.first['semester']}|${b.first['name']}',
+            );
+    });
     return [
-      for (final group in groups.values)
-        if (group.isNotEmpty && group.every((r) => r['counted'] == true))
-          (
-            name: group.first['name'] as String,
-            semester: group.first['semester'] as String,
-          ),
-    ]..sort(
-      (a, b) => '${a.semester}|${a.name}'.compareTo('${b.semester}|${b.name}'),
-    );
+      for (final g in completed)
+        (
+          name: g.first['name'] as String,
+          semester: g.first['semester'] as String,
+        ),
+    ];
   }
 }

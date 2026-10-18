@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:excel/excel.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
@@ -63,7 +64,14 @@ class XlsxParser {
       if (_isRowEmpty(row)) {
         continue;
       }
-      sessions.add(_parseRow(row, sourceFile: sourceFile));
+      sessions.add(
+        _parseRow(
+          row,
+          sourceFile: sourceFile,
+          orbitMetadata:
+              rows.first.length > 13 && rows.first[13] == 'Orbit metadata',
+        ),
+      );
     }
 
     if (sessions.isEmpty) {
@@ -83,7 +91,11 @@ class XlsxParser {
     return sessions;
   }
 
-  CourseSession _parseRow(List<String> row, {String? sourceFile}) {
+  CourseSession _parseRow(
+    List<String> row, {
+    String? sourceFile,
+    bool orbitMetadata = false,
+  }) {
     if (row.length < 13) {
       throw XlsxParseException(
         XlsxParseErrorCode.insufficientColumns,
@@ -91,10 +103,31 @@ class XlsxParser {
       );
     }
 
+    final meta = orbitMetadata && row.length > 13 && row[13].isNotEmpty
+        ? Map<String, dynamic>.from(jsonDecode(row[13]) as Map)
+        : <String, dynamic>{};
+    final exam = meta['kind'] == 'exam';
+    if (meta.isNotEmpty &&
+        (meta['version'] != 1 || !['course', 'exam'].contains(meta['kind']))) {
+      throw const FormatException('Orbit metadata');
+    }
+    if (exam &&
+        (meta['id'] is! String ||
+            !(meta['id'] as String).startsWith('exam|') ||
+            meta['examLeadMinutes'] is! int ||
+            meta['examLeadMinutes'] < 0 ||
+            meta['examLeadMinutes'] > 10080 ||
+            meta['examReminderEnabled'] is! bool ||
+            meta['examStrongReminder'] is! bool)) {
+      throw const FormatException('Exam metadata');
+    }
     final date = _parseDate(row[4]);
     final weekday = _parseWeekday(row[5], date);
     final startAt = _parseDateTime(date, row[9]);
-    final endAt = _parseDateTime(date, row[10]);
+    final endAt = _parseDateTime(
+      exam ? _parseDate(meta['endDate'] as String) : date,
+      row[10],
+    );
     final teachers = _parseTeachers(row[11]);
     final courseCode = row[7].trim().isEmpty
         ? generatedImportCourseCode(
@@ -107,12 +140,19 @@ class XlsxParser {
     }
 
     return CourseSession(
-      id: CourseSession.buildId(
-        date: date,
-        courseCode: courseCode,
-        startAt: startAt,
-        section: section,
-      ),
+      kind: exam ? SessionKind.exam : SessionKind.course,
+      semesterId: meta['semesterId'] as String?,
+      examReminderEnabled: meta['examReminderEnabled'] as bool? ?? true,
+      examStrongReminder: meta['examStrongReminder'] as bool? ?? true,
+      examLeadMinutes: meta['examLeadMinutes'] as int? ?? 30,
+      id: exam
+          ? meta['id'] as String
+          : CourseSession.buildId(
+              date: date,
+              courseCode: courseCode,
+              startAt: startAt,
+              section: section,
+            ),
       classType: row[0].trim(),
       room: row[1].trim(),
       date: date,
@@ -131,7 +171,7 @@ class XlsxParser {
 
   List<String> _readRow(Sheet sheet, int rowIndex) {
     final values = <String>[];
-    for (var columnIndex = 0; columnIndex < 13; columnIndex++) {
+    for (var columnIndex = 0; columnIndex < 14; columnIndex++) {
       final cell = sheet.cell(
         CellIndex.indexByColumnRow(
           columnIndex: columnIndex,

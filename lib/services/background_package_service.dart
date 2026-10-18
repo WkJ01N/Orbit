@@ -83,7 +83,7 @@ class BackgroundPackageService {
           throw const FormatException('Invalid backup entry');
         }
         final limit = name == 'backup.json'
-            ? 256 * 1024 * 1024
+            ? 512 * 1024 * 1024
             : 8 * 1024 * 1024 * 1024;
         if (entry.uncompressedSize! > limit) {
           throw const FormatException('Backup entry is too large');

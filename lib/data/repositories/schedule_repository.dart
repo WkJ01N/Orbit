@@ -77,7 +77,7 @@ class ScheduleRepository {
     if (strategy == ImportMergeStrategy.replaceWeek) {
       final importWeeks = sessions.map((s) => weekStartFor(s.date)).toSet();
       deleteIds = existing
-          .where((s) => importWeeks.contains(weekStartFor(s.date)))
+          .where((s) => !s.isExam && importWeeks.contains(weekStartFor(s.date)))
           .map((s) => s.id)
           .toList();
     } else {
@@ -110,7 +110,7 @@ class ScheduleRepository {
   }
 
   bool _timeOverlaps(CourseSession a, CourseSession b) {
-    if (!_sameDate(a.date, b.date)) {
+    if (a.kind != b.kind || !_sameDate(a.date, b.date)) {
       return false;
     }
     return a.startAt.isBefore(b.endAt) && b.startAt.isBefore(a.endAt);

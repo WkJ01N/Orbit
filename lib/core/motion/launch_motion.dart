@@ -74,6 +74,7 @@ class LaunchMotion {
     required TickerProvider vsync,
     required this.settings,
     int? seed,
+    this.startup = true,
   }) : random = math.Random(seed),
        timeline = AnimationController(
          vsync: vsync,
@@ -85,6 +86,7 @@ class LaunchMotion {
        );
 
   final LaunchSettings settings;
+  final bool startup;
   final math.Random random;
   final AnimationController timeline;
   final AnimationController cards;
@@ -166,6 +168,7 @@ class LaunchReveal extends StatelessWidget {
     final motion = LaunchMotionScope.maybeOf(context);
     if (motion == null ||
         motion.finished ||
+        (motion.startup && !motion.settings.onStartup) ||
         MediaQuery.disableAnimationsOf(context)) {
       return child;
     }
@@ -315,6 +318,12 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
         ref.read(deadlineStrongEventsProvider).isNotEmpty) {
       _motion!.finish();
     }
+    if (!_motion!.settings.onStartup || !_motion!.settings.pageEnabled[0]) {
+      _motion!.skipGridEntrance();
+    }
+    if (!_motion!.settings.brandEnabled && !_motion!.settings.onStartup) {
+      _motion!.finish();
+    }
     if (!_preparing && !_motion!.finished) {
       _preparing = true;
       unawaited(_prepare());
@@ -343,7 +352,11 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
     if (!mounted || _motion!.finished) return;
     // Start on a painted frame rather than during dependency resolution.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_motion!.finished) _motion!.timeline.forward();
+      if (mounted && !_motion!.finished) {
+        _motion!.timeline.forward(
+          from: _motion!.settings.brandEnabled ? 0 : 350 / 1150,
+        );
+      }
     });
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -417,7 +430,9 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
               animation: motion.timeline,
               builder: (context, _) {
                 final ms = motion.milliseconds;
-                if (motion.finished || ms >= 450) {
+                if (motion.finished ||
+                    !motion.settings.brandEnabled ||
+                    ms >= 450) {
                   return const SizedBox.shrink();
                 }
                 final fade = 1 - launchProgress(ms, 300, 150);
@@ -457,8 +472,8 @@ class _OrbitLaunchHostState extends ConsumerState<OrbitLaunchHost>
                                       style: TextStyle(
                                         inherit: false,
                                         fontFamily: launchFamily,
-                                        fontFamilyFallback:
-                                            FontCatalog.fallback(launchFont),
+                                        fontFamilyFallback: typography
+                                            .fallbackFamilies(launchFont),
                                         fontSize: 36,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: 0.3,

@@ -396,21 +396,31 @@ class SemesterPlan {
     required this.name,
     required this.firstWeekMonday,
     this.totalWeeks = 18,
+    this.rangeStart,
+    this.rangeEnd,
+    this.source = 'import',
   });
   final String id, name;
   final DateTime firstWeekMonday;
   final int totalWeeks;
+  final DateTime? rangeStart, rangeEnd;
+  final String source;
   void validate() {
     if (id.isEmpty ||
         name.trim().isEmpty ||
         firstWeekMonday.weekday != 1 ||
         totalWeeks < 1 ||
-        totalWeeks > 30) {
+        totalWeeks > 30 ||
+        ((rangeStart == null) != (rangeEnd == null)) ||
+        (rangeStart != null && rangeEnd!.isBefore(rangeStart!))) {
       throw const FormatException('semesterInvalid');
     }
   }
 
   Map<String, dynamic> toJson() => {
+    if (rangeStart != null) 'rangeStart': rangeStart!.toIso8601String(),
+    if (rangeEnd != null) 'rangeEnd': rangeEnd!.toIso8601String(),
+    'source': source,
     'version': 1,
     'id': id,
     'name': name,
@@ -424,6 +434,13 @@ class SemesterPlan {
       name: j['name'] as String,
       firstWeekMonday: DateTime.parse(j['firstWeekMonday'] as String),
       totalWeeks: j['totalWeeks'] as int,
+      rangeStart: j['rangeStart'] == null
+          ? null
+          : DateTime.parse(j['rangeStart'] as String),
+      rangeEnd: j['rangeEnd'] == null
+          ? null
+          : DateTime.parse(j['rangeEnd'] as String),
+      source: j['source'] as String? ?? 'import',
     );
     p.validate();
     return p;

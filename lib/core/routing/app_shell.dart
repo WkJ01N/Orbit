@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_entrance.dart';
 import 'package:flutter/rendering.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/core/routing/app_tab.dart';
@@ -339,7 +340,12 @@ class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack>
                   ref.watch(backgroundSettingsProvider).valueOrNull ??
                   const BackgroundSettings(),
               owner: BackgroundPage.values[index],
-              child: widget.children[index],
+              child: PageEntranceHost(
+                index: index,
+                active: index == _activeIndex,
+                startup: _visited.length == 1,
+                child: widget.children[index],
+              ),
             ),
           ),
         ),

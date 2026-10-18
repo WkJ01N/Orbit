@@ -2,7 +2,10 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.6.1（build 31）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.6.2（build 32）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+
+v1.6.2 新增考试与独立强提醒、学期识别和统计筛选、已学完课程摘要、三层字体替补，以及可配置的页面动画触发；说明与验收见 [v1.6.2](docs/v1.6.2.md)。
+
 
 ## 功能概览
 
@@ -32,14 +35,12 @@
 
 ## 快速开始（用户）
 
-v1.6.1 本地验收产物位于 `release/v1.6.1/`，发布版本可从 [GitHub Releases](https://github.com/WkJ01N/Orbit/releases/latest) 下载：
+v1.6.2 安装包可从 [GitHub Release](https://github.com/WkJ01N/Orbit/releases/tag/v1.6.2) 下载，验证记录见 [发布说明](docs/releases/v1.6.2.md)。本地验收产物位于 `release/v1.6.2/`。
 
-| 平台 | 文件 | 说明 |
-|------|------|------|
-| Windows | `orbit-v1.6.1-windows-x64.zip` | 解压后运行 `orbit.exe`，**勿删除**同目录 `data/` 与 DLL |
-| Android | `orbit-v1.6.1-android.apk` | 可从现有版本直接覆盖安装并保留本机数据 |
+- Android 通用包：`orbit-v1.6.2-android.apk`，可覆盖安装并保留本机数据。
+- Windows x64：`orbit-v1.6.2-windows-x64.zip`，解压后运行 `orbit.exe`，保留同目录 `data/` 与 DLL。
 
-Android 同时提供 `orbit-v1.6.1-arm64-v8a.apk`、`orbit-v1.6.1-armeabi-v7a.apk`、`orbit-v1.6.1-x86_64.apk` 专用包；多数现代手机选择 ARM64 包，通用包用于兼容回退。应用内更新会优先匹配设备架构，也允许重装当前版本、切换兼容架构和选择历史版本。降级前须导出并校验保护包，v1.5.5 起提供兼容数据。
+同时提供 `arm64-v8a`、`armeabi-v7a` 和 `x86_64` 专用 APK；多数现代手机选择 ARM64 包。应用内更新会优先匹配设备架构，也允许重装当前版本、切换兼容架构和选择历史版本。降级前须导出并校验保护包。
 
 资源与组件提供中文字体、视频播放库的下载、取消、重试、删除及旧缓存清理。主包仅携带系统字体支持、Nunito、轻量桥接和许可文本；构建及验收说明见 [v1.6.1 实现](docs/v1.6.1.md)。
 
@@ -91,10 +92,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.6.1/orbit-v1.6.1-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.6.2/orbit-v1.6.2-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.6.1/orbit-v1.6.1-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.6.2/orbit-v1.6.2-android.apk -Force
 ```
 
 ## 更新日志

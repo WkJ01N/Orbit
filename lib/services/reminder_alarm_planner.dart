@@ -1,3 +1,5 @@
+import 'package:orbit/models/v162_text.dart';
+import 'package:orbit/core/formatters/date_time_formatters.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/schedule_import.dart';
 import 'package:orbit/models/notification_copy.dart';
@@ -24,13 +26,17 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
   var classLeadId = classLeadAlarmBase;
   var checkInId = checkInAlarmBase;
 
-  if (settings.enabled) {
+  {
     for (final session in upcomingSessions.where(
-      (s) => s.deletedAt == null && !s.archived,
+      (s) =>
+          s.deletedAt == null &&
+          !s.archived &&
+          (s.isExam ? s.examReminderEnabled : settings.enabled),
     )) {
-      final reminderAt = session.startAt.subtract(
-        Duration(minutes: settings.leadMinutes),
-      );
+      final lead = session.isExam
+          ? session.examLeadMinutes
+          : settings.leadMinutes;
+      final reminderAt = session.startAt.subtract(Duration(minutes: lead));
       if (!reminderAt.isAfter(now)) {
         continue;
       }
@@ -40,13 +46,15 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
         session: session,
         settings: settings,
         copy: copy,
-        leadMinutes: settings.leadMinutes,
+        leadMinutes: lead,
       );
       specs.add(
         ReminderAlarmSpec(
           alarmId: id,
           notificationId: id,
-          title: text.title,
+          title: session.isExam
+              ? "${V162Text(copy.deadlineText.locale).exam} · ${session.courseName}"
+              : text.title,
           body: text.body,
           courseName: session.courseName,
           courseStartAt: session.startAt,
@@ -64,7 +72,9 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
           ),
           localeTag: copy.deadlineText.locale.toLanguageTag(),
           stopLabel: copy.stopLabel,
-          bigText: text.bigText,
+          bigText: session.isExam
+              ? "${session.courseName}\n${formatIsoDate(session.date)} ${formatTimeHm(session.startAt)}–${formatTimeHm(session.endAt)}\n${session.room}"
+              : text.bigText,
         ),
       );
       if (classLeadId >= checkInAlarmBase) {
@@ -75,7 +85,7 @@ List<ReminderAlarmSpec> buildReminderAlarmSpecs({
 
   if (settings.checkInReminderEnabled) {
     for (final session in upcomingSessions.where(
-      (s) => s.deletedAt == null && !s.archived,
+      (s) => !s.isExam && s.deletedAt == null && !s.archived,
     )) {
       if (!session.startAt.isAfter(now)) {
         continue;

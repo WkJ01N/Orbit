@@ -866,9 +866,9 @@ class ScheduleImportService {
       for (var r = 1; r < sheet.rows.length; r++) {
         if (sheet.rows[r].every((v) => v.trim().isEmpty)) continue;
         try {
-          final row = List.generate(13, (c) => sheet.cell(r, c));
+          final row = List.generate(14, (c) => sheet.cell(r, c));
           final parsed = XlsxParser().parseRows([
-            const [],
+            List.generate(14, (c) => sheet.cell(0, c)),
             row,
           ], sourceFile: sheet.file).single;
           if (parsed.courseName.isEmpty) {
@@ -1238,6 +1238,7 @@ class ScheduleImportService {
         teachers: teachers,
         faculty: get(ImportField.faculty),
         semester: get(ImportField.semester),
+        semesterId: context.semester?.id,
         sourceFile: file,
         recurrenceSeriesId: series,
         recurrenceMeetingId: meeting,

@@ -224,6 +224,11 @@ Map<String, dynamic> courseSessionSyncPayload(CourseSession session) => {
 
 CourseSession courseSessionFromSyncPayload(Map<String, dynamic> json) =>
     CourseSession(
+      kind: json['kind'] == 'exam' ? SessionKind.exam : SessionKind.course,
+      semesterId: json['semesterId'] as String?,
+      examReminderEnabled: json['examReminderEnabled'] as bool? ?? true,
+      examStrongReminder: json['examStrongReminder'] as bool? ?? true,
+      examLeadMinutes: json['examLeadMinutes'] as int? ?? 30,
       archivedAt: json['archivedAt'] == null
           ? null
           : DateTime.parse(json['archivedAt'] as String).toLocal(),
@@ -254,7 +259,11 @@ String canonicalSyncPayload(Map<String, dynamic> payload) {
   // Older clients omit these optional fields. Their absence has the same
   // meaning as the new defaults and must not create first-login conflicts.
   final comparable = {...payload};
+  if (comparable['kind'] == 'course') comparable.remove('kind');
+  if (comparable['kind'] == 'course') comparable.remove('kind');
   for (final key in [
+    'semesterId',
+    'semesterId',
     'archivedAt',
     'linkedCourseKey',
     'startPeriod',

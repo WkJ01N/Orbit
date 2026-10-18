@@ -35,6 +35,16 @@ class _DowngradePageState extends ConsumerState<DowngradePage> {
   List<String> _losses = [];
   Map<String, int> _lossCounts = {};
   String _loss(NavigationAssistText t, String id) => switch (id) {
+    'exams' => t.pick(
+      'Exams and their statistics remain in the protection backup only.',
+      '考试及考试统计仅保存在保护备份中。',
+      '考試及考試統計僅保存在保護備份中。',
+    ),
+    'fallbacks' => t.pick(
+      'Fallback font order returns to the old defaults.',
+      '替补字体顺序恢复旧版默认。',
+      '替補字型順序恢復舊版預設。',
+    ),
     'typography' => t.pick(
       'Interface and startup fonts return to the old defaults.',
       '界面及开屏字体恢复旧版默认。',

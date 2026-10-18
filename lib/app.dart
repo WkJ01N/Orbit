@@ -1,3 +1,4 @@
+import 'package:orbit/core/motion/page_entrance.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
 import 'package:orbit/providers/typography_providers.dart';
 import 'package:orbit/models/typography_settings.dart';
@@ -55,7 +56,11 @@ class OrbitApp extends ConsumerWidget {
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      navigatorObservers: [_messageRouteObserver, _backgroundRoutes],
+      navigatorObservers: [
+        _messageRouteObserver,
+        _backgroundRoutes,
+        pageEntranceRoutes,
+      ],
       builder: (context, child) => BackgroundHost(
         routes: _backgroundRoutes,
         child: AppScaffoldMessenger(
@@ -94,9 +99,9 @@ class OrbitApp extends ConsumerWidget {
         fontFamily: typography.effectiveAppFontId == 'system'
             ? null
             : FontCatalog.family(typography.effectiveAppFontId),
-        fontFallback: typography.effectiveAppFontId == 'system'
-            ? null
-            : FontCatalog.fallback(typography.effectiveAppFontId),
+        fontFallback: typography.fallbackFamilies(
+          typography.effectiveAppFontId,
+        ),
       ),
       darkTheme: AppTheme.dark(
         seed: seed,
@@ -106,9 +111,9 @@ class OrbitApp extends ConsumerWidget {
         fontFamily: typography.effectiveAppFontId == 'system'
             ? null
             : FontCatalog.family(typography.effectiveAppFontId),
-        fontFallback: typography.effectiveAppFontId == 'system'
-            ? null
-            : FontCatalog.fallback(typography.effectiveAppFontId),
+        fontFallback: typography.fallbackFamilies(
+          typography.effectiveAppFontId,
+        ),
       ),
       themeMode: themeMode,
       locale: locale,

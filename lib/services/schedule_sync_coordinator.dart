@@ -201,6 +201,11 @@ class ScheduleSyncCoordinator {
       }
       await captureSettingsChanges(account.uid);
       var cursor = await _database.syncCursor(account.uid);
+      final capabilityKey = 'sync_exams_v1_${account.uid}';
+      final firstExamSync =
+          _settings != null &&
+          (await _settings.loadLocalJson(capabilityKey)).isEmpty;
+      if (firstExamSync) cursor = 0;
       var coursesChanged = false;
       var receivedPull = false;
       var hasMore = true;
@@ -272,6 +277,9 @@ class ScheduleSyncCoordinator {
         await applyPull(pulled);
       }
       await _database.setSyncCursor(account.uid, cursor);
+      if (firstExamSync) {
+        await _settings.saveLocalJson(capabilityKey, {'applied': true});
+      }
       final now = DateTime.now();
       await _database.setLastSyncAt(account.uid, now);
       if (coursesChanged) await _onCoursesChanged();
