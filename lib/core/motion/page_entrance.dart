@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/motion/launch_motion.dart';
 import 'package:orbit/core/motion/page_module.dart';
+import 'package:orbit/core/motion/retained_page_switcher.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
 import 'package:orbit/providers/launch_providers.dart';
@@ -47,7 +49,7 @@ class PageEntranceRouteObserver extends RouteObserver<PageRoute<dynamic>> {
 
 final pageEntranceRoutes = PageEntranceRouteObserver();
 
-/// Prepare while the destination is still hidden; start at navigation midpoint.
+/// Cold startup keeps its phase; page transitions follow navigation directly.
 class PageEntranceHost extends ConsumerStatefulWidget {
   const PageEntranceHost({
     super.key,
@@ -60,6 +62,8 @@ class PageEntranceHost extends ConsumerStatefulWidget {
     this.navigationEpoch = 0,
     this.direction = 1,
     this.continuing = false,
+    this.transition,
+    this.route,
   });
   final int index;
   final bool active, startup, secondary;
@@ -67,6 +71,8 @@ class PageEntranceHost extends ConsumerStatefulWidget {
   final Animation<double>? navigation;
   final int navigationEpoch, direction;
   final bool continuing;
+  final PageTransitionData? transition;
+  final PageRoute<dynamic>? route;
   @override
   ConsumerState<PageEntranceHost> createState() => _PageEntranceHostState();
 }
@@ -109,7 +115,7 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     final size = MediaQuery.sizeOf(context);
     if (_lastSize != null && _lastSize != size) _finish();
     _lastSize = size;
-    final route = ModalRoute.of(context);
+    final route = widget.route ?? ModalRoute.of(context);
     if (route is PageRoute<dynamic> && route != _route) {
       pageEntranceRoutes.unsubscribe(this);
       _route = route;
@@ -159,6 +165,8 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
     Animation<double>? navigation, {
     bool reverse = false,
     bool startup = false,
+    bool continuing = false,
+    double visibility = 1,
   }) {
     _detachWait();
     if (!_allowed) {
@@ -166,7 +174,25 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       return;
     }
     _generation++;
-    _modules.reset(fromDirection: reverse ? -1 : widget.direction);
+    final fluid =
+        !startup &&
+        navigation != null &&
+        (widget.transition?.fluid ??
+            ref.read(launchSettingsProvider).onPageSwitch);
+    if (fluid) {
+      _modules.follow(
+        navigation,
+        duration:
+            widget.transition?.duration ??
+            ref.read(launchSettingsProvider).transitionDuration,
+        fromDirection: reverse ? -1 : widget.direction,
+        reverse: reverse,
+        continuing: continuing,
+        visibility: visibility,
+      );
+    } else {
+      _modules.reset(fromDirection: reverse ? -1 : widget.direction);
+    }
     _reverse = reverse;
     _startupWait = startup;
     if (_grid) {
@@ -176,6 +202,7 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
         settings: ref.read(launchSettingsProvider),
         startup: false,
         direction: reverse ? -1 : widget.direction,
+        fluid: fluid,
       );
       WidgetsBinding.instance.addPostFrameCallback((_) => old?.dispose());
     }
@@ -193,17 +220,32 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
       return;
     }
     final animation = _waiting;
-    final threshold = _startupWait ? 480 / 1150 : .5;
+    final threshold = _startupWait ? 480 / 1150 : 0.0;
     final ready =
         animation == null ||
-        (_reverse ? animation.value <= .5 : animation.value >= threshold);
+        (_reverse ? animation.value <= 1 : animation.value >= threshold);
     if (!ready) return;
     _detachWait();
     if (!_modules.pending) return;
-    final box = context.findRenderObject();
-    if (box is! RenderBox || !box.hasSize) return;
-    _modules.start(box.localToGlobal(Offset.zero) & box.size);
-    _gridMotion?.timeline.forward(from: 0);
+    final generation = _generation;
+    void prepare() {
+      if (!mounted || generation != _generation || !_modules.pending) return;
+      if (!_allowed) {
+        _finish();
+        return;
+      }
+      final box = context.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) return;
+      _modules.start(box.localToGlobal(Offset.zero) & box.size);
+      if (_gridMotion?.fluid != true) _gridMotion?.timeline.forward(from: 0);
+    }
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.postFrameCallbacks) {
+      prepare();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => prepare());
+    }
   }
 
   @override
@@ -216,12 +258,10 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
         _modules.pause();
         _gridMotion?.pause();
       } else if (ref.read(launchSettingsProvider).onPageSwitch) {
-        if (widget.continuing && !_modules.pending) {
-          _modules.resume();
-          _gridMotion?.resume();
-        } else {
-          _arm(widget.navigation ?? _route?.animation);
-        }
+        _arm(
+          widget.navigation ?? _route?.animation,
+          continuing: widget.continuing,
+        );
       } else {
         _finish();
       }
@@ -244,15 +284,18 @@ class _PageEntranceHostState extends ConsumerState<PageEntranceHost>
   void didPopNext() {
     if (ref.read(launchSettingsProvider).onPageSwitch) {
       final returning = pageEntranceRoutes.returningAnimation;
-      if (!_modules.pending &&
-          (pageEntranceRoutes.returningWasInteractive ||
-              (returning?.value ?? 1) < .5)) {
+      if (pageEntranceRoutes.returningWasInteractive) {
         _modules.resume();
         _gridMotion?.resume();
         return;
       }
       setState(
-        () => _arm(pageEntranceRoutes.returningAnimation, reverse: true),
+        () => _arm(
+          returning,
+          reverse: true,
+          continuing: !_modules.pending && (returning?.value ?? 1) < .5,
+          visibility: 1 - Curves.easeOutCubic.transform(returning?.value ?? 1),
+        ),
       );
     }
   }

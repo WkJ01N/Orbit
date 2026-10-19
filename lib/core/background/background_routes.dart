@@ -185,6 +185,7 @@ class _BackgroundRouteThemeState extends State<_BackgroundRouteTheme> {
                   active: true,
                   startup: false,
                   secondary: true,
+                  route: widget.route,
                   navigation: widget.route.animation,
                   child: widget.child,
                 ),
@@ -198,8 +199,14 @@ class _BackgroundRouteThemeState extends State<_BackgroundRouteTheme> {
 /// Keep Flutter's native motion and predictive back. Its default transition
 /// surfaces would otherwise cover the media plane outside Navigator.
 class BackgroundPageTransitionsBuilder extends PageTransitionsBuilder {
-  const BackgroundPageTransitionsBuilder({required this.platform});
+  const BackgroundPageTransitionsBuilder({
+    required this.platform,
+    this.fluidDuration,
+    this.suppressed,
+  });
   final TargetPlatform platform;
+  final Duration? Function()? fluidDuration;
+  final bool Function()? suppressed;
 
   PageTransitionsBuilder _delegate(BuildContext context) {
     final transparent =
@@ -212,20 +219,28 @@ class BackgroundPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 
   @override
-  Duration get transitionDuration => platform == TargetPlatform.android
-      ? const PredictiveBackPageTransitionsBuilder().transitionDuration
-      : const ZoomPageTransitionsBuilder().transitionDuration;
+  Duration get transitionDuration => suppressed?.call() == true
+      ? Duration.zero
+      : fluidDuration?.call() ??
+            (platform == TargetPlatform.android
+                ? const PredictiveBackPageTransitionsBuilder()
+                      .transitionDuration
+                : const ZoomPageTransitionsBuilder().transitionDuration);
+  @override
+  Duration get reverseTransitionDuration => transitionDuration;
 
   @override
-  DelegatedTransitionBuilder get delegatedTransition =>
-      (context, animation, secondaryAnimation, allowSnapshotting, child) =>
-          _delegate(context).delegatedTransition?.call(
-            context,
-            animation,
-            secondaryAnimation,
-            allowSnapshotting,
-            child,
-          );
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      fluidDuration?.call() != null
+      ? null
+      : (context, animation, secondaryAnimation, allowSnapshotting, child) =>
+            _delegate(context).delegatedTransition?.call(
+              context,
+              animation,
+              secondaryAnimation,
+              allowSnapshotting,
+              child,
+            );
 
   @override
   Widget buildTransitions<T>(
@@ -234,13 +249,154 @@ class BackgroundPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) => _delegate(context).buildTransitions(
-    route,
-    context,
-    animation,
-    secondaryAnimation,
-    _BackgroundRouteTheme(route: route, child: child),
-  );
+  ) {
+    return _BackgroundRouteMotion(
+      route: route,
+      animation: animation,
+      secondaryAnimation: secondaryAnimation,
+      configuration: this,
+      child: child,
+    );
+  }
+}
+
+/// Preferences select the next navigation session. Editing them on a settled
+/// route never changes its transition tree or recreates its entrance host.
+class _BackgroundRouteMotion extends StatefulWidget {
+  const _BackgroundRouteMotion({
+    required this.route,
+    required this.animation,
+    required this.secondaryAnimation,
+    required this.configuration,
+    required this.child,
+  });
+  final PageRoute<dynamic> route;
+  final Animation<double> animation, secondaryAnimation;
+  final BackgroundPageTransitionsBuilder configuration;
+  final Widget child;
+  @override
+  State<_BackgroundRouteMotion> createState() => _BackgroundRouteMotionState();
+}
+
+class _BackgroundRouteMotionState extends State<_BackgroundRouteMotion> {
+  final _contentKey = GlobalKey();
+  late bool _fluid, _suppressed;
+  double _exitFrom = 1;
+  double _exitOpacity = 1;
+  bool _exiting = false;
+  bool _interactive = false;
+
+  void _capture() {
+    _fluid = widget.configuration.fluidDuration?.call() != null;
+    _suppressed = widget.configuration.suppressed?.call() == true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _capture();
+    _status(widget.animation.status);
+    widget.animation.addStatusListener(_status);
+    widget.secondaryAnimation.addStatusListener(_secondaryStatus);
+  }
+
+  void _status(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) {
+      _interactive = widget.route.navigator?.userGestureInProgress ?? false;
+      if (!_interactive) _capture();
+      final opacity = _opacity;
+      _exitFrom = widget.animation.value;
+      _exitOpacity = opacity;
+      _exiting = true;
+    } else if (status == AnimationStatus.completed) {
+      _exiting = false;
+      _interactive = false;
+    }
+  }
+
+  void _secondaryStatus(AnimationStatus status) {
+    if (status == AnimationStatus.forward) _capture();
+  }
+
+  double get _opacity {
+    if (_exiting) {
+      final elapsed = _exitFrom <= 0
+          ? 1.0
+          : (1 - widget.animation.value / _exitFrom).clamp(0.0, 1.0);
+      return _exitOpacity * (1 - Curves.easeOutCubic.transform(elapsed));
+    }
+    // A revealed route is already being restored by its modules. Do not apply
+    // another whole-page fade to it during the return.
+    return widget.secondaryAnimation.status == AnimationStatus.reverse
+        ? 1
+        : 1 - Curves.easeOutCubic.transform(widget.secondaryAnimation.value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _interactive |= widget.route.navigator?.userGestureInProgress ?? false;
+    final themed = KeyedSubtree(
+      key: _contentKey,
+      child: _BackgroundRouteTheme(route: widget.route, child: widget.child),
+    );
+    if (_suppressed ||
+        widget.configuration.suppressed?.call() == true ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return themed;
+    }
+    if (_fluid) {
+      return AnimatedBuilder(
+        animation: Listenable.merge([
+          widget.animation,
+          widget.secondaryAnimation,
+          if (widget.route.navigator != null)
+            widget.route.navigator!.userGestureInProgressNotifier,
+        ]),
+        child: themed,
+        builder: (context, child) {
+          _interactive |=
+              widget.route.navigator?.userGestureInProgress ?? false;
+          final content = Opacity(
+            opacity: _interactive ? 1 : _opacity,
+            child: child,
+          );
+          if (widget.configuration.platform != TargetPlatform.android) {
+            return content;
+          }
+          // Keep Flutter's predictive-back detector mounted even while modules
+          // own normal navigation. Completed clocks neutralize its fallback
+          // transition, so it adds no second fade or translation.
+          return widget.configuration
+              ._delegate(context)
+              .buildTransitions(
+                widget.route,
+                context,
+                _interactive ? widget.animation : kAlwaysCompleteAnimation,
+                _interactive
+                    ? widget.secondaryAnimation
+                    : kAlwaysDismissedAnimation,
+                content,
+              );
+        },
+      );
+    }
+    return widget.configuration
+        ._delegate(context)
+        .buildTransitions(
+          widget.route,
+          context,
+          widget.animation,
+          widget.secondaryAnimation,
+          themed,
+        );
+  }
+
+  @override
+  void dispose() {
+    widget.animation.removeStatusListener(_status);
+    widget.secondaryAnimation.removeStatusListener(_secondaryStatus);
+    super.dispose();
+  }
 }
 
 // Zoom motion adapted from Flutter's material/page_transitions_theme.dart.

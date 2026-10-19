@@ -58,7 +58,9 @@ class CourseQuickActionSettingsPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: BackgroundAppBar(child: AppBar(title: Text(text.quickActions))),
+      appBar: BackgroundAppBar(
+        child: AppBar(title: PageModule(child: Text(text.quickActions))),
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [

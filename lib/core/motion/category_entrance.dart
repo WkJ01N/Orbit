@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/core/motion/retained_page_switcher.dart';
@@ -31,6 +32,7 @@ class _CategoryEntranceHostState extends ConsumerState<CategoryEntranceHost>
   int _generation = 0;
   bool get _allowed =>
       widget.transition.active &&
+      widget.transition.fluid &&
       ref.read(launchAnimationsEnabledProvider) &&
       ref.read(launchSettingsProvider).onPageSwitch &&
       ref.read(launchSettingsProvider).pageEnabled[3] &&
@@ -61,16 +63,17 @@ class _CategoryEntranceHostState extends ConsumerState<CategoryEntranceHost>
       _modules.finish();
       return;
     }
-    if (widget.transition.continuing && !_modules.pending) {
-      _modules.resume();
-      return;
-    }
     _arm();
   }
 
   void _arm() {
     _detach();
-    _modules.reset(fromDirection: widget.transition.direction);
+    _modules.follow(
+      widget.transition.animation,
+      duration: widget.transition.duration,
+      fromDirection: widget.transition.direction,
+      continuing: widget.transition.continuing,
+    );
     _waiting = widget.transition.animation;
     _waiting!.addListener(_check);
     final generation = ++_generation;
@@ -85,15 +88,38 @@ class _CategoryEntranceHostState extends ConsumerState<CategoryEntranceHost>
       _modules.finish();
       return;
     }
-    if (_waiting!.value < .5) return;
     _detach();
     if (!_modules.pending) return;
-    final box = context.findRenderObject() as RenderBox;
-    _modules.start(box.localToGlobal(Offset.zero) & box.size);
+    final generation = _generation;
+    void prepare() {
+      if (!mounted || generation != _generation || !_modules.pending) return;
+      if (!_allowed) {
+        _modules.finish();
+        return;
+      }
+      final box = context.findRenderObject();
+      if (box is RenderBox && box.hasSize) {
+        _modules.start(box.localToGlobal(Offset.zero) & box.size);
+      }
+    }
+
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.postFrameCallbacks) {
+      prepare();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => prepare());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(launchSettingsProvider, (_, next) {
+      if (!next.pageEnabled[3] || !next.onPageSwitch) {
+        _generation++;
+        _detach();
+        _modules.finish();
+      }
+    });
     // Newly visited categories do not receive didUpdateWidget on their first wave.
     if (widget.transition.epoch > 0 &&
         widget.transition.active &&
@@ -119,8 +145,10 @@ class _CategoryEntranceHostState extends ConsumerState<CategoryEntranceHost>
           ),
         ),
       ),
-      builder: (context, child) =>
-          Opacity(opacity: _modules.pending ? 0 : 1, child: child),
+      builder: (context, child) => Opacity(
+        opacity: _modules.pending && _modules.gatePage ? 0 : 1,
+        child: child,
+      ),
     );
   }
 

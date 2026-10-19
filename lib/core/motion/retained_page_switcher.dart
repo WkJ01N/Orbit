@@ -9,10 +9,14 @@ class PageTransitionData {
     required this.active,
     required this.visible,
     required this.continuing,
+    this.fluid = false,
+    this.duration = const Duration(milliseconds: 260),
   });
   final Animation<double> animation;
   final int epoch, direction;
   final bool active, visible, continuing;
+  final bool fluid;
+  final Duration duration;
 }
 
 /// Transition updates reach their host without rebuilding a cached page theme.
@@ -36,7 +40,7 @@ class _PageLayer {
   final double fromOpacity, toOpacity, fromX, toX;
   double opacity(double t) =>
       fromOpacity +
-      (toOpacity - fromOpacity) * Curves.easeInOutCubic.transform(t);
+      (toOpacity - fromOpacity) * Curves.easeOutCubic.transform(t);
   double x(double t) =>
       fromX + (toX - fromX) * Curves.easeOutCubic.transform(t);
 }
@@ -51,38 +55,62 @@ class RetainedPageSwitcher extends StatefulWidget {
     required this.builder,
     this.duration = const Duration(milliseconds: 260),
     this.keyPrefix = 'retained-page',
+    this.fluid = false,
+    this.immediate = false,
+    this.keepOutgoingTickers = false,
   });
   final int index, itemCount;
   final Widget Function(BuildContext, int, PageTransitionData) builder;
   final Duration duration;
   final String keyPrefix;
+  final bool fluid;
+  final bool immediate;
+
+  /// Let live effects such as overscroll springs settle during the exit fade.
+  /// Entrance hosts still freeze their own module clocks independently.
+  final bool keepOutgoingTickers;
   @override
   State<RetainedPageSwitcher> createState() => _RetainedPageSwitcherState();
 }
 
 class _RetainedPageSwitcherState extends State<RetainedPageSwitcher>
-    with SingleTickerProviderStateMixin {
-  late final _clock = AnimationController(
+    with TickerProviderStateMixin {
+  late var _clock = AnimationController(
     vsync: this,
     duration: widget.duration,
     value: 1,
   );
-  late final _layers = <int, _PageLayer>{widget.index: _PageLayer(1, 1, 0, 0)};
-  late final _order = <int>[widget.index];
-  late int _active = widget.index;
+  late final Map<int, _PageLayer> _layers;
+  late final List<int> _order;
+  late int _active;
   int _epoch = 0, _direction = 1;
   bool _continuing = false;
   bool _reduced = false;
+  late bool _fluid = widget.fluid;
+  late Duration _sessionDuration = widget.duration;
+  @override
+  void initState() {
+    super.initState();
+    // Initialize even when reduced motion bypasses all reads of layer alpha.
+    // Lazy initialization after the first selection would seed the new index
+    // instead of the page actually present in the retained stack.
+    _active = widget.index;
+    _layers = {widget.index: _PageLayer(1, 1, 0, 0)};
+    _order = [widget.index];
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _reduced = MediaQuery.disableAnimationsOf(context);
+    _reduced = MediaQuery.disableAnimationsOf(context) || widget.immediate;
     if (_reduced) _clock.value = 1;
   }
 
   @override
   void didUpdateWidget(RetainedPageSwitcher oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _reduced = MediaQuery.disableAnimationsOf(context) || widget.immediate;
+    if (_reduced) _clock.value = 1;
     if (_active == widget.index) return;
     final time = _clock.value;
     final before = {
@@ -92,24 +120,41 @@ class _RetainedPageSwitcherState extends State<RetainedPageSwitcher>
     _direction = widget.index > _active ? 1 : -1;
     _continuing = (before[widget.index]?.opacity ?? 0) > .001;
     _active = widget.index;
+    _fluid = widget.fluid;
+    _sessionDuration = widget.duration;
     _epoch++;
-    if (!_order.contains(_active)) _order.insert(0, _active);
+    // Reordering two translucent visible layers changes the painted pixels even
+    // when both keep their alpha. Only fully hidden destinations move beneath
+    // the outgoing layers; reversing a visible destination keeps paint order.
+    if (!_continuing) {
+      _order.remove(_active);
+      _order.insert(0, _active);
+    }
     for (final index in _order) {
       final state = before[index];
       if (index == _active) {
         _layers[index] = _PageLayer(
-          _continuing ? state!.opacity : 1,
+          _continuing ? state!.opacity : (_fluid ? 1 : 0),
           1,
-          _continuing ? state!.x : _direction * 14.0,
+          _continuing ? state!.x : (_fluid ? 0 : _direction * 14.0),
           0,
         );
       } else {
         final alpha = state?.opacity ?? 0;
         final x = state?.x ?? 0;
-        _layers[index] = _PageLayer(alpha, 0, x, x - _direction * 6);
+        _layers[index] = _PageLayer(
+          alpha,
+          0,
+          x,
+          _fluid ? x : x - _direction * 6,
+        );
       }
     }
-    _clock.duration = widget.duration;
+    final previousClock = _clock..stop();
+    _clock = AnimationController(vsync: this, duration: widget.duration);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => previousClock.dispose(),
+    );
     if (_reduced) {
       _clock.value = 1;
     } else {
@@ -136,6 +181,8 @@ class _RetainedPageSwitcherState extends State<RetainedPageSwitcher>
               index == _active ||
               (!_reduced && _layers[index]!.opacity(_clock.value) > .001),
           continuing: index == _active && _continuing,
+          fluid: _fluid,
+          duration: _sessionDuration,
         ),
     };
     final pages = <int, Widget>{
@@ -169,7 +216,7 @@ class _RetainedPageSwitcherState extends State<RetainedPageSwitcher>
     return Offstage(
       offstage: hidden,
       child: TickerMode(
-        enabled: !hidden && active,
+        enabled: !hidden && (active || widget.keepOutgoingTickers),
         child: IgnorePointer(
           ignoring: !active,
           child: ExcludeSemantics(

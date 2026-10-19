@@ -154,11 +154,8 @@ class FontService {
         settings = settings.copyWith(loadWarning: true);
       } catch (_) {
         if (!recover) rethrow;
-        settings = settings.copyWith(
-          appFontId: launch ? null : 'system',
-          launchFontId: launch ? 'nunito' : null,
-          loadWarning: true,
-        );
+        unavailable.add(id);
+        settings = settings.copyWith(loadWarning: true);
         if (launch) {
           try {
             await load('nunito', const {});

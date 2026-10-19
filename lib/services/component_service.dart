@@ -133,6 +133,77 @@ class ComponentService extends ChangeNotifier {
   final Map<String, UpdateOperation> _operations = {};
   final Map<String, double> progress = {};
   final Map<String, String> errors = {};
+  static const _fontIds = {'rounded', 'huninn', 'maiyuan'};
+  final _fontFolders = <String, Directory>{};
+  final _fontRecords = <String, dynamic>{};
+  String _fontContent(ComponentDescriptor value) {
+    final names = value.files.keys.toList()..sort();
+    return sha256
+        .convert(
+          utf8.encode(
+            jsonEncode({
+              for (final name in names)
+                name: [value.files[name]['size'], value.files[name]['sha256']],
+            }),
+          ),
+        )
+        .toString();
+  }
+
+  bool _ownedFontFolder(String id, String name) => RegExp(
+    '^${RegExp.escape(id)}-(?:[0-9]+-[a-f0-9]{12}|font-[a-f0-9]{16})\$',
+  ).hasMatch(name);
+  Future<void> _fontRecordTail = Future.value();
+  Future<void> _writeFontRecords() {
+    final write = _fontRecordTail.catchError((Object _) {}).then((_) async {
+      final directory = await root();
+      await directory.create(recursive: true);
+      final temporary = File(
+        p.join(directory.path, '.font-installations.pending'),
+      );
+      await temporary.writeAsString(
+        jsonEncode({'schema': 1, 'fonts': _fontRecords}),
+        flush: true,
+      );
+      await temporary.rename(
+        p.join(directory.path, '.font-installations.json'),
+      );
+    });
+    _fontRecordTail = write;
+    return write;
+  }
+
+  Future<void> _rememberFont(
+    ComponentDescriptor value,
+    Directory target,
+  ) async {
+    _fontFolders[value.id] = target;
+    _fontRecords[value.id] = {
+      'content': _fontContent(value),
+      'directory': p.basename(target.path),
+    };
+    try {
+      await _writeFontRecords();
+    } on FileSystemException {
+      // Verified files remain usable. The next launch can retry indexing them.
+    }
+  }
+
+  Future<void> _deleteFontCopies(String id) async {
+    final directory = await root();
+    if (await directory.exists()) {
+      await for (final entry in directory.list(followLinks: false)) {
+        if (entry is Directory &&
+            _ownedFontFolder(id, p.basename(entry.path))) {
+          await entry.delete(recursive: true);
+        }
+      }
+    }
+    _fontFolders.remove(id);
+    _fontRecords.remove(id);
+    await _writeFontRecords();
+  }
+
   Future<void>? _videoInitialization;
   Future<Directory> root() async =>
       directory ??
@@ -142,7 +213,12 @@ class ComponentService extends ChangeNotifier {
   Future<Directory> folder(ComponentDescriptor value) async => Directory(
     p.join(
       (await root()).path,
-      '${value.id}-${value.version}-${value.asset.sha256!.substring(0, 12)}',
+      _fontIds.contains(value.id)
+          ? p.basename(
+              _fontFolders[value.id]?.path ??
+                  '${value.id}-font-${_fontContent(value).substring(0, 16)}',
+            )
+          : '${value.id}-${value.version}-${value.asset.sha256!.substring(0, 12)}',
     ),
   );
   Future<List<ComponentDescriptor>> descriptors() async {
@@ -170,15 +246,39 @@ class ComponentService extends ChangeNotifier {
                 ),
             ];
         final prefs = await SharedPreferences.getInstance();
+        try {
+          final stored = jsonDecode(
+            await File(
+              p.join((await root()).path, '.font-installations.json'),
+            ).readAsString(),
+          );
+          if (stored is Map &&
+              stored['schema'] == 1 &&
+              stored['fonts'] is Map) {
+            _fontRecords.addAll(
+              Map<String, dynamic>.from(stored['fonts'] as Map),
+            );
+          }
+        } catch (_) {
+          /* Legacy installations are recovered from verified files. */
+        }
         for (final id
             in prefs.getStringList('component_pending_removal') ?? <String>[]) {
           for (final item in _catalog!.where((e) => e.id == id)) {
+            if (_fontIds.contains(id)) {
+              await _deleteFontCopies(id);
+              continue;
+            }
             final target = await folder(item);
             if (await target.exists()) await target.delete(recursive: true);
           }
         }
         await prefs.remove('component_pending_removal');
         for (final item in _catalog!) {
+          if (_fontIds.contains(item.id)) {
+            await _recoverFont(item);
+            continue;
+          }
           final target = await folder(item);
           if (await target.exists()) {
             try {
@@ -193,6 +293,44 @@ class ComponentService extends ChangeNotifier {
         _initializing = null;
         throw error;
       });
+
+  Future<void> _recoverFont(ComponentDescriptor value) async {
+    final directory = await root();
+    if (!await directory.exists()) return;
+    final candidates = <Directory>[await folder(value)];
+    final record = _fontRecords[value.id];
+    if (record is Map &&
+        record['content'] == _fontContent(value) &&
+        record['directory'] is String &&
+        _ownedFontFolder(value.id, record['directory'] as String)) {
+      candidates.add(
+        Directory(p.join(directory.path, record['directory'] as String)),
+      );
+    }
+    await for (final entry in directory.list(followLinks: false)) {
+      if (entry is Directory &&
+          _ownedFontFolder(value.id, p.basename(entry.path))) {
+        candidates.add(entry);
+      }
+    }
+    for (final target in candidates) {
+      // Do not follow directory links or trust an archive digest as proof of
+      // extracted font integrity. Recovery is entirely offline.
+      if (await FileSystemEntity.type(target.path, followLinks: false) !=
+          FileSystemEntityType.directory) {
+        continue;
+      }
+      try {
+        await _verifyFiles(target, value);
+        await _rememberFont(value, target);
+        _ready.add(value.id);
+        _verified.add(value.id);
+        return;
+      } catch (_) {
+        /* Keep unverified legacy files for explicit recovery. */
+      }
+    }
+  }
 
   Future<ComponentDescriptor> descriptor(String id) async =>
       (await descriptors()).firstWhere((e) => e.id == id);
@@ -266,6 +404,7 @@ class ComponentService extends ChangeNotifier {
         await target.delete(recursive: true);
       }
       await staging.rename(target.path);
+      if (_fontIds.contains(value.id)) await _rememberFont(value, target);
       _ready.add(value.id);
       _verified.add(value.id);
       errors.remove(value.id);
@@ -343,8 +482,12 @@ class ComponentService extends ChangeNotifier {
         pendingRemoval.toList(),
       );
     } else {
-      final target = await folder(value);
-      if (await target.exists()) await target.delete(recursive: true);
+      if (_fontIds.contains(id)) {
+        await _deleteFontCopies(id);
+      } else {
+        final target = await folder(value);
+        if (await target.exists()) await target.delete(recursive: true);
+      }
       _ready.remove(id);
       _verified.remove(id);
     }
@@ -367,8 +510,15 @@ class ComponentService extends ChangeNotifier {
           r'$',
         ).hasMatch(name),
       );
+      final unresolvedFont = values.any(
+        (value) =>
+            _fontIds.contains(value.id) &&
+            _ownedFontFolder(value.id, name) &&
+            !ready(value.id),
+      );
       if (entry is Directory &&
           owned &&
+          !unresolvedFont &&
           !keep.contains(p.normalize(entry.absolute.path)) &&
           p.equals(
             p.dirname(p.normalize(entry.absolute.path)),
@@ -448,6 +598,7 @@ class ComponentService extends ChangeNotifier {
       if (ready(id)) return false;
       if (await target.exists()) await target.delete(recursive: true);
       await staging.rename(target.path);
+      if (_fontIds.contains(value.id)) await _rememberFont(value, target);
       _ready.add(id);
       _verified.add(id);
       notifyListeners();

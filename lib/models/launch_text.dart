@@ -9,6 +9,13 @@ class LaunchText {
       ? hans
       : hant;
   String get title => t('Startup & page animations', '启动与页面动画', '啟動與頁面動畫');
+  String get transition => t('Page transition style', '页面过渡风格', '頁面過渡風格');
+  String get compact => t('Crisp', '干净利落', '乾淨俐落');
+  String get fluid => t('Fluid', '流畅', '流暢');
+  String get speed => t('Transition speed', '过渡速度', '過渡速度');
+  String get fast => t('Fast · 280 ms', '快速 · 280ms', '快速 · 280ms');
+  String get standard => t('Standard · 360 ms', '标准 · 360ms', '標準 · 360ms');
+  String get relaxed => t('Relaxed · 440 ms', '舒缓 · 440ms', '舒緩 · 440ms');
   String get icon => t('Startup icon', '启动页图标', '啟動頁圖示');
   String get iconHint => t(
     'Choose a circular image for the startup screen.',

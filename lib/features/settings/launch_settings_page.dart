@@ -35,13 +35,32 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
   Future<void> _save(LaunchSettings next, {String? newFile}) async {
     final previous = ref.read(launchSettingsProvider);
     try {
-      await ref.read(launchSettingsProvider.notifier).save(next);
+      await ref
+          .read(launchSettingsProvider.notifier)
+          .update(
+            (current) => current.copyWith(
+              iconPath: next.iconPath,
+              clearIcon: next.iconPath == null,
+            ),
+          );
     } catch (_) {
       await deleteLaunchIcon(newFile);
       rethrow;
     }
     if (previous.iconPath != next.iconPath) {
       await deleteLaunchIcon(previous.iconPath);
+    }
+  }
+
+  Future<void> _update(LaunchSettings Function(LaunchSettings) change) async {
+    try {
+      await ref.read(launchSettingsProvider.notifier).update(change);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showAppSnackBar(SnackBar(content: Text(LaunchText(context).failed)));
+      }
     }
   }
 
@@ -116,17 +135,15 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
             padding: const EdgeInsets.all(20),
             children: [
               PageModule(
+                key: const ValueKey('launch-setting-1'),
                 child: SwitchListTile(
                   title: Text(v.brandAnimation),
                   value: settings.brandEnabled,
-                  onChanged: _busy
-                      ? null
-                      : (b) => _run(
-                          () => _save(settings.copyWith(brandEnabled: b)),
-                        ),
+                  onChanged: (b) => _update((s) => s.copyWith(brandEnabled: b)),
                 ),
               ),
               PageModule(
+                key: const ValueKey('launch-setting-2'),
                 child: Text(
                   v.pageAnimations,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -134,6 +151,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
               ),
               for (var i = 0; i < 4; i++)
                 PageModule(
+                  key: ValueKey('launch-page-$i'),
                   child: SwitchListTile(
                     title: Text(
                       [
@@ -144,58 +162,94 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                       ][i],
                     ),
                     value: settings.pageEnabled[i],
-                    onChanged: _busy
-                        ? null
-                        : (b) {
-                            final pages = [...settings.pageEnabled];
-                            pages[i] = b;
-                            _run(
-                              () =>
-                                  _save(settings.copyWith(pageEnabled: pages)),
-                            );
-                          },
+                    onChanged: (b) => _update((s) {
+                      final pages = [...s.pageEnabled];
+                      pages[i] = b;
+                      return s.copyWith(pageEnabled: pages);
+                    }),
                   ),
                 ),
               const Divider(),
               PageModule(
+                key: const ValueKey('launch-setting-3'),
                 child: Text(
                   v.animationTriggers,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               PageModule(
+                key: const ValueKey('launch-setting-4'),
                 child: SwitchListTile(
                   title: Text(v.onStartup),
                   value: settings.onStartup,
-                  onChanged: _busy
-                      ? null
-                      : (b) =>
-                            _run(() => _save(settings.copyWith(onStartup: b))),
+                  onChanged: (b) => _update((s) => s.copyWith(onStartup: b)),
                 ),
               ),
               PageModule(
+                key: const ValueKey('launch-setting-5'),
                 child: SwitchListTile(
                   title: Text(v.onResume),
                   value: settings.onResume,
-                  onChanged: _busy
-                      ? null
-                      : (b) =>
-                            _run(() => _save(settings.copyWith(onResume: b))),
+                  onChanged: (b) => _update((s) => s.copyWith(onResume: b)),
                 ),
               ),
               PageModule(
-                child: SwitchListTile(
-                  title: Text(v.onSwitch),
-                  value: settings.onPageSwitch,
-                  onChanged: _busy
-                      ? null
-                      : (b) => _run(
-                          () => _save(settings.copyWith(onPageSwitch: b)),
-                        ),
+                key: const ValueKey('launch-setting-6'),
+                child: ListTile(
+                  title: Text(text.transition),
+                  trailing: DropdownButton<PageTransitionStyle>(
+                    value: settings.pageTransitionStyle,
+                    items: [
+                      DropdownMenuItem(
+                        value: PageTransitionStyle.compact,
+                        child: Text(text.compact),
+                      ),
+                      DropdownMenuItem(
+                        value: PageTransitionStyle.fluid,
+                        child: Text(text.fluid),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        _update((s) => s.copyWith(pageTransitionStyle: value));
+                      }
+                    },
+                  ),
                 ),
               ),
+              if (settings.onPageSwitch)
+                PageModule(
+                  key: const ValueKey('launch-setting-7'),
+                  child: ListTile(
+                    title: Text(text.speed),
+                    trailing: DropdownButton<PageTransitionSpeed>(
+                      value: settings.pageTransitionSpeed,
+                      items: [
+                        for (final speed in PageTransitionSpeed.values)
+                          DropdownMenuItem(
+                            value: speed,
+                            child: Text(
+                              [
+                                text.fast,
+                                text.standard,
+                                text.relaxed,
+                              ][speed.index],
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          _update(
+                            (s) => s.copyWith(pageTransitionSpeed: value),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
               const Divider(),
               PageModule(
+                key: const ValueKey('launch-setting-8'),
                 child: ListTile(
                   leading: const Icon(Icons.font_download_outlined),
                   title: Text(TypographyText(context).launch),
@@ -208,9 +262,13 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                   ),
                 ),
               ),
-              Center(child: LaunchIcon(path: settings.iconPath)),
+              PageModule(
+                key: const ValueKey('launch-icon'),
+                child: Center(child: LaunchIcon(path: settings.iconPath)),
+              ),
               const SizedBox(height: 16),
               PageModule(
+                key: const ValueKey('launch-setting-9'),
                 child: Text(
                   text.icon,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -224,6 +282,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                 runSpacing: 8,
                 children: [
                   PageModule(
+                    key: const ValueKey('launch-setting-10'),
                     child: FilledButton.tonalIcon(
                       onPressed: _busy ? null : _pick,
                       icon: const Icon(Icons.image_outlined),
@@ -231,6 +290,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                     ),
                   ),
                   PageModule(
+                    key: const ValueKey('launch-setting-11'),
                     child: TextButton(
                       onPressed: _busy || settings.iconPath == null
                           ? null
@@ -244,6 +304,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
               ),
               const SizedBox(height: 28),
               PageModule(
+                key: const ValueKey('launch-setting-12'),
                 child: Text(
                   text.cards,
                   style: Theme.of(context).textTheme.titleMedium,
@@ -252,6 +313,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
               const SizedBox(height: 8),
               for (final mode in CardEntranceMode.values)
                 PageModule(
+                  key: ValueKey('launch-card-mode-${mode.name}'),
                   child: ListTile(
                     key: ValueKey('launch-mode-${mode.name}'),
                     contentPadding: EdgeInsets.zero,
@@ -263,14 +325,11 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
                     title: Text(
                       mode == CardEntranceMode.edge ? text.edge : text.nearby,
                     ),
-                    onTap: _busy
-                        ? null
-                        : () => _run(
-                            () => _save(settings.copyWith(cardEntrance: mode)),
-                          ),
+                    onTap: () => _update((s) => s.copyWith(cardEntrance: mode)),
                   ),
                 ),
               PageModule(
+                key: const ValueKey('launch-setting-13'),
                 child: Text(
                   text.stagger,
                   style: Theme.of(context).textTheme.bodySmall,
@@ -278,6 +337,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
               ),
               const SizedBox(height: 24),
               PageModule(
+                key: const ValueKey('launch-setting-14'),
                 child: FilledButton.icon(
                   key: const Key('launch-preview'),
                   onPressed: _busy
@@ -293,6 +353,7 @@ class _LaunchSettingsPageState extends ConsumerState<LaunchSettingsPage> {
               ),
               const SizedBox(height: 12),
               PageModule(
+                key: const ValueKey('launch-setting-15'),
                 child: Text(
                   text.hint,
                   style: Theme.of(context).textTheme.bodySmall,

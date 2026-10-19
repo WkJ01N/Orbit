@@ -1,4 +1,5 @@
 import 'package:orbit/core/motion/page_entrance.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/core/motion/retained_page_switcher.dart';
 import 'package:orbit/features/deadline/deadline_strong_host.dart';
 import 'package:orbit/core/routing/app_tab.dart';
@@ -252,6 +253,16 @@ class AppShell extends ConsumerWidget {
           ),
           bottomNavigationBar: wrapNavigation(
             NavigationBar(
+              animationDuration:
+                  MediaQuery.disableAnimationsOf(context) ||
+                      ref.watch(pageTransitionSuppressedProvider)
+                  ? Duration.zero
+                  : ref.watch(launchSettingsProvider).onPageSwitch &&
+                        ref
+                            .watch(launchSettingsProvider)
+                            .pageEnabled[selectedIndex]
+                  ? ref.watch(launchSettingsProvider).transitionDuration
+                  : const Duration(milliseconds: 260),
               backgroundColor: revealNavigation ? Colors.transparent : null,
               surfaceTintColor: revealNavigation ? Colors.transparent : null,
               selectedIndex: navigationIndex,
@@ -280,50 +291,64 @@ class AppShell extends ConsumerWidget {
 
 /// Builds destinations on their first visit and retains visited page state.
 /// The previous and next pages share a short transition.
-class _AnimatedIndexedStack extends StatefulWidget {
+class _AnimatedIndexedStack extends ConsumerStatefulWidget {
   const _AnimatedIndexedStack({required this.index, required this.children});
 
   final int index;
   final List<Widget> children;
 
   @override
-  State<_AnimatedIndexedStack> createState() => _AnimatedIndexedStackState();
+  ConsumerState<_AnimatedIndexedStack> createState() =>
+      _AnimatedIndexedStackState();
 }
 
-class _AnimatedIndexedStackState extends State<_AnimatedIndexedStack> {
+class _AnimatedIndexedStackState extends ConsumerState<_AnimatedIndexedStack> {
   final _destinations = <int, Widget>{};
   @override
-  Widget build(BuildContext context) => RetainedPageSwitcher(
-    index: widget.index,
-    itemCount: widget.children.length,
-    keyPrefix: 'app-destination',
-    builder: (context, index, _) => _destinations.putIfAbsent(
-      index,
-      () => RepaintBoundary(
-        child: Consumer(
-          builder: (context, ref, _) => BackgroundPageTheme(
-            settings:
-                ref.watch(backgroundSettingsProvider).valueOrNull ??
-                const BackgroundSettings(),
-            owner: BackgroundPage.values[index],
-            child: Builder(
-              builder: (context) {
-                final transition = PageTransitionScope.of(context);
-                return PageEntranceHost(
-                  index: index,
-                  navigation: transition.animation,
-                  navigationEpoch: transition.epoch,
-                  direction: transition.direction,
-                  continuing: transition.continuing,
-                  active: transition.active,
-                  startup: transition.epoch == 0,
-                  child: widget.children[index],
-                );
-              },
+  Widget build(BuildContext context) {
+    final settings = ref.watch(launchSettingsProvider);
+    final fluid =
+        settings.onPageSwitch &&
+        settings.pageEnabled[widget.index] &&
+        ref.watch(launchAnimationsEnabledProvider);
+    return RetainedPageSwitcher(
+      immediate: ref.watch(pageTransitionSuppressedProvider),
+      index: widget.index,
+      itemCount: widget.children.length,
+      keyPrefix: 'app-destination',
+      fluid: fluid,
+      duration: fluid
+          ? settings.transitionDuration
+          : const Duration(milliseconds: 260),
+      builder: (context, index, _) => _destinations.putIfAbsent(
+        index,
+        () => RepaintBoundary(
+          child: Consumer(
+            builder: (context, ref, _) => BackgroundPageTheme(
+              settings:
+                  ref.watch(backgroundSettingsProvider).valueOrNull ??
+                  const BackgroundSettings(),
+              owner: BackgroundPage.values[index],
+              child: Builder(
+                builder: (context) {
+                  final transition = PageTransitionScope.of(context);
+                  return PageEntranceHost(
+                    index: index,
+                    navigation: transition.animation,
+                    navigationEpoch: transition.epoch,
+                    direction: transition.direction,
+                    continuing: transition.continuing,
+                    active: transition.active,
+                    startup: transition.epoch == 0,
+                    transition: transition,
+                    child: widget.children[index],
+                  );
+                },
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

@@ -404,7 +404,7 @@ void main() {
     },
   );
   testWidgets(
-    'destination is hidden from its first frame and starts at navigation midpoint',
+    'destination modules follow navigation immediately without a second playback',
     (tester) async {
       final nav = AnimationController(
         vsync: tester,
@@ -424,31 +424,21 @@ void main() {
           ),
         ),
       );
-      double opacity() => tester
-          .widget<Opacity>(
-            find
-                .descendant(
-                  of: find.byType(PageEntranceHost),
-                  matching: find.byType(Opacity),
-                )
-                .first,
-          )
-          .opacity;
-      expect(opacity(), 0);
-      nav.value = .49;
-      await tester.pump();
-      expect(opacity(), 0);
-      nav.value = .5;
-      await tester.pump();
       final motion = tester
           .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope))
           .motion;
       expect(motion.pending, isFalse);
-      expect(motion.clock.value, 0);
+      expect(motion.progress, 0);
+      expect(find.text('Module').hitTestable(), findsNothing);
+      nav.value = .25;
+      await tester.pump();
+      expect(find.text('Module').hitTestable(), findsOneWidget);
+      final position = tester.getTopLeft(find.text('Module'));
       await tester.pump(const Duration(milliseconds: 210));
-      expect(motion.clock.value, greaterThan(0));
-      await tester.pumpAndSettle();
-      expect(motion.clock.value, 1);
+      expect(tester.getTopLeft(find.text('Module')), position);
+      nav.value = 1;
+      await tester.pump();
+      expect(motion.progress, 1);
       await tester.pumpWidget(const SizedBox());
       nav.dispose();
     },

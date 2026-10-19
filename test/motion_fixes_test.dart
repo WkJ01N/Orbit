@@ -54,7 +54,7 @@ void main() {
       navigator.currentState!.pop();
       await tester.pump();
       expect(motion.pending, isFalse);
-      expect(motion.clock.value, 1);
+      expect(motion.prepared, isTrue);
       await tester.pumpAndSettle();
       navigator.currentState!.push(
         MaterialPageRoute<void>(
@@ -64,7 +64,7 @@ void main() {
       await tester.pumpAndSettle();
       navigator.currentState!.pop();
       await tester.pump();
-      expect(motion.pending, isTrue);
+      expect(motion.pending, isFalse);
       expect(motion.effectiveDirection, -1);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -125,7 +125,7 @@ void main() {
                 .first,
           )
           .motion;
-      expect(motion(1).pending, isTrue);
+      expect(motion(1).pending, isFalse);
       expect(parent.pending, isFalse);
       expect(clock.value, 1);
       await tester.pump(const Duration(milliseconds: 112));

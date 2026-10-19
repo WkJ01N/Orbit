@@ -330,16 +330,18 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
   Widget _number(String key, String label, {int min = 0, int max = 9999}) =>
       SizedBox(
         width: 150,
-        child: TextFormField(
-          key: Key('reminder-field-$key'),
-          controller: _fields[key],
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(labelText: label),
-          onChanged: (_) => setState(() {}),
-          validator: (value) {
-            final v = int.tryParse(value ?? '');
-            return v == null || v < min || v > max ? '$min–$max' : null;
-          },
+        child: PageModule(
+          child: TextFormField(
+            key: Key('reminder-field-$key'),
+            controller: _fields[key],
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: label),
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              final v = int.tryParse(value ?? '');
+              return v == null || v < min || v > max ? '$min–$max' : null;
+            },
+          ),
         ),
       );
   Widget _choice<T>(
@@ -449,12 +451,14 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              TextFormField(
-                controller: _fields['name'],
-                key: const Key('reminder-field-name'),
-                decoration: InputDecoration(labelText: l.reminderName),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? l.reminderInvalid : null,
+              PageModule(
+                child: TextFormField(
+                  controller: _fields['name'],
+                  key: const Key('reminder-field-name'),
+                  decoration: InputDecoration(labelText: l.reminderName),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? l.reminderInvalid : null,
+                ),
               ),
               _choice(
                 l.reminderBasis,
@@ -602,27 +606,29 @@ class _CustomReminderEditorState extends ConsumerState<CustomReminderEditor> {
                 'title': l.reminderTitle,
                 'body': l.reminderBody,
               }.entries) ...[
-                TextFormField(
-                  controller: _fields[entry.key],
-                  minLines: 1,
-                  maxLines: entry.key == 'body' ? 5 : 1,
-                  textAlignVertical: TextAlignVertical.top,
-                  decoration: InputDecoration(
-                    labelText: entry.value,
-                    errorMaxLines: 3,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+                PageModule(
+                  child: TextFormField(
+                    controller: _fields[entry.key],
+                    minLines: 1,
+                    maxLines: entry.key == 'body' ? 5 : 1,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: InputDecoration(
+                      labelText: entry.value,
+                      errorMaxLines: 3,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      border: const OutlineInputBorder(),
+                      errorText:
+                          invalidReminderVariables(
+                            _fields[entry.key]!.text,
+                          ).isEmpty
+                          ? null
+                          : '${l.reminderInvalid}: ${invalidReminderVariables(_fields[entry.key]!.text).join(', ')}',
                     ),
-                    border: const OutlineInputBorder(),
-                    errorText:
-                        invalidReminderVariables(
-                          _fields[entry.key]!.text,
-                        ).isEmpty
-                        ? null
-                        : '${l.reminderInvalid}: ${invalidReminderVariables(_fields[entry.key]!.text).join(', ')}',
+                    onChanged: (_) => setState(() {}),
                   ),
-                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 6),
                 ReminderVariableButtons(

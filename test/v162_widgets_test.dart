@@ -59,6 +59,10 @@ void main() {
       'page switching only replays when explicitly enabled: $enabled',
       (tester) async {
         final active = ValueNotifier(false);
+        final navigation = AnimationController(
+          vsync: tester,
+          duration: const Duration(milliseconds: 360),
+        );
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
@@ -73,6 +77,7 @@ void main() {
                   index: 1,
                   startup: false,
                   active: visible,
+                  navigation: navigation,
                   child: const Text('Page'),
                 ),
               ),
@@ -82,18 +87,19 @@ void main() {
         double opacity() => tester
             .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
             .motion
-            .clock
-            .value;
+            .progress;
         expect(opacity(), 1);
         active.value = true;
         await tester.pump();
         expect(opacity(), enabled ? lessThan(.1) : 1);
+        navigation.forward();
         await tester.pump(const Duration(milliseconds: 280));
         expect(opacity(), enabled ? lessThan(1) : 1);
         await tester.pumpAndSettle();
         expect(opacity(), 1);
         await tester.pumpWidget(const SizedBox());
         active.dispose();
+        navigation.dispose();
         expect(tester.takeException(), isNull);
       },
     );
@@ -121,8 +127,7 @@ void main() {
     double opacity() => tester
         .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
         .motion
-        .clock
-        .value;
+        .progress;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
@@ -167,8 +172,7 @@ void main() {
       double opacity() => tester
           .widget<ModuleEntranceScope>(find.byType(ModuleEntranceScope).first)
           .motion
-          .clock
-          .value;
+          .progress;
       showDialog<void>(
         context: pageContext,
         builder: (_) => const AlertDialog(content: Text('Dialog')),
@@ -191,7 +195,7 @@ void main() {
         pageEntranceRoutes.returnDelay + const Duration(milliseconds: 1),
       );
       await tester.pump();
-      expect(opacity(), lessThan(.1));
+      expect(opacity(), 1);
       await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox());
       expect(tester.takeException(), isNull);

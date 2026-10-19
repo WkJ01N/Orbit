@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -230,47 +231,52 @@ class NotificationPermissionSettingsTiles extends ConsumerWidget {
     final ignored = ref.watch(permissionWarningIgnoredProvider);
     return Column(
       children: [
-        ListTile(
-          title: Text(l.notificationPermissions),
-          subtitle: Text(
-            status.isLoading
-                ? l.notificationPermissions
-                : switch (status.value) {
-                    NotificationPermissionState.allowed =>
-                      l.notificationAllowed,
-                    NotificationPermissionState.denied => l.notificationWarning,
-                    _ => l.notificationCheckFailed,
-                  },
-          ),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () async {
-            try {
-              await ref
-                  .read(notificationPermissionServiceProvider)
-                  .openSettings();
-            } catch (_) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showAppSnackBar(
-                  SnackBar(content: Text(l.notificationCheckFailed)),
-                );
-              }
-            }
-            ref.invalidate(notificationPermissionProvider);
-          },
-        ),
-        SwitchListTile(
-          title: Text(l.notificationRestore),
-          subtitle: Text(l.notificationRestoreDescription),
-          value: ignored.value != true,
-          onChanged: ignored.hasValue && ignored.value == true
-              ? (v) async {
-                  if (v) {
-                    await ref
-                        .read(permissionWarningIgnoredProvider.notifier)
-                        .setIgnored(false);
-                  }
+        PageModule(
+          child: ListTile(
+            title: Text(l.notificationPermissions),
+            subtitle: Text(
+              status.isLoading
+                  ? l.notificationPermissions
+                  : switch (status.value) {
+                      NotificationPermissionState.allowed =>
+                        l.notificationAllowed,
+                      NotificationPermissionState.denied =>
+                        l.notificationWarning,
+                      _ => l.notificationCheckFailed,
+                    },
+            ),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () async {
+              try {
+                await ref
+                    .read(notificationPermissionServiceProvider)
+                    .openSettings();
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showAppSnackBar(
+                    SnackBar(content: Text(l.notificationCheckFailed)),
+                  );
                 }
-              : null,
+              }
+              ref.invalidate(notificationPermissionProvider);
+            },
+          ),
+        ),
+        PageModule(
+          child: SwitchListTile(
+            title: Text(l.notificationRestore),
+            subtitle: Text(l.notificationRestoreDescription),
+            value: ignored.value != true,
+            onChanged: ignored.hasValue && ignored.value == true
+                ? (v) async {
+                    if (v) {
+                      await ref
+                          .read(permissionWarningIgnoredProvider.notifier)
+                          .setIgnored(false);
+                    }
+                  }
+                : null,
+          ),
         ),
       ],
     );

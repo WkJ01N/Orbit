@@ -540,6 +540,8 @@ class ScheduleBackupService {
                               'onStartup',
                               'onResume',
                               'onPageSwitch',
+                              'pageTransitionStyle',
+                              'pageTransitionSpeed',
                               'pageEnabled',
                             ]
                           : const ['cardEntrance', 'iconData'])
@@ -556,6 +558,11 @@ class ScheduleBackupService {
         ]) {
           if (raw[key] != null && raw[key] is! bool) {
             throw const FormatException('Animation switch');
+          }
+        }
+        for (final key in ['pageTransitionStyle', 'pageTransitionSpeed']) {
+          if (raw[key] != null && raw[key] is! String) {
+            throw const FormatException('Transition preference');
           }
         }
         if (raw['pageEnabled'] != null &&

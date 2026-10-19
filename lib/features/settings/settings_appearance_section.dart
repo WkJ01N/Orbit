@@ -269,16 +269,20 @@ class _ThemeColorPicker extends StatelessWidget {
             runSpacing: 10,
             children: [
               for (final color in kThemePresetColors)
-                _ColorSwatch(
-                  color: color,
-                  selected: colorsMatchTheme(color, currentColor),
-                  onTap: () => onSelected(color),
+                PageModule(
+                  child: _ColorSwatch(
+                    color: color,
+                    selected: colorsMatchTheme(color, currentColor),
+                    onTap: () => onSelected(color),
+                  ),
                 ),
               if (isCustom)
-                _ColorSwatch(
-                  color: currentColor,
-                  selected: true,
-                  onTap: () => _showCustom(context),
+                PageModule(
+                  child: _ColorSwatch(
+                    color: currentColor,
+                    selected: true,
+                    onTap: () => _showCustom(context),
+                  ),
                 ),
               PageModule(
                 child: OutlinedButton.icon(

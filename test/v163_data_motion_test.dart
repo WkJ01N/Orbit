@@ -254,6 +254,56 @@ void main() {
     },
   );
   testWidgets(
+    'changing the date viewport resets visual history without fake insertions or removals',
+    (tester) async {
+      final week = ValueNotifier(0);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: week,
+            builder: (_, value, _) => GridEventMotion(
+              viewportIdentity: value,
+              viewport: const Rect.fromLTWH(0, 0, 400, 400),
+              mode: CardEntranceMode.nearby,
+              events: [
+                GridMotionEvent(
+                  id: 'week-$value',
+                  signature: '$value',
+                  rect: const Rect.fromLTWH(20, 20, 100, 80),
+                  child: Text('week-$value'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      week.value = 1;
+      await tester.pump();
+      expect(find.text('week-0'), findsNothing);
+      final card = find.text('week-1');
+      expect(
+        tester
+            .widget<Opacity>(
+              find.ancestor(of: card, matching: find.byType(Opacity)).first,
+            )
+            .opacity,
+        1,
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find.ancestor(of: card, matching: find.byType(Transform)).first,
+            )
+            .transform
+            .getTranslation()
+            .y,
+        0,
+      );
+      await tester.pumpWidget(const SizedBox());
+      week.dispose();
+    },
+  );
+  testWidgets(
     'new events use nearby travel while reduced motion displays the final state immediately',
     (tester) async {
       final data = ValueNotifier<List<GridMotionEvent>>([]);

@@ -170,7 +170,7 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
         await showDialog<bool>(
               context: context,
               builder: (c) => AlertDialog(
-                title: PageModule(child: Text(t.shared)),
+                title: Text(t.shared),
                 content: PageModule(
                   child: Text(
                     '${t.sharedConfirm}\n\n${_selection!.enabled.map(t.category).join('、')}',
@@ -239,13 +239,17 @@ class _SyncContentPageState extends ConsumerState<SyncContentPage> {
                   },
                   child: Column(
                     children: [
-                      RadioListTile(
-                        value: SyncScopeMode.perDevice,
-                        title: PageModule(child: Text(t.device)),
+                      PageModule(
+                        child: RadioListTile(
+                          value: SyncScopeMode.perDevice,
+                          title: Text(t.device),
+                        ),
                       ),
-                      RadioListTile(
-                        value: SyncScopeMode.shared,
-                        title: PageModule(child: Text(t.shared)),
+                      PageModule(
+                        child: RadioListTile(
+                          value: SyncScopeMode.shared,
+                          title: Text(t.shared),
+                        ),
                       ),
                     ],
                   ),

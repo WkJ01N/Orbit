@@ -78,6 +78,8 @@ class LaunchMotion {
     int? seed,
     this.startup = true,
     this.direction = 1,
+    this.fluid = false,
+    this.cardsOnly = false,
   }) : random = math.Random(seed),
        timeline = AnimationController(
          vsync: vsync,
@@ -90,6 +92,8 @@ class LaunchMotion {
 
   final LaunchSettings settings;
   final bool startup;
+  final bool fluid;
+  final bool cardsOnly;
   final int direction;
   final math.Random random;
   final AnimationController timeline;
@@ -112,7 +116,7 @@ class LaunchMotion {
     if (_pausedCards) cards.forward();
   }
 
-  bool get canClaimGrid => !_finished && _gridOwner == null;
+  bool get canClaimGrid => !fluid && !_finished && _gridOwner == null;
   bool get finished => _finished;
   bool get cardsComplete => _finished || cards.isCompleted;
 
@@ -283,6 +287,13 @@ class LaunchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final motion = LaunchMotionScope.maybeOf(context);
     final reduced = MediaQuery.disableAnimationsOf(context);
+    if (motion?.fluid == true) {
+      return PageModule(
+        enabled: LaunchEntranceRegion.enabledOf(context) && !reduced,
+        distance: 24,
+        child: child,
+      );
+    }
     return AnimatedBuilder(
       animation: motion?.cards ?? kAlwaysCompleteAnimation,
       child: child,

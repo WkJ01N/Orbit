@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orbit/core/motion/page_module.dart';
 
 /// Reserve enough height for translated titles without squeezing the actions.
 AppBar settingsAppBar(
@@ -25,7 +26,9 @@ AppBar settingsAppBar(
   painter.dispose();
   return AppBar(
     toolbarHeight: height,
-    title: Text(title, maxLines: 2, textAlign: TextAlign.center),
+    title: PageModule(
+      child: Text(title, maxLines: 2, textAlign: TextAlign.center),
+    ),
     actions: actions,
   );
 }

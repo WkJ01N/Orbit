@@ -449,50 +449,56 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                           ),
                           const SizedBox(height: 12),
                         ],
-                        TextFormField(
-                          initialValue: '${_value.prepareSeconds}',
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: WakeText.of(context).prepare,
+                        PageModule(
+                          child: TextFormField(
+                            initialValue: '${_value.prepareSeconds}',
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: WakeText.of(context).prepare,
+                            ),
+                            validator: (v) {
+                              final n = int.tryParse(v ?? '');
+                              return n == null || n < 5 || n > 60
+                                  ? '5–60'
+                                  : null;
+                            },
+                            onChanged: (v) {
+                              final n = int.tryParse(v);
+                              if (n != null) {
+                                setState(
+                                  () => _value = _value.copyWith(
+                                    prepareSeconds: n.clamp(5, 60),
+                                  ),
+                                );
+                              }
+                            },
                           ),
-                          validator: (v) {
-                            final n = int.tryParse(v ?? '');
-                            return n == null || n < 5 || n > 60 ? '5–60' : null;
-                          },
-                          onChanged: (v) {
-                            final n = int.tryParse(v);
-                            if (n != null) {
-                              setState(
-                                () => _value = _value.copyWith(
-                                  prepareSeconds: n.clamp(5, 60),
-                                ),
-                              );
-                            }
-                          },
                         ),
                         const SizedBox(height: 12),
-                        TextFormField(
-                          initialValue: '${_value.answerSeconds}',
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: WakeText.of(context).answer,
+                        PageModule(
+                          child: TextFormField(
+                            initialValue: '${_value.answerSeconds}',
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: WakeText.of(context).answer,
+                            ),
+                            validator: (v) {
+                              final n = int.tryParse(v ?? '');
+                              return n == null || n < 10 || n > 120
+                                  ? '10–120'
+                                  : null;
+                            },
+                            onChanged: (v) {
+                              final n = int.tryParse(v);
+                              if (n != null) {
+                                setState(
+                                  () => _value = _value.copyWith(
+                                    answerSeconds: n.clamp(10, 120),
+                                  ),
+                                );
+                              }
+                            },
                           ),
-                          validator: (v) {
-                            final n = int.tryParse(v ?? '');
-                            return n == null || n < 10 || n > 120
-                                ? '10–120'
-                                : null;
-                          },
-                          onChanged: (v) {
-                            final n = int.tryParse(v);
-                            if (n != null) {
-                              setState(
-                                () => _value = _value.copyWith(
-                                  answerSeconds: n.clamp(10, 120),
-                                ),
-                              );
-                            }
-                          },
                         ),
                         Padding(
                           padding: const EdgeInsets.all(12),
@@ -777,16 +783,18 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                 PageModule(child: Text(l.strongRuleOverrideNotice)),
               ],
               if (Platform.isWindows)
-                TextFormField(
-                  controller: _duration,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: WakeText.of(context).roundDuration,
+                PageModule(
+                  child: TextFormField(
+                    controller: _duration,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: WakeText.of(context).roundDuration,
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      return n == null || n < 5 || n > 300 ? '5–300' : null;
+                    },
                   ),
-                  validator: (v) {
-                    final n = int.tryParse(v ?? '');
-                    return n == null || n < 5 || n > 300 ? '5–300' : null;
-                  },
                 ),
               if (Platform.isAndroid) ...[
                 PageModule(
@@ -813,16 +821,18 @@ class _StrongReminderPageState extends ConsumerState<StrongReminderPage> {
                     ),
                   ),
                 ),
-                TextFormField(
-                  controller: _duration,
-                  decoration: InputDecoration(
-                    labelText: WakeText.of(context).roundDuration,
+                PageModule(
+                  child: TextFormField(
+                    controller: _duration,
+                    decoration: InputDecoration(
+                      labelText: WakeText.of(context).roundDuration,
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (s) {
+                      final n = int.tryParse(s ?? '');
+                      return n == null || n < 5 || n > 300 ? '5–300' : null;
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                  validator: (s) {
-                    final n = int.tryParse(s ?? '');
-                    return n == null || n < 5 || n > 300 ? '5–300' : null;
-                  },
                 ),
                 PageModule(
                   child: ListTile(

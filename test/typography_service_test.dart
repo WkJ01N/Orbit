@@ -207,8 +207,10 @@ void main() {
       await fonts.deleteFile(imported);
       final restarted = FontService(directory: root, register: (_, _) async {});
       final recovered = await restarted.initialize();
-      expect(recovered.appFontId, 'system');
-      expect(recovered.launchFontId, 'nunito');
+      expect(recovered.appFontId, imported.id);
+      expect(recovered.launchFontId, imported.id);
+      expect(recovered.effectiveAppFontId, 'system');
+      expect(recovered.effectiveLaunchFontId, 'nunito');
       expect(recovered.loadWarning, isTrue);
       expect((await fonts.read()).appFontId, imported.id);
     },
@@ -361,6 +363,8 @@ void main() {
       );
       await SettingsService().saveLocalJson('launch_presentation_v1', {
         'cardEntrance': 'nearby',
+        'pageTransitionStyle': 'fluid',
+        'pageTransitionSpeed': 'fast',
       });
       final service = ScheduleBackupService(fonts: fonts);
       final encoded = await service.encodeWithAudio(
@@ -372,6 +376,8 @@ void main() {
       expect(backup.fonts, hasLength(2));
       expect(backup.settings!.typography!.imports, hasLength(2));
       expect(backup.localPresentation!['cardEntrance'], 'nearby');
+      expect(backup.localPresentation!['pageTransitionStyle'], 'fluid');
+      expect(backup.localPresentation!['pageTransitionSpeed'], 'fast');
       final target = FontService(
         directory: Directory('${root.path}/protected-restore'),
         register: (_, _) async {},

@@ -55,7 +55,10 @@ class SettingsGroup extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: children,
+                  children: [
+                    for (final child in children)
+                      if (child is Divider) PageModule(child: child) else child,
+                  ],
                 ),
               ),
             ],

@@ -47,12 +47,14 @@ class GridEventMotion extends StatefulWidget {
     this.identityChanges = const {},
     this.enabled = true,
     this.animateInitial = false,
+    this.viewportIdentity,
   });
   final List<GridMotionEvent> events;
   final Rect viewport;
   final CardEntranceMode mode;
   final Map<String, String> identityChanges;
   final bool enabled, animateInitial;
+  final Object? viewportIdentity;
   @override
   State<GridEventMotion> createState() => _GridEventMotionState();
 }
@@ -99,7 +101,9 @@ class _GridEventMotionState extends State<GridEventMotion>
   }
 
   bool get _enabled =>
-      widget.enabled && !MediaQuery.disableAnimationsOf(context);
+      widget.enabled &&
+      TickerMode.valuesOf(context).enabled &&
+      !MediaQuery.disableAnimationsOf(context);
   double get _milliseconds => _clock.value * _clock.duration!.inMilliseconds;
   void _settle(AnimationStatus status) {
     if (status == AnimationStatus.completed && mounted) {
@@ -123,7 +127,7 @@ class _GridEventMotionState extends State<GridEventMotion>
   void didUpdateWidget(GridEventMotion oldWidget) {
     super.didUpdateWidget(oldWidget);
     final old = {for (final event in oldWidget.events) event.id: event};
-    if (!_enabled) {
+    if (!_enabled || oldWidget.viewportIdentity != widget.viewportIdentity) {
       _clock.stop();
       _entries = [
         for (final event in widget.events)

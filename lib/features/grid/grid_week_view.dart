@@ -60,7 +60,9 @@ class WeekGridView extends ConsumerStatefulWidget {
   ConsumerState<WeekGridView> createState() => WeekGridViewState();
 }
 
-class WeekGridViewState extends ConsumerState<WeekGridView> {
+class WeekGridViewState extends ConsumerState<WeekGridView>
+    with TickerProviderStateMixin {
+  LaunchMotion? _dateMotion, _dateParentMotion;
   final _scrollController = ScrollController();
   final _previousScrollController = ScrollController();
   final _nextScrollController = ScrollController();
@@ -71,6 +73,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   DateTime? _defaultAnchor;
   int _rangeTransitionDirection = 1;
   Object? _sessionSource;
+  Object? _lastViewportIdentity;
   List<CourseSession> _visibleSessions = const [];
   Object? _layoutConfiguration;
   final Map<DateTime, _SchedulePageData> _pageLayouts = {};
@@ -108,6 +111,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
   @override
   void dispose() {
+    _dateMotion?.dispose();
     _scrollController.dispose();
     _previousScrollController.dispose();
     _nextScrollController.dispose();
@@ -201,6 +205,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
   }
 
   void _cancelGridEntrance() {
+    _dateMotion?.finish();
     LaunchMotionScope.maybeOf(context)?.finish();
     ModuleEntranceScope.maybeOf(context)?.finish();
   }
@@ -250,7 +255,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
         );
         final previousSource = _sessionSource;
         final sessions = _sessions;
-        final animateAddition =
+        final sourceChanged =
             previousSource != null &&
             !identical(previousSource, _sessionSource);
         final configuration = (
@@ -298,6 +303,10 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
 
         final current = pageData(anchor);
         final visibleDates = current.visibleDates;
+        final viewportIdentity = Object.hashAll(visibleDates);
+        final animateAddition =
+            sourceChanged && _lastViewportIdentity == viewportIdentity;
+        _lastViewportIdentity = viewportIdentity;
         final layout = current.layout;
 
         final visibleDayCount = math.max(1, visibleDates.length);
@@ -336,7 +345,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           _setAnchor(target, weekStartDay);
         }
 
-        void selectAnchor(DateTime target) {
+        void selectAnchor(DateTime target, {bool animateCards = true}) {
           _cancelGridEntrance();
           _pagerController.cancelInteraction();
           final normalized = dateOnly(target);
@@ -348,6 +357,23 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
             );
           }
           _setAnchor(normalized, weekStartDay);
+          if (animateCards &&
+              !listEquals(visibleDates, pageData(normalized).visibleDates) &&
+              ref.read(launchSettingsProvider).pageEnabled[0] &&
+              !ref.read(pageTransitionSuppressedProvider) &&
+              !MediaQuery.disableAnimationsOf(context)) {
+            final previous = _dateMotion;
+            _dateParentMotion = LaunchMotionScope.maybeOf(context);
+            _dateMotion = LaunchMotion(
+              vsync: this,
+              settings: ref.read(launchSettingsProvider),
+              cardsOnly: true,
+            );
+            _dateMotion!.timeline.value = 1;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => previous?.dispose(),
+            );
+          }
         }
 
         final currentPage = _SchedulePageData(
@@ -376,6 +402,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               sessions,
               availableCourseDates: _courseDates,
             ),
+            animateCards: false,
           ),
           onSelectSession: _openSession,
           onMenu: (session, position) => SessionActionMenu.show(
@@ -391,6 +418,11 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
           ),
         );
 
+        final parentMotion = LaunchMotionScope.maybeOf(context);
+        final pageMotion =
+            _dateMotion != null && identical(_dateParentMotion, parentMotion)
+            ? _dateMotion
+            : parentMotion;
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -402,7 +434,7 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
               onPrevious: _pagerController.animateToPrevious,
               onNext: _pagerController.animateToNext,
               onToday: () => selectAnchor(DateTime.now()),
-              onSelectWeek: selectAnchor,
+              onSelectWeek: (date) => selectAnchor(date),
             ),
             Expanded(
               child: CourseQuickActionViewport(
@@ -443,7 +475,12 @@ class WeekGridViewState extends ConsumerState<WeekGridView> {
                               ? _openSession
                               : null,
                         ),
-                  child: currentSchedulePage,
+                  child: pageMotion != null
+                      ? LaunchMotionScope(
+                          motion: pageMotion,
+                          child: currentSchedulePage,
+                        )
+                      : currentSchedulePage,
                 ),
               ),
             ),
@@ -1032,6 +1069,9 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                             ),
                             Positioned.fill(
                               child: GridEventMotion(
+                                viewportIdentity: Object.hashAll(
+                                  layout.days.map((day) => day.date),
+                                ),
                                 animateInitial:
                                     widget.animateEntrance &&
                                     widget.animateAddition,

@@ -11,8 +11,8 @@
       "abi": null,
       "entrypoint": null,
       "size": 14856737,
-      "sha256": "f4076a6333801a339d2f91811a76bfe6859048c1c76fc46362ee7aceb88c4a55",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-rounded-1.orbitpack",
+      "sha256": "44f9001d693f107550fbcb0954d351271d15385246d74f407374a0816b03f80a",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-rounded-1.orbitpack",
       "files": {
         "ResourceHanRounded-OFL.txt": {
           "size": 4428,
@@ -38,8 +38,8 @@
       "abi": null,
       "entrypoint": null,
       "size": 2946809,
-      "sha256": "9ebb82428d4109a9ebb2c7d4eff624fcf3554fe63b1308b7496aed5204d7a9a2",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-huninn-1.orbitpack",
+      "sha256": "f6d904acf024a920ff5a0ace784d4d7f6bd25eab7251ad16c9b391db1f8d5fc8",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-huninn-1.orbitpack",
       "files": {
         "Huninn-OFL.txt": {
           "size": 4847,
@@ -61,8 +61,8 @@
       "abi": null,
       "entrypoint": null,
       "size": 4457577,
-      "sha256": "9505f1f4469466f739b2aa002bf87445511bf9f6b47316bd2932a4d53fa3fb70",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-maiyuan-1.orbitpack",
+      "sha256": "d16a0bb6a2e25c18c16d6529edec7df880743eadbc3ac8930bfb2cc42fdf7d9d",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-maiyuan-1.orbitpack",
       "files": {
         "Maiyuan-OFL.txt": {
           "size": 4397,
@@ -84,8 +84,8 @@
       "abi": "arm64-v8a",
       "entrypoint": "libmpv.so",
       "size": 5631679,
-      "sha256": "5bf9b24c689db522d56a805f4216e3355a788cc5dfec3958f77a18fb1d502e7f",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-arm64-v8a-1.orbitpack",
+      "sha256": "b48463ac186a9e8cc33a3652cebad0080d16d52b5c5efd05b3793dc2abd7f87a",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-video-android-arm64-v8a-1.orbitpack",
       "files": {
         "LICENSE-ANGLE.txt": {
           "size": 1643,
@@ -135,8 +135,8 @@
       "abi": "armeabi-v7a",
       "entrypoint": "libmpv.so",
       "size": 5418283,
-      "sha256": "a358f1da032e8e8e0412a9ac127a94299c4e15a152c46fa52305c220728d27f6",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-armeabi-v7a-1.orbitpack",
+      "sha256": "e5621f0b6fe6f199e16c26c904ecadd205448e8f5ff827e58533ddd30a2a11e6",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-video-android-armeabi-v7a-1.orbitpack",
       "files": {
         "LICENSE-ANGLE.txt": {
           "size": 1643,
@@ -186,8 +186,8 @@
       "abi": "x86_64",
       "entrypoint": "libmpv.so",
       "size": 6419192,
-      "sha256": "ad8c5c2950269ef104cd1f0656535aab2993173b6e58b37d79818ec87d396703",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-android-x86_64-1.orbitpack",
+      "sha256": "2030ea7d7f05f018dc0629e4a8225724b6c29fd64967863acc8ba5776548303c",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-video-android-x86_64-1.orbitpack",
       "files": {
         "LICENSE-ANGLE.txt": {
           "size": 1643,
@@ -236,9 +236,9 @@
       "platform": "windows",
       "abi": "x64",
       "entrypoint": "libmpv-2.dll",
-      "size": 20100826,
-      "sha256": "e4e7c534680f1cf59441c421ccec76e87dcf482e0ba0825e7d52e9a8828be1e0",
-      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.1/orbit-component-video-win-x64-1.orbitpack",
+      "size": 20099645,
+      "sha256": "c736feb7b7fe0fdb4811743d2be401336d0176e2b4d57dc2ed544960bcf85517",
+      "url": "https://github.com/WkJ01N/Orbit/releases/download/v1.6.3/orbit-component-video-win-x64-1.orbitpack",
       "files": {
         "LICENSE-ANGLE.txt": {
           "size": 1643,
@@ -290,7 +290,7 @@
         },
         "orbit_video_backend.dll": {
           "size": 151040,
-          "sha256": "bcc60303891f10e0618138ee3be134a85e9df262c1438767d784b082fd4530a3"
+          "sha256": "ac06b252d77992ee9971d7056add9c2a34b5130e205d1a66271f35c6962b9875"
         },
         "vk_swiftshader.dll": {
           "size": 4808008,

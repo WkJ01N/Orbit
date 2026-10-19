@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -223,6 +224,205 @@ void main() {
       ];
       expect(values.any((e) => e.id == 'video-android-x86_64'), isTrue);
       expect(values.where((e) => e.platform == 'any'), hasLength(3));
+    },
+  );
+
+  ComponentDescriptor repacked(ComponentDescriptor previous) =>
+      ComponentDescriptor.fromJson({
+        'id': previous.id,
+        'name': previous.name,
+        'version': previous.version,
+        'platform': previous.platform,
+        'abi': previous.abi,
+        'entrypoint': previous.entrypoint,
+        'url': previous.asset.url,
+        'size': previous.asset.size + 1,
+        'sha256': 'a' * 64,
+        'files': previous.files,
+      });
+
+  test(
+    'upgrade recognizes legacy extracted fonts offline after archive digest changes',
+    () async {
+      final original = pack();
+      final old = await Directory(
+        '${root.path}/rounded-1-${original.descriptor.asset.sha256!.substring(0, 12)}',
+      ).create();
+      await File('${old.path}/font.ttf').writeAsString('test font data');
+      final next = repacked(original.descriptor);
+      final upgraded = ComponentService(directory: root, catalog: [next]);
+      await upgraded.initialize();
+      expect(upgraded.ready('rounded'), isTrue);
+      expect(
+        p.normalize((await upgraded.installed('rounded')).path),
+        p.normalize(old.path),
+      );
+      final index = File('${root.path}/.font-installations.json');
+      expect(await index.exists(), isTrue);
+      upgraded.dispose();
+      final restarted = ComponentService(directory: root, catalog: [next]);
+      await restarted.initialize();
+      expect(restarted.ready('rounded'), isTrue);
+      await restarted.clearOldCaches();
+      expect(await old.exists(), isTrue);
+      await restarted.remove('rounded');
+      restarted.dispose();
+      final removed = ComponentService(directory: root, catalog: [next]);
+      await removed.initialize();
+      expect(removed.ready('rounded'), isFalse);
+      expect(await old.exists(), isFalse);
+      removed.dispose();
+    },
+  );
+
+  test(
+    'font identity survives repacking without moving or redownloading installed files',
+    () async {
+      final original = pack();
+      final installed = ComponentService(
+        directory: root,
+        catalog: [original.descriptor],
+      );
+      final archive = await File(
+        '${root.path}/input.orbitpack',
+      ).writeAsBytes(original.bytes);
+      await installed.installArchive(original.descriptor, archive);
+      final old = await installed.installed('rounded');
+      installed.dispose();
+      final upgraded = ComponentService(
+        directory: root,
+        catalog: [repacked(original.descriptor)],
+      );
+      await upgraded.initialize();
+      expect((await upgraded.installed('rounded')).path, old.path);
+      upgraded.dispose();
+    },
+  );
+
+  test(
+    'invalid legacy fonts and preferences are not erased by cache cleanup',
+    () async {
+      final original = pack();
+      final old = await Directory(
+        '${root.path}/rounded-1-aaaaaaaaaaaa',
+      ).create();
+      await File('${old.path}/font.ttf').writeAsString('damaged');
+      final service = ComponentService(
+        directory: root,
+        catalog: [original.descriptor],
+      );
+      await service.initialize();
+      expect(service.ready('rounded'), isFalse);
+      await service.clearOldCaches();
+      expect(await old.exists(), isTrue);
+      service.dispose();
+    },
+  );
+
+  test(
+    'failed installation-record writes preserve a verified legacy font',
+    () async {
+      final original = pack();
+      final old = await Directory(
+        '${root.path}/rounded-1-aaaaaaaaaaaa',
+      ).create();
+      await File('${old.path}/font.ttf').writeAsString('test font data');
+      await Directory('${root.path}/.font-installations.pending').create();
+      final service = ComponentService(
+        directory: root,
+        catalog: [original.descriptor],
+      );
+      await service.initialize();
+      expect(service.ready('rounded'), isTrue);
+      expect(
+        p.normalize((await service.installed('rounded')).path),
+        p.normalize(old.path),
+      );
+      service.dispose();
+    },
+  );
+
+  test(
+    'offline upgrade preserves real downloaded fonts, imported fonts and every selected scope',
+    () async {
+      final raw =
+          jsonDecode(
+                await File('assets/components/catalog.json').readAsString(),
+              )
+              as Map;
+      final values = [
+        for (final item in raw['components'] as List)
+          if (const {
+            'rounded',
+            'huninn',
+            'maiyuan',
+          }.contains((item as Map)['id']))
+            ComponentDescriptor.fromJson(Map<String, dynamic>.from(item)),
+      ];
+      for (final value in values) {
+        final legacy = await Directory(
+          p.join(root.path, '${value.id}-1-bbbbbbbbbbbb'),
+        ).create();
+        for (final name in value.files.keys) {
+          final source = File(p.join('resources/fonts', name));
+          if (name.endsWith('.txt')) {
+            // Component packaging normalizes license text line endings.
+            await File(p.join(legacy.path, name)).writeAsString(
+              (await source.readAsString())
+                  .replaceAll('\r\n', '\n')
+                  .replaceAll('\r', '\n'),
+            );
+          } else {
+            await source.copy(p.join(legacy.path, name));
+          }
+        }
+      }
+      final components = ComponentService(directory: root, catalog: values);
+      final importRoot = Directory(p.join(root.path, 'imported'));
+      final first = FontService(
+        directory: importRoot,
+        components: components,
+        register: (_, _) async {},
+      );
+      final imported = (await first.importBytes(
+        'custom.otf',
+        await File('test/fixtures/typography/tiny.otf').readAsBytes(),
+      )).font;
+      await first.save(
+        TypographySettings(
+          appFontId: 'rounded',
+          launchFontId: 'huninn',
+          fallbackFontIds: ['maiyuan', imported.id],
+          imports: {imported.id: imported},
+        ),
+      );
+      final registered = <String>[];
+      final upgraded = FontService(
+        directory: importRoot,
+        components: components,
+        register: (family, _) async {
+          registered.add(family);
+        },
+      );
+      final prepared = await upgraded.initialize();
+      expect(prepared.appFontId, 'rounded');
+      expect(prepared.launchFontId, 'huninn');
+      expect(prepared.fallbackFontIds, ['maiyuan', imported.id]);
+      expect(prepared.loadWarning, isFalse);
+      expect(prepared.unavailableFontIds, isEmpty);
+      expect(
+        registered,
+        containsAll([
+          'OrbitFont_rounded',
+          'OrbitFont_huninn',
+          'OrbitFont_maiyuan',
+          FontCatalog.family(imported.id),
+        ]),
+      );
+      await components.clearOldCaches();
+      expect(await (await upgraded.file(imported)).exists(), isTrue);
+      expect(values.every((value) => components.ready(value.id)), isTrue);
+      components.dispose();
     },
   );
 

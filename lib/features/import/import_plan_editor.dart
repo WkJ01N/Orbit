@@ -1,4 +1,5 @@
 import 'package:orbit/core/background/background_scope.dart';
+import 'package:orbit/core/motion/page_module.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orbit/features/import/import_labels.dart';
@@ -14,57 +15,71 @@ class ImportPlansPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = importL10n(context);
     return BackgroundScaffold(
-      appBar: AppBar(title: Text(l.importPlans)),
+      appBar: AppBar(title: PageModule(child: Text(l.importPlans))),
       body: ref
           .watch(importConfigurationProvider)
           .when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text(importErrorMessage(l, e))),
+            loading: () => const Center(
+              child: PageModule(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Center(
+              child: PageModule(child: Text(importErrorMessage(l, e))),
+            ),
             data: (config) => ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(l.importTemporaryContext),
+                PageModule(child: Text(l.importTemporaryContext)),
                 const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => _editSemester(context, ref),
-                  icon: const Icon(Icons.add),
-                  label: Text(l.importSemesterName),
+                PageModule(
+                  child: FilledButton.icon(
+                    onPressed: () => _editSemester(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: Text(l.importSemesterName),
+                  ),
                 ),
                 for (final p in config.semesters)
-                  ListTile(
-                    title: Text(p.name),
-                    subtitle: Text(
-                      '${p.firstWeekMonday.toIso8601String().split('T').first} · ${p.totalWeeks}',
-                    ),
-                    onTap: () => _editSemester(context, ref, p),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: l.actionDelete,
-                      onPressed: () => _remove(context, ref, semester: p),
+                  PageModule(
+                    key: ValueKey('semester-${p.id}'),
+                    child: ListTile(
+                      title: Text(p.name),
+                      subtitle: Text(
+                        '${p.firstWeekMonday.toIso8601String().split('T').first} · ${p.totalWeeks}',
+                      ),
+                      onTap: () => _editSemester(context, ref, p),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: l.actionDelete,
+                        onPressed: () => _remove(context, ref, semester: p),
+                      ),
                     ),
                   ),
-                const Divider(),
-                FilledButton.icon(
-                  onPressed: () => _editTimes(context, ref),
-                  icon: const Icon(Icons.add),
-                  label: Text(l.importPeriodPlanName),
+                const PageModule(child: Divider()),
+                PageModule(
+                  child: FilledButton.icon(
+                    onPressed: () => _editTimes(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: Text(l.importPeriodPlanName),
+                  ),
                 ),
                 for (final p in config.periodTimes)
-                  ListTile(
-                    title: Text(p.name),
-                    subtitle: Text(
-                      p.periods
-                          .map(
-                            (t) =>
-                                '${t.number}: ${minuteLabel(t.startMinute)}–${minuteLabel(t.endMinute)}',
-                          )
-                          .join('\n'),
-                    ),
-                    onTap: () => _editTimes(context, ref, p),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: l.actionDelete,
-                      onPressed: () => _remove(context, ref, times: p),
+                  PageModule(
+                    key: ValueKey('period-times-${p.id}'),
+                    child: ListTile(
+                      title: Text(p.name),
+                      subtitle: Text(
+                        p.periods
+                            .map(
+                              (t) =>
+                                  '${t.number}: ${minuteLabel(t.startMinute)}–${minuteLabel(t.endMinute)}',
+                            )
+                            .join('\n'),
+                      ),
+                      onTap: () => _editTimes(context, ref, p),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: l.actionDelete,
+                        onPressed: () => _remove(context, ref, times: p),
+                      ),
                     ),
                   ),
               ],

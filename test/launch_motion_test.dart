@@ -19,6 +19,7 @@ import 'package:orbit/features/grid/grid_week_view.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
 import 'package:orbit/features/settings/launch_settings_page.dart';
+import 'package:orbit/features/grid/grid_week_picker.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/launch_settings.dart';
@@ -184,7 +185,7 @@ Future<void> _ready(WidgetTester tester) async {
 
 void main() {
   testWidgets(
-    'returning to grid starts chrome from zero at navigation midpoint and cards enter horizontally',
+    'returning to grid uses a single immediate transition for chrome and cards',
     (tester) async {
       final container = await _pump(
         tester,
@@ -214,19 +215,17 @@ void main() {
           )
           .first;
       final motion = tester.widget<LaunchMotionScope>(launchScope).motion;
-      expect(modules.pending, isTrue);
-      expect(motion.milliseconds, 0);
-      await tester.pump(const Duration(milliseconds: 129));
-      expect(modules.pending, isTrue);
-      await tester.pump(const Duration(milliseconds: 2));
       expect(modules.pending, isFalse);
-      expect(motion.milliseconds, 0);
+      expect(motion.fluid, isTrue);
+      final transitionStart = tester.getTopLeft(
+        find.byKey(const Key('grid-add-session')),
+      );
+      expect(transitionStart.dx, closeTo(finalAdd.dx - 12, .01));
       await tester.pump(const Duration(milliseconds: 80));
       expect(
         tester.getTopLeft(find.byKey(const Key('grid-add-session'))).dx,
         inExclusiveRange(finalAdd.dx - 26, finalAdd.dx),
       );
-      expect(modules.clock.value, lessThan(.3));
       final cards = tester
           .widgetList<LaunchCard>(
             find.descendant(
@@ -234,14 +233,11 @@ void main() {
               matching: find.byType(LaunchCard),
             ),
           )
-          .where((card) => card.spec != null)
           .toList();
       expect(cards, isNotEmpty);
-      expect(
-        cards.every((card) => card.travel?.dx == -48 && card.travel?.dy == 0),
-        isTrue,
-      );
-      await tester.pumpAndSettle();
+      expect(cards.every((card) => card.spec == null), isTrue);
+      await tester.pump(const Duration(milliseconds: 280));
+      await tester.pump();
       expect(
         tester.getTopLeft(find.byKey(const Key('grid-add-session'))),
         finalAdd,
@@ -302,6 +298,100 @@ void main() {
         isTrue,
       );
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'dropdown and today animate target cards and time marker; arrows never do',
+    (tester) async {
+      final date = DateTime.now();
+      final now = DateTime(date.year, date.month, date.day, 10, 30);
+      final today = DateTime(now.year, now.month, now.day);
+      final monday = today.subtract(Duration(days: today.weekday - 1));
+      final shift = monday.difference(DateTime(2026, 10, 12));
+      final sessions = [
+        for (var week = 0; week < 3; week++)
+          for (final s in _courses())
+            s.copyWith(
+              id: '${s.id}-w$week',
+              date: s.date.add(shift + Duration(days: week * 7)),
+              startAt: s.startAt.add(shift + Duration(days: week * 7)),
+              endAt: s.endAt.add(shift + Duration(days: week * 7)),
+            ),
+      ];
+      await _pump(tester, now: now, data: Future.value(sessions));
+      await _ready(tester);
+      await tester.pumpAndSettle();
+      LaunchMotion pageMotion() => tester
+          .widget<LaunchMotionScope>(
+            find
+                .descendant(
+                  of: find.byKey(const Key('adjacent-page-current')),
+                  matching: find.byType(LaunchMotionScope),
+                )
+                .first,
+          )
+          .motion;
+      final picker = tester.widget<GridWeekPicker>(find.byType(GridWeekPicker));
+      picker.onChanged(monday.add(const Duration(days: 7)));
+      await tester.pump();
+      await tester.pump();
+      expect(pageMotion().cards.value, lessThan(1));
+      expect(pageMotion().timeline.isCompleted, isTrue);
+      final marker = find.descendant(
+        of: find.byKey(const Key('adjacent-page-current')),
+        matching: find.byKey(const Key('schedule-current-time-line')),
+      );
+      expect(
+        tester.widgetList<LaunchCard>(
+          find.descendant(of: marker, matching: find.byType(LaunchCard)),
+        ),
+        isEmpty,
+      );
+      await tester.pumpAndSettle();
+      final finished = pageMotion();
+      tester
+          .widget<GridWeekPicker>(find.byType(GridWeekPicker))
+          .onChanged(monday.add(const Duration(days: 7)));
+      await tester.pump();
+      expect(pageMotion(), same(finished));
+      await tester.tap(find.byIcon(Icons.chevron_right).hitTestable().last);
+      await tester.pumpAndSettle();
+      expect(pageMotion().finished, isTrue);
+      expect(
+        tester
+            .widgetList<GridEventMotion>(find.byType(GridEventMotion))
+            .every((e) => !e.animateInitial),
+        isTrue,
+      );
+      final todayButton = find.byIcon(Icons.today_outlined).hitTestable();
+      expect(todayButton, findsOneWidget);
+      await tester.tap(todayButton);
+      await tester.pump();
+      await tester.pump();
+      expect(pageMotion().cards.value, lessThan(1));
+      expect(pageMotion().timeline.isCompleted, isTrue);
+      final markerCard = tester.widget<LaunchCard>(
+        find.descendant(of: marker, matching: find.byType(LaunchCard)).first,
+      );
+      expect(markerCard.spec, isNotNull);
+      expect(markerCard.travel!.distance, greaterThan(0));
+      final initialMarkerPosition = tester.getTopLeft(marker);
+      final movingLine = find
+          .descendant(of: marker, matching: find.byType(Transform))
+          .first;
+      final firstTranslation = tester
+          .widget<Transform>(movingLine)
+          .transform
+          .getTranslation()
+          .length;
+      await tester.pump(const Duration(milliseconds: 180));
+      expect(
+        tester.widget<Transform>(movingLine).transform.getTranslation().length,
+        lessThan(firstTranslation),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(marker), initialMarkerPosition);
       expect(tester.takeException(), isNull);
     },
   );

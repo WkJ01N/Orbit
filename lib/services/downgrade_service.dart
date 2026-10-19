@@ -79,6 +79,8 @@ class DowngradeService {
           'onStartup',
           'onResume',
           'onPageSwitch',
+          'pageTransitionStyle',
+          'pageTransitionSpeed',
           'pageEnabled',
         ]) {
           presentation.remove(key);

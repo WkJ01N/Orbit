@@ -1,6 +1,7 @@
 import 'package:orbit/core/motion/retained_page_switcher.dart';
 import 'package:orbit/core/motion/category_entrance.dart';
 import 'package:orbit/core/motion/page_module.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/features/settings/course_quick_action_settings_page.dart';
 import 'package:orbit/models/navigation_assist_text.dart';
 import 'package:orbit/models/deadline_strong_text.dart';
@@ -28,6 +29,7 @@ import 'package:orbit/features/settings/next_day_summary_template_sheet.dart';
 import 'package:orbit/features/settings/reminder_setting_actions.dart';
 import 'package:orbit/features/settings/settings_appearance_section.dart';
 import 'package:orbit/features/settings/settings_data_section.dart';
+import 'package:orbit/features/settings/settings_category_viewport.dart';
 import 'package:orbit/l10n/app_localizations.dart';
 import 'package:orbit/models/grid_density.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
@@ -104,18 +106,30 @@ class _SettingsBodyState extends ConsumerState<_SettingsBody> {
         ),
         Expanded(
           child: RetainedPageSwitcher(
+            immediate: ref.watch(pageTransitionSuppressedProvider),
             index: _selectedCategory,
             itemCount: 4,
+            keepOutgoingTickers: true,
             keyPrefix: 'settings-category-layer',
-            duration: const Duration(milliseconds: 220),
+            fluid:
+                ref.watch(launchSettingsProvider).onPageSwitch &&
+                ref.watch(launchSettingsProvider).pageEnabled[3] &&
+                ref.watch(launchAnimationsEnabledProvider),
+            duration:
+                ref.watch(launchSettingsProvider).onPageSwitch &&
+                    ref.watch(launchSettingsProvider).pageEnabled[3]
+                ? ref.watch(launchSettingsProvider).transitionDuration
+                : const Duration(milliseconds: 260),
             builder: (context, category, transition) => CategoryEntranceHost(
               transition: transition,
               child: BackgroundRegion(
                 key: Key('settings-category-content-$category'),
                 region: BackgroundRegionId.content,
-                child: ListView(
-                  key: PageStorageKey('settings-category-scroll-$category'),
-                  padding: const EdgeInsets.only(bottom: 24),
+                child: SettingsCategoryViewport(
+                  active: transition.active,
+                  scrollKey: PageStorageKey(
+                    'settings-category-scroll-$category',
+                  ),
                   children: [
                     if (category == 0) ...[
                       PageModule(
@@ -554,7 +568,7 @@ class _SettingsDropdown<T> extends StatelessWidget {
   }
 }
 
-class _SettingsCategoryTabs extends StatelessWidget {
+class _SettingsCategoryTabs extends ConsumerWidget {
   const _SettingsCategoryTabs({
     required this.selectedIndex,
     required this.onSelected,
@@ -564,7 +578,7 @@ class _SettingsCategoryTabs extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final colors = Theme.of(context).colorScheme;
     final items = [
@@ -626,9 +640,28 @@ class _SettingsCategoryTabs extends StatelessWidget {
                                     alignment: Alignment.center,
                                     children: [
                                       AnimatedSwitcher(
-                                        duration: const Duration(
-                                          milliseconds: 160,
-                                        ),
+                                        duration:
+                                            MediaQuery.disableAnimationsOf(
+                                                  context,
+                                                ) ||
+                                                ref.watch(
+                                                  pageTransitionSuppressedProvider,
+                                                )
+                                            ? Duration.zero
+                                            : ref
+                                                      .watch(
+                                                        launchSettingsProvider,
+                                                      )
+                                                      .onPageSwitch &&
+                                                  ref
+                                                      .watch(
+                                                        launchSettingsProvider,
+                                                      )
+                                                      .pageEnabled[3]
+                                            ? ref
+                                                  .watch(launchSettingsProvider)
+                                                  .transitionDuration
+                                            : const Duration(milliseconds: 160),
                                         switchInCurve: Curves.easeOutCubic,
                                         switchOutCurve: Curves.easeInCubic,
                                         child: Icon(
@@ -653,6 +686,9 @@ class _SettingsCategoryTabs extends StatelessWidget {
                     AnimatedPositioned(
                       duration: MediaQuery.disableAnimationsOf(context)
                           ? Duration.zero
+                          : ref.watch(launchSettingsProvider).onPageSwitch &&
+                                ref.watch(launchSettingsProvider).pageEnabled[3]
+                          ? ref.watch(launchSettingsProvider).transitionDuration
                           : const Duration(milliseconds: 260),
                       curve: Curves.easeOutCubic,
                       left:

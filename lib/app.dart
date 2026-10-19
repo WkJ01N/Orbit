@@ -1,4 +1,5 @@
 import 'package:orbit/core/motion/page_entrance.dart';
+import 'package:orbit/providers/launch_providers.dart';
 import 'package:orbit/features/settings/typography_settings_page.dart';
 import 'package:orbit/providers/typography_providers.dart';
 import 'package:orbit/models/typography_settings.dart';
@@ -46,6 +47,26 @@ class OrbitApp extends ConsumerWidget {
     final locale = ref.watch(localeProvider);
     final typography = ref.watch(typographySettingsProvider);
     final seed = ref.watch(themeColorProvider);
+    Duration? fluidDuration() {
+      final motion = ref.read(launchSettingsProvider);
+      final page = ref.read(appNavIndexProvider);
+      return motion.onPageSwitch &&
+              motion.pageEnabled[page] &&
+              ref.read(launchAnimationsEnabledProvider)
+          ? motion.transitionDuration
+          : null;
+    }
+
+    final transitions = PageTransitionsTheme(
+      builders: {
+        for (final platform in [TargetPlatform.android, TargetPlatform.windows])
+          platform: BackgroundPageTransitionsBuilder(
+            platform: platform,
+            fluidDuration: fluidDuration,
+            suppressed: () => ref.read(pageTransitionSuppressedProvider),
+          ),
+      },
+    );
 
     final themeMode = ref.watch(themeModeProvider);
     final themeStyle = ref.watch(themeStyleProvider);
@@ -102,7 +123,7 @@ class OrbitApp extends ConsumerWidget {
         fontFallback: typography.fallbackFamilies(
           typography.effectiveAppFontId,
         ),
-      ),
+      ).copyWith(pageTransitionsTheme: transitions),
       darkTheme: AppTheme.dark(
         seed: seed,
         style: themeStyle,
@@ -114,7 +135,7 @@ class OrbitApp extends ConsumerWidget {
         fontFallback: typography.fallbackFamilies(
           typography.effectiveAppFontId,
         ),
-      ),
+      ).copyWith(pageTransitionsTheme: transitions),
       themeMode: themeMode,
       locale: locale,
       localizationsDelegates: const [
