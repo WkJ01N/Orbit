@@ -59,6 +59,31 @@ class OrbitReminderStoreTest {
         assertEquals("Updated", updated["channel_name"])
     }
 
+    @Test fun diagnosticsWithEqualTimestampsKeepNewestInsertions() {
+        OrbitReminderStore.metadata(context)
+        context.openOrCreateDatabase("orbit_native_reminders.db", Context.MODE_PRIVATE, null).use { db ->
+            db.beginTransaction()
+            try {
+                for (index in 0 until 64) {
+                    db.execSQL(
+                        "INSERT INTO diagnostics(timestamp,stage,alarm_id,reason) VALUES(0,?,?,?)",
+                        arrayOf<Any>("stage_$index", index, "reason"),
+                    )
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+        }
+        val tied = OrbitReminderStore.diagnostics(context, 64)
+        assertEquals("stage_63", tied.first()["stage"])
+        assertEquals("stage_0", tied.last()["stage"])
+
+        OrbitReminderStore.appendDiagnostic(context, "newest", 64, "reason")
+        val bounded = OrbitReminderStore.diagnostics(context, 64)
+        assertEquals(64, bounded.size)
+        assertEquals("newest", bounded.first()["stage"])
+        assertEquals("stage_1", bounded.last()["stage"])
+    }
+
     @Test fun diagnosticsAreBoundedAndContainOnlyExplicitFields() {
         for (index in 0 until 70) {
             OrbitReminderStore.appendDiagnostic(context, "stage_$index", index, "reason")

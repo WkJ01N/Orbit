@@ -149,7 +149,7 @@ object OrbitReminderStore {
                 arrayOf<Any?>(System.currentTimeMillis(), stage.take(64), alarmId, reason?.take(96)),
             )
             db.execSQL(
-                "DELETE FROM diagnostics WHERE rowid NOT IN (SELECT rowid FROM diagnostics ORDER BY timestamp DESC LIMIT 64)",
+                "DELETE FROM diagnostics WHERE rowid NOT IN (SELECT rowid FROM diagnostics ORDER BY timestamp DESC, rowid DESC LIMIT 64)",
             )
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
@@ -159,7 +159,7 @@ object OrbitReminderStore {
         open(context).use { db ->
             buildList {
                 db.rawQuery(
-                    "SELECT timestamp,stage,alarm_id,reason FROM diagnostics ORDER BY timestamp DESC LIMIT ?",
+                    "SELECT timestamp,stage,alarm_id,reason FROM diagnostics ORDER BY timestamp DESC, rowid DESC LIMIT ?",
                     arrayOf(limit.coerceIn(1, 64).toString()),
                 ).use { cursor ->
                     while (cursor.moveToNext()) {
