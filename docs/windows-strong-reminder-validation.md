@@ -22,11 +22,11 @@ orbit.exe --strong-self-test
 orbit.exe --audio-self-test "C:\path\中文 audio.mp3"
 
 # 使用独立 JSON 状态文件，避免修改实际课程、DDL 和统计
-orbit.exe --strong-os-self-test "E:\Multiplatform\Orbit\build\windows-reminder-selftest\normal.json"
-orbit.exe --strong-os-self-test "E:\Multiplatform\Orbit\build\windows-reminder-selftest\scheduled.json"
-orbit.exe --strong-os-self-test "E:\Multiplatform\Orbit\build\windows-reminder-selftest\notify-failure.json"
-orbit.exe --strong-os-self-test "E:\Multiplatform\Orbit\build\windows-reminder-selftest\audio-failure.json"
-orbit.exe --strong-os-self-test "E:\Multiplatform\Orbit\build\windows-reminder-selftest\missing-audio.json"
+orbit.exe --strong-os-self-test "H:\Projects\Orbit\build\windows-reminder-selftest\normal.json"
+orbit.exe --strong-os-self-test "H:\Projects\Orbit\build\windows-reminder-selftest\scheduled.json"
+orbit.exe --strong-os-self-test "H:\Projects\Orbit\build\windows-reminder-selftest\notify-failure.json"
+orbit.exe --strong-os-self-test "H:\Projects\Orbit\build\windows-reminder-selftest\audio-failure.json"
+orbit.exe --strong-os-self-test "H:\Projects\Orbit\build\windows-reminder-selftest\missing-audio.json"
 ```
 
 先创建输出目录。文件名选择场景：`scheduled` 注册实际独立测试任务，由系统任务调度器启动工作进程；失败场景仅在隔离测试状态中注入。测试通知使用独立编号，结束后停止测试会话、清理测试通知及计划任务，并写出 `.result.json` 供检查。测试会短时播放声音。测试过程中不要并行执行多个原生测试。

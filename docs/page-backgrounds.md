@@ -47,7 +47,7 @@ Windows 原生无窗口媒体检查：
 
 ```powershell
 ffmpeg -f lavfi -i testsrc=size=320x180:rate=15 -f lavfi -i sine=frequency=440:sample_rate=44100 -t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac build/background-audio-fixture.mp4
-dart run '-Ddart.vm.product=true' tool/background_media_smoke.dart E:/Multiplatform/Orbit/build/windows/x64/runner/Release/libmpv-2.dll E:/Multiplatform/Orbit/build/background-audio-fixture.mp4
+dart run '-Ddart.vm.product=true' tool/background_media_smoke.dart H:/Projects/Orbit/build/windows/x64/runner/Release/libmpv-2.dll H:/Projects/Orbit/build/background-audio-fixture.mp4
 ```
 
 该检查实测 Windows 解码、无音轨、音量零、暂停／恢复和循环。Android／Windows debug 构建均已通过。当前未连接 Android 设备，尚需真机验证锁屏、后台恢复、系统文档导出取消及普通／强提醒同时发声；Windows 托盘隐藏、纹理模糊填补及硬件解码失败恢复也需交互实测。自动化结果不替代这些设备验收。
