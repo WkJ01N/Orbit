@@ -20,19 +20,36 @@ class ReminderAlarmRegistry {
     if (reload) await prefs.reload();
     final raw = prefs.getString(reminderAlarmRegistryKey);
     if (raw == null || raw.isEmpty) return {};
+    final Object? decoded;
     try {
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded.map(
-        (key, value) => MapEntry(
-          int.parse(key),
-          ReminderAlarmSpec.fromJson(value as Map<String, dynamic>),
-        ),
-      );
+      decoded = jsonDecode(raw);
     } catch (error) {
-      debugPrint('Reminder alarm registry is invalid: $error');
-      await prefs.remove(reminderAlarmRegistryKey);
+      // The blob is unreadable. Keep it so the next upsert can still rewrite a
+      // healthy map: deleting it here would also erase every payload that the
+      // pending AlarmManager entries are waiting for.
+      debugPrint('Reminder alarm registry is unreadable: $error');
       return {};
     }
+    if (decoded is! Map) {
+      debugPrint('Reminder alarm registry has an unexpected shape');
+      return {};
+    }
+
+    // Decode entry by entry: one damaged record must not silence the rest.
+    final specs = <int, ReminderAlarmSpec>{};
+    decoded.forEach((key, dynamic value) {
+      final alarmId = key is int ? key : int.tryParse('$key');
+      if (alarmId == null || value is! Map<String, dynamic>) {
+        debugPrint('Dropping malformed reminder entry $key');
+        return;
+      }
+      try {
+        specs[alarmId] = ReminderAlarmSpec.fromJson(value);
+      } catch (error) {
+        debugPrint('Dropping unreadable reminder $alarmId: $error');
+      }
+    });
+    return specs;
   }
 
   static Future<ReminderAlarmSpec?> loadEntry(int alarmId) async {

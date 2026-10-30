@@ -293,6 +293,16 @@ class ScheduleSyncCoordinator {
         final pulled = await _backend.pull(cursor);
         await applyPull(pulled);
       }
+      // The applied set tracks which categories this device has reconciled.
+      // Refresh it after a clean cycle, otherwise a category enabled by another
+      // device in shared mode would stay 'pending' forever.
+      if (_scope != null) {
+        final applied = await _scope.appliedSelection();
+        if (applied.enabled.length != _selection.enabled.length ||
+            !applied.enabled.containsAll(_selection.enabled)) {
+          await _scope.markApplied(_selection);
+        }
+      }
       await _database.setSyncCursor(account.uid, cursor);
       if (firstExamSync) {
         await _settings.saveLocalJson(capabilityKey, {'applied': true});

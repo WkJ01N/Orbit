@@ -41,6 +41,15 @@ String nextDayPayloadKey(DateTime targetDay) {
       '${targetDay.day.toString().padLeft(2, '0')}';
 }
 
+/// The calendar day that slot [offset] summarises, counted from [today].
+///
+/// Built from calendar components rather than `add(Duration(days: ...))`: with
+/// a daylight-saving transition a 24-hour jump can land on 23:00 of the
+/// previous day, which would summarise the wrong day and fire at the wrong hour.
+DateTime nextDaySummaryTarget(DateTime today, int offset) {
+  return DateTime(today.year, today.month, today.day + offset + 1);
+}
+
 List<NextDaySummarySlot> buildNextDaySummarySlots({
   required List<CourseSession> allSessions,
   required ReminderSettings settings,
@@ -56,8 +65,9 @@ List<NextDaySummarySlot> buildNextDaySummarySlots({
   final slots = <NextDaySummarySlot>[];
 
   for (var offset = 0; offset < nextDaySummaryDays; offset++) {
-    final targetDay = today.add(Duration(days: offset + 1));
-    final notifyDay = targetDay.subtract(const Duration(days: 1));
+    final targetDay = nextDaySummaryTarget(today, offset);
+    final notifyDay =
+        DateTime(targetDay.year, targetDay.month, targetDay.day - 1);
     final notifyAt = DateTime(
       notifyDay.year,
       notifyDay.month,
@@ -141,8 +151,9 @@ int countNextDaySummarySlots({
   var count = 0;
 
   for (var offset = 0; offset < nextDaySummaryDays; offset++) {
-    final targetDay = today.add(Duration(days: offset + 1));
-    final notifyDay = targetDay.subtract(const Duration(days: 1));
+    final targetDay = nextDaySummaryTarget(today, offset);
+    final notifyDay =
+        DateTime(targetDay.year, targetDay.month, targetDay.day - 1);
     final notifyAt = DateTime(
       notifyDay.year,
       notifyDay.month,

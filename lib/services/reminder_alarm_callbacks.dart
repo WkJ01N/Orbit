@@ -42,8 +42,17 @@ Future<void> showReminderAlarmNotification(ReminderAlarmSpec spec) async {
 
   try {
     final active = await plugin.getActiveNotifications();
-    if (active.any((notification) => notification.id == spec.notificationId)) {
-      return;
+    for (final notification in active) {
+      if (notification.id != spec.notificationId) continue;
+      // Alarm ids are position based and get reused by the next plan, so a
+      // stale notification from an earlier schedule must not swallow the
+      // reminder for the lesson that is starting now. Only an identical
+      // notification counts as already delivered.
+      if (notification.title == spec.title &&
+          notification.body == spec.body) {
+        return;
+      }
+      break;
     }
   } catch (error) {
     debugPrint('Could not inspect active notifications: $error');

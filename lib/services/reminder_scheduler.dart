@@ -448,8 +448,16 @@ class ReminderScheduler {
       }
     }
     specs.sort((a, b) => a.fireAt.compareTo(b.fireAt));
+    var truncated = 0;
     if (Platform.isWindows && specs.length > 3000) {
+      truncated = specs.length - 3000;
       specs.removeRange(3000, specs.length);
+      // Windows keeps only the earliest 3000 alarms. Say so, and report it:
+      // silently dropping reminders is what made this look like lost data.
+      debugPrint(
+        'Windows reminder cap: dropped $truncated of '
+        '${specs.length + truncated} alarms',
+      );
     }
 
     var exactAlarmsEnabled = true;
@@ -464,6 +472,7 @@ class ReminderScheduler {
           // permissions is retried instead of being trusted forever.
           pending: -1,
           failed: specs.length,
+          truncated: truncated,
           blockReason: ReminderScheduleBlockReason.notificationsDenied,
         );
         return;
@@ -537,6 +546,7 @@ class ReminderScheduler {
       pending: pending,
       failed: verifiedFailed,
       usedInexactFallback: usedFallback,
+      truncated: truncated,
     );
   }
 

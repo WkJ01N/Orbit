@@ -123,4 +123,53 @@ void main() {
     expect(specs.first.notificationId, nextDaySummaryAlarmBase);
     expect(specs.first.fireAt, DateTime(2026, 6, 15, 23, 0));
   });
+
+  test('nextDaySummaryTarget counts calendar days, not 24-hour steps', () {
+    expect(
+      nextDaySummaryTarget(DateTime(2026, 6, 15), 0),
+      DateTime(2026, 6, 16),
+    );
+    expect(nextDaySummaryTarget(DateTime(2026, 1, 31), 0), DateTime(2026, 2, 1));
+    expect(nextDaySummaryTarget(DateTime(2026, 12, 31), 0), DateTime(2027, 1, 1));
+
+    final today = DateTime(2026, 3, 1);
+    for (var offset = 0; offset < nextDaySummaryDays; offset++) {
+      final target = nextDaySummaryTarget(today, offset);
+      expect(target.hour, 0);
+      expect(target.minute, 0);
+      expect(target.difference(today).inDays, offset + 1);
+    }
+  });
+
+  test('summary slots always fire the evening before their target day', () {
+    final now = DateTime(2026, 6, 15, 8, 0);
+    final settings = const ReminderSettings(
+      nextDaySummaryEnabled: true,
+      nextDaySummaryHour: 21,
+      nextDaySummaryMinute: 30,
+      nextDayRemindWhenNoClass: true,
+    );
+    final slots = buildNextDaySummarySlots(
+      allSessions: const [],
+      settings: settings,
+      now: now,
+      copy: _copy(),
+    );
+
+    expect(slots, isNotEmpty);
+    for (final slot in slots) {
+      expect(
+        slot.fireAt,
+        DateTime(
+          slot.targetDay.year,
+          slot.targetDay.month,
+          slot.targetDay.day - 1,
+          21,
+          30,
+        ),
+      );
+    }
+    final ids = slots.map((slot) => slot.notificationId).toSet();
+    expect(ids.length, slots.length);
+  });
 }

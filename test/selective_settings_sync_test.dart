@@ -225,4 +225,57 @@ void main() {
       expect((await settings.exportPortableSettings()).locale, 'en');
     },
   );
+  test(
+    'a category switched on later starts syncing without a new merge confirmation',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('orbit_scope_late_');
+      final db = await AppDatabase.open(dir.path);
+      addTearDown(() async {
+        await db.close();
+        await dir.delete(recursive: true);
+      });
+      const account = SyncAccount(uid: 'u', email: 'u@test');
+      await db.setActiveSyncAccount(account);
+      final settings = SettingsService();
+      final scope = SyncScopeService(settings, _Api())..accountUid = 'u';
+      final backend = _Backend();
+      final coordinator = ScheduleSyncCoordinator(
+        database: db,
+        backend: backend,
+        settings: settings,
+        scope: scope,
+        loadConfiguration: () async => const ImportConfiguration(),
+        saveConfiguration: (_) async {},
+        onCoursesChanged: () async {},
+      );
+
+      expect(
+        (await scope.appliedSelection()).enabled,
+        SyncSelection.defaults.enabled,
+      );
+      await scope.saveSelection(
+        SyncSelection.defaults.toggle(SyncCategory.appearance, true),
+      );
+      await db.enqueueSyncEntity(
+        const SyncEntity(
+          type: SyncEntityType.settingGroup,
+          id: 'appearance',
+          payload: {'locale': 'en'},
+        ),
+      );
+
+      await coordinator.synchronize();
+
+      expect(
+        backend.sent.any((mutation) => mutation.entity.id == 'appearance'),
+        isTrue,
+        reason: 'a freshly enabled category must not stay stranded behind the '
+            'applied set',
+      );
+      expect(
+        (await scope.appliedSelection()).enabled,
+        contains(SyncCategory.appearance),
+      );
+    },
+  );
 }

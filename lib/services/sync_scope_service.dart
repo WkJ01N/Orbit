@@ -70,12 +70,16 @@ class SyncScopeService {
   Future<Set<SyncCategory>> pendingCategories() async => (await selection())
       .enabled
       .difference((await appliedSelection()).enabled);
+  /// What this device is allowed to sync right now.
+  ///
+  /// Deliberately *not* intersected with [appliedSelection]: intersecting made
+  /// a category that was switched on later (locally, or by another device in
+  /// shared mode) impossible to sync, because the applied set is only written
+  /// when the merge is confirmed.
   Future<SyncSelection> safeSelection() async {
     final desired = await selection();
-    final applied = await appliedSelection();
     return SyncSelection(
       desired.enabled
-          .intersection(applied.enabled)
           .where((c) => supportsSettings || c.index < 5)
           .toSet(),
     );

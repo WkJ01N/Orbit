@@ -7,6 +7,7 @@ class ReminderScheduleReport {
     required this.pending,
     required this.failed,
     this.usedInexactFallback = false,
+    this.truncated = 0,
     this.blockReason,
   });
 
@@ -15,6 +16,10 @@ class ReminderScheduleReport {
   final int pending;
   final int failed;
   final bool usedInexactFallback;
+
+  /// Alarms dropped by the platform cap (Windows keeps the earliest 3000).
+  final int truncated;
+
   final ReminderScheduleBlockReason? blockReason;
 
   bool get isBlocked => blockReason != null;
