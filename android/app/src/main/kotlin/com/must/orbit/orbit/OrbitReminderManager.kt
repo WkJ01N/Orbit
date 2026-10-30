@@ -25,6 +25,12 @@ object OrbitReminderManager {
     private const val checkInAlarmLimit = 1_000_000
     private const val nextDaySummaryAlarmBase = 1_000_000
     private const val nextDaySummaryAlarmLimit = nextDaySummaryAlarmBase + 30
+
+    // Custom rules live at 3_000_000 + reminder_schedule rowid and are rebuilt from
+    // the delivery ledger after a reboot; deadlines use 4_000_000 + id and only exist
+    // in the persisted store, so they must be re-armed instead of dropped.
+    private const val customReminderAlarmBase = 3_000_000
+    private const val deadlineReminderAlarmBase = 4_000_000
     private const val maintenanceRequestCode = 2_100_000
     private const val maintenanceIntervalMillis = 6L * 60L * 60L * 1000L
     private const val retryRetentionMillis = 24L * 60L * 60L * 1000L
@@ -274,7 +280,9 @@ object OrbitReminderManager {
                             if (!schedule(context, retry, true, true).scheduled) OrbitReminderStore.upsert(context, retry)
                         }
                     }
-                    record.alarmId >= 3_000_000 -> cancel(context,record.alarmId)
+                    record.alarmId >= customReminderAlarmBase &&
+                        record.alarmId < deadlineReminderAlarmBase ->
+                        cancel(context, record.alarmId)
                     record.fireAtMillis <= now -> OrbitReminderStore.remove(context, record.alarmId)
                     else -> schedule(
                         context,

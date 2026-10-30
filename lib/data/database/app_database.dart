@@ -832,6 +832,7 @@ class AppDatabase {
         );
       }
     });
+    await refreshStatistics();
     _syncChanges.add(null);
   }
 
@@ -938,6 +939,7 @@ class AppDatabase {
       );
       await _queueCourseMutation(txn, session, SyncOperation.upsert);
     });
+    await refreshStatistics();
     _syncChanges.add(null);
   }
 
@@ -1146,6 +1148,7 @@ class AppDatabase {
         await _queueCourseMutation(txn, session, SyncOperation.upsert);
       }
     });
+    await refreshStatistics();
     _syncChanges.add(null);
   }
 
@@ -1228,9 +1231,9 @@ class AppDatabase {
     List<String> ids, {
     bool deleteStatistics = false,
   }) async {
-    await refreshStatistics();
     final unique = ids.toSet().toList();
     if (unique.isEmpty) return 0;
+    await refreshStatistics();
     final count = await _db.transaction((txn) async {
       var total = 0;
       final deletedAt = DateTime.now().toIso8601String();
@@ -1546,6 +1549,30 @@ class AppDatabase {
           whereArgs: [conflict.local.mutationId],
         );
       }
+    });
+  }
+
+  /// Parks an outbox mutation that the server will always reject, so the rest
+  /// of the queue keeps syncing. The local row itself is untouched; the
+  /// conflict entry only records that this single upload was dropped.
+  Future<void> quarantineSyncMutation(
+    SyncMutation mutation,
+    String code,
+  ) async {
+    await _db.transaction((txn) async {
+      await txn.insert('sync_conflicts', {
+        'id': 'quarantine:$code:${mutation.mutationId}',
+        'entity_type': mutation.entity.type.name,
+        'entity_id': mutation.entity.id,
+        'local_mutation': jsonEncode(mutation.toJson()),
+        'remote_entity': jsonEncode(mutation.entity.toJson()),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await txn.delete(
+        'sync_outbox',
+        where: 'mutation_id = ?',
+        whereArgs: [mutation.mutationId],
+      );
     });
   }
 

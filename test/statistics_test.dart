@@ -384,4 +384,29 @@ void main() {
       expect(await db.pendingSyncMutationCount(), pending);
     },
   );
+  test(
+    'writes publish their own statistics without an extra refresh',
+    () async {
+      await db.updateSession(lesson('ended', DateTime(2025, 3, 1, 9)));
+      expect((await stats()).attendedSessions, 1);
+      expect((await stats()).classMinutes, 90);
+
+      await db.updateSession(lesson('later', DateTime(2099, 3, 1, 9)));
+      final courses = (await db.statisticsRecords())
+          .where((r) => r['kind'] == 'course')
+          .toList();
+      expect(courses, hasLength(2));
+      expect((await stats()).attendedSessions, 1);
+    },
+  );
+  test(
+    'replacing the whole timetable publishes statistics for imported rows',
+    () async {
+      await db.replaceAllActiveSessions([
+        lesson('imported', DateTime(2025, 4, 1, 9)),
+      ]);
+      expect((await stats()).attendedSessions, 1);
+      expect((await stats()).learnedCourses, hasLength(1));
+    },
+  );
 }

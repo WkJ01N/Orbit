@@ -224,6 +224,47 @@ class ScheduleSyncCoordinator {
         receivedPull = true;
       }
 
+      Future<void> pushBatch(List<SyncMutation> batch) async {
+        try {
+          final SyncPushResult pushed;
+          final backend = _backend;
+          if (backend is OptimizedSyncBackend) {
+            final exchanged = await (backend as OptimizedSyncBackend).exchange(
+              batch,
+              cursor,
+            );
+            pushed = exchanged.push;
+            await _database.acknowledgeSyncMutations(
+              pushed.accepted,
+              sent: batch,
+            );
+            await _database.storeSyncConflicts(pushed.conflicts);
+            await applyPull(exchanged.pull);
+          } else {
+            pushed = await backend.push(batch, cursor);
+            await _database.acknowledgeSyncMutations(
+              pushed.accepted,
+              sent: batch,
+            );
+            await _database.storeSyncConflicts(pushed.conflicts);
+          }
+          if (pushed.accepted.isEmpty && pushed.conflicts.isEmpty) {
+            throw const AccountSyncException('invalid_cloud_response');
+          }
+        } on AccountSyncException catch (error) {
+          // One oversized or malformed entity must not wedge the queue: bisect
+          // until it is alone, then park it so every other change still syncs.
+          if (!error.quarantinesEntity) rethrow;
+          if (batch.length == 1) {
+            await _database.quarantineSyncMutation(batch.single, error.code);
+            return;
+          }
+          final middle = batch.length ~/ 2;
+          await pushBatch(batch.sublist(0, middle));
+          await pushBatch(batch.sublist(middle));
+        }
+      }
+
       while (true) {
         final pending = await _database.pendingSyncMutations(
           limit: 100,
@@ -245,31 +286,7 @@ class ScheduleSyncCoordinator {
                     .toList(),
         );
         if (pending.isEmpty) break;
-        final SyncPushResult pushed;
-        final backend = _backend;
-        if (backend is OptimizedSyncBackend) {
-          final exchanged = await (backend as OptimizedSyncBackend).exchange(
-            pending,
-            cursor,
-          );
-          pushed = exchanged.push;
-          await _database.acknowledgeSyncMutations(
-            pushed.accepted,
-            sent: pending,
-          );
-          await _database.storeSyncConflicts(pushed.conflicts);
-          await applyPull(exchanged.pull);
-        } else {
-          pushed = await backend.push(pending, cursor);
-          await _database.acknowledgeSyncMutations(
-            pushed.accepted,
-            sent: pending,
-          );
-          await _database.storeSyncConflicts(pushed.conflicts);
-        }
-        if (pushed.accepted.isEmpty && pushed.conflicts.isEmpty) {
-          throw const AccountSyncException('invalid_cloud_response');
-        }
+        await pushBatch(pending);
       }
       if (!receivedPull) hasMore = true;
       while (hasMore) {

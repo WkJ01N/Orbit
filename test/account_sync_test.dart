@@ -505,6 +505,50 @@ void main() {
       expect(preview.conflicts.single.remote.deleted, isTrue);
     },
   );
+  test(
+    'a permanently rejected entity is parked instead of wedging the queue',
+    () async {
+      await database.setActiveSyncAccount(
+        const SyncAccount(uid: 'user-1', email: 'one@example.com'),
+      );
+      await database.upsertSessions([
+        _session(id: 'course-ok'),
+        _session(id: 'course-poisoned'),
+      ]);
+      expect(await database.pendingSyncMutationCount(), 2);
+
+      final coordinator = ScheduleSyncCoordinator(
+        database: database,
+        backend: _BisectingBackend(poisoned: 'course-poisoned'),
+        loadConfiguration: () async => const ImportConfiguration(),
+        saveConfiguration: (_) async {},
+        onCoursesChanged: () async {},
+      );
+
+      final status = await coordinator.synchronize();
+
+      expect(status.phase, SyncPhase.idle);
+      expect(await database.pendingSyncMutationCount(), 0);
+      final conflicts = await database.syncConflicts();
+      expect(conflicts, hasLength(1));
+      expect(conflicts.single.local.entity.id, 'course-poisoned');
+      expect(conflicts.single.id, contains('sync_item_too_large'));
+    },
+  );
+}
+
+class _BisectingBackend extends _MemoryBackend {
+  _BisectingBackend({required this.poisoned});
+
+  final String poisoned;
+
+  @override
+  Future<SyncPushResult> push(List<SyncMutation> mutations, int cursor) {
+    if (mutations.any((mutation) => mutation.entity.id == poisoned)) {
+      throw const AccountSyncException('sync_item_too_large');
+    }
+    return super.push(mutations, cursor);
+  }
 }
 
 class _MemoryBackend implements SyncBackend {

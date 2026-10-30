@@ -294,7 +294,6 @@ class ReminderScheduler {
         /* Test backends. */
       }
     }
-    await cancelScheduledCourseReminders();
 
     final now = DateTime.now();
     final identityDb = database;
@@ -461,13 +460,19 @@ class ReminderScheduler {
         lastScheduleReport = ReminderScheduleReport(
           expected: specs.length,
           scheduled: 0,
-          pending: 0,
+          // -1 never equals the real pending count, so a reschedule blocked by
+          // permissions is retried instead of being trusted forever.
+          pending: -1,
           failed: specs.length,
           blockReason: ReminderScheduleBlockReason.notificationsDenied,
         );
         return;
       }
     }
+
+    // Cancel only once the new plan exists: cancelling first would leave the
+    // device with no reminders if planning or permission checks fail.
+    await cancelScheduledCourseReminders();
 
     var accepted = 0;
     final queuedCustom = <int>{};
