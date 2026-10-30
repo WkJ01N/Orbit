@@ -49,6 +49,10 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
     );
     final menuTop = offset.dy + size.height;
 
+    // Capture the navigator: the week panel outlives this widget when the
+    // grid rebuilds (for example when the keyboard activates a week item),
+    // and popping through a defunct State.context throws.
+    final navigator = Navigator.of(context);
     await showMenu<void>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -68,7 +72,9 @@ class _GridWeekPickerState extends ConsumerState<GridWeekPicker> {
             sessions: sessions,
             onWeekSelected: (weekStart) {
               widget.onChanged(weekStart);
-              Navigator.pop(context);
+              if (navigator.mounted) {
+                navigator.pop();
+              }
             },
           ),
         ),
