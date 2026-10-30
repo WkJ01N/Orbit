@@ -135,6 +135,27 @@ class WeekGridViewState extends ConsumerState<WeekGridView>
         : displayed;
   }
 
+  /// Arrow-key order: the courses on the visible page, top to bottom. An
+  /// empty page falls back to the whole timetable so the keys still move.
+  List<CourseSession> _keyboardOrder(
+    List<CourseSession> sessions,
+    List<DateTime> visibleDates,
+  ) {
+    int byStart(CourseSession a, CourseSession b) {
+      final byTime = a.startAt.compareTo(b.startAt);
+      return byTime != 0 ? byTime : a.id.compareTo(b.id);
+    }
+
+    final days = visibleDates.map(dateOnly).toSet();
+    final visible =
+        sessions
+            .where((session) => days.contains(dateOnly(session.startAt)))
+            .toList()
+          ..sort(byStart);
+    if (visible.isNotEmpty) return visible;
+    return sessions.toList()..sort(byStart);
+  }
+
   void _clearSelection() {
     if (mounted && _selectedSessionId != null) {
       setState(() => _selectedSessionId = null);
@@ -495,12 +516,44 @@ class WeekGridViewState extends ConsumerState<WeekGridView>
             if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
               return KeyEventResult.ignored;
             }
-            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.arrowLeft) {
               _pagerController.animateToPrevious();
               return KeyEventResult.handled;
             }
-            if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+            if (key == LogicalKeyboardKey.arrowRight) {
               _pagerController.animateToNext();
+              return KeyEventResult.handled;
+            }
+            // Arrows walk the courses of the visible page so the grid can be
+            // browsed without a mouse; the highlighted card is the one Enter
+            // opens.
+            if (key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.arrowUp) {
+              final order = _keyboardOrder(sessions, visibleDates);
+              if (order.isEmpty) return KeyEventResult.ignored;
+              final step = key == LogicalKeyboardKey.arrowDown ? 1 : -1;
+              final current = order.indexWhere(
+                (session) => session.id == _selectedSessionId,
+              );
+              final next = current < 0
+                  ? (step > 0 ? 0 : order.length - 1)
+                  : (current + step + order.length) % order.length;
+              setState(() => _selectedSessionId = order[next].id);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.numpadEnter) {
+              final id = _selectedSessionId;
+              if (id == null) return KeyEventResult.ignored;
+              final match = sessions.where((session) => session.id == id);
+              if (match.isEmpty) return KeyEventResult.ignored;
+              _openSession(match.first);
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.escape) {
+              if (_selectedSessionId == null) return KeyEventResult.ignored;
+              _clearSelection();
               return KeyEventResult.handled;
             }
             return KeyEventResult.ignored;

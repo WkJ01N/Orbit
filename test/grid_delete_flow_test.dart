@@ -152,6 +152,17 @@ Future<ProviderContainer> _pump(
   return container;
 }
 
+List<String> _selectedIds(WidgetTester tester) => tester
+    .widgetList<GridSessionChip>(
+      find.descendant(
+        of: find.byKey(const Key('adjacent-page-current')),
+        matching: find.byType(GridSessionChip),
+      ),
+    )
+    .where((chip) => chip.isSelected)
+    .map((chip) => chip.session.id)
+    .toList();
+
 Finder _chip(String id) => find.descendant(
   of: find.byKey(const Key('adjacent-page-current')),
   matching: find.byWidgetPredicate(
@@ -570,4 +581,40 @@ void main() {
       },
     );
   }
+
+  testWidgets('arrow keys walk the visible courses and Enter opens one', (
+    tester,
+  ) async {
+    await _pump(tester, _Repository(_courses()));
+
+    // Nothing is highlighted until a key asks for it.
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is GridSessionChip && widget.isSelected,
+      ),
+      findsNothing,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_selectedIds(tester), ['a']);
+
+    // Down moves to the next course of the day, wrapping at the end.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_selectedIds(tester), ['b']);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(_selectedIds(tester), ['a']);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(_selectedIds(tester), ['b']);
+
+    // Enter opens whatever the highlight points at.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.byType(SessionDetailSheet), findsOneWidget);
+  });
 }
