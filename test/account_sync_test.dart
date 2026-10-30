@@ -535,6 +535,52 @@ void main() {
       expect(conflicts.single.id, contains('sync_item_too_large'));
     },
   );
+  test('conflicts keep a history of every edit they replaced', () async {
+    SyncMutation mutation(String suffix) => SyncMutation(
+      mutationId: 'mut-$suffix',
+      entity: SyncEntity(
+        type: SyncEntityType.courseSession,
+        id: 'course-shared',
+        payload: {'courseName': 'Mathematics $suffix'},
+      ),
+      operation: SyncOperation.upsert,
+      baseRevision: 1,
+    );
+
+    SyncConflict conflict(String suffix, int hour) => SyncConflict(
+      id: 'conflict-$suffix',
+      local: mutation(suffix),
+      remote: SyncEntity(
+        type: SyncEntityType.courseSession,
+        id: 'course-shared',
+        payload: {'courseName': 'Cloud'},
+        revision: 2,
+      ),
+      createdAt: DateTime.utc(2026, 10, 1, hour),
+    );
+
+    await database.storeSyncConflicts([conflict('first', 8)]);
+    await database.storeSyncConflicts([conflict('second', 9)]);
+
+    // The list above keeps one row per entity; the history keeps both edits.
+    expect(await database.syncConflictCount(), 1);
+    final history = await database.syncConflictHistory();
+    expect(history, hasLength(2));
+    expect(history.first['mutation_id'], 'mut-second');
+    expect(history.every((row) => row['resolved_at'] == null), isTrue);
+
+    await database.resolveSyncConflict(conflict('second', 9), useLocal: true);
+
+    final after = await database.syncConflictHistory();
+    final resolved = after.firstWhere(
+      (row) => row['mutation_id'] == 'mut-second',
+    );
+    final pending = after.firstWhere(
+      (row) => row['mutation_id'] == 'mut-first',
+    );
+    expect(resolved['resolved_at'], isNotNull);
+    expect(pending['resolved_at'], isNull);
+  });
 }
 
 class _BisectingBackend extends _MemoryBackend {

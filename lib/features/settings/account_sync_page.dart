@@ -433,7 +433,20 @@ class _SyncConflictsPageState extends ConsumerState<SyncConflictsPage> {
   Widget build(BuildContext context) {
     final text = _SyncText.of(context);
     return BackgroundScaffold(
-      appBar: AppBar(title: PageModule(child: Text(text.conflictTitle))),
+      appBar: AppBar(
+        title: PageModule(child: Text(text.conflictTitle)),
+        actions: [
+          IconButton(
+            tooltip: text.conflictHistoryTitle,
+            icon: const Icon(Icons.history),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SyncConflictHistoryPage(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: FutureBuilder<List<SyncConflict>>(
         future: _conflicts,
         builder: (context, snapshot) {
@@ -494,6 +507,77 @@ class _SyncConflictsPageState extends ConsumerState<SyncConflictsPage> {
         .resolveConflict(conflict, useLocal);
     if (!mounted) return;
     setState(_reload);
+  }
+}
+
+class SyncConflictHistoryPage extends ConsumerStatefulWidget {
+  const SyncConflictHistoryPage({super.key});
+
+  @override
+  ConsumerState<SyncConflictHistoryPage> createState() =>
+      _SyncConflictHistoryPageState();
+}
+
+class _SyncConflictHistoryPageState
+    extends ConsumerState<SyncConflictHistoryPage> {
+  List<Map<String, Object?>>? _rows;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final rows = await ref.read(appDatabaseProvider).syncConflictHistory();
+    if (mounted) setState(() => _rows = rows);
+  }
+
+  static String _stamp(String value) {
+    final at = DateTime.parse(value).toLocal();
+    String two(int part) => part.toString().padLeft(2, '0');
+    return '${at.year}-${two(at.month)}-${two(at.day)} '
+        '${two(at.hour)}:${two(at.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = _SyncText.of(context);
+    final rows = _rows;
+    return BackgroundScaffold(
+      appBar: AppBar(title: PageModule(child: Text(text.conflictHistoryTitle))),
+      body: rows == null
+          ? const Center(child: CircularProgressIndicator())
+          : rows.isEmpty
+          ? Center(child: PageModule(child: Text(text.conflictHistoryEmpty)))
+          : ListView.builder(
+              itemCount: rows.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return PageModule(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Text(text.conflictHistoryHint),
+                    ),
+                  );
+                }
+                final row = rows[index - 1];
+                final resolved = row['resolved_at'] != null;
+                return PageModule(
+                  child: ListTile(
+                    leading: Icon(
+                      resolved ? Icons.check_circle_outline : Icons.schedule,
+                    ),
+                    title: Text('${row['entity_type']} · ${row['entity_id']}'),
+                    subtitle: Text(
+                      '${_stamp(row['created_at'] as String)} · '
+                      '${resolved ? text.conflictHistoryResolved : text.conflictHistoryPending}',
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
   }
 }
 
@@ -1597,6 +1681,16 @@ class _SyncText {
 
   String pick(String en, String hans, String traditional) =>
       zh ? (hant ? traditional : hans) : en;
+  String get conflictHistoryTitle => pick('Conflict history', '冲突历史', '衝突歷史');
+  String get conflictHistoryHint => pick(
+    'Every edit that lost a race, newest first. Resolving a conflict keeps its record here.',
+    '这里按时间倒序列出每一次被覆盖的修改；解决冲突后记录仍保留。',
+    '這裡按時間倒序列出每一次被覆蓋的修改；解決衝突後記錄仍保留。',
+  );
+  String get conflictHistoryEmpty =>
+      pick('No conflicts yet.', '还没有冲突记录。', '還沒有衝突記錄。');
+  String get conflictHistoryResolved => pick('Resolved', '已处理', '已處理');
+  String get conflictHistoryPending => pick('Pending', '待处理', '待處理');
   String get title => pick('Account & sync', '账号与同步', '帳號與同步');
   String get optionalIntro => pick(
     'Sign in to sync schedules across your devices.',

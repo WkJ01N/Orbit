@@ -570,6 +570,17 @@ class AppDatabase {
       'UNIQUE(entity_type, entity_id))',
     );
     await database.execute(
+      'CREATE TABLE IF NOT EXISTS sync_conflict_history ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, mutation_id TEXT NOT NULL UNIQUE, '
+      'entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, '
+      'local_mutation TEXT NOT NULL, remote_entity TEXT NOT NULL, '
+      'created_at TEXT NOT NULL, resolved_at TEXT)',
+    );
+    await database.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sync_conflict_history_time '
+      'ON sync_conflict_history(created_at)',
+    );
+    await database.execute(
       'CREATE TABLE IF NOT EXISTS sync_conflicts ('
       'id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, '
       'local_mutation TEXT NOT NULL, remote_entity TEXT NOT NULL, '
@@ -1570,6 +1581,21 @@ class AppDatabase {
       ) ??
       0;
 
+  /// Every edit that lost a race, newest first. The conflict list above is
+  /// one row per entity; this keeps the whole sequence.
+  Future<List<Map<String, Object?>>> syncConflictHistory({int limit = 100}) =>
+      _db.query(
+        'sync_conflict_history',
+        orderBy: 'created_at DESC, id DESC',
+        limit: limit,
+      );
+
+  Future<int> syncConflictHistoryCount() async =>
+      Sqflite.firstIntValue(
+        await _db.rawQuery('SELECT COUNT(*) FROM sync_conflict_history'),
+      ) ??
+      0;
+
   Future<List<SyncConflict>> syncConflicts() async {
     final rows = await _db.query('sync_conflicts', orderBy: 'created_at ASC');
     return rows
@@ -1601,6 +1627,16 @@ class AppDatabase {
           'remote_entity': jsonEncode(conflict.remote.toJson()),
           'created_at': conflict.createdAt.toUtc().toIso8601String(),
         }, conflictAlgorithm: ConflictAlgorithm.replace);
+        // The row above only keeps the newest conflict per entity; the
+        // history keeps every edit that never reached the server.
+        await txn.insert('sync_conflict_history', {
+          'mutation_id': conflict.local.mutationId,
+          'entity_type': conflict.local.entity.type.name,
+          'entity_id': conflict.local.entity.id,
+          'local_mutation': jsonEncode(conflict.local.toJson()),
+          'remote_entity': jsonEncode(conflict.remote.toJson()),
+          'created_at': conflict.createdAt.toUtc().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
         await txn.delete(
           'sync_outbox',
           where: 'mutation_id = ?',
@@ -1816,6 +1852,12 @@ class AppDatabase {
           where: 'id = ?',
           whereArgs: [conflict.id],
         );
+        await txn.update(
+          'sync_conflict_history',
+          {'resolved_at': DateTime.now().toUtc().toIso8601String()},
+          where: 'mutation_id = ?',
+          whereArgs: [conflict.local.mutationId],
+        );
         await txn.delete(
           'sync_outbox',
           where: 'entity_type = ? AND entity_id = ?',
@@ -1841,6 +1883,12 @@ class AppDatabase {
         'sync_conflicts',
         where: 'id = ?',
         whereArgs: [conflict.id],
+      );
+      await txn.update(
+        'sync_conflict_history',
+        {'resolved_at': DateTime.now().toUtc().toIso8601String()},
+        where: 'mutation_id = ?',
+        whereArgs: [conflict.local.mutationId],
       );
       await txn.delete(
         'sync_outbox',
