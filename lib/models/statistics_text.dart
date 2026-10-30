@@ -5,11 +5,8 @@ class StatisticsText extends OrbitFeatureText {
   const StatisticsText(super.locale);
   factory StatisticsText.of(BuildContext context) =>
       StatisticsText(Localizations.localeOf(context));
-  String get loadFailed => pick(
-    'Statistics could not be loaded.',
-    '统计数据加载失败。',
-    '統計資料載入失敗。',
-  );
+  String get loadFailed =>
+      pick('Statistics could not be loaded.', '统计数据加载失败。', '統計資料載入失敗。');
   String get retry => pick('Retry', '重试', '重試');
   String get title => pick('Statistics', '统计信息', '統計資訊');
   String get activeDays => pick('Days used', '实际使用天数', '實際使用天數');

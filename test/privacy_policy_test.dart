@@ -29,7 +29,14 @@ void main() {
   testWidgets('traditional Chinese readers get traditional copy', (
     tester,
   ) async {
-    await tester.pumpWidget(_host(locale: const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')));
+    await tester.pumpWidget(
+      _host(
+        locale: const Locale.fromSubtags(
+          languageCode: 'zh',
+          scriptCode: 'Hant',
+        ),
+      ),
+    );
 
     expect(find.text('隱私政策'), findsOneWidget);
     expect(find.text('收集哪些資料'), findsOneWidget);

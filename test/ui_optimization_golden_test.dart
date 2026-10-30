@@ -24,6 +24,7 @@ import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/course_color_providers.dart';
 import 'package:orbit/services/course_color_utils.dart';
 import 'package:orbit/services/grid_builder.dart';
+import 'support/visual_fonts.dart';
 
 class _FitSettings extends ScheduleDisplaySettingsNotifier {
   _FitSettings([this.gradient = StrongCardGradient.upperHalf]);
@@ -153,9 +154,10 @@ Future<void> pumpPreview(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   setUpAll(() async {
-    if (!Platform.isWindows) return;
+    final fontPath = visualBaselineFontPath();
+    if (fontPath == null) return;
     final loader = FontLoader('OrbitPreview');
-    final bytes = await File('C:/Windows/Fonts/simhei.ttf').readAsBytes();
+    final bytes = await File(fontPath).readAsBytes();
     loader.addFont(Future.value(ByteData.sublistView(bytes)));
     await loader.load();
     final icons = FontLoader('MaterialIcons');
@@ -257,7 +259,7 @@ void main() {
         );
         expect(tester.takeException(), isNull);
       },
-      skip: !Platform.isWindows,
+      skip: !visualBaselinesAvailable,
     );
   }
   testWidgets('multicolor palette previews', (tester) async {
@@ -267,7 +269,7 @@ void main() {
       matchesGoldenFile('goldens/theme_schemes.png'),
     );
     expect(tester.takeException(), isNull);
-  }, skip: !Platform.isWindows);
+  }, skip: !visualBaselinesAvailable);
   testWidgets(
     'coordinated presets show distinct light and dark role colors',
     (tester) async {
@@ -349,7 +351,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     },
-    skip: !Platform.isWindows,
+    skip: !visualBaselinesAvailable,
   );
   testWidgets('narrow dark multicolor page', (tester) async {
     await pumpPreview(
@@ -362,7 +364,7 @@ void main() {
       matchesGoldenFile('goldens/theme_schemes_320_dark.png'),
     );
     expect(tester.takeException(), isNull);
-  }, skip: !Platform.isWindows);
+  }, skip: !visualBaselinesAvailable);
   testWidgets('narrow English strong scope page', (tester) async {
     await pumpPreview(
       tester,
@@ -374,7 +376,7 @@ void main() {
       matchesGoldenFile('goldens/strong_scope_320.png'),
     );
     expect(tester.takeException(), isNull);
-  }, skip: !Platform.isWindows);
+  }, skip: !visualBaselinesAvailable);
   testWidgets('mixed challenge settings preview', (tester) async {
     await pumpPreview(
       tester,
@@ -395,7 +397,7 @@ void main() {
       matchesGoldenFile('goldens/strong_mixed_settings.png'),
     );
     expect(tester.takeException(), isNull);
-  }, skip: !Platform.isWindows);
+  }, skip: !visualBaselinesAvailable);
   for (final sequence in [true, false]) {
     testWidgets(
       'mixed challenge ${sequence ? 'numbers' : 'choices'} preview',
@@ -474,7 +476,7 @@ void main() {
         );
         expect(tester.takeException(), isNull);
       },
-      skip: !Platform.isWindows,
+      skip: !visualBaselinesAvailable,
     );
   }
   testWidgets(
@@ -516,7 +518,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     },
-    skip: !Platform.isWindows,
+    skip: !visualBaselinesAvailable,
   );
   for (final width in [320.0, 1100.0]) {
     for (final brightness in Brightness.values) {
@@ -591,7 +593,7 @@ void main() {
           );
           expect(tester.takeException(), isNull);
         },
-        skip: !Platform.isWindows,
+        skip: !visualBaselinesAvailable,
       );
     }
   }
@@ -695,7 +697,7 @@ void main() {
           );
           expect(tester.takeException(), isNull);
         },
-        skip: !Platform.isWindows,
+        skip: !visualBaselinesAvailable,
       );
     }
   }

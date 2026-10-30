@@ -16,6 +16,7 @@ import 'package:orbit/models/schedule_display_settings.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/services/grid_builder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'support/visual_fonts.dart';
 
 class _Time extends CurrentTimeNotifier {
   @override
@@ -56,14 +57,11 @@ final _deadlines = [
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   setUpAll(() async {
-    if (!Platform.isWindows) return;
+    final fontPath = visualBaselineFontPath();
+    if (fontPath == null) return;
     final font = FontLoader('OrbitPreview');
     font.addFont(
-      Future.value(
-        ByteData.sublistView(
-          await File('C:/Windows/Fonts/simhei.ttf').readAsBytes(),
-        ),
-      ),
+      Future.value(ByteData.sublistView(await File(fontPath).readAsBytes())),
     );
     await font.load();
     final icons = FontLoader('MaterialIcons');
@@ -176,6 +174,6 @@ void main() {
         find.byKey(const Key('ddl-preview')),
         matchesGoldenFile('goldens/ddl_strong_$scene.png'),
       );
-    });
+    }, skip: !visualBaselinesAvailable);
   }
 }
