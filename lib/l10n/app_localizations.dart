@@ -2494,6 +2494,18 @@ abstract class AppLocalizations {
   /// **'Export in the same format as import'**
   String get exportScheduleXlsxSubtitle;
 
+  /// No description provided for @exportScheduleIcs.
+  ///
+  /// In en, this message translates to:
+  /// **'Export calendar (.ics)'**
+  String get exportScheduleIcs;
+
+  /// No description provided for @exportScheduleIcsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in any calendar app; times follow the device time zone'**
+  String get exportScheduleIcsSubtitle;
+
   /// No description provided for @restoreFromBackup.
   ///
   /// In en, this message translates to:

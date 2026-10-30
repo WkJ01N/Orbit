@@ -483,6 +483,8 @@
   "exportScheduleJsonSubtitle": "儲存全部課表資料，用於還原或遷移",
   "exportScheduleXlsx": "匯出為 xlsx",
   "exportScheduleXlsxSubtitle": "以與匯入相同的格式匯出",
+  "exportScheduleIcs": "匯出日曆 (.ics)",
+  "exportScheduleIcsSubtitle": "可用任何日曆應用開啟；時間按裝置時區顯示",
   "restoreFromBackup": "從備份還原",
   "restoreFromBackupSubtitle": "從 JSON 備份檔案匯入課表",
   "exportDone": "已匯出 {count} 節課",

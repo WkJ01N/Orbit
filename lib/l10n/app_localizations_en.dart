@@ -1372,6 +1372,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Export in the same format as import';
 
   @override
+  String get exportScheduleIcs => 'Export calendar (.ics)';
+
+  @override
+  String get exportScheduleIcsSubtitle =>
+      'Open in any calendar app; times follow the device time zone';
+
+  @override
   String get restoreFromBackup => 'Restore from backup';
 
   @override

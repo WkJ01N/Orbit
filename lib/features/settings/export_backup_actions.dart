@@ -25,6 +25,7 @@ import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/deadline_text.dart';
 import 'package:orbit/providers/app_providers.dart';
 import 'package:orbit/providers/archive_providers.dart';
+import 'package:orbit/services/calendar_export_service.dart';
 import 'package:orbit/services/schedule_backup_service.dart';
 import 'package:orbit/providers/import_providers.dart';
 import 'package:orbit/data/repositories/schedule_repository.dart';
@@ -162,6 +163,48 @@ Future<void> exportScheduleXlsx(BuildContext context, WidgetRef ref) async {
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
       bytes: Uint8List.fromList(bytes),
+    );
+    if (path == null) {
+      return;
+    }
+
+    if (!Platform.isAndroid) {
+      await File(path).writeAsBytes(bytes);
+    }
+
+    if (context.mounted) {
+      _showSnackBar(context, l10n.exportDone(sessions.length));
+    }
+  } catch (e) {
+    if (context.mounted) {
+      _showSnackBar(context, l10n.exportFailed('$e'), isError: true);
+    }
+  }
+}
+
+Future<void> exportScheduleIcs(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context)!;
+  try {
+    final sessions = await ref
+        .read(scheduleRepositoryProvider)
+        .getAllSessions();
+    if (!context.mounted) {
+      return;
+    }
+    if (sessions.isEmpty) {
+      _showSnackBar(context, l10n.exportNothingToExport);
+      return;
+    }
+
+    final bytes = Uint8List.fromList(
+      utf8.encode(const CalendarExportService().build(sessions)),
+    );
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: l10n.exportScheduleIcs,
+      fileName: 'orbit-schedule.ics',
+      type: FileType.custom,
+      allowedExtensions: ['ics'],
+      bytes: bytes,
     );
     if (path == null) {
       return;

@@ -1302,6 +1302,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportScheduleXlsxSubtitle => '以與匯入相同的格式匯出';
 
   @override
+  String get exportScheduleIcs => '匯出日曆 (.ics)';
+
+  @override
+  String get exportScheduleIcsSubtitle => '可用任何日曆應用開啟；時間按裝置時區顯示';
+
+  @override
   String get restoreFromBackup => '從備份還原';
 
   @override
@@ -3569,6 +3575,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get exportScheduleXlsxSubtitle => '以与导入相同的格式导出';
 
   @override
+  String get exportScheduleIcs => '导出日历 (.ics)';
+
+  @override
+  String get exportScheduleIcsSubtitle => '可用任何日历应用打开；时间按设备时区显示';
+
+  @override
   String get restoreFromBackup => '从备份恢复';
 
   @override
@@ -5834,6 +5846,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get exportScheduleXlsxSubtitle => '以與匯入相同的格式匯出';
+
+  @override
+  String get exportScheduleIcs => '匯出日曆 (.ics)';
+
+  @override
+  String get exportScheduleIcsSubtitle => '可用任何日曆應用開啟；時間按裝置時區顯示';
 
   @override
   String get restoreFromBackup => '從備份還原';

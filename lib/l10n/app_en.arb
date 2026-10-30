@@ -724,6 +724,8 @@
   "exportScheduleJsonSubtitle": "Save all schedule data for restore or migration",
   "exportScheduleXlsx": "Export as xlsx",
   "exportScheduleXlsxSubtitle": "Export in the same format as import",
+  "exportScheduleIcs": "Export calendar (.ics)",
+  "exportScheduleIcsSubtitle": "Open in any calendar app; times follow the device time zone",
   "restoreFromBackup": "Restore from backup",
   "restoreFromBackupSubtitle": "Import schedule from a JSON backup file",
   "exportDone": "Exported {count} class sessions",

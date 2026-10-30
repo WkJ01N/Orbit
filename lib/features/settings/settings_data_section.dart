@@ -365,6 +365,14 @@ class _ExportBackupSectionState extends ConsumerState<_ExportBackupSection> {
         ),
         PageModule(
           child: ListTile(
+            title: Text(l10n.exportScheduleIcs),
+            subtitle: Text(l10n.exportScheduleIcsSubtitle),
+            leading: const Icon(Icons.event_outlined),
+            onTap: () => _run(() => exportScheduleIcs(context, ref)),
+          ),
+        ),
+        PageModule(
+          child: ListTile(
             title: Text(l10n.restoreFromBackup),
             subtitle: Text(l10n.restoreFromBackupSubtitle),
             leading: const Icon(Icons.restore_outlined),

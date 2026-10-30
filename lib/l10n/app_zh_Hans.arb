@@ -483,6 +483,8 @@
   "exportScheduleJsonSubtitle": "保存全部课表数据，用于恢复或迁移",
   "exportScheduleXlsx": "导出为 xlsx",
   "exportScheduleXlsxSubtitle": "以与导入相同的格式导出",
+  "exportScheduleIcs": "导出日历 (.ics)",
+  "exportScheduleIcsSubtitle": "可用任何日历应用打开；时间按设备时区显示",
   "restoreFromBackup": "从备份恢复",
   "restoreFromBackupSubtitle": "从 JSON 备份文件导入课表",
   "exportDone": "已导出 {count} 节课",
