@@ -54,3 +54,6 @@ app.*.map.json
 # Local third-party APK references and reverse-engineering outputs
 /ReWakeup/
 /ReWemust/
+
+# Node dependencies for the CloudBase functions (npm ci at deploy/test time)
+**/node_modules/

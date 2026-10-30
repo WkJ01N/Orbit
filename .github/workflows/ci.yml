@@ -20,10 +20,37 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: python3 tool/test_generate_update_manifest.py
-      - run: node --test cloudbase/functions/orbit-api/scope-updates.test.js
+      # Every cloud function test, not just the scope-update subset: the sync
+      # backend is the part most likely to break without any Dart change.
+      - name: Cloud function tests
+        working-directory: cloudbase/functions/orbit-api
+        run: |
+          npm ci
+          npm test
       - run: flutter build apk --debug
       # Flutter creates the ignored Gradle wrapper during the first Android build.
       - run: cd android && ./gradlew :app:testDebugUnitTest
+
+  android-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      # Release-only failures (R8 shrinking, the release plugin registrant patch,
+      # the missing-keystore guard) used to surface for the first time on a tag
+      # push. A throwaway keystore lets every pull request build that variant.
+      - name: Sign with a throwaway keystore
+        run: |
+          keytool -genkeypair -v -keystore android/ci-keystore.jks \
+            -storepass orbitci -keypass orbitci -alias orbitci \
+            -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Orbit CI"
+          printf 'storeFile=ci-keystore.jks\nstorePassword=orbitci\nkeyAlias=orbitci\nkeyPassword=orbitci\n' > android/key.properties
+      - run: flutter build apk --release --target-platform android-arm64
 
   windows:
     runs-on: windows-latest
@@ -35,6 +62,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      # Golden baselines are generated on Windows to keep font rendering stable.
-      - run: flutter test test/schedule_responsive_golden_test.dart test/foreground_resume_test.dart test/grid_delete_flow_test.dart test/grid_delete_targets_test.dart test/strong_grid_decoration_test.dart
+      # Golden baselines are generated on Windows to keep font rendering stable,
+      # so the whole suite has to run here; a hand-picked file list left twelve
+      # golden assertions permanently unexecuted.
+      - run: flutter test
       - run: flutter build windows --release

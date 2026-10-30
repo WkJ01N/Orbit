@@ -8,7 +8,32 @@ permissions:
   contents: write
 
 jobs:
+  # A tag used to be enough to publish: nothing verified the commit it pointed
+  # at. Every release job now waits for the same gates CI runs.
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.1
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - name: Cloud function tests
+        working-directory: cloudbase/functions/orbit-api
+        run: |
+          npm ci
+          npm test
+      # Fail in the first job, not after five builds, when a tag has no notes.
+      - name: Release notes exist
+        run: test -f "docs/releases/${GITHUB_REF_NAME}.md"
+
   native-video:
+    needs: quality
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -152,8 +177,8 @@ jobs:
             echo "Release $TAG is already published; preserving its verified assets."
             exit 0
           fi
-          notes="release/$TAG/RELEASE_NOTES.md"
-          [ -f "$notes" ] || notes="docs/releases/$TAG.md"
+          notes="docs/releases/$TAG.md"
+          [ -f "$notes" ] || { echo "Missing release notes for $TAG at $notes"; exit 1; }
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "$TAG" --notes-file "$notes"
           gh release edit "$TAG" --title "$TAG" --notes-file "$notes"
           # Legacy apps choose the first APK in GitHub name order; architecture

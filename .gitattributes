@@ -1,0 +1,6 @@
+# Windows checkouts would otherwise flip the CI and shell files to CRLF and
+# leave every workflow looking modified after a checkout.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+.gitattributes text eol=lf

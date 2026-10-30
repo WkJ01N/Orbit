@@ -28,7 +28,7 @@ def build_pack(output, identifier, title, files, *, platform='any', abi=None, en
 
 def main():
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument('--output', type=Path, default=ROOT/'release/v1.6.1/components')
+    parser.add_argument('--output', type=Path)
     parser.add_argument('--android-apk', type=Path)
     parser.add_argument('--android-jars',type=Path,default=ROOT/'build/media_kit_libs_android_video/v1.1.7')
     parser.add_argument('--release-tag')
@@ -39,6 +39,7 @@ def main():
     version=re.search(r'^version:\s*(\d+\.\d+\.\d+)\+', (ROOT/'pubspec.yaml').read_text(encoding='utf-8'),re.M).group(1)
     RELEASE_TAG = args.release_tag or 'v'+version
     if RELEASE_TAG != 'v'+version: raise SystemExit('Release tag differs from pubspec.yaml')
+    if args.output is None: args.output = ROOT/f'release/{RELEASE_TAG}/components'
     args.output.mkdir(parents=True, exist_ok=True)
     resources = []
     font_root = ROOT/'resources/fonts'
