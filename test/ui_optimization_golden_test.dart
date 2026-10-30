@@ -212,7 +212,7 @@ void main() {
             style.backgroundColor!.resolve({}),
             theme.colorScheme.error.withValues(alpha: 0.06),
           );
-          if (Platform.isWindows &&
+          if (visualBaselinesAvailable &&
               locale.languageCode == 'zh' &&
               locale.scriptCode == 'Hans' &&
               width == 320) {
