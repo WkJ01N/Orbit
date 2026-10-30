@@ -2,9 +2,9 @@
 
 跨平台课表提醒应用，支持 **Windows** 与 **Android**。导入 XLSX / CSV 课表后识别课程，支持课程列表、周网格和自定义识别模板，提供网格课表与「接下来的课程」视图，并在课前通过系统通知提醒。
 
-**源码版本 1.6.2（build 32）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
+**源码版本 1.6.4（build 34）** · [GitHub 仓库](https://github.com/WkJ01N/Orbit)
 
-v1.6.2 新增考试与独立强提醒、学期识别和统计筛选、已学完课程摘要、三层字体替补，以及可配置的页面动画触发；说明与验收见 [v1.6.2](docs/v1.6.2.md)。
+v1.6.4 优化页面过渡、二级页与切周时间线动画，修复升级后字体选择丢失；v1.6.3 补齐课表新增 / 删除 / 修改动画与手机课程快捷栏。说明见 [v1.6.4](docs/v1.6.4.md)、[v1.6.3](docs/releases/v1.6.3.md)。
 
 
 ## 功能概览
@@ -35,10 +35,10 @@ v1.6.2 新增考试与独立强提醒、学期识别和统计筛选、已学完�
 
 ## 快速开始（用户）
 
-v1.6.2 安装包可从 [GitHub Release](https://github.com/WkJ01N/Orbit/releases/tag/v1.6.2) 下载，验证记录见 [发布说明](docs/releases/v1.6.2.md)。本地验收产物位于 `release/v1.6.2/`。
+v1.6.4 安装包可从 [GitHub Release](https://github.com/WkJ01N/Orbit/releases/tag/v1.6.4) 下载，验证记录见 [发布说明](docs/releases/v1.6.4.md)。本地验收产物位于 `release/v1.6.4/`。
 
-- Android 通用包：`orbit-v1.6.2-android.apk`，可覆盖安装并保留本机数据。
-- Windows x64：`orbit-v1.6.2-windows-x64.zip`，解压后运行 `orbit.exe`，保留同目录 `data/` 与 DLL。
+- Android 通用包：`orbit-v1.6.4-android.apk`，可覆盖安装并保留本机数据。
+- Windows x64：`orbit-v1.6.4-windows-x64.zip`，解压后运行 `orbit.exe`，保留同目录 `data/` 与 DLL。
 
 同时提供 `arm64-v8a`、`armeabi-v7a` 和 `x86_64` 专用 APK；多数现代手机选择 ARM64 包。应用内更新会优先匹配设备架构，也允许重装当前版本、切换兼容架构和选择历史版本。降级前须导出并校验保护包。
 
@@ -81,6 +81,22 @@ flutter build windows --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-bet
 flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6fjsl9220203313 --dart-define=ORBIT_CLOUDBASE_REGION=ap-shanghai --dart-define=ORBIT_API_BASE_URL=https://orbit-sync-beta-d6fjsl9220203313-1302156756.ap-shanghai.app.tcloudbase.com/orbit
 ```
 
+Android 的 release 构建需要签名配置：`android/app/build.gradle.kts` 在缺少 `android/key.properties` 时直接失败（fail-closed），不会静默产出未签名包。本地构建前准备一次：
+
+```bash
+# 已有 orbit-upload-keystore.jks 时直接写 key.properties 即可
+keytool -genkeypair -keystore android/orbit-upload-keystore.jks -alias orbit -keyalg RSA -keysize 2048 -validity 10000
+printf 'storeFile=orbit-upload-keystore.jks\nstorePassword=<密码>\nkeyAlias=orbit\nkeyPassword=<密码>\n' > android/key.properties
+```
+
+`android/key.properties` 和 `*.jks` 已被 git 忽略；打 tag 发布时由 `ANDROID_KEYSTORE_BASE64` 等 secrets 现场注入。按架构分包需逐次指定目标（各包 versionCode 相同，通用包名带 `android-` 以便旧客户端优先选到）：
+
+```bash
+flutter build apk --release --target-platform android-arm64
+```
+
+打 tag 后 `.github/workflows/release.yml` 会自动完成构建、校验 versionCode 与 ABI、生成校验和并发布。
+
 | 平台 | 构建输出 |
 |------|----------|
 | Windows | `build/windows/x64/runner/Release/orbit.exe` |
@@ -92,10 +108,10 @@ flutter build apk --release --dart-define=ORBIT_CLOUDBASE_ENV=orbit-sync-beta-d6
 
 ```bash
 # Windows zip
-Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.6.2/orbit-v1.6.2-windows-x64.zip -Force
+Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath release/v1.6.4/orbit-v1.6.4-windows-x64.zip -Force
 
 # Android APK
-Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.6.2/orbit-v1.6.2-android.apk -Force
+Copy-Item build/app/outputs/flutter-apk/app-release.apk release/v1.6.4/orbit-v1.6.4-android.apk -Force
 ```
 
 ## 更新日志
@@ -322,14 +338,14 @@ test/                单元测试与 Widget 测试（含程序化 xlsx 夹具）
 **Android**（`android/` 已配置）：
 
 - `compileSdk = 36`，core library desugaring（通知插件需要）
-- `kotlin.incremental=false`：规避 E: 项目盘与 C: Pub 缓存跨盘时 Kotlin 增量编译崩溃
+- `kotlin.incremental=false`：规避项目目录与 Pub 缓存位于不同盘符时 Kotlin 增量编译缓存崩溃；两者同盘时可改回 `true` 提速
 - Gradle 可指向本机已下载发行版，避免重复下载损坏
 
 ## 开源许可
 
 本项目采用 [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html)（GPL-3.0）开源。完整许可文本见仓库根目录 [LICENSE.md](LICENSE.md)。
 
-本次强提醒确认、同步内容和更新功能说明及云端部署要求见 [实现与验收说明](docs/orbit-strong-sync-updates.md)。当前 SQLite v11、完整备份 v12。
+本次强提醒确认、同步内容和更新功能说明及云端部署要求见 [实现与验收说明](docs/orbit-strong-sync-updates.md)。当前 SQLite v12、完整备份 v13。
 
 ## 统计与 DDL 更新
 
