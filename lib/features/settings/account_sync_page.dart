@@ -5,6 +5,7 @@ import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/models/statistics_text.dart';
 import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/features/settings/sync_content_page.dart';
+import 'package:orbit/features/settings/privacy_policy_page.dart';
 import 'package:orbit/models/sync_update_text.dart';
 import 'dart:async';
 import 'dart:io';
@@ -123,6 +124,16 @@ class _SignedOutBody extends ConsumerWidget {
                         ? () => _showReset(context, ref)
                         : null,
                     child: _buttonText(text.forgotPassword),
+                  ),
+                ),
+                PageModule(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PrivacyPolicyPage(),
+                      ),
+                    ),
+                    child: _buttonText(text.privacy),
                   ),
                 ),
               ],
@@ -1681,6 +1692,8 @@ class _SyncText {
 
   String pick(String en, String hans, String traditional) =>
       zh ? (hant ? traditional : hans) : en;
+  String get privacy => pick('Privacy policy', '隐私政策', '隱私政策');
+
   String get conflictHistoryTitle => pick('Conflict history', '冲突历史', '衝突歷史');
   String get conflictHistoryHint => pick(
     'Every edit that lost a race, newest first. Resolving a conflict keeps its record here.',
