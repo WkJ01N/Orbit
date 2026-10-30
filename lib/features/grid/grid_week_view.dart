@@ -963,7 +963,10 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
-    final now = ref.watch(currentTimeProvider);
+    // The clock only drives the now affordances (_DateHeader and
+    // _CurrentTimeLine watch it themselves), so reading it here keeps the
+    // whole timetable from rebuilding every minute.
+    final now = ref.read(currentTimeProvider);
     final settings = ref.watch(scheduleDisplaySettingsProvider);
     final strongIds =
         ref.watch(strongCourseIdsProvider).valueOrNull ?? <String>{};
@@ -1034,7 +1037,7 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
           children: [
             BackgroundRegion(
               region: BackgroundRegionId.dates,
-              child: _DateHeader(layout: layout, now: now),
+              child: _DateHeader(layout: layout),
             ),
             Expanded(
               child: ClipRect(
@@ -1268,7 +1271,6 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                 '${now.year}-${now.month}-${now.day}|$pixelsPerMinute',
                               ),
                               layout: layout,
-                              now: now,
                               dayWidth: dayWidth,
                               pixelsPerMinute: pixelsPerMinute,
                               topInset: inset,
@@ -1445,12 +1447,12 @@ class _FitLargeText extends StatelessWidget {
 }
 
 class _DateHeader extends ConsumerWidget {
-  const _DateHeader({required this.layout, required this.now});
+  const _DateHeader({required this.layout});
   final ScheduleTimelineLayout layout;
-  final DateTime now;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(currentTimeProvider);
     final l10n = AppLocalizations.of(context)!;
     final deadlines =
         ref.watch(schedulePresentationProvider)?.deadlines ??
@@ -1786,11 +1788,10 @@ class _TimeGrid extends StatelessWidget {
   }
 }
 
-class _CurrentTimeLine extends StatelessWidget {
+class _CurrentTimeLine extends ConsumerWidget {
   const _CurrentTimeLine({
     super.key,
     required this.layout,
-    required this.now,
     required this.dayWidth,
     required this.pixelsPerMinute,
     required this.topInset,
@@ -1802,13 +1803,13 @@ class _CurrentTimeLine extends StatelessWidget {
   final CardEntranceSpec? entranceSpec;
   final Offset entranceOffset;
   final bool entrancePending;
-  final DateTime now;
   final double dayWidth;
   final double pixelsPerMinute;
   final double topInset;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(currentTimeProvider);
     final index = layout.days.indexWhere(
       (day) => isSameScheduleDate(day.date, now),
     );
