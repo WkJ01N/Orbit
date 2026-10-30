@@ -662,6 +662,64 @@ class AppDatabase {
     return keys;
   });
 
+  /// Mirrors deadline alarms into the ledger so a re-plan or a reboot can
+  /// tell which ones were actually delivered. Android keeps its alarms in the
+  /// native store, which has no delivery receipts of its own.
+  Future<Set<String>> storeDeadlineSchedules(List<ReminderAlarmSpec> specs) =>
+      _db.transaction((txn) async {
+        final existing = {
+          for (final row in await txn.query(
+            'reminder_schedule',
+            where: 'rule_id=?',
+            whereArgs: ['@deadline'],
+          ))
+            row['delivery_key'] as String: row,
+        };
+        final keys = <String>{};
+        final batch = txn.batch();
+        for (final spec in specs) {
+          final key = '@deadline|${spec.deadlineId}|${spec.leadMinutes}';
+          keys.add(key);
+          final values = <String, Object?>{
+            'delivery_key': key,
+            'rule_id': '@deadline',
+            'session_id': key,
+            'send_index': 1,
+            'fire_at': spec.fireAt.millisecondsSinceEpoch,
+            'spec': jsonEncode(spec.toJson()),
+          };
+          if (existing.containsKey(key)) {
+            batch.update(
+              'reminder_schedule',
+              values,
+              where: 'delivery_key=?',
+              whereArgs: [key],
+            );
+          } else {
+            batch.insert('reminder_schedule', values);
+          }
+        }
+        await batch.commit(noResult: true);
+        return keys;
+      });
+
+  /// Deadline alarms whose fire time has passed without a delivery receipt.
+  Future<List<Map<String, Object?>>> missedDeadlineSchedules(
+    DateTime now, {
+    Duration window = const Duration(hours: 24),
+  }) => _db.rawQuery(
+    'SELECT s.* FROM reminder_schedule s '
+    'LEFT JOIN reminder_delivery d ON s.rule_id = d.rule_id AND s.session_id = d.session_id '
+    'WHERE s.rule_id = ? AND s.fire_at < ? AND s.fire_at >= ? '
+    'AND COALESCE(d.processed_index, 0) < s.send_index '
+    'ORDER BY s.fire_at',
+    [
+      '@deadline',
+      now.millisecondsSinceEpoch,
+      now.subtract(window).millisecondsSinceEpoch,
+    ],
+  );
+
   Future<void> markQueuedReminders(Set<int> ids) async {
     await _db.transaction((txn) async {
       await txn.update('reminder_schedule', {'queued': 0});

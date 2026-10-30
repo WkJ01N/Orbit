@@ -404,6 +404,16 @@ class ReminderScheduler {
           keys.add('${spec.ruleId}|${spec.sessionId}|${spec.sendIndex}');
         }
       }
+      if (Platform.isAndroid) {
+        // Keep the deadline alarms in the ledger too: the native store has no
+        // delivery receipts, so this is the only way to tell a missed alarm
+        // from one that already fired.
+        keys.addAll(
+          await db.storeDeadlineSchedules(
+            specs.where((spec) => spec.deadlineId != null).toList(),
+          ),
+        );
+      }
       await db.pruneReminderSchedules(keys);
       for (final spec in retainedCatchUp) {
         final rule = settings.customRules
@@ -445,6 +455,21 @@ class ReminderScheduler {
           );
           specs.add(updated);
         }
+      }
+    }
+    if (db != null && Platform.isAndroid) {
+      // Alarms that fell due while the app was closed used to be skipped for
+      // good. Replay the undelivered ones once, a few seconds from now.
+      for (final row in await db.missedDeadlineSchedules(now)) {
+        final stored = ReminderAlarmSpec.fromJson(
+          jsonDecode(row['spec'] as String) as Map<String, dynamic>,
+        );
+        specs.add(
+          ReminderAlarmSpec.fromJson({
+            ...stored.toJson(),
+            'fireAt': now.add(const Duration(seconds: 20)).toIso8601String(),
+          }),
+        );
       }
     }
     specs.sort((a, b) => a.fireAt.compareTo(b.fireAt));

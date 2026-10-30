@@ -468,6 +468,63 @@ void main() {
   });
 
   test(
+    'deadline alarms are mirrored in the ledger and replayed only once',
+    () async {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      final dir = await Directory.systemTemp.createTemp(
+        'orbit_deadline_ledger_',
+      );
+      final db = await AppDatabase.open(dir.path);
+      try {
+        final due = DateTime(2026, 9, 12, 18);
+        ReminderAlarmSpec hop(String deadline, int minutes, DateTime fireAt) =>
+            ReminderAlarmSpec(
+              alarmId: 4000001,
+              notificationId: 4000001,
+              fireAt: fireAt,
+              title: 'Deadline',
+              body: 'Body',
+              payload: 'deadline:$deadline',
+              deadlineId: deadline,
+              leadMinutes: minutes,
+            );
+
+        final keys = await db.storeDeadlineSchedules([
+          hop('d1', 30, due.subtract(const Duration(minutes: 30))),
+        ]);
+        expect(keys, {'@deadline|d1|30'});
+
+        // Still in the future: nothing to replay.
+        expect(await db.missedDeadlineSchedules(now), isEmpty);
+
+        // Past its fire time with no receipt: it has to be replayed.
+        final late = await db.missedDeadlineSchedules(due);
+        expect(late, hasLength(1));
+        expect(
+          ReminderAlarmSpec.fromJson(
+            jsonDecode(late.single['spec'] as String) as Map<String, dynamic>,
+          ).deadlineId,
+          'd1',
+        );
+
+        // A delivery receipt takes it out of the replay set.
+        await db.markReminderProcessed('@deadline', '@deadline|d1|30', 1);
+        expect(await db.missedDeadlineSchedules(due), isEmpty);
+
+        // Older than the replay window: left alone instead of ringing days late.
+        await db.storeDeadlineSchedules([
+          hop('d2', 60, due.subtract(const Duration(hours: 30))),
+        ]);
+        expect(await db.missedDeadlineSchedules(due), isEmpty);
+      } finally {
+        await db.close();
+        await dir.delete(recursive: true);
+      }
+    },
+  );
+
+  test(
     'scheduled IDs survive replan and time changes update the queue ledger',
     () async {
       sqfliteFfiInit();
