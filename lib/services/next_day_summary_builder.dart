@@ -66,8 +66,11 @@ List<NextDaySummarySlot> buildNextDaySummarySlots({
 
   for (var offset = 0; offset < nextDaySummaryDays; offset++) {
     final targetDay = nextDaySummaryTarget(today, offset);
-    final notifyDay =
-        DateTime(targetDay.year, targetDay.month, targetDay.day - 1);
+    final notifyDay = DateTime(
+      targetDay.year,
+      targetDay.month,
+      targetDay.day - 1,
+    );
     final notifyAt = DateTime(
       notifyDay.year,
       notifyDay.month,
@@ -152,8 +155,11 @@ int countNextDaySummarySlots({
 
   for (var offset = 0; offset < nextDaySummaryDays; offset++) {
     final targetDay = nextDaySummaryTarget(today, offset);
-    final notifyDay =
-        DateTime(targetDay.year, targetDay.month, targetDay.day - 1);
+    final notifyDay = DateTime(
+      targetDay.year,
+      targetDay.month,
+      targetDay.day - 1,
+    );
     final notifyAt = DateTime(
       notifyDay.year,
       notifyDay.month,

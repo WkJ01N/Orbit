@@ -26,10 +26,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('loads every well formed entry', () async {
-    _store({
-      '1': _spec(1).toJson(),
-      '2000000': _spec(2000000).toJson(),
-    });
+    _store({'1': _spec(1).toJson(), '2000000': _spec(2000000).toJson()});
 
     final all = await ReminderAlarmRegistry.loadAll();
 

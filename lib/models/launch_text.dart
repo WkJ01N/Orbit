@@ -1,13 +1,11 @@
 import 'package:flutter/widgets.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 
 class LaunchText {
   LaunchText(BuildContext context) : locale = Localizations.localeOf(context);
   final Locale locale;
-  String t(String en, String hans, String hant) => locale.languageCode != 'zh'
-      ? en
-      : locale.scriptCode == 'Hans' || locale.countryCode == 'CN'
-      ? hans
-      : hant;
+  String t(String en, String hans, String hant) =>
+      pickLocalized(locale, en, hans, hant);
   String get title => t('Startup & page animations', '启动与页面动画', '啟動與頁面動畫');
   String get transition => t('Page transition style', '页面过渡风格', '頁面過渡風格');
   String get compact => t('Crisp', '干净利落', '乾淨俐落');

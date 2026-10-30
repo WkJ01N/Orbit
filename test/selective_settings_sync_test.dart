@@ -269,7 +269,8 @@ void main() {
       expect(
         backend.sent.any((mutation) => mutation.entity.id == 'appearance'),
         isTrue,
-        reason: 'a freshly enabled category must not stay stranded behind the '
+        reason:
+            'a freshly enabled category must not stay stranded behind the '
             'applied set',
       );
       expect(

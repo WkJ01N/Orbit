@@ -1,4 +1,5 @@
 import 'package:orbit/features/grid/grid_event_motion.dart';
+import 'package:orbit/features/grid/text_height_cache.dart';
 import 'package:orbit/core/motion/page_module.dart';
 import 'package:orbit/features/session/course_quick_action_bar.dart';
 import 'package:flutter/foundation.dart';
@@ -1093,9 +1094,9 @@ class _ScheduleTimelineState extends ConsumerState<_ScheduleTimeline> {
                                   for (final placement in placements)
                                     GridMotionEvent(
                                       id: placement.event.session.id,
-                                      signature: placement.event.session
-                                          .toMap()
-                                          .toString(),
+                                      signature: _motionSignature(
+                                        placement.event.session,
+                                      ),
                                       rect: placement.rect,
                                       child: _eventWidget(
                                         placement.event,
@@ -2151,15 +2152,24 @@ double _textHeight(
   TextDirection direction, {
   int? maxLines,
 }) {
-  final painter = TextPainter(
-    text: TextSpan(text: value.isEmpty ? ' ' : value, style: style),
-    textScaler: scaler,
-    textDirection: direction,
+  return scheduleTextHeightCache.measure(
+    value,
+    style,
+    width,
+    scaler,
+    direction,
     maxLines: maxLines,
-  )..layout(maxWidth: width);
-  return painter.height;
+  );
 }
 
+/// Digest of the fields the movement animation keys on. Cheaper than
+/// `session.toMap().toString()`, which allocates a map plus a string of every
+/// column on every rebuild.
+String _motionSignature(CourseSession session) =>
+    '${session.id}|${session.courseName}|${session.section}|${session.room}'
+    '|${session.teachers.join(',')}'
+    '|${session.startAt.millisecondsSinceEpoch}'
+    '|${session.endAt.millisecondsSinceEpoch}';
 String _formatMinute(int minute) {
   final value = minute.clamp(0, 24 * 60);
   return '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
@@ -2201,15 +2211,14 @@ class _CompactSessionChipContent extends StatelessWidget {
     );
     final width = math.max(1.0, availableWidth - 4);
     final scaler = MediaQuery.textScalerOf(context);
-    double measure(String text, TextStyle style, int lines) {
-      final painter = TextPainter(
-        text: TextSpan(text: text, style: style),
-        textScaler: scaler,
-        textDirection: Directionality.of(context),
-        maxLines: lines,
-      )..layout(maxWidth: width);
-      return painter.height;
-    }
+    double measure(String text, TextStyle style, int lines) => _textHeight(
+      text,
+      style,
+      width,
+      scaler,
+      Directionality.of(context),
+      maxLines: lines,
+    );
 
     if (availableHeight < measure(session.displayName, nameStyle, 1) + 6) {
       return const SizedBox.shrink();

@@ -70,6 +70,7 @@ class SyncScopeService {
   Future<Set<SyncCategory>> pendingCategories() async => (await selection())
       .enabled
       .difference((await appliedSelection()).enabled);
+
   /// What this device is allowed to sync right now.
   ///
   /// Deliberately *not* intersected with [appliedSelection]: intersecting made
@@ -79,9 +80,7 @@ class SyncScopeService {
   Future<SyncSelection> safeSelection() async {
     final desired = await selection();
     return SyncSelection(
-      desired.enabled
-          .where((c) => supportsSettings || c.index < 5)
-          .toSet(),
+      desired.enabled.where((c) => supportsSettings || c.index < 5).toSet(),
     );
   }
 

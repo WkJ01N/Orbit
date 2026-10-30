@@ -1,14 +1,12 @@
 import 'package:flutter/widgets.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 
 class TypographyText {
   TypographyText(BuildContext context)
     : locale = Localizations.localeOf(context);
   final Locale locale;
-  String t(String en, String hans, String hant) => locale.languageCode != 'zh'
-      ? en
-      : locale.scriptCode == 'Hans' || locale.countryCode == 'CN'
-      ? hans
-      : hant;
+  String t(String en, String hans, String hant) =>
+      pickLocalized(locale, en, hans, hant);
   String get title => t('Fonts', '字体', '字型');
   String get app => t('App interface font', '应用界面字体', '應用程式介面字型');
   String get launch => t('Startup wordmark font', '开屏字标字体', '啟動畫面字標字型');

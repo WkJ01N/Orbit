@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 
 /// Copy shared by the archive, course picker and reminder additions.
 class OrbitFeatureText {
@@ -7,11 +8,7 @@ class OrbitFeatureText {
   factory OrbitFeatureText.of(BuildContext context) =>
       OrbitFeatureText(Localizations.localeOf(context));
   String pick(String en, String hans, String hant) =>
-      locale.languageCode != 'zh'
-      ? en
-      : locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
-      ? hant
-      : hans;
+      pickLocalized(locale, en, hans, hant);
   String get archive => pick('Archive', '归档', '歸檔');
   String get courses => pick('Courses', '课程', '課程');
   String get singleArchive => pick('Archive this class', '归档本次课', '歸檔本次課');

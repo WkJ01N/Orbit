@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 
 class DeadlineText {
   const DeadlineText(this.locale);
@@ -17,11 +18,7 @@ class DeadlineText {
   );
 
   String pick(String en, String hans, String hant) =>
-      locale.languageCode == 'en'
-      ? en
-      : locale.scriptCode?.toLowerCase() == 'hans'
-      ? hans
-      : hant;
+      pickLocalized(locale, en, hans, hant);
 
   String get ddl => 'DDL';
   String get addDeadline => pick('Add DDL', '添加 DDL', '新增 DDL');

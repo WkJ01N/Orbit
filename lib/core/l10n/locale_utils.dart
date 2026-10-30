@@ -12,6 +12,31 @@ const supportedAppLocales = [
   Locale('en'),
 ];
 
+/// Whether [locale] reads as Traditional Chinese.
+///
+/// An explicit script wins; a bare `zh` falls back to the region, and every
+/// other Chinese locale is simplified. One rule for the whole app keeps a
+/// single screen from mixing simplified and traditional glyphs (zh-HK, zh-MO
+/// and a bare `zh` used to resolve differently per feature).
+bool isTraditionalChinese(Locale locale) {
+  if (locale.languageCode != 'zh') {
+    return false;
+  }
+  final script = locale.scriptCode;
+  if (script != null) {
+    return script == 'Hant';
+  }
+  return const {'TW', 'HK', 'MO'}.contains(locale.countryCode);
+}
+
+/// Picks [en], [hans] or [hant] for [locale] using [isTraditionalChinese].
+String pickLocalized(Locale locale, String en, String hans, String hant) {
+  if (locale.languageCode != 'zh') {
+    return en;
+  }
+  return isTraditionalChinese(locale) ? hant : hans;
+}
+
 String localeStorageKey(Locale locale) {
   if (locale.languageCode == 'en') {
     return 'en';

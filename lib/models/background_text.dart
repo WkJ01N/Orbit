@@ -1,15 +1,13 @@
 import 'package:flutter/widgets.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/models/background_settings.dart';
 
 class BackgroundText {
   BackgroundText(BuildContext context)
     : locale = Localizations.localeOf(context);
   final Locale locale;
-  String t(String en, String zh, [String? hant]) => locale.languageCode == 'en'
-      ? en
-      : locale.scriptCode == 'Hans' || locale.countryCode == 'CN'
-      ? zh
-      : hant ?? zh;
+  String t(String en, String zh, [String? hant]) =>
+      pickLocalized(locale, en, zh, hant ?? zh);
   String get title => t('Page backgrounds', '页面背景', '頁面背景');
   String page(BackgroundPage page) => switch (page) {
     BackgroundPage.grid => t('Schedule', '课表', '課表'),

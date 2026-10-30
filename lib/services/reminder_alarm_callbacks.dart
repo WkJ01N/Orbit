@@ -48,8 +48,7 @@ Future<void> showReminderAlarmNotification(ReminderAlarmSpec spec) async {
       // stale notification from an earlier schedule must not swallow the
       // reminder for the lesson that is starting now. Only an identical
       // notification counts as already delivered.
-      if (notification.title == spec.title &&
-          notification.body == spec.body) {
+      if (notification.title == spec.title && notification.body == spec.body) {
         return;
       }
       break;

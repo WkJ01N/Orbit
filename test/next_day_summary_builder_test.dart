@@ -129,8 +129,14 @@ void main() {
       nextDaySummaryTarget(DateTime(2026, 6, 15), 0),
       DateTime(2026, 6, 16),
     );
-    expect(nextDaySummaryTarget(DateTime(2026, 1, 31), 0), DateTime(2026, 2, 1));
-    expect(nextDaySummaryTarget(DateTime(2026, 12, 31), 0), DateTime(2027, 1, 1));
+    expect(
+      nextDaySummaryTarget(DateTime(2026, 1, 31), 0),
+      DateTime(2026, 2, 1),
+    );
+    expect(
+      nextDaySummaryTarget(DateTime(2026, 12, 31), 0),
+      DateTime(2027, 1, 1),
+    );
 
     final today = DateTime(2026, 3, 1);
     for (var offset = 0; offset < nextDaySummaryDays; offset++) {

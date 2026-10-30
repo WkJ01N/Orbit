@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/models/schedule_display_settings.dart';
 
 class NavigationAssistText {
@@ -7,12 +8,7 @@ class NavigationAssistText {
   static NavigationAssistText of(BuildContext context) =>
       NavigationAssistText(Localizations.localeOf(context));
   String pick(String en, String hans, String hant) =>
-      locale.languageCode != 'zh'
-      ? en
-      : locale.scriptCode == 'Hant' ||
-            ['TW', 'HK', 'MO'].contains(locale.countryCode)
-      ? hant
-      : hans;
+      pickLocalized(locale, en, hans, hant);
 
   String get position =>
       pick('Back-to-top button position', '回到顶部按钮位置', '回到頂部按鈕位置');
