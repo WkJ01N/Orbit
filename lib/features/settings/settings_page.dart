@@ -1361,6 +1361,7 @@ class _AndroidBackgroundSectionState
                     ),
                   ),
             trailing: IconButton(
+              tooltip: l10n.actionRefresh,
               onPressed: _refreshStatuses,
               icon: const Icon(Icons.refresh),
             ),

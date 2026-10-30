@@ -30,6 +30,9 @@ bool isTraditionalChinese(Locale locale) {
 }
 
 /// Picks [en], [hans] or [hant] for [locale] using [isTraditionalChinese].
+/// Separates list items the way readers of [locale] expect them.
+String localeListSeparator(Locale locale) =>
+    locale.languageCode == 'zh' ? '\u3001' : ', ';
 String pickLocalized(Locale locale, String en, String hans, String hant) {
   if (locale.languageCode != 'zh') {
     return en;

@@ -920,6 +920,9 @@ Future<void> _showAuth(
                       helperText: register ? text.passwordRule : null,
                       helperMaxLines: 2,
                       suffixIcon: IconButton(
+                        tooltip: obscure
+                            ? text.showPassword
+                            : text.hidePassword,
                         onPressed: () => setState(() => obscure = !obscure),
                         icon: Icon(
                           obscure ? Icons.visibility : Icons.visibility_off,
@@ -1692,6 +1695,8 @@ class _SyncText {
 
   String pick(String en, String hans, String traditional) =>
       zh ? (hant ? traditional : hans) : en;
+  String get showPassword => pick('Show password', '显示密码', '顯示密碼');
+  String get hidePassword => pick('Hide password', '隐藏密码', '隱藏密碼');
   String get privacy => pick('Privacy policy', '隐私政策', '隱私政策');
 
   String get conflictHistoryTitle => pick('Conflict history', '冲突历史', '衝突歷史');

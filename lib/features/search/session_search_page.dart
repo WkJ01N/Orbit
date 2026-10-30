@@ -106,6 +106,7 @@ class _SessionSearchPageState extends ConsumerState<SessionSearchPage> {
                   hintText: l10n.searchHint,
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
+                    tooltip: l10n.searchSessions,
                     icon: const Icon(Icons.search),
                     onPressed: _search,
                   ),

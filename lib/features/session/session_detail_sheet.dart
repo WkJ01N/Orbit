@@ -1,4 +1,5 @@
 import 'package:orbit/models/v162_text.dart';
+import 'package:orbit/core/l10n/locale_utils.dart';
 import 'package:orbit/features/session/wemust_check_in_action.dart';
 import 'package:orbit/features/reminder/strong_badge.dart';
 import 'package:orbit/providers/course_color_providers.dart';
@@ -97,7 +98,12 @@ class SessionDetailSheet extends ConsumerWidget {
             StrongCourseBadge(session: session),
             _DetailRow(icon: Icons.room, text: session.room),
             if (!session.isExam && session.teachers.isNotEmpty)
-              _DetailRow(icon: Icons.person, text: session.teachers.join('、')),
+              _DetailRow(
+                icon: Icons.person,
+                text: session.teachers.join(
+                  localeListSeparator(Localizations.localeOf(context)),
+                ),
+              ),
             if (session.faculty.trim().isNotEmpty)
               _DetailRow(icon: Icons.school, text: session.faculty),
             if (session.note != null && session.note!.trim().isNotEmpty)

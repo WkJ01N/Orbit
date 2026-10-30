@@ -90,6 +90,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
   bool _examReminder = true, _examStrong = true, _nextDay = false;
   bool _pickedDate = false, _pickedStart = false, _pickedEnd = false;
   int _examLead = 30;
+  late final String _initialSignature;
 
   @override
   void initState() {
@@ -132,6 +133,7 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       final end = start.add(const Duration(hours: 1));
       _endTime = TimeOfDay(hour: end.hour, minute: end.minute);
     }
+    _initialSignature = _signature;
   }
 
   static DateTime _nextHalfHour(DateTime now) {
@@ -144,6 +146,48 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       rounded = rounded.add(const Duration(minutes: 30));
     }
     return rounded;
+  }
+
+  String get _signature => [
+    _nameController.text,
+    _roomController.text,
+    _teachersController.text,
+    _courseCodeController.text,
+    _sectionController.text,
+    _classTypeController.text,
+    _facultyController.text,
+    _semesterController.text,
+    _date.toIso8601String(),
+    '${_startTime.hour}:${_startTime.minute}',
+    '${_endTime.hour}:${_endTime.minute}',
+    '$_examReminder',
+    '$_examStrong',
+    '$_nextDay',
+    '$_examLead',
+  ].join('\u0000');
+
+  bool get _dirty => _signature != _initialSignature;
+
+  Future<bool> _confirmDiscard() async {
+    final l10n = AppLocalizations.of(context)!;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.sessionDiscardTitle),
+        content: Text(l10n.sessionDiscardBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.actionContinue),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.sessionDiscardAction),
+          ),
+        ],
+      ),
+    );
+    return discard ?? false;
   }
 
   @override
@@ -553,179 +597,194 @@ class _SessionEditSheetState extends ConsumerState<SessionEditSheet> {
       Localizations.localeOf(context).toString(),
     ).format(_date);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.isExam
-                  ? (widget.isCreateMode
-                        ? V162Text.of(context).addExam
-                        : V162Text.of(context).editExam)
-                  : widget.isCreateMode
-                  ? l10n.addSessionTitle
-                  : l10n.editSessionTitle,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            if (widget.isExam) Text(V162Text.of(context).examHint),
-            if (widget.isCreateMode) ...[
-              OutlinedButton.icon(
-                onPressed: _saving ? null : _chooseCourse,
-                icon: const Icon(Icons.playlist_add),
-                label: Text(OrbitFeatureText.of(context).existing),
+    final navigator = Navigator.of(context);
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await _confirmDiscard();
+        if (leave && navigator.mounted) {
+          navigator.pop(false);
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.isExam
+                    ? (widget.isCreateMode
+                          ? V162Text.of(context).addExam
+                          : V162Text.of(context).editExam)
+                    : widget.isCreateMode
+                    ? l10n.addSessionTitle
+                    : l10n.editSessionTitle,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              if (_selectedCourse != null)
-                TextButton(
-                  onPressed: _saving ? null : _newCourse,
-                  child: Text(OrbitFeatureText.of(context).newCourse),
+              const SizedBox(height: 16),
+              if (widget.isExam) Text(V162Text.of(context).examHint),
+              if (widget.isCreateMode) ...[
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _chooseCourse,
+                  icon: const Icon(Icons.playlist_add),
+                  label: Text(OrbitFeatureText.of(context).existing),
                 ),
-            ],
-            if (widget.isCreateMode || widget.isExam)
+                if (_selectedCourse != null)
+                  TextButton(
+                    onPressed: _saving ? null : _newCourse,
+                    child: Text(OrbitFeatureText.of(context).newCourse),
+                  ),
+              ],
+              if (widget.isCreateMode || widget.isExam)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.fieldDate),
+                  trailing: TextButton(
+                    onPressed: _pickDate,
+                    child: Text(
+                      widget.isExam && !_pickedDate
+                          ? l10n.fieldDate
+                          : dateLabel,
+                    ),
+                  ),
+                ),
+              TextField(
+                controller: _nameController,
+                readOnly: _selectedCourse != null,
+                decoration: InputDecoration(
+                  labelText: l10n.fieldCourseName,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _roomController,
+                decoration: InputDecoration(
+                  labelText: l10n.fieldRoom,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              if (widget.isCreateMode) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _courseCodeController,
+                  readOnly: _selectedCourse != null,
+                  decoration: InputDecoration(
+                    labelText: l10n.fieldCourseCode,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _sectionController,
+                  readOnly: _selectedCourse != null,
+                  decoration: InputDecoration(
+                    labelText: l10n.fieldSection,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              if (!widget.isExam)
+                TextField(
+                  controller: _teachersController,
+                  decoration: InputDecoration(
+                    labelText: l10n.fieldTeachers,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _facultyController,
+                decoration: InputDecoration(
+                  labelText: l10n.fieldFaculty,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SemesterField(
+                controller: _semesterController,
+                enabled: !_saving,
+                onSelected: (id) => _semesterId = id,
+              ),
+              const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l10n.fieldDate),
+                title: Text(l10n.fieldStartTime),
                 trailing: TextButton(
-                  onPressed: _pickDate,
+                  onPressed: _pickStartTime,
                   child: Text(
-                    widget.isExam && !_pickedDate ? l10n.fieldDate : dateLabel,
+                    widget.isExam && !_pickedStart
+                        ? l10n.fieldStartTime
+                        : startLabel,
                   ),
                 ),
               ),
-            TextField(
-              controller: _nameController,
-              readOnly: _selectedCourse != null,
-              decoration: InputDecoration(
-                labelText: l10n.fieldCourseName,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _roomController,
-              decoration: InputDecoration(
-                labelText: l10n.fieldRoom,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            if (widget.isCreateMode) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _courseCodeController,
-                readOnly: _selectedCourse != null,
-                decoration: InputDecoration(
-                  labelText: l10n.fieldCourseCode,
-                  border: const OutlineInputBorder(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.fieldEndTime),
+                trailing: TextButton(
+                  onPressed: _pickEndTime,
+                  child: Text(
+                    widget.isExam && !_pickedEnd ? l10n.fieldEndTime : endLabel,
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _sectionController,
-                readOnly: _selectedCourse != null,
-                decoration: InputDecoration(
-                  labelText: l10n.fieldSection,
-                  border: const OutlineInputBorder(),
+              if (widget.isExam) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(V162Text.of(context).nextDay),
+                  value: _nextDay,
+                  onChanged: _saving
+                      ? null
+                      : (v) => setState(() => _nextDay = v),
                 ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(V162Text.of(context).reminder),
+                  value: _examReminder,
+                  onChanged: _saving
+                      ? null
+                      : (v) => setState(() => _examReminder = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(V162Text.of(context).strong),
+                  value: _examStrong,
+                  onChanged: !_examReminder || _saving
+                      ? null
+                      : (v) => setState(() => _examStrong = v),
+                ),
+                TextFormField(
+                  initialValue: '$_examLead',
+                  enabled: !_saving && _examReminder,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: V162Text.of(context).lead,
+                  ),
+                  onChanged: (v) => _examLead = int.tryParse(v) ?? -1,
+                ),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _saving || formSemesterLoading(ref) ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        widget.isCreateMode
+                            ? l10n.actionCreate
+                            : l10n.actionApply,
+                      ),
               ),
             ],
-            const SizedBox(height: 12),
-            if (!widget.isExam)
-              TextField(
-                controller: _teachersController,
-                decoration: InputDecoration(
-                  labelText: l10n.fieldTeachers,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _facultyController,
-              decoration: InputDecoration(
-                labelText: l10n.fieldFaculty,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SemesterField(
-              controller: _semesterController,
-              enabled: !_saving,
-              onSelected: (id) => _semesterId = id,
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.fieldStartTime),
-              trailing: TextButton(
-                onPressed: _pickStartTime,
-                child: Text(
-                  widget.isExam && !_pickedStart
-                      ? l10n.fieldStartTime
-                      : startLabel,
-                ),
-              ),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.fieldEndTime),
-              trailing: TextButton(
-                onPressed: _pickEndTime,
-                child: Text(
-                  widget.isExam && !_pickedEnd ? l10n.fieldEndTime : endLabel,
-                ),
-              ),
-            ),
-            if (widget.isExam) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(V162Text.of(context).nextDay),
-                value: _nextDay,
-                onChanged: _saving ? null : (v) => setState(() => _nextDay = v),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(V162Text.of(context).reminder),
-                value: _examReminder,
-                onChanged: _saving
-                    ? null
-                    : (v) => setState(() => _examReminder = v),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(V162Text.of(context).strong),
-                value: _examStrong,
-                onChanged: !_examReminder || _saving
-                    ? null
-                    : (v) => setState(() => _examStrong = v),
-              ),
-              TextFormField(
-                initialValue: '$_examLead',
-                enabled: !_saving && _examReminder,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: V162Text.of(context).lead,
-                ),
-                onChanged: (v) => _examLead = int.tryParse(v) ?? -1,
-              ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _saving || formSemesterLoading(ref) ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.isCreateMode
-                          ? l10n.actionCreate
-                          : l10n.actionApply,
-                    ),
-            ),
-          ],
+          ),
         ),
       ),
     );

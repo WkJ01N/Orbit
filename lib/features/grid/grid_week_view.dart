@@ -2064,7 +2064,7 @@ class GridSessionChip extends ConsumerWidget {
       button: true,
       selected: selection.active ? selected : null,
       label:
-          '${session.displayName}, $time, ${session.room}, ${session.teachers.join('、')}'
+          '${session.displayName}, $time, ${session.room}, ${session.teachers.join(localeListSeparator(Localizations.localeOf(context)))}'
           '${strong ? ', ${WakeText.of(context).strong}' : ''}'
           '${selection.active && selected ? ', ${GridActionText.of(context).selectedHint}' : ''}',
       child: _quickActionWrapper(
@@ -2289,7 +2289,14 @@ class _CompactSessionChipContent extends StatelessWidget {
     final showTeacher =
         !narrow &&
         session.teachers.isNotEmpty &&
-        remaining >= measure(session.teachers.join('、'), detailStyle, 1);
+        remaining >=
+            measure(
+              session.teachers.join(
+                localeListSeparator(Localizations.localeOf(context)),
+              ),
+              detailStyle,
+              1,
+            );
     return ClipRect(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
@@ -2317,7 +2324,9 @@ class _CompactSessionChipContent extends StatelessWidget {
               ),
             if (showTeacher)
               Text(
-                session.teachers.join('、'),
+                session.teachers.join(
+                  localeListSeparator(Localizations.localeOf(context)),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.fade,
                 style: detailStyle,
@@ -2392,7 +2401,9 @@ class _SessionChipContent extends StatelessWidget {
       direction,
     );
     final teacherHeight = _textHeight(
-      session.teachers.join('、'),
+      session.teachers.join(
+        localeListSeparator(Localizations.localeOf(context)),
+      ),
       detailStyle,
       width,
       scaler,
@@ -2440,7 +2451,12 @@ class _SessionChipContent extends StatelessWidget {
           ],
           if (showTeacher) ...[
             const SizedBox(height: 2),
-            Text(session.teachers.join('、'), style: detailStyle),
+            Text(
+              session.teachers.join(
+                localeListSeparator(Localizations.localeOf(context)),
+              ),
+              style: detailStyle,
+            ),
           ],
         ],
       ),

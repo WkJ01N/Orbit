@@ -205,7 +205,21 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
         future: _data,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: PageModule(child: Text('${snapshot.error}')));
+            return Center(
+              child: PageModule(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(t.loadFailed, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    FilledButton.tonal(
+                      onPressed: () => setState(() => _data = _load()),
+                      child: Text(t.retry),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           final all = snapshot.data;
           if (all == null) {

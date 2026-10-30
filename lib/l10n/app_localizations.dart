@@ -2119,6 +2119,18 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get actionClear;
 
+  /// No description provided for @actionClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get actionClose;
+
+  /// No description provided for @actionRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get actionRefresh;
+
   /// No description provided for @dataCleared.
   ///
   /// In en, this message translates to:
@@ -2679,6 +2691,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to save: {error}'**
   String sessionSaveFailed(String error);
+
+  /// No description provided for @sessionDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes?'**
+  String get sessionDiscardTitle;
+
+  /// No description provided for @sessionDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your edits to this class will be lost.'**
+  String get sessionDiscardBody;
+
+  /// No description provided for @sessionDiscardAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get sessionDiscardAction;
 
   /// No description provided for @deleteFailed.
   ///

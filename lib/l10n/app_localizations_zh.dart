@@ -1088,6 +1088,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionClear => '清除';
 
   @override
+  String get actionClose => '關閉';
+
+  @override
+  String get actionRefresh => '重新整理';
+
+  @override
   String get dataCleared => '課表資料已清除';
 
   @override
@@ -1409,6 +1415,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String sessionSaveFailed(String error) {
     return '儲存失敗：$error';
   }
+
+  @override
+  String get sessionDiscardTitle => '放棄修改？';
+
+  @override
+  String get sessionDiscardBody => '這一節課的修改將會遺失。';
+
+  @override
+  String get sessionDiscardAction => '放棄';
 
   @override
   String deleteFailed(String error) {
@@ -3361,6 +3376,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get actionClear => '清除';
 
   @override
+  String get actionClose => '关闭';
+
+  @override
+  String get actionRefresh => '刷新';
+
+  @override
   String get dataCleared => '课表数据已清除';
 
   @override
@@ -3682,6 +3703,15 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String sessionSaveFailed(String error) {
     return '保存失败：$error';
   }
+
+  @override
+  String get sessionDiscardTitle => '放弃修改？';
+
+  @override
+  String get sessionDiscardBody => '这一节课的修改将会丢失。';
+
+  @override
+  String get sessionDiscardAction => '放弃';
 
   @override
   String deleteFailed(String error) {
@@ -5634,6 +5664,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get actionClear => '清除';
 
   @override
+  String get actionClose => '關閉';
+
+  @override
+  String get actionRefresh => '重新整理';
+
+  @override
   String get dataCleared => '課表資料已清除';
 
   @override
@@ -5955,6 +5991,15 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String sessionSaveFailed(String error) {
     return '儲存失敗：$error';
   }
+
+  @override
+  String get sessionDiscardTitle => '放棄修改？';
+
+  @override
+  String get sessionDiscardBody => '這一節課的修改將會遺失。';
+
+  @override
+  String get sessionDiscardAction => '放棄';
 
   @override
   String deleteFailed(String error) {

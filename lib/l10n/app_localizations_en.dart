@@ -1146,6 +1146,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionClear => 'Clear';
 
   @override
+  String get actionClose => 'Close';
+
+  @override
+  String get actionRefresh => 'Refresh';
+
+  @override
   String get dataCleared => 'Schedule data cleared';
 
   @override
@@ -1483,6 +1489,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionSaveFailed(String error) {
     return 'Failed to save: $error';
   }
+
+  @override
+  String get sessionDiscardTitle => 'Discard changes?';
+
+  @override
+  String get sessionDiscardBody => 'Your edits to this class will be lost.';
+
+  @override
+  String get sessionDiscardAction => 'Discard';
 
   @override
   String deleteFailed(String error) {

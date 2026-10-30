@@ -744,6 +744,7 @@ class _BackgroundEditorPageState extends ConsumerState<BackgroundEditorPage> {
         appBar: AppBar(
           leading: PageModule(
             child: IconButton(
+              tooltip: t.t('Close', '关闭', '關閉'),
               icon: const Icon(Icons.close),
               onPressed: _busy ? null : _exit,
             ),

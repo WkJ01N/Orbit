@@ -559,6 +559,7 @@
   "confirmClearContent": "All imported schedule data will be moved to Recently Deleted and kept for 7 days.",
   "actionCancel": "Cancel",
   "actionClear": "Clear",
+  "actionClose": "Close",   "actionRefresh": "Refresh",
   "dataCleared": "Schedule data cleared",
   "languageTitle": "App language",
   "languageSubtitle": "Choose display language",
@@ -804,6 +805,9 @@
   "importStrategyMergeDesc": "Keep other classes; replace only those whose time overlaps an imported class.",
   "actionCreate": "Create",
   "sessionSaveFailed": "Failed to save: {error}",
+  "sessionDiscardTitle": "Discard changes?",
+  "sessionDiscardBody": "Your edits to this class will be lost.",
+  "sessionDiscardAction": "Discard",
   "@sessionSaveFailed": {
     "placeholders": {
       "error": {

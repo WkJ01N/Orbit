@@ -641,7 +641,11 @@ class _SessionCard extends ConsumerWidget {
                         StrongCourseBadge(session: session),
                         if (session.teachers.isNotEmpty)
                           Text(
-                            session.teachers.join('、'),
+                            session.teachers.join(
+                              localeListSeparator(
+                                Localizations.localeOf(context),
+                              ),
+                            ),
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: colorScheme.onSurfaceVariant),
                             maxLines: 1,
