@@ -10,7 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 /** Package-scoped public intents only; launching does not attest page arrival. */
 object OrbitWemustLauncher {
     private const val targetPackage = "cn.doocom.wemustcampus"
-    // Inferred from the 1.13.1 manifest and bundled services.json. Device QA pending.
+    // WeMust Student 1.13.1 opens the timetable and resumes it after login.
     private const val timetableUri = "wmstud://must.edu.mo/services/S-WM-CLASS-TIMETABLE-APP"
 
     fun attach(activity: Activity, messenger: BinaryMessenger) {
@@ -49,8 +49,14 @@ object OrbitWemustLauncher {
             }
             try {
                 val launcher = activity.packageManager.getLaunchIntentForPackage(targetPackage)
-                if (launcher == null) { result.success("failed") }
-                else { activity.startActivity(launcher); result.success("appLaunched") }
+                when {
+                    launcher == null -> result.success("failed")
+                    call.argument<Boolean>("timetable") != false -> result.success("timetableUnavailable")
+                    else -> {
+                        activity.startActivity(launcher)
+                        result.success("appLaunched")
+                    }
+                }
             } catch (_: Exception) { result.success("failed") }
         }
     }

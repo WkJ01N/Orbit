@@ -110,6 +110,48 @@ class OrbitReminderReceiverTest {
         assertFalse(OrbitReminderManager.contains(context, 305))
     }
 
+    @Test
+    fun scheduleBatchAndRestoreRespectRollingWindowAndSlideOnDelivery() {
+        val total = OrbitReminderManager.maxArmedSystemAlarms + 20
+        val base = System.currentTimeMillis() + 60_000
+        val records = (1..total).map { index ->
+            reminderRecord(alarmId = index, notificationId = index).copy(
+                fireAtMillis = base + index * 10_000L,
+            )
+        }
+
+        val batch = OrbitReminderManager.scheduleBatch(
+            context,
+            records,
+            exactPreferred = true,
+            allowInexactFallback = true,
+        )
+        assertEquals(total, batch.scheduled)
+        assertEquals(OrbitReminderManager.maxArmedSystemAlarms, batch.armed)
+        assertEquals(0, batch.failed)
+        assertEquals("1", OrbitReminderStore.metadata(context)["has_deferred_alarms"])
+        assertEquals(total, OrbitReminderManager.pendingCourseReminderCount(context))
+        assertTrue(OrbitReminderManager.hasPendingAlarm(context, 1))
+        assertTrue(OrbitReminderManager.hasPendingAlarm(context, OrbitReminderManager.maxArmedSystemAlarms))
+        assertFalse(OrbitReminderManager.hasPendingAlarm(context, OrbitReminderManager.maxArmedSystemAlarms + 1))
+
+        // Firing alarm #1 removes it and slides the rolling window to arm #301.
+        OrbitReminderReceiver().onReceive(
+            context,
+            Intent(context, OrbitReminderReceiver::class.java).putExtra(
+                OrbitReminderManager.alarmIdExtra,
+                1,
+            ),
+        )
+        assertTrue(OrbitReminderManager.hasPendingAlarm(context, OrbitReminderManager.maxArmedSystemAlarms + 1))
+
+        // Restore also arms only the earliest maxArmedSystemAlarms reminders.
+        OrbitReminderManager.restorePersistedReminders(context)
+        assertTrue(OrbitReminderManager.hasPendingAlarm(context, 2))
+        assertTrue(OrbitReminderManager.hasPendingAlarm(context, OrbitReminderManager.maxArmedSystemAlarms + 1))
+        assertFalse(OrbitReminderManager.hasPendingAlarm(context, OrbitReminderManager.maxArmedSystemAlarms + 2))
+    }
+
     private fun reminderRecord(
         alarmId: Int,
         notificationId: Int,

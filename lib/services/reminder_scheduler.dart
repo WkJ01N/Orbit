@@ -363,15 +363,16 @@ class ReminderScheduler {
           copy,
         );
       }
+      final deliveryStates = await db.reminderDeliveryStates();
       final custom = planCustomReminders(
         sessions: allSessions,
         periodPlans: periodPlans,
         rules: settings.customRules,
         strong: settings.strong,
         now: now,
-        states: await db.reminderDeliveryStates(),
-        sessionAliases: await db.reminderSessionAliases(),
-        seriesMemberships: await db.reminderSeriesMemberships(),
+        states: deliveryStates,
+        sessionAliases: sessionAliases,
+        seriesMemberships: seriesMemberships,
         catchUpLabel: copy.catchUpLabel,
         catchUpNotice: copy.catchUpNotice,
         originalLabel: copy.originalLabel,
@@ -381,9 +382,8 @@ class ReminderScheduler {
         stopLabel: copy.stopLabel,
         weekdayNames: copy.weekdayNames,
       );
-      final aliases = await db.reminderSessionAliases();
       final currentIdentities = allSessions
-          .map((s) => aliases[s.id] ?? s.id)
+          .map((s) => sessionAliases[s.id] ?? s.id)
           .toSet();
       retainedCatchUp.removeWhere(
         (s) => !currentIdentities.contains(s.sessionId),
@@ -415,16 +415,16 @@ class ReminderScheduler {
         );
       }
       await db.pruneReminderSchedules(keys);
+      final acknowledgedKeys = {
+        for (final s in deliveryStates)
+          if (s['acknowledged'] == 1) '${s['rule_id']}|${s['session_id']}',
+      };
       for (final spec in retainedCatchUp) {
         final rule = settings.customRules
             .where((r) => r.id == spec.ruleId && r.enabled)
             .firstOrNull;
-        final states = await db.reminderDeliveryStates();
-        final acknowledged = states.any(
-          (s) =>
-              s['rule_id'] == spec.ruleId &&
-              s['session_id'] == spec.sessionId &&
-              s['acknowledged'] == 1,
+        final acknowledged = acknowledgedKeys.contains(
+          '${spec.ruleId}|${spec.sessionId}',
         );
         if (rule != null &&
             !acknowledged &&
@@ -436,11 +436,13 @@ class ReminderScheduler {
               type: StrongReminderType.custom,
               rule: rule,
               session: allSessions
-                  .where((s) => (aliases[s.id] ?? s.id) == spec.sessionId)
+                  .where(
+                    (s) => (sessionAliases[s.id] ?? s.id) == spec.sessionId,
+                  )
                   .firstOrNull,
               dailySessions: allSessions,
               periodPlans: periodPlans,
-              aliases: aliases,
+              aliases: sessionAliases,
               memberships: seriesMemberships,
             ).toJson(),
             'fireAt':
@@ -533,31 +535,50 @@ class ReminderScheduler {
         }
       }
     }
-    for (final spec in specs) {
-      final attempt = strongBatch.contains(spec.notificationId)
-          ? const _ScheduleAttempt(scheduled: true)
-          : await _scheduleSpec(
-              spec,
-              copy,
-              exactAlarmsEnabled: exactAlarmsEnabled,
-            );
-      if (attempt.scheduled) {
-        accepted++;
-        queuedCustom.add(spec.notificationId);
-        if (Platform.isWindows &&
-            spec.catchUp &&
-            spec.ruleId != null &&
-            db != null) {
-          await db.markCatchUpQueued(
-            spec.ruleId!,
-            spec.sessionId!,
-            spec.sendIndex,
-          );
-        }
-      } else {
-        failed++;
+    var handledByAndroidBatch = false;
+    if (Platform.isAndroid && specs.isNotEmpty) {
+      final batch = await AndroidNativeReminderService.instance.scheduleBatch(
+        specs,
+        copy: copy,
+        exactPreferred: exactAlarmsEnabled,
+        allowInexactFallback: true,
+        restoreOnReboot: true,
+      );
+      if (batch != null) {
+        accepted = batch.scheduled;
+        failed = batch.failed;
+        usedFallback = batch.usedInexactFallback;
+        queuedCustom.addAll(batch.scheduledNotificationIds);
+        handledByAndroidBatch = true;
       }
-      usedFallback = usedFallback || attempt.usedInexactFallback;
+    }
+    if (!handledByAndroidBatch) {
+      for (final spec in specs) {
+        final attempt = strongBatch.contains(spec.notificationId)
+            ? const _ScheduleAttempt(scheduled: true)
+            : await _scheduleSpec(
+                spec,
+                copy,
+                exactAlarmsEnabled: exactAlarmsEnabled,
+              );
+        if (attempt.scheduled) {
+          accepted++;
+          queuedCustom.add(spec.notificationId);
+          if (Platform.isWindows &&
+              spec.catchUp &&
+              spec.ruleId != null &&
+              db != null) {
+            await db.markCatchUpQueued(
+              spec.ruleId!,
+              spec.sessionId!,
+              spec.sendIndex,
+            );
+          }
+        } else {
+          failed++;
+        }
+        usedFallback = usedFallback || attempt.usedInexactFallback;
+      }
     }
 
     if (db != null) await db.markQueuedReminders(queuedCustom);

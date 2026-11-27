@@ -95,4 +95,45 @@ class OrbitReminderStoreTest {
         assertEquals("stage_6", events.last()["stage"])
         assertEquals(setOf("timestamp", "stage", "alarmId", "reason"), events.first().keys)
     }
+
+    @Test fun upgradesV1RecordsTableAndSupportsIndexedBatchQueries() {
+        val base = System.currentTimeMillis()
+        fun makeRecord(id: Int, offsetMs: Long) = OrbitReminderRecord(
+            alarmId = id,
+            notificationId = id,
+            fireAtMillis = base + offsetMs,
+            title = "Class $id",
+            body = "Room A",
+            bigText = null,
+            payload = "p-$id",
+            channelName = "Reminders",
+            channelDescription = "Reminders",
+            restoreOnReboot = true,
+        )
+
+        context.openOrCreateDatabase("orbit_native_reminders.db", Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("CREATE TABLE records(id INTEGER PRIMARY KEY, record TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            db.execSQL("INSERT INTO metadata VALUES('migrated','1')")
+            db.execSQL("INSERT INTO metadata VALUES('config_migrated_v1','1')")
+            val legacy = makeRecord(10, 60_000)
+            db.execSQL("INSERT INTO records VALUES(?,?)", arrayOf<Any>(legacy.alarmId, legacy.toJson().toString()))
+            db.version = 1
+        }
+
+        assertTrue(OrbitReminderStore.hasFutureReminders(context, base))
+        assertEquals(1, OrbitReminderStore.countFutureReminders(context, base))
+
+        OrbitReminderStore.upsertBatch(
+            context,
+            listOf(makeRecord(11, 30_000), makeRecord(12, 90_000), makeRecord(13, -5_000)),
+        )
+        assertEquals(3, OrbitReminderStore.countFutureReminders(context, base))
+        val earliest = OrbitReminderStore.loadEarliestFuture(context, base, 2)
+        assertEquals(listOf(11, 10), earliest.map { it.alarmId })
+
+        OrbitReminderStore.removeBatch(context, listOf(10, 11, 12, 13))
+        assertFalse(OrbitReminderStore.hasFutureReminders(context, base))
+        assertEquals(0, OrbitReminderStore.countFutureReminders(context, base))
+    }
 }

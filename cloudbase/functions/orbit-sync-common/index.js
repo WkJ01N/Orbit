@@ -85,6 +85,24 @@ function recordToEntity(record) {
   };
 }
 
+const MUTATION_RECEIPT_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
+async function pruneExpiredMutations(
+  uid,
+  { now = Date.now(), maxAgeMs = MUTATION_RECEIPT_TTL_MS, limit = 20, database = db } = {},
+) {
+  const result = await database
+    .collection(collections.mutations)
+    .where({ userId: uid, createdAtMs: database.command.lt(now - maxAgeMs) })
+    .limit(limit)
+    .get();
+  const rows = result.data || [];
+  await Promise.all(
+    rows.map((row) => database.collection(collections.mutations).doc(row._id).remove()),
+  );
+  return rows.length;
+}
+
 async function push(uid, event) {
   const mutations = Array.isArray(event.mutations) ? event.mutations : [];
   if (mutations.some((m) => !visibleEntity(m.entity, { ...event, supportsDeadline: true, supportsSettings: true, supportsStatistics: true, supportsExams: true }))) throw codedError('SYNC_CATEGORY_DISABLED', 'Category disabled');
@@ -160,6 +178,7 @@ async function push(uid, event) {
             userId: uid,
             result: conflict,
             createdAt: db.serverDate(),
+            createdAtMs: Date.now(),
           });
           results.push(conflict);
           continue;
@@ -197,6 +216,7 @@ async function push(uid, event) {
           userId: uid,
           result: response,
           createdAt: db.serverDate(),
+          createdAtMs: Date.now(),
         });
         results.push(response);
       }
@@ -220,6 +240,10 @@ async function push(uid, event) {
         finalCursor = Math.max(finalCursor, result.cursor);
       }
     }
+  }
+  if (mutations.length > 0) {
+    // Best effort and bounded: a failed cleanup must never fail the sync.
+    await pruneExpiredMutations(uid).catch(() => 0);
   }
   return { accepted, conflicts, cursor: finalCursor };
 }
@@ -306,6 +330,8 @@ module.exports = {
   push,
   pull,
   deleteData,
+  pruneExpiredMutations,
+  MUTATION_RECEIPT_TTL_MS,
   success,
   failure,
 };

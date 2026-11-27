@@ -16,10 +16,21 @@ data class OrbitReminderScheduleResult(
     val usedInexactFallback: Boolean = false,
 )
 
+data class OrbitBatchScheduleResult(
+    val scheduled: Int,
+    val armed: Int,
+    val failed: Int,
+    val usedInexactFallback: Boolean,
+    val scheduledNotificationIds: List<Int>,
+)
+
 object OrbitReminderManager {
     const val channelId = "orbit_course_reminders"
     const val payloadExtra = "orbit_notification_payload"
     const val alarmIdExtra = "orbit_alarm_id"
+
+    internal const val maxArmedSystemAlarms = 300
+    private const val deferredAlarmsMetadataKey = "has_deferred_alarms"
 
     private const val classLeadAlarmBase = 1
     private const val checkInAlarmLimit = 1_000_000
@@ -50,14 +61,127 @@ object OrbitReminderManager {
             return OrbitReminderScheduleResult(scheduled = false)
         }
 
-        cancelAlarmOnly(context, record.alarmId)
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        OrbitReminderStore.upsert(context, record)
+        val result = armAlarm(
+            context = context,
+            alarmManager = alarmManager,
+            record = record,
+            exactPreferred = exactPreferred,
+            allowInexactFallback = allowInexactFallback,
+            emitDiagnostics = true,
+        )
+        if (!result.scheduled) {
+            OrbitReminderStore.remove(context, record.alarmId)
+            return result
+        }
+        OrbitReminderKeepAliveService.reconcile(context)
+        return result
+    }
+
+    fun scheduleBatch(
+        context: Context,
+        records: List<OrbitReminderRecord>,
+        exactPreferred: Boolean,
+        allowInexactFallback: Boolean,
+    ): OrbitBatchScheduleResult {
+        val now = System.currentTimeMillis()
+        val (validRaw, expired) = records.partition { it.fireAtMillis > now }
+        var failed = expired.size
+        if (expired.isNotEmpty()) {
+            OrbitReminderStore.removeBatch(context, expired.map { it.alarmId })
+        }
+        if (validRaw.isEmpty()) {
+            OrbitReminderStore.updateMetadata(context, mapOf(deferredAlarmsMetadataKey to null))
+            OrbitReminderKeepAliveService.reconcile(context)
+            return OrbitBatchScheduleResult(
+                scheduled = 0,
+                armed = 0,
+                failed = failed,
+                usedInexactFallback = false,
+                scheduledNotificationIds = emptyList(),
+            )
+        }
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        if (!allowInexactFallback && (!exactPreferred || !canScheduleExact(alarmManager))) {
+            OrbitReminderDiagnostics.event(context, "schedule_batch_rejected", reason = "exact_unavailable")
+            OrbitReminderStore.updateMetadata(context, mapOf("schedule_failure" to "schedule_batch:exact_unavailable"))
+            return OrbitBatchScheduleResult(
+                scheduled = 0,
+                armed = 0,
+                failed = records.size,
+                usedInexactFallback = false,
+                scheduledNotificationIds = emptyList(),
+            )
+        }
+        val valid = validRaw.sortedWith(compareBy({ it.fireAtMillis }, { it.alarmId }))
+        OrbitReminderStore.upsertBatch(context, valid)
+
+        val toArm = valid.take(maxArmedSystemAlarms)
+        val deferred = valid.drop(maxArmedSystemAlarms)
+        var armed = 0
+        var usedFallback = false
+        val failedIds = mutableListOf<Int>()
+        val scheduledIds = ArrayList<Int>(valid.size)
+
+        for (record in toArm) {
+            val attempt = armAlarm(
+                context = context,
+                alarmManager = alarmManager,
+                record = record,
+                exactPreferred = exactPreferred,
+                allowInexactFallback = allowInexactFallback,
+                emitDiagnostics = false,
+            )
+            if (attempt.scheduled) {
+                armed++
+                usedFallback = usedFallback || attempt.usedInexactFallback
+                scheduledIds.add(record.notificationId)
+            } else {
+                failed++
+                failedIds.add(record.alarmId)
+            }
+        }
+        for (record in deferred) {
+            scheduledIds.add(record.notificationId)
+        }
+        if (failedIds.isNotEmpty()) {
+            OrbitReminderStore.removeBatch(context, failedIds)
+        }
+        OrbitReminderStore.updateMetadata(
+            context,
+            mapOf(deferredAlarmsMetadataKey to if (deferred.isNotEmpty()) "1" else null),
+        )
+        OrbitReminderDiagnostics.event(
+            context,
+            "schedule_batch",
+            reason = "stored=${scheduledIds.size},armed=$armed,failed=$failed",
+        )
+        ensureMaintenanceAlarm(context)
+        OrbitReminderKeepAliveService.reconcile(context)
+        return OrbitBatchScheduleResult(
+            scheduled = scheduledIds.size,
+            armed = armed,
+            failed = failed,
+            usedInexactFallback = usedFallback,
+            scheduledNotificationIds = scheduledIds,
+        )
+    }
+
+    private fun armAlarm(
+        context: Context,
+        alarmManager: AlarmManager,
+        record: OrbitReminderRecord,
+        exactPreferred: Boolean,
+        allowInexactFallback: Boolean,
+        emitDiagnostics: Boolean,
+    ): OrbitReminderScheduleResult {
+        cancelAlarmOnly(context, record.alarmId)
         val operation = reminderPendingIntent(
             context,
             record.alarmId,
             PendingIntent.FLAG_UPDATE_CURRENT,
         ) ?: return OrbitReminderScheduleResult(scheduled = false)
-        OrbitReminderStore.upsert(context, record)
 
         if (exactPreferred && canScheduleExact(alarmManager)) {
             try {
@@ -66,8 +190,9 @@ object OrbitReminderManager {
                     AlarmManager.AlarmClockInfo(record.fireAtMillis, showIntent),
                     operation,
                 )
-                OrbitReminderDiagnostics.event(context, "schedule_exact", record.alarmId)
-                OrbitReminderKeepAliveService.reconcile(context)
+                if (emitDiagnostics) {
+                    OrbitReminderDiagnostics.event(context, "schedule_exact", record.alarmId)
+                }
                 return OrbitReminderScheduleResult(scheduled = true)
             } catch (error: SecurityException) {
                 OrbitReminderDiagnostics.event(context, "schedule_exact_rejected", record.alarmId, error.javaClass.simpleName)
@@ -79,9 +204,10 @@ object OrbitReminderManager {
         }
 
         if (!allowInexactFallback) {
-            OrbitReminderStore.remove(context, record.alarmId)
-            OrbitReminderDiagnostics.event(context, "schedule_rejected", record.alarmId, "exact_unavailable")
-            OrbitReminderStore.updateMetadata(context, mapOf("schedule_failure" to "schedule:exact_unavailable"))
+            if (emitDiagnostics) {
+                OrbitReminderDiagnostics.event(context, "schedule_rejected", record.alarmId, "exact_unavailable")
+                OrbitReminderStore.updateMetadata(context, mapOf("schedule_failure" to "schedule:exact_unavailable"))
+            }
             return OrbitReminderScheduleResult(scheduled = false)
         }
 
@@ -91,15 +217,15 @@ object OrbitReminderManager {
                 record.fireAtMillis,
                 operation,
             )
-            OrbitReminderDiagnostics.event(context, "schedule_inexact", record.alarmId)
-            OrbitReminderKeepAliveService.reconcile(context)
+            if (emitDiagnostics) {
+                OrbitReminderDiagnostics.event(context, "schedule_inexact", record.alarmId)
+            }
             OrbitReminderScheduleResult(
                 scheduled = true,
                 usedInexactFallback = true,
             )
         } catch (error: RuntimeException) {
             OrbitReminderDiagnostics.failure(context, "schedule_inexact", record.alarmId, error)
-            OrbitReminderStore.remove(context, record.alarmId)
             OrbitReminderScheduleResult(scheduled = false)
         }
     }
@@ -115,6 +241,7 @@ object OrbitReminderManager {
         OrbitReminderDiagnostics.event(context, "cancel_course_reminders")
         val records = OrbitReminderStore.removeWhere(context, ::isCourseReminder)
         records.forEach { cancelAlarmOnly(context, it.alarmId) }
+        OrbitReminderStore.updateMetadata(context, mapOf(deferredAlarmsMetadataKey to null))
         OrbitReminderKeepAliveService.reconcile(context)
     }
 
@@ -126,7 +253,14 @@ object OrbitReminderManager {
     fun contains(context: Context, alarmId: Int): Boolean {
         pruneExpired(context)
         return OrbitReminderStore.get(context, alarmId) != null &&
-            reminderPendingIntent(context, alarmId, PendingIntent.FLAG_NO_CREATE) != null
+            hasPendingAlarm(context, alarmId)
+    }
+
+    internal fun hasPendingAlarm(context: Context, alarmId: Int): Boolean =
+        reminderPendingIntent(context, alarmId, PendingIntent.FLAG_NO_CREATE) != null
+
+    internal fun pruneExpiredRecords(context: Context) {
+        pruneExpired(context)
     }
 
     fun buildNotification(context: Context, record: OrbitReminderRecord): Notification? {
@@ -268,36 +402,93 @@ object OrbitReminderManager {
     fun restorePersistedReminders(context: Context) {
         val now = System.currentTimeMillis()
         val records = OrbitReminderStore.load(context).values.toList()
+        val toRemove = mutableListOf<Int>()
+        val toUpsert = mutableListOf<OrbitReminderRecord>()
+        val candidates = mutableListOf<OrbitReminderRecord>()
+        val allowDeliveryRetry = notificationsAllowed(context)
+
         records.forEach { record ->
             try {
                 when {
-                    !record.restoreOnReboot -> cancel(context, record.alarmId)
+                    !record.restoreOnReboot -> toRemove.add(record.alarmId)
                     deliveryPending(record) -> {
                         val since = org.json.JSONObject(record.metadata).optLong("deliveryPendingSince", now)
-                        if (now - since > retryRetentionMillis) cancel(context, record.alarmId)
-                        else if (notificationsAllowed(context)) {
+                        if (now - since > retryRetentionMillis) {
+                            toRemove.add(record.alarmId)
+                        } else if (allowDeliveryRetry) {
                             val retry = record.copy(fireAtMillis = maxOf(now + 1000L, record.fireAtMillis))
-                            if (!schedule(context, retry, true, true).scheduled) OrbitReminderStore.upsert(context, retry)
+                            toUpsert.add(retry)
+                            candidates.add(retry)
                         }
                     }
                     record.alarmId >= customReminderAlarmBase &&
                         record.alarmId < deadlineReminderAlarmBase ->
-                        cancel(context, record.alarmId)
-                    record.fireAtMillis <= now -> OrbitReminderStore.remove(context, record.alarmId)
-                    else -> schedule(
-                        context,
-                        rebaseRecord(record),
-                        exactPreferred = true,
-                        allowInexactFallback = true,
-                    )
+                        toRemove.add(record.alarmId)
+                    record.fireAtMillis <= now -> toRemove.add(record.alarmId)
+                    else -> {
+                        val rebased = rebaseRecord(record)
+                        if (rebased.fireAtMillis <= now) {
+                            toRemove.add(record.alarmId)
+                        } else {
+                            if (rebased.fireAtMillis != record.fireAtMillis) toUpsert.add(rebased)
+                            candidates.add(rebased)
+                        }
+                    }
                 }
             } catch (error: Exception) {
                 OrbitReminderDiagnostics.failure(context, "restore_record", record.alarmId, error)
             }
         }
+        toRemove.forEach { cancelAlarmOnly(context, it) }
+        OrbitReminderStore.removeBatch(context, toRemove)
+        OrbitReminderStore.upsertBatch(context, toUpsert)
+
+        val ordered = candidates.sortedWith(compareBy({ it.fireAtMillis }, { it.alarmId }))
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        ordered.take(maxArmedSystemAlarms).forEach { record ->
+            try {
+                armAlarm(
+                    context = context,
+                    alarmManager = alarmManager,
+                    record = record,
+                    exactPreferred = true,
+                    allowInexactFallback = true,
+                    emitDiagnostics = false,
+                )
+            } catch (error: Exception) {
+                OrbitReminderDiagnostics.failure(context, "restore_record", record.alarmId, error)
+            }
+        }
+        ordered.drop(maxArmedSystemAlarms).forEach { cancelAlarmOnly(context, it.alarmId) }
+        OrbitReminderStore.updateMetadata(
+            context,
+            mapOf(deferredAlarmsMetadataKey to if (ordered.size > maxArmedSystemAlarms) "1" else null),
+        )
         ensureMaintenanceAlarm(context)
         OrbitReminderLedger.replenish(context)
         OrbitReminderKeepAliveService.reconcile(context)
+    }
+
+    fun armNextWindowIfNeeded(context: Context) {
+        if (OrbitReminderStore.metadata(context)[deferredAlarmsMetadataKey] != "1") return
+        val now = System.currentTimeMillis()
+        val window = OrbitReminderStore.loadEarliestFuture(context, now, maxArmedSystemAlarms)
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        for (record in window) {
+            if (!hasPendingAlarm(context, record.alarmId)) {
+                armAlarm(
+                    context = context,
+                    alarmManager = alarmManager,
+                    record = record,
+                    exactPreferred = true,
+                    allowInexactFallback = true,
+                    emitDiagnostics = false,
+                )
+            }
+        }
+        if (OrbitReminderStore.countFutureReminders(context, now) <= maxArmedSystemAlarms) {
+            OrbitReminderStore.updateMetadata(context, mapOf(deferredAlarmsMetadataKey to null))
+        }
     }
     private fun rebaseRecord(record: OrbitReminderRecord): OrbitReminderRecord {
         val time=org.json.JSONObject(record.metadata).optString("fireAt")

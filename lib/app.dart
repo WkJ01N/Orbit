@@ -10,6 +10,7 @@ import 'package:orbit/features/settings/update_host.dart';
 import 'dart:async';
 import 'package:orbit/features/reminder/strong_confirmation.dart';
 import 'package:orbit/providers/archive_providers.dart';
+import 'package:orbit/providers/widget_providers.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -95,11 +96,13 @@ class OrbitApp extends ConsumerWidget {
                 child: ArchiveLifecycleHost(
                   child: StatisticsLifecycleHost(
                     child: _AccountSyncLifecycleHost(
-                      child: NotificationPermissionHost(
-                        navigatorKey: _navigatorKey,
-                        child: TypographyWarningHost(
+                      child: AndroidWidgetLifecycleHost(
+                        child: NotificationPermissionHost(
                           navigatorKey: _navigatorKey,
-                          child: child!,
+                          child: TypographyWarningHost(
+                            navigatorKey: _navigatorKey,
+                            child: child!,
+                          ),
                         ),
                       ),
                     ),
@@ -240,7 +243,7 @@ class _AccountSyncLifecycleHostState
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(accountSyncProvider);
+    ref.listen(accountSyncProvider, (_, _) {});
     return widget.child;
   }
 }

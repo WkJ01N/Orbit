@@ -29,6 +29,7 @@ class OrbitReminderReceiver : BroadcastReceiver() {
                 return
             }
             OrbitReminderStore.remove(context, alarmId)
+            OrbitReminderManager.armNextWindowIfNeeded(context)
             val meta = JSONObject(record.metadata)
             val rule = meta.optString("ruleId")
             if (rule.isNotEmpty() && rule != "null") {

@@ -22,6 +22,9 @@ const collections = {
 const ensureCollections = createCollectionBootstrap(db, Object.values(collections));
 const MAX_HTTP_BODY = 5 * 1024 * 1024;
 const MAX_AVATAR_BODY = 2 * 1024 * 1024;
+const MISSING_RELEASE_TTL_MS = 10 * 60 * 1000;
+const MAX_MISSING_RELEASE_TAGS = 256;
+const missingReleaseTags = new Map();
 
 function currentUid() {
   const context = cloudbase.getCloudbaseContext();
@@ -310,10 +313,27 @@ async function http(event) {
   }
   const releaseMatch = /^\/v1\/updates\/releases\/(v\d+\.\d+\.\d+)$/.exec(path);
   if (method === 'GET' && releaseMatch) {
-    const ref = db.collection(collections.updates).doc(`tag_${releaseMatch[1].replaceAll('.', '_')}`);
+    const tag = releaseMatch[1];
+    const missingAt = missingReleaseTags.get(tag);
+    if (missingAt !== undefined && Date.now() - missingAt < MISSING_RELEASE_TTL_MS) {
+      return jsonResponse(404, { code: 'NOT_FOUND', message: 'Release not found' });
+    }
+    const ref = db.collection(collections.updates).doc(`tag_${tag.replaceAll('.', '_')}`);
     const cached = documentData(await ref.get());
     if (cached && Date.now() - cached.cachedAt < 15 * 60 * 1000) return jsonResponse(200, cached.release);
-    const release = await updates.release(releaseMatch[1]);
+    let release;
+    try {
+      release = await updates.release(tag);
+    } catch (error) {
+      if (error.code === 'NOT_FOUND') {
+        missingReleaseTags.set(tag, Date.now());
+        while (missingReleaseTags.size > MAX_MISSING_RELEASE_TAGS) {
+          missingReleaseTags.delete(missingReleaseTags.keys().next().value);
+        }
+        return jsonResponse(404, { code: 'NOT_FOUND', message: 'Release not found' });
+      }
+      throw error;
+    }
     await ref.set({ cachedAt: Date.now(), release });
     return jsonResponse(200, release);
   }
@@ -334,9 +354,11 @@ async function http(event) {
     const url = await avatarUrl(identity.uid, event.queryStringParameters?.fileId);
     return jsonResponse(200, { url });
   }
-  const policyRef = db.collection(collections.policy).doc(documentId(identity.uid));
-  const policy = syncPolicy.normalize(documentData(await policyRef.get()) || {});
-  if (path === '/v1/sync/policy' && method === 'GET') return jsonResponse(200, {...policy, supportsExams: true});
+  const loadPolicy = async () =>
+    syncPolicy.normalize(
+      documentData(await db.collection(collections.policy).doc(documentId(identity.uid)).get()) || {},
+    );
+  if (path === '/v1/sync/policy' && method === 'GET') return jsonResponse(200, {...(await loadPolicy()), supportsExams: true});
   if (path === '/v1/sync/policy' && method === 'PUT') {
     const requested = syncPolicy.normalize(jsonBody(event));
     const saved = await db.runTransaction(async (transaction) => {
@@ -349,12 +371,15 @@ async function http(event) {
     return jsonResponse(200, saved?.result ?? saved);
   }
   if (method === 'POST' && path === '/v1/sync/push') {
+    const policy = await loadPolicy();
     return jsonResponse(200, await sync.push(identity.uid, syncPolicy.effectiveInput(syncBody(event), policy)), { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/pull') {
+    const policy = await loadPolicy();
     return jsonResponse(200, await sync.pull(identity.uid, syncPolicy.effectiveInput(jsonBody(event), policy)), { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/exchange') {
+    const policy = await loadPolicy();
     const input = syncPolicy.effectiveInput(syncBody(event), policy);
     const pushed = await sync.push(identity.uid, input);
     const pulled = await sync.pull(identity.uid, {
@@ -369,6 +394,7 @@ async function http(event) {
     return jsonResponse(200, { ...pushed, pull: pulled }, { gzip: true });
   }
   if (method === 'POST' && path === '/v1/sync/snapshot') {
+    const policy = await loadPolicy();
     const input = syncPolicy.effectiveInput({ ...jsonBody(event), snapshot: true }, policy);
     return jsonResponse(200, await sync.pull(identity.uid, {
       snapshot: true,

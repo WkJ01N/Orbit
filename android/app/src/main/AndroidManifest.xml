@@ -59,28 +59,10 @@
             android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
-        <receiver
-            android:name="dev.fluttercommunity.plus.androidalarmmanager.RebootBroadcastReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-        <!-- flutter_local_notifications: restore scheduled notifications after reboot -->
+        <!-- flutter_local_notifications -->
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-        <receiver
-            android:exported="false"
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
 
         <!-- Orbit native delivery path: posts notifications without starting Flutter. -->
         <service android:name=".OrbitStrongReminderService" android:exported="false"
@@ -114,6 +96,48 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Orbit home-screen AppWidgets: read SQLite WAL directly without starting Flutter. -->
+        <receiver
+            android:name=".OrbitNextClassWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_next_class_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/orbit_next_class_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".OrbitTodayScheduleWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_today_schedule_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/orbit_today_schedule_widget_info" />
+        </receiver>
+        <service
+            android:name=".OrbitTodayScheduleService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <receiver
+            android:name=".OrbitWidgetBoundaryReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.must.orbit.orbit.ACTION_WIDGET_BOUNDARY_REFRESH" />
+                <action android:name="com.must.orbit.orbit.ACTION_WIDGET_MANUAL_REFRESH" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>

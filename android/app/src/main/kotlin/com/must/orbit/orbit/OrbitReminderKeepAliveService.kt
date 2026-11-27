@@ -138,9 +138,7 @@ class OrbitReminderKeepAliveService : Service() {
             }
         }
 
-        private fun hasFutureReminders(context: Context): Boolean {
-            val now = System.currentTimeMillis()
-            return OrbitReminderStore.load(context).values.any { it.fireAtMillis > now }
-        }
+        private fun hasFutureReminders(context: Context): Boolean =
+            OrbitReminderStore.hasFutureReminders(context)
     }
 }

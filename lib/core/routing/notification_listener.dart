@@ -32,6 +32,7 @@ class _OrbitNotificationListenerState
   Timer? _foregroundResync;
   bool _resyncRunning = false;
   bool _clockPaused = false;
+  final _openCheckInSessions = <String>{};
 
   @override
   void initState() {
@@ -132,29 +133,27 @@ class _OrbitNotificationListenerState
     }
 
     ref.listen<String?>(pendingNotificationPayloadProvider, (previous, next) {
-      if (next != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
-            return;
-          }
-          _handlePayload(context, next);
-          ref.read(pendingNotificationPayloadProvider.notifier).state = null;
-        });
-      }
+      if (next != null) _schedulePayload(next);
     });
 
     if (!_initialPayloadChecked) {
       _initialPayloadChecked = true;
       final initial = ref.read(pendingNotificationPayloadProvider);
-      if (initial != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _handlePayload(context, initial);
-          ref.read(pendingNotificationPayloadProvider.notifier).state = null;
-        });
-      }
+      if (initial != null) _schedulePayload(initial);
     }
     return widget.child;
+  }
+
+  void _schedulePayload(String payload) {
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pending = ref.read(pendingNotificationPayloadProvider.notifier);
+      if (pending.state == payload) pending.state = null;
+      unawaited(_handlePayload(context, payload));
+    });
+    // A tap can arrive while the foreground UI has no frame scheduled.
+    binding.ensureVisualUpdate();
   }
 
   Future<void> _handlePayload(BuildContext context, String payload) async {
@@ -214,6 +213,21 @@ class _OrbitNotificationListenerState
         ? payload.substring('checkin_'.length)
         : payload;
 
+    // A tap can also be delivered again while the course is loading or while
+    // its return sheet is on screen. Keep one route and one launch per visit.
+    if (fromCheckInReminder && !_openCheckInSessions.add(sessionId)) return;
+    try {
+      await _showSession(context, sessionId, fromCheckInReminder);
+    } finally {
+      if (fromCheckInReminder) _openCheckInSessions.remove(sessionId);
+    }
+  }
+
+  Future<void> _showSession(
+    BuildContext context,
+    String sessionId,
+    bool fromCheckInReminder,
+  ) async {
     final session = await ref
         .read(scheduleRepositoryProvider)
         .getSessionById(sessionId);

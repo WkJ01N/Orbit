@@ -49,6 +49,8 @@ data class OrbitReminderRecord(
 }
 
 object OrbitReminderStore {
+    private const val SCHEMA_VERSION = 2
+
     private val legacyMetadataKeys = listOf(
         "database_path", "catchup_label", "catchup_notice", "original_label",
         "delivered_label", "channel_name", "channel_description",
@@ -60,39 +62,74 @@ object OrbitReminderStore {
         file.parentFile?.mkdirs()
         val db = android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null)
         try {
-            db.execSQL("CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, record TEXT NOT NULL)")
-            db.execSQL("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
-            db.execSQL("CREATE TABLE IF NOT EXISTS diagnostics(timestamp INTEGER NOT NULL, stage TEXT NOT NULL, alarm_id INTEGER, reason TEXT)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS diagnostics_timestamp ON diagnostics(timestamp DESC)")
-            db.beginTransaction()
-            try {
-                val migrated = db.rawQuery("SELECT value FROM metadata WHERE key='migrated'", null).use { it.moveToFirst() }
-                if (!migrated) {
-                    val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
-                    val raw = prefs.getString("records_v1", null)
-                    if (raw != null) {
-                        val records = JSONArray(raw)
-                        for (i in 0 until records.length()) {
-                            val record = records.getJSONObject(i)
-                            db.execSQL("INSERT OR IGNORE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.getInt("alarmId"),record.toString()))
+            db.enableWriteAheadLogging()
+            db.rawQuery("PRAGMA busy_timeout = 5000", null).close()
+            if (db.version < SCHEMA_VERSION) {
+                db.beginTransaction()
+                try {
+                    db.execSQL("CREATE TABLE IF NOT EXISTS records(id INTEGER PRIMARY KEY, fire_at INTEGER NOT NULL DEFAULT 0, record TEXT NOT NULL)")
+                    val columns = buildSet {
+                        db.rawQuery("PRAGMA table_info(records)", null).use { cursor ->
+                            val nameIndex = cursor.getColumnIndex("name")
+                            while (cursor.moveToNext()) {
+                                if (nameIndex >= 0) add(cursor.getString(nameIndex))
+                            }
                         }
                     }
-                    db.execSQL("INSERT INTO metadata(key,value) VALUES('migrated','1')")
-                }
-                val configMigrated = db.rawQuery(
-                    "SELECT value FROM metadata WHERE key='config_migrated_v1'", null,
-                ).use { it.moveToFirst() }
-                if (!configMigrated) {
-                    val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
-                    for (key in legacyMetadataKeys) {
-                        prefs.getString(key, null)?.let { value ->
-                            db.execSQL("INSERT OR IGNORE INTO metadata(key,value) VALUES(?,?)", arrayOf(key, value))
+                    if (!columns.contains("fire_at")) {
+                        db.execSQL("ALTER TABLE records ADD COLUMN fire_at INTEGER NOT NULL DEFAULT 0")
+                        val updates = mutableListOf<Pair<Int, Long>>()
+                        db.rawQuery("SELECT id, record FROM records", null).use { cursor ->
+                            while (cursor.moveToNext()) {
+                                val id = cursor.getInt(0)
+                                val fireAt = try {
+                                    JSONObject(cursor.getString(1)).optLong("fireAtMillis", 0L)
+                                } catch (_: Exception) {
+                                    0L
+                                }
+                                updates.add(id to fireAt)
+                            }
+                        }
+                        for ((id, fireAt) in updates) {
+                            db.execSQL("UPDATE records SET fire_at=? WHERE id=?", arrayOf<Any>(fireAt, id))
                         }
                     }
-                    db.execSQL("INSERT INTO metadata(key,value) VALUES('config_migrated_v1','1')")
-                }
-                db.setTransactionSuccessful()
-            } finally { db.endTransaction() }
+                    db.execSQL("CREATE INDEX IF NOT EXISTS idx_records_fire_at ON records(fire_at)")
+                    db.execSQL("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+                    db.execSQL("CREATE TABLE IF NOT EXISTS diagnostics(timestamp INTEGER NOT NULL, stage TEXT NOT NULL, alarm_id INTEGER, reason TEXT)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS diagnostics_timestamp ON diagnostics(timestamp DESC)")
+                    val migrated = db.rawQuery("SELECT value FROM metadata WHERE key='migrated'", null).use { it.moveToFirst() }
+                    if (!migrated) {
+                        val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
+                        val raw = prefs.getString("records_v1", null)
+                        if (raw != null) {
+                            val records = JSONArray(raw)
+                            for (i in 0 until records.length()) {
+                                val record = records.getJSONObject(i)
+                                db.execSQL(
+                                    "INSERT OR IGNORE INTO records(id,fire_at,record) VALUES(?,?,?)",
+                                    arrayOf<Any>(record.getInt("alarmId"), record.optLong("fireAtMillis", 0L), record.toString()),
+                                )
+                            }
+                        }
+                        db.execSQL("INSERT INTO metadata(key,value) VALUES('migrated','1')")
+                    }
+                    val configMigrated = db.rawQuery(
+                        "SELECT value FROM metadata WHERE key='config_migrated_v1'", null,
+                    ).use { it.moveToFirst() }
+                    if (!configMigrated) {
+                        val prefs = context.getSharedPreferences("orbit_native_reminders", Context.MODE_PRIVATE)
+                        for (key in legacyMetadataKeys) {
+                            prefs.getString(key, null)?.let { value ->
+                                db.execSQL("INSERT OR IGNORE INTO metadata(key,value) VALUES(?,?)", arrayOf(key, value))
+                            }
+                        }
+                        db.execSQL("INSERT INTO metadata(key,value) VALUES('config_migrated_v1','1')")
+                    }
+                    db.version = SCHEMA_VERSION
+                    db.setTransactionSuccessful()
+                } finally { db.endTransaction() }
+            }
         } catch (error: Exception) {
             db.close()
             throw error
@@ -191,9 +228,59 @@ object OrbitReminderStore {
         }
     }
     fun upsert(context: Context,record: OrbitReminderRecord) = open(context).use { db ->
-        db.execSQL("INSERT OR REPLACE INTO records(id,record) VALUES(?,?)", arrayOf<Any>(record.alarmId,record.toJson().toString()))
+        db.execSQL("INSERT OR REPLACE INTO records(id,fire_at,record) VALUES(?,?,?)", arrayOf<Any>(record.alarmId,record.fireAtMillis,record.toJson().toString()))
+    }
+    fun upsertBatch(context: Context, records: List<OrbitReminderRecord>) {
+        if (records.isEmpty()) return
+        open(context).use { db ->
+            db.beginTransaction()
+            try {
+                for (record in records) {
+                    db.execSQL(
+                        "INSERT OR REPLACE INTO records(id,fire_at,record) VALUES(?,?,?)",
+                        arrayOf<Any>(record.alarmId, record.fireAtMillis, record.toJson().toString()),
+                    )
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+        }
     }
     fun remove(context: Context,alarmId: Int) = open(context).use { db -> db.delete("records","id=?",arrayOf(alarmId.toString())) }
+    fun removeBatch(context: Context, alarmIds: Collection<Int>) {
+        if (alarmIds.isEmpty()) return
+        open(context).use { db ->
+            db.beginTransaction()
+            try {
+                for (alarmId in alarmIds) {
+                    db.delete("records", "id=?", arrayOf(alarmId.toString()))
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+        }
+    }
+    fun hasFutureReminders(context: Context, nowMillis: Long = System.currentTimeMillis()): Boolean =
+        open(context).use { db ->
+            db.rawQuery("SELECT 1 FROM records WHERE fire_at > ? LIMIT 1", arrayOf(nowMillis.toString())).use { it.moveToFirst() }
+        }
+    fun countFutureReminders(context: Context, nowMillis: Long = System.currentTimeMillis()): Int =
+        open(context).use { db ->
+            db.rawQuery("SELECT COUNT(*) FROM records WHERE fire_at > ?", arrayOf(nowMillis.toString())).use { cursor ->
+                if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            }
+        }
+    fun loadEarliestFuture(context: Context, nowMillis: Long, limit: Int): List<OrbitReminderRecord> =
+        open(context).use { db ->
+            buildList {
+                db.rawQuery(
+                    "SELECT record FROM records WHERE fire_at > ? ORDER BY fire_at ASC, id ASC LIMIT ?",
+                    arrayOf(nowMillis.toString(), limit.coerceAtLeast(1).toString()),
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        add(OrbitReminderRecord.fromJson(JSONObject(cursor.getString(0))))
+                    }
+                }
+            }
+        }
     fun removeWhere(context: Context,predicate: (OrbitReminderRecord)->Boolean): List<OrbitReminderRecord> = open(context).use { db ->
         db.beginTransaction()
         try {

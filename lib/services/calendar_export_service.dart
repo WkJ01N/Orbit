@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 
 /// Serializes course sessions into an RFC 5545 iCalendar document.
 ///
@@ -13,7 +14,12 @@ class CalendarExportService {
 
   static const _prodid = '-//Orbit//Timetable//ZH';
 
-  String build(List<CourseSession> sessions, {DateTime? stamp}) {
+  String build(
+    List<CourseSession> sessions, {
+    DateTime? stamp,
+    int? defaultLeadMinutes,
+    List<Deadline> deadlines = const [],
+  }) {
     final generated = _formatUtc(stamp ?? DateTime.now());
     final buffer = StringBuffer()
       ..write('BEGIN:VCALENDAR\r\n')
@@ -23,7 +29,15 @@ class CalendarExportService {
       ..write('METHOD:PUBLISH\r\n');
     for (final session in sessions) {
       if (session.deletedAt != null) continue;
-      for (final line in _eventLines(session, generated)) {
+      for (final line in _eventLines(session, generated, defaultLeadMinutes)) {
+        buffer
+          ..write(_fold(line))
+          ..write('\r\n');
+      }
+    }
+    for (final deadline in deadlines) {
+      if (deadline.deleted || deadline.completed) continue;
+      for (final line in _deadlineLines(deadline, generated)) {
         buffer
           ..write(_fold(line))
           ..write('\r\n');
@@ -33,7 +47,38 @@ class CalendarExportService {
     return buffer.toString();
   }
 
-  List<String> _eventLines(CourseSession session, String generated) {
+  List<String> _alarmLines(int lead, String description) => [
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'TRIGGER:-PT${lead}M',
+    'DESCRIPTION:${_escape(description)}',
+    'END:VALARM',
+  ];
+
+  List<String> _deadlineLines(Deadline deadline, String generated) {
+    final title = '[DDL] ${deadline.title}';
+    final leads = {...deadline.leadMinutes}.toList()..sort();
+    return [
+      'BEGIN:VEVENT',
+      'UID:ddl-${_escape(deadline.id)}@orbit',
+      'DTSTAMP:$generated',
+      'DTSTART:${_formatUtc(deadline.dueAt)}',
+      'DTEND:${_formatUtc(deadline.dueAt)}',
+      'SUMMARY:${_escape(title)}',
+      if (deadline.subject.isNotEmpty)
+        'DESCRIPTION:${_escape(deadline.subject)}',
+      for (final lead in leads)
+        if (lead > 0 && deadline.reminderEnabledAt(lead))
+          ..._alarmLines(lead, title),
+      'END:VEVENT',
+    ];
+  }
+
+  List<String> _eventLines(
+    CourseSession session,
+    String generated,
+    int? defaultLeadMinutes,
+  ) {
     final summary = session.section.isEmpty
         ? session.courseName
         : '${session.courseName} ${session.section}';
@@ -44,6 +89,11 @@ class CalendarExportService {
       if (session.note != null && session.note!.trim().isNotEmpty)
         session.note!.trim(),
     ].join('\n');
+    final lead = defaultLeadMinutes == null
+        ? null
+        : session.isExam
+        ? (session.examReminderEnabled ? session.examLeadMinutes : null)
+        : defaultLeadMinutes;
     return [
       'BEGIN:VEVENT',
       'UID:${_escape(session.id)}@orbit',
@@ -53,6 +103,7 @@ class CalendarExportService {
       'SUMMARY:${_escape(summary)}',
       if (session.room.isNotEmpty) 'LOCATION:${_escape(session.room)}',
       if (description.isNotEmpty) 'DESCRIPTION:${_escape(description)}',
+      if (lead != null && lead > 0) ..._alarmLines(lead, summary),
       'END:VEVENT',
     ];
   }

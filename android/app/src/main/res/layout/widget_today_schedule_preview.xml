@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="4dp">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_card_bg"
+        android:tint="#F7FAFA" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_today_schedule_label"
+            android:textColor="#171D1C"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/widget_row_bg"
+            android:backgroundTint="#E2F4F2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="10dp">
+
+            <ImageView
+                android:layout_width="4dp"
+                android:layout_height="26dp"
+                android:contentDescription="@null"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_accent_bar"
+                android:tint="#39C5BB" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="10dp"
+                android:text="09:00 - 10:30"
+                android:textColor="#171D1C"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/widget_row_bg"
+            android:backgroundTint="#EDF3F2"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="10dp">
+
+            <ImageView
+                android:layout_width="4dp"
+                android:layout_height="26dp"
+                android:contentDescription="@null"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_accent_bar"
+                android:tint="#3B6BF6" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingStart="10dp"
+                android:text="14:00 - 15:30"
+                android:textColor="#171D1C"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

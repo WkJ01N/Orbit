@@ -92,8 +92,22 @@ class OrbitSessionStore {
   final String _sessionKey;
   final String _deviceKey;
   final String _pendingKey;
+  Future<void> _writeTail = Future<void>.value();
 
-  Future<OrbitSession?> readSession() async {
+  Future<T> _serialized<T>(Future<T> Function() action) {
+    final completer = Completer<T>();
+    final next = _writeTail.then((_) async {
+      try {
+        completer.complete(await action());
+      } catch (error, stack) {
+        completer.completeError(error, stack);
+      }
+    });
+    _writeTail = next.catchError((Object _) {});
+    return completer.future;
+  }
+
+  Future<OrbitSession?> _readSessionUnlocked() async {
     final raw = await _storage.read(_sessionKey);
     if (raw == null || raw.isEmpty) return null;
     try {
@@ -101,15 +115,63 @@ class OrbitSessionStore {
         Map<String, dynamic>.from(jsonDecode(raw) as Map),
       );
     } catch (_) {
-      await clearSession();
+      await _storage.delete(_sessionKey);
       return null;
     }
   }
 
-  Future<void> saveSession(OrbitSession session) =>
-      _storage.write(_sessionKey, jsonEncode(session.toJson()));
+  Future<OrbitSession?> readSession() => _serialized(_readSessionUnlocked);
 
-  Future<void> clearSession() => _storage.delete(_sessionKey);
+  Future<void> saveSession(OrbitSession session) => _serialized(
+    () => _storage.write(_sessionKey, jsonEncode(session.toJson())),
+  );
+
+  Future<void> clearSession() =>
+      _serialized(() => _storage.delete(_sessionKey));
+
+  Future<void> updateAccount(SyncAccount account) => _serialized(() async {
+    final current = await _readSessionUnlocked();
+    if (current != null && current.account.uid == account.uid) {
+      await _storage.write(
+        _sessionKey,
+        jsonEncode(current.copyWith(account: account).toJson()),
+      );
+    }
+  });
+
+  Future<OrbitSession> saveRefreshedSession(
+    OrbitSession refreshed, {
+    required String expectedRefreshToken,
+  }) => _serialized(() async {
+    final latest = await _readSessionUnlocked();
+    if (latest == null) {
+      throw const AccountSyncException('session_invalid');
+    }
+    if (latest.refreshToken != expectedRefreshToken) {
+      return latest;
+    }
+    final merged = latest.account.uid == refreshed.account.uid
+        ? refreshed.copyWith(account: latest.account)
+        : refreshed;
+    await _storage.write(_sessionKey, jsonEncode(merged.toJson()));
+    return merged;
+  });
+
+  Future<bool> clearSessionIfMatches({
+    String? accessToken,
+    String? refreshToken,
+  }) => _serialized(() async {
+    final latest = await _readSessionUnlocked();
+    if (latest == null) return false;
+    if (accessToken != null && latest.accessToken != accessToken) {
+      return false;
+    }
+    if (refreshToken != null && latest.refreshToken != refreshToken) {
+      return false;
+    }
+    await _storage.delete(_sessionKey);
+    return true;
+  });
 
   Future<String> deviceId() async {
     final existing = await _storage.read(_deviceKey);
@@ -337,7 +399,13 @@ class OrbitApiClient {
           error.code != 'unauthenticated') {
         rethrow;
       }
-      session = await _refresh();
+      final latestBeforeRefresh = await sessions.readSession();
+      if (latestBeforeRefresh != null &&
+          latestBeforeRefresh.accessToken != session.accessToken) {
+        session = latestBeforeRefresh;
+      } else {
+        session = await _refresh();
+      }
       try {
         return await _raw(
           method,
@@ -352,26 +420,41 @@ class OrbitApiClient {
         if (retryError.code == 'session_invalid' ||
             retryError.code == 'access_expired' ||
             retryError.code == 'unauthenticated') {
-          await sessions.clearSession();
-          throw AccountSyncException('session_invalid', retryError.detail);
+          final latest = await sessions.readSession();
+          if (latest != null && latest.accessToken != session.accessToken) {
+            return _raw(
+              method,
+              path,
+              body: body,
+              headers: {
+                ...headers,
+                'Authorization': 'Bearer ${latest.accessToken}',
+              },
+            );
+          }
+          if (_isDefinitiveSessionRejection(retryError)) {
+            await sessions.clearSessionIfMatches(
+              accessToken: session.accessToken,
+            );
+            throw AccountSyncException('session_invalid', retryError.detail);
+          }
         }
         rethrow;
       }
     }
   }
 
+  static bool _isDefinitiveSessionRejection(AccountSyncException error) =>
+      error.code == 'session_invalid' || error.code == 'unauthenticated';
+
   Future<OrbitSession> _validSession() async {
     final session = await sessions.readSession();
     if (session == null) {
       throw const AccountSyncException('session_invalid');
     }
-    if (session.refreshExpiresAt.isBefore(DateTime.now())) {
-      await sessions.clearSession();
-      throw const AccountSyncException('session_invalid');
-    }
-    if (session.accessExpiresAt.isBefore(
-      DateTime.now().add(const Duration(minutes: 5)),
-    )) {
+    final now = DateTime.now();
+    if (session.refreshExpiresAt.isBefore(now) ||
+        session.accessExpiresAt.isBefore(now.add(const Duration(minutes: 5)))) {
       return _refresh();
     }
     return session;
@@ -403,23 +486,23 @@ class OrbitApiClient {
         Map<String, dynamic>.from(value['session'] as Map),
         current.account,
       );
-      await sessions.saveSession(refreshed);
-      return refreshed;
+      return await sessions.saveRefreshedSession(
+        refreshed,
+        expectedRefreshToken: current.refreshToken,
+      );
     } on AccountSyncException catch (error) {
-      if (error.code != 'network_error') {
-        await sessions.clearSession();
+      if (_isDefinitiveSessionRejection(error)) {
+        await sessions.clearSessionIfMatches(
+          refreshToken: current.refreshToken,
+        );
         throw AccountSyncException('session_invalid', error.detail);
       }
       rethrow;
     }
   }
 
-  Future<void> _saveAccount(SyncAccount account) async {
-    final current = await sessions.readSession();
-    if (current != null) {
-      await sessions.saveSession(current.copyWith(account: account));
-    }
-  }
+  Future<void> _saveAccount(SyncAccount account) =>
+      sessions.updateAccount(account);
 
   Future<Map<String, dynamic>> _json(
     String method,
@@ -476,12 +559,12 @@ class OrbitApiClient {
       return result;
     } on AccountSyncException {
       rethrow;
-    } on SocketException catch (error) {
-      throw AccountSyncException('network_error', '$error');
-    } on HttpException catch (error) {
+    } on IOException catch (error) {
       throw AccountSyncException('network_error', '$error');
     } on TimeoutException catch (error) {
       throw AccountSyncException('network_error', '$error');
+    } on FormatException catch (error) {
+      throw AccountSyncException('invalid_cloud_response', '$error');
     }
   }
 

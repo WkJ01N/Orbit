@@ -4,7 +4,9 @@ const crypto = require('crypto');
 
 const ACCESS_LIFETIME_MS = 60 * 60 * 1000;
 const REFRESH_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
-const REFRESH_RETRY_GRACE_MS = 60 * 1000;
+// Mobile clients suspended mid-refresh may retry hours later; explicit revoke
+// and re-login still clear all tokens immediately.
+const REFRESH_RETRY_GRACE_MS = 24 * 60 * 60 * 1000;
 const MAX_SESSIONS = 5;
 
 function sha256(value) {

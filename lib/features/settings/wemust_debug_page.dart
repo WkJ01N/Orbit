@@ -52,6 +52,7 @@ class _WemustDebugPageState extends ConsumerState<WemustDebugPage> {
       '已启动 WeMust，请手动进入课表。',
       '已啟動 WeMust，請手動進入課表。',
     ),
+    WemustLaunchResult.timetableUnavailable => t.timetableUnavailable,
     WemustLaunchResult.notInstalled => t.notInstalled,
     WemustLaunchResult.failed || WemustLaunchResult.unsupported => t.failed,
     null => t.pick('Not tested', '尚未测试', '尚未測試'),

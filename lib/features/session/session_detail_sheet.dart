@@ -112,8 +112,11 @@ class SessionDetailSheet extends ConsumerWidget {
                 text: session.note!,
               ),
             const SizedBox(height: 20),
-            if (fromCheckInReminder && !session.isExam)
-              const WemustCheckInAction(),
+            if (!session.isExam)
+              WemustCheckInAction(
+                startAt: session.startAt,
+                openOnShow: fromCheckInReminder,
+              ),
             _SessionActionButtons(session: session),
           ],
         ),

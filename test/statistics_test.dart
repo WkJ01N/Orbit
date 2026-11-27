@@ -409,4 +409,138 @@ void main() {
       expect((await stats()).learnedCourses, hasLength(1));
     },
   );
+  test(
+    'signing out does not let guest hijack bound courses or mark them withdrawn',
+    () async {
+      const account = SyncAccount(uid: 'one', email: 'a@b.c');
+      await db.setActiveSyncAccount(account);
+      final futureLesson = lesson('future-1', DateTime(2099, 5, 1, 9));
+      await db.applyRemoteEntities([
+        SyncEntity(
+          type: SyncEntityType.courseSession,
+          id: futureLesson.id,
+          payload: courseSessionSyncPayload(futureLesson),
+          revision: 1,
+        ),
+        SyncEntity(
+          type: SyncEntityType.deadline,
+          id: 'ddl-1',
+          payload: Deadline(
+            id: 'ddl-1',
+            subject: 'Math',
+            title: 'HW1',
+            dueAt: DateTime(2099, 5, 2),
+            leadMinutes: const [60],
+          ).toSyncPayload(),
+          revision: 1,
+        ),
+      ], accountUid: account.uid);
+      await db.refreshStatistics(now: DateTime(2026, 1, 1));
+
+      // Sign out without clearing local timetable, then run guest statistics after lesson ends.
+      await db.setActiveSyncAccount(null);
+      await db.refreshStatistics(
+        now: DateTime(2099, 6, 1),
+        recordActivity: true,
+      );
+      expect(
+        (await db.statisticsRecords(
+          owner: 'guest',
+        )).where((r) => r['kind'] == 'course'),
+        isEmpty,
+      );
+
+      // Re-sign in without merging guest statistics: account keeps and counts its lesson.
+      await db.setActiveSyncAccount(account);
+      await db.refreshStatistics(now: DateTime(2099, 6, 1));
+      final courseRecord = (await db.statisticsRecords(
+        owner: account.uid,
+      )).firstWhere((r) => r['id'] == 'course|future-1');
+      expect(courseRecord['counted'], isTrue);
+      expect(courseRecord['withdrawn'], isNot(true));
+      expect((await stats()).attendedSessions, 1);
+    },
+  );
+  test(
+    'refreshStatistics self-heals guest-hijacked source and clears false withdrawn flag',
+    () async {
+      const account = SyncAccount(uid: 'one', email: 'a@b.c');
+      await db.setActiveSyncAccount(account);
+      final ended = lesson('healed-1', DateTime(2025, 5, 1, 9));
+      await db.upsertSessions([ended]);
+      await db.refreshStatistics(now: DateTime(2025, 4, 1));
+
+      // Simulate legacy corruption: guest stole statistics_sources and account got withdrawn=true.
+      await db.setActiveSyncAccount(null);
+      final dbPath = db.path;
+      await db.close();
+      final raw = await databaseFactory.openDatabase(dbPath);
+      try {
+        await raw.update(
+          'statistics_sources',
+          {'owner': 'guest'},
+          where: 'id = ?',
+          whereArgs: ['course|healed-1'],
+        );
+        await raw.insert('statistics_records', {
+          'owner': 'guest',
+          'id': 'course|healed-1',
+          'payload':
+              '{"kind":"course","counted":true,"updatedAt":"2025-05-02T00:00:00Z"}',
+        });
+        await raw.update(
+          'statistics_records',
+          {
+            'payload':
+                '{"kind":"course","name":"Math","semester":"2026","courseKey":"2026|M|Math","minutes":90,"counted":false,"withdrawn":true,"updatedAt":"2025-05-03T00:00:00Z"}',
+          },
+          where: 'owner = ? AND id = ?',
+          whereArgs: ['one', 'course|healed-1'],
+        );
+      } finally {
+        await raw.close();
+      }
+      db = await AppDatabase.open(dir.path);
+
+      await db.setActiveSyncAccount(account);
+      await db.refreshStatistics(now: DateTime(2025, 6, 1));
+      final healed = (await db.statisticsRecords(
+        owner: account.uid,
+      )).firstWhere((r) => r['id'] == 'course|healed-1');
+      expect(healed['counted'], isTrue);
+      expect(healed.containsKey('withdrawn'), isFalse);
+      expect((await stats()).attendedSessions, 1);
+    },
+  );
+  test('backup restore claims statistics_sources for exam records', () async {
+    const account = SyncAccount(uid: 'one', email: 'a@b.c');
+    await db.setActiveSyncAccount(account);
+    final exam = lesson(
+      'exam-1',
+      DateTime(2099, 5, 1, 9),
+    ).copyWith(kind: SessionKind.exam);
+    await db.restoreUserBackup(
+      sessions: [exam],
+      statistics: [
+        {
+          'id': 'exam|exam-1',
+          'kind': 'exam',
+          'name': 'Math',
+          'semester': '2026',
+          'counted': false,
+          'endAt': exam.endAt.toUtc().toIso8601String(),
+          'updatedAt': DateTime.utc(2026, 1, 1).toIso8601String(),
+        },
+      ],
+      replace: true,
+    );
+    await db.setActiveSyncAccount(null);
+    await db.refreshStatistics(now: DateTime(2099, 6, 1));
+    expect(
+      (await db.statisticsRecords(
+        owner: 'guest',
+      )).where((r) => r['id'] == 'exam|exam-1'),
+      isEmpty,
+    );
+  });
 }

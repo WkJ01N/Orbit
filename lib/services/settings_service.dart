@@ -2,6 +2,7 @@ import 'package:orbit/services/font_service.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:orbit/models/archive_settings.dart';
+import 'package:orbit/models/android_widget_settings.dart';
 import 'package:orbit/models/background_settings.dart';
 import 'package:orbit/models/schedule_import.dart';
 
@@ -51,6 +52,8 @@ class SettingsService {
   static const _batchFirstWeekMondayKey = 'batch_first_week_monday';
   static const _batchTotalWeeksKey = 'batch_total_weeks';
   static const _autoSyncSettingsKey = 'auto_sync_settings_v1';
+  static const _androidWidgetSettingsKey = 'android_widget_settings_v1';
+  static const _reminderSettingsKey = 'reminder_settings_v2';
 
   static const _backupPreferenceKeys = {
     'course_quick_actions_v1',
@@ -147,28 +150,99 @@ class SettingsService {
     return _prefs ??= await SharedPreferences.getInstance();
   }
 
+  List<CustomReminderRule> _parseCustomRules(dynamic raw) {
+    final rules = <CustomReminderRule>[];
+    if (raw is! List) return rules;
+    for (final item in raw) {
+      try {
+        rules.add(
+          CustomReminderRule.fromJson(Map<String, dynamic>.from(item as Map)),
+        );
+      } catch (error) {
+        debugPrint('Invalid reminder rule: $error');
+      }
+    }
+    return rules;
+  }
+
+  StrongReminderSettings _parseStrongSettings(dynamic raw) {
+    try {
+      if (raw is Map) {
+        return StrongReminderSettings.fromJson(Map<String, dynamic>.from(raw));
+      }
+    } catch (error) {
+      debugPrint('Invalid strong reminder settings: $error');
+    }
+    return const StrongReminderSettings();
+  }
+
+  String? _normalizeOptionalString(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    return value;
+  }
+
   Future<ReminderSettings> load() async {
     final prefs = await _prefsInstance();
-    final rules = <CustomReminderRule>[];
+    final encoded = prefs.getString(_reminderSettingsKey);
+    if (encoded != null) {
+      try {
+        final decoded = jsonDecode(encoded);
+        if (decoded is Map) {
+          final map = Map<String, dynamic>.from(decoded);
+          return ReminderSettings(
+            customRules: _parseCustomRules(map['customRules']),
+            strong: _parseStrongSettings(map['strong']),
+            leadMinutes: (map['leadMinutes'] as num?)?.toInt() ?? 15,
+            enabled: map['enabled'] as bool? ?? true,
+            nextDaySummaryEnabled:
+                map['nextDaySummaryEnabled'] as bool? ?? true,
+            nextDaySummaryHour:
+                (map['nextDaySummaryHour'] as num?)?.toInt() ?? 23,
+            nextDaySummaryMinute:
+                (map['nextDaySummaryMinute'] as num?)?.toInt() ?? 0,
+            nextDayRemindWhenNoClass:
+                map['nextDayRemindWhenNoClass'] as bool? ?? true,
+            nextDayWithClassTitleTemplate: _normalizeOptionalString(
+              map['nextDayWithClassTitleTemplate'],
+            ),
+            nextDayWithClassBodyTemplate: _normalizeOptionalString(
+              map['nextDayWithClassBodyTemplate'],
+            ),
+            nextDayNoClassTitleTemplate: _normalizeOptionalString(
+              map['nextDayNoClassTitleTemplate'],
+            ),
+            nextDayNoClassBodyTemplate: _normalizeOptionalString(
+              map['nextDayNoClassBodyTemplate'],
+            ),
+            classLeadTitleTemplate: _normalizeOptionalString(
+              map['classLeadTitleTemplate'],
+            ),
+            classLeadBodyTemplate: _normalizeOptionalString(
+              map['classLeadBodyTemplate'],
+            ),
+            checkInTitleTemplate: _normalizeOptionalString(
+              map['checkInTitleTemplate'],
+            ),
+            checkInBodyTemplate: _normalizeOptionalString(
+              map['checkInBodyTemplate'],
+            ),
+            checkInReminderEnabled:
+                map['checkInReminderEnabled'] as bool? ?? true,
+          );
+        }
+      } catch (error) {
+        debugPrint('Invalid atomic reminder settings: $error');
+      }
+    }
+
+    var rules = const <CustomReminderRule>[];
     var strong = const StrongReminderSettings();
     try {
-      final raw = jsonDecode(prefs.getString('custom_reminder_rules') ?? '[]');
-      if (raw is List) {
-        for (final item in raw) {
-          try {
-            rules.add(
-              CustomReminderRule.fromJson(
-                Map<String, dynamic>.from(item as Map),
-              ),
-            );
-          } catch (error) {
-            debugPrint('Invalid reminder rule: $error');
-          }
-        }
-      }
-      strong = StrongReminderSettings.fromJson(
-        jsonDecode(prefs.getString('strong_reminder_settings') ?? '{}')
-            as Map<String, dynamic>,
+      rules = _parseCustomRules(
+        jsonDecode(prefs.getString('custom_reminder_rules') ?? '[]'),
+      );
+      strong = _parseStrongSettings(
+        jsonDecode(prefs.getString('strong_reminder_settings') ?? '{}'),
       );
     } catch (error) {
       debugPrint('Invalid reminder settings: $error');
@@ -183,107 +257,73 @@ class SettingsService {
       nextDaySummaryMinute: prefs.getInt(_nextDaySummaryMinuteKey) ?? 0,
       nextDayRemindWhenNoClass:
           prefs.getBool(_nextDayRemindWhenNoClassKey) ?? true,
-      nextDayWithClassTitleTemplate: prefs.getString(_nextDayWithClassTitleKey),
-      nextDayWithClassBodyTemplate: prefs.getString(_nextDayWithClassBodyKey),
-      nextDayNoClassTitleTemplate: prefs.getString(_nextDayNoClassTitleKey),
-      nextDayNoClassBodyTemplate: prefs.getString(_nextDayNoClassBodyKey),
-      classLeadTitleTemplate: prefs.getString(_classLeadTitleKey),
-      classLeadBodyTemplate: prefs.getString(_classLeadBodyKey),
-      checkInTitleTemplate: prefs.getString(_checkInTitleKey),
-      checkInBodyTemplate: prefs.getString(_checkInBodyKey),
+      nextDayWithClassTitleTemplate: _normalizeOptionalString(
+        prefs.getString(_nextDayWithClassTitleKey),
+      ),
+      nextDayWithClassBodyTemplate: _normalizeOptionalString(
+        prefs.getString(_nextDayWithClassBodyKey),
+      ),
+      nextDayNoClassTitleTemplate: _normalizeOptionalString(
+        prefs.getString(_nextDayNoClassTitleKey),
+      ),
+      nextDayNoClassBodyTemplate: _normalizeOptionalString(
+        prefs.getString(_nextDayNoClassBodyKey),
+      ),
+      classLeadTitleTemplate: _normalizeOptionalString(
+        prefs.getString(_classLeadTitleKey),
+      ),
+      classLeadBodyTemplate: _normalizeOptionalString(
+        prefs.getString(_classLeadBodyKey),
+      ),
+      checkInTitleTemplate: _normalizeOptionalString(
+        prefs.getString(_checkInTitleKey),
+      ),
+      checkInBodyTemplate: _normalizeOptionalString(
+        prefs.getString(_checkInBodyKey),
+      ),
       checkInReminderEnabled: prefs.getBool(_checkInReminderEnabledKey) ?? true,
     );
   }
 
   Future<void> save(ReminderSettings settings) async {
     final prefs = await _prefsInstance();
-    if (!await prefs.setString(
-      'custom_reminder_rules',
-      jsonEncode(settings.customRules.map((r) => r.toJson()).toList()),
-    )) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setString(
-      'strong_reminder_settings',
-      jsonEncode(settings.strong.toJson()),
-    )) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setInt(_leadMinutesKey, settings.leadMinutes)) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setBool(_enabledKey, settings.enabled)) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setBool(
-      _nextDaySummaryEnabledKey,
-      settings.nextDaySummaryEnabled,
-    )) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setInt(
-      _nextDaySummaryHourKey,
-      settings.nextDaySummaryHour,
-    )) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setInt(
-      _nextDaySummaryMinuteKey,
-      settings.nextDaySummaryMinute,
-    )) {
-      throw StateError("Could not save settings");
-    }
-    if (!await prefs.setBool(
-      _nextDayRemindWhenNoClassKey,
-      settings.nextDayRemindWhenNoClass,
-    )) {
-      throw StateError("Could not save settings");
-    }
-    await _saveOptionalString(
-      prefs,
-      _nextDayWithClassTitleKey,
-      settings.nextDayWithClassTitleTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _nextDayWithClassBodyKey,
-      settings.nextDayWithClassBodyTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _nextDayNoClassTitleKey,
-      settings.nextDayNoClassTitleTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _nextDayNoClassBodyKey,
-      settings.nextDayNoClassBodyTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _classLeadTitleKey,
-      settings.classLeadTitleTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _classLeadBodyKey,
-      settings.classLeadBodyTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _checkInTitleKey,
-      settings.checkInTitleTemplate,
-    );
-    await _saveOptionalString(
-      prefs,
-      _checkInBodyKey,
-      settings.checkInBodyTemplate,
-    );
-    if (!await prefs.setBool(
-      _checkInReminderEnabledKey,
-      settings.checkInReminderEnabled,
-    )) {
-      throw StateError("Could not save settings");
+    final payload = <String, dynamic>{
+      'customRules': [for (final r in settings.customRules) r.toJson()],
+      'strong': settings.strong.toJson(),
+      'leadMinutes': settings.leadMinutes,
+      'enabled': settings.enabled,
+      'nextDaySummaryEnabled': settings.nextDaySummaryEnabled,
+      'nextDaySummaryHour': settings.nextDaySummaryHour,
+      'nextDaySummaryMinute': settings.nextDaySummaryMinute,
+      'nextDayRemindWhenNoClass': settings.nextDayRemindWhenNoClass,
+      'nextDayWithClassTitleTemplate': _normalizeOptionalString(
+        settings.nextDayWithClassTitleTemplate,
+      ),
+      'nextDayWithClassBodyTemplate': _normalizeOptionalString(
+        settings.nextDayWithClassBodyTemplate,
+      ),
+      'nextDayNoClassTitleTemplate': _normalizeOptionalString(
+        settings.nextDayNoClassTitleTemplate,
+      ),
+      'nextDayNoClassBodyTemplate': _normalizeOptionalString(
+        settings.nextDayNoClassBodyTemplate,
+      ),
+      'classLeadTitleTemplate': _normalizeOptionalString(
+        settings.classLeadTitleTemplate,
+      ),
+      'classLeadBodyTemplate': _normalizeOptionalString(
+        settings.classLeadBodyTemplate,
+      ),
+      'checkInTitleTemplate': _normalizeOptionalString(
+        settings.checkInTitleTemplate,
+      ),
+      'checkInBodyTemplate': _normalizeOptionalString(
+        settings.checkInBodyTemplate,
+      ),
+      'checkInReminderEnabled': settings.checkInReminderEnabled,
+    };
+    if (!await prefs.setString(_reminderSettingsKey, jsonEncode(payload))) {
+      throw StateError('Could not save settings');
     }
   }
 
@@ -872,23 +912,18 @@ class SettingsService {
     }
   }
 
+  Future<AndroidWidgetSettings> loadAndroidWidgetSettings() async {
+    final raw = await loadLocalJson(_androidWidgetSettingsKey);
+    return AndroidWidgetSettings.fromJson(raw);
+  }
+
+  Future<void> saveAndroidWidgetSettings(AndroidWidgetSettings settings) async {
+    await saveLocalJson(_androidWidgetSettingsKey, settings.toJson());
+  }
+
   Future<void> saveLocalJson(String key, Map<String, dynamic> value) async {
     if (!await (await _prefsInstance()).setString(key, jsonEncode(value))) {
       throw StateError('Could not save $key');
-    }
-  }
-
-  Future<void> _saveOptionalString(
-    SharedPreferences prefs,
-    String key,
-    String? value,
-  ) async {
-    if (value == null || value.trim().isEmpty) {
-      await prefs.remove(key);
-    } else {
-      if (!await prefs.setString(key, value)) {
-        throw StateError("Could not save settings");
-      }
     }
   }
 }

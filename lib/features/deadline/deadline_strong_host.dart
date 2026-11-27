@@ -283,7 +283,7 @@ class _DeadlineReminderManagementState
         await ref
             .read(appDatabaseProvider)
             .disableDeadlineReminders(all ? _options : _selected);
-        ref.read(scheduleRefreshProvider.notifier).state++;
+        ref.read(deadlinesRefreshProvider.notifier).state++;
         await ref.read(reminderSettingsProvider.notifier).resyncReminders();
         if (ref.read(lastRescheduleErrorProvider) != null) {
           throw StateError('Reschedule failed');

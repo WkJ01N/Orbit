@@ -108,18 +108,19 @@ extension StatisticsDatabase on AppDatabase {
       whereArgs: [id],
     );
     if (rows.isNotEmpty) {
-      if (rows.first['owner'] == owner) return true;
-      final previous = await txn.query(
-        'statistics_records',
-        where: 'owner=? AND id=?',
-        whereArgs: [rows.first['owner'], id],
-      );
-      if ((id.startsWith('course|') || id.startsWith('exam|')) &&
-          previous.isNotEmpty) {
-        final old = Map<String, dynamic>.from(
-          jsonDecode(previous.first['payload'] as String) as Map,
+      final existingOwner = rows.first['owner'] as String;
+      if (existingOwner == owner) return true;
+      // Never let the guest fallback hijack items claimed by a real account.
+      if (owner == 'guest' && existingOwner != 'guest') return false;
+      if (owner != 'guest' && existingOwner == 'guest') {
+        final owned = await txn.query(
+          'statistics_records',
+          columns: ['id'],
+          where: 'owner=? AND id=?',
+          whereArgs: [owner, id],
+          limit: 1,
         );
-        if (old['counted'] != true) {
+        if (owned.isNotEmpty) {
           await txn.update(
             'statistics_sources',
             {'owner': owner},
@@ -127,6 +128,36 @@ extension StatisticsDatabase on AppDatabase {
             whereArgs: [id],
           );
           return true;
+        }
+      }
+      final previous = await txn.query(
+        'statistics_records',
+        where: 'owner=? AND id=?',
+        whereArgs: [existingOwner, id],
+      );
+      if (id.startsWith('course|') || id.startsWith('exam|')) {
+        if (previous.isEmpty && existingOwner == 'guest' && owner != 'guest') {
+          await txn.update(
+            'statistics_sources',
+            {'owner': owner},
+            where: 'id=?',
+            whereArgs: [id],
+          );
+          return true;
+        }
+        if (previous.isNotEmpty) {
+          final old = Map<String, dynamic>.from(
+            jsonDecode(previous.first['payload'] as String) as Map,
+          );
+          if (old['counted'] != true) {
+            await txn.update(
+              'statistics_sources',
+              {'owner': owner},
+              where: 'id=?',
+              whereArgs: [id],
+            );
+            return true;
+          }
         }
       }
       return false;
@@ -184,8 +215,8 @@ extension StatisticsDatabase on AppDatabase {
       )) {
         final s = CourseSession.fromMap(row);
         final id = '${s.isExam ? 'exam' : 'course'}|${aliases[s.id] ?? s.id}';
-        if (!await _claimStatistic(txn, id, owner)) continue;
         activeSources.add(id);
+        if (!await _claimStatistic(txn, id, owner)) continue;
         final previous = await txn.query(
           'statistics_records',
           where: 'owner=? AND id=?',

@@ -179,4 +179,39 @@ void main() {
       await dir.delete(recursive: true);
     }
   });
+
+  test(
+    'AppDatabase enables WAL and busy_timeout and reconciles v12 missing sync_conflict_history',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('orbit_v13_wal_');
+      addTearDown(() => dir.delete(recursive: true));
+
+      final initial = await AppDatabase.open(dir.path);
+      await initial.close();
+
+      final raw = await openDatabase(p.join(dir.path, 'orbit.db'));
+      await raw.execute('DROP TABLE sync_conflict_history');
+      await raw.execute('PRAGMA user_version = 12');
+      await raw.close();
+
+      final upgraded = await AppDatabase.open(dir.path);
+      expect(await upgraded.syncConflictHistory(), isEmpty);
+
+      // Query while `upgraded` is open because PRAGMA busy_timeout is per-connection.
+      final inspect = await openDatabase(p.join(dir.path, 'orbit.db'));
+      try {
+        final mode = await inspect.rawQuery('PRAGMA journal_mode');
+        final timeout = await inspect.rawQuery('PRAGMA busy_timeout');
+        final version = await inspect.rawQuery('PRAGMA user_version');
+        expect('${mode.single.values.first}'.toLowerCase(), 'wal');
+        expect(
+          (timeout.single.values.first as num).toInt(),
+          greaterThanOrEqualTo(5000),
+        );
+        expect((version.single.values.first as num).toInt(), 13);
+      } finally {
+        await inspect.close();
+      }
+    },
+  );
 }

@@ -258,7 +258,7 @@ class _DeadlineEditorState extends ConsumerState<_DeadlineEditor> {
                 .toList(),
           ),
       ]);
-      ref.read(scheduleRefreshProvider.notifier).state++;
+      ref.read(deadlinesRefreshProvider.notifier).state++;
       ref.read(reminderSettingsProvider.notifier).scheduleResync();
       if (mounted) Navigator.pop(context);
     } catch (_) {
@@ -895,7 +895,7 @@ class _DeadlineDetails extends ConsumerWidget {
       } else {
         await ref.read(appDatabaseProvider).saveDeadline(value);
       }
-      ref.read(scheduleRefreshProvider.notifier).state++;
+      ref.read(deadlinesRefreshProvider.notifier).state++;
       ref.read(reminderSettingsProvider.notifier).scheduleResync();
       if (context.mounted) Navigator.pop(context);
     }

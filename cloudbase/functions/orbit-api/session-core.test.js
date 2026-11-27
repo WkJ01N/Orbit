@@ -110,3 +110,24 @@ test('concurrent refresh retries leave both returned refresh tokens usable', () 
   assert.doesNotThrow(() =>
     core.refreshSession(second.registry, second.session.refreshToken, 2002));
 });
+
+test('delayed refresh retry within extended grace window succeeds while revoke invalidates immediately', () => {
+  const issued = issue(null, 'user-1', 'device-0000000001', 1000);
+  const refreshed = core.refreshSession(issued.registry, issued.session.refreshToken, 2000);
+  const sixHoursLater = 2000 + 6 * 60 * 60 * 1000;
+  const retried = core.refreshSession(
+    refreshed.registry,
+    issued.session.refreshToken,
+    sixHoursLater,
+  );
+  assert.ok(retried.session.refreshToken);
+  const revoked = core.revokeSession(retried.registry, retried.session.refreshToken, sixHoursLater + 1);
+  assert.throws(
+    () => core.refreshSession(revoked.registry, issued.session.refreshToken, sixHoursLater + 2),
+    { code: 'SESSION_INVALID' },
+  );
+  assert.throws(
+    () => core.refreshSession(revoked.registry, retried.session.refreshToken, sixHoursLater + 2),
+    { code: 'SESSION_INVALID' },
+  );
+});

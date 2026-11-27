@@ -189,6 +189,218 @@ void main() {
       expect(await store.pendingRevocations(), ['refresh-token']);
     },
   );
+
+  test(
+    'transient refresh failures (5xx, 429, HTML) preserve the local session',
+    () async {
+      for (final scenario in [
+        (status: 500, body: jsonEncode({'code': 'INTERNAL', 'message': 'err'})),
+        (
+          status: 502,
+          body: jsonEncode({'code': 'BAD_GATEWAY', 'message': 'down'}),
+        ),
+        (
+          status: 429,
+          body: jsonEncode({'code': 'RATE_LIMITED', 'message': 'slow down'}),
+        ),
+        (status: 200, body: '<html>captive portal</html>'),
+      ]) {
+        final server = await _server((request) async {
+          request.response.statusCode = scenario.status;
+          request.response.write(scenario.body);
+          await request.response.close();
+        });
+        addTearDown(server.close);
+        final store = OrbitSessionStore(
+          environment: 'test',
+          storage: _MemorySecureStore(),
+        );
+        await store.saveSession(
+          _session(
+            accessExpiresAt: DateTime.now().subtract(
+              const Duration(minutes: 1),
+            ),
+          ),
+        );
+        final client = OrbitApiClient(
+          environment: 'test',
+          baseUrl: 'http://${server.address.host}:${server.port}/orbit',
+          sessionStore: store,
+        );
+
+        await expectLater(
+          client.getProfile(),
+          throwsA(
+            isA<AccountSyncException>().having(
+              (error) => error.code,
+              'code',
+              isNot('session_invalid'),
+            ),
+          ),
+        );
+        final kept = await store.readSession();
+        expect(kept, isNotNull);
+        expect(kept!.refreshToken, 'refresh-token');
+      }
+    },
+  );
+
+  test(
+    'concurrent profile update does not overwrite rotated tokens from refresh',
+    () async {
+      final server = await _server((request) async {
+        if (request.uri.path == '/orbit/v1/session/refresh') {
+          await _json(request.response, {
+            'session': _sessionJson(accessToken: 'rotated-access'),
+          });
+          return;
+        }
+        request.response.statusCode = 404;
+        await request.response.close();
+      });
+      addTearDown(server.close);
+      final store = OrbitSessionStore(
+        environment: 'test',
+        storage: _MemorySecureStore(),
+      );
+      await store.saveSession(
+        _session(
+          accessExpiresAt: DateTime.now().subtract(const Duration(minutes: 1)),
+        ),
+      );
+      final client = OrbitApiClient(
+        environment: 'test',
+        baseUrl: 'http://${server.address.host}:${server.port}/orbit',
+        sessionStore: store,
+      );
+
+      // Simulate a refresh running while an older profile response updates display name.
+      await Future.wait([
+        client.syncPolicy().catchError((_) => <String, dynamic>{}),
+        store.updateAccount(
+          const SyncAccount(
+            uid: 'user-1',
+            email: 'orbit@example.com',
+            username: 'Updated',
+          ),
+        ),
+      ]);
+
+      final finalSession = await store.readSession();
+      expect(finalSession, isNotNull);
+      expect(finalSession!.accessToken, 'rotated-access');
+      expect(finalSession.refreshToken, 'rotated-refresh-token');
+      expect(finalSession.account.username, 'Updated');
+    },
+  );
+
+  test(
+    'concurrent 401 reuses already-rotated access token without clearing session',
+    () async {
+      var profileCalls = 0;
+      var refreshCalls = 0;
+      final store = OrbitSessionStore(
+        environment: 'test',
+        storage: _MemorySecureStore(),
+      );
+      await store.saveSession(_session());
+      final server = await _server((request) async {
+        if (request.uri.path == '/orbit/v1/profile') {
+          profileCalls++;
+          if (profileCalls == 1) {
+            // Simulate another caller finishing refresh while this request was in flight.
+            await store.saveSession(
+              OrbitSession(
+                accessToken: 'already-rotated-access',
+                accessExpiresAt: DateTime.now().add(const Duration(hours: 1)),
+                refreshToken: 'already-rotated-refresh',
+                refreshExpiresAt: DateTime.now().add(const Duration(days: 30)),
+                account: _session().account,
+              ),
+            );
+            request.response.statusCode = 401;
+            await _json(request.response, {
+              'code': 'SESSION_INVALID',
+              'message': 'superseded',
+            });
+            return;
+          }
+          expect(
+            request.headers.value('authorization'),
+            'Bearer already-rotated-access',
+          );
+          await _json(request.response, {'account': _accountJson()});
+          return;
+        }
+        if (request.uri.path == '/orbit/v1/session/refresh') {
+          refreshCalls++;
+          request.response.statusCode = 500;
+          await request.response.close();
+        }
+      });
+      addTearDown(server.close);
+      final client = OrbitApiClient(
+        environment: 'test',
+        baseUrl: 'http://${server.address.host}:${server.port}/orbit',
+        sessionStore: store,
+      );
+
+      final account = await client.getProfile();
+      expect(account.uid, 'user-1');
+      expect(refreshCalls, 0);
+      expect(
+        (await store.readSession())?.accessToken,
+        'already-rotated-access',
+      );
+    },
+  );
+
+  test(
+    'local clock past refreshExpiresAt delegates to server instead of clearing locally',
+    () async {
+      var refreshCalls = 0;
+      final server = await _server((request) async {
+        if (request.uri.path == '/orbit/v1/session/refresh') {
+          refreshCalls++;
+          await _json(request.response, {
+            'session': _sessionJson(accessToken: 'server-validated-access'),
+          });
+          return;
+        }
+        if (request.uri.path == '/orbit/v1/profile') {
+          await _json(request.response, {'account': _accountJson()});
+          return;
+        }
+      });
+      addTearDown(server.close);
+      final store = OrbitSessionStore(
+        environment: 'test',
+        storage: _MemorySecureStore(),
+      );
+      await store.saveSession(
+        OrbitSession(
+          accessToken: 'old-access',
+          accessExpiresAt: DateTime.now().subtract(const Duration(days: 2)),
+          refreshToken: 'valid-server-refresh',
+          refreshExpiresAt: DateTime.now().subtract(const Duration(days: 1)),
+          account: _session().account,
+        ),
+      );
+      final client = OrbitApiClient(
+        environment: 'test',
+        baseUrl: 'http://${server.address.host}:${server.port}/orbit',
+        sessionStore: store,
+      );
+
+      final account = await client.getProfile();
+      expect(account.uid, 'user-1');
+      expect(refreshCalls, 1);
+      expect(
+        (await store.readSession())?.accessToken,
+        'server-validated-access',
+      );
+    },
+  );
 }
 
 OrbitSession _session({DateTime? accessExpiresAt}) => OrbitSession(

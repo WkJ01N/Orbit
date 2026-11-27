@@ -6,6 +6,8 @@ import 'package:orbit/models/typography_text.dart';
 import 'package:orbit/core/widgets/settings_choice_tile.dart';
 import 'package:orbit/core/widgets/app_snack_bar.dart';
 import 'package:orbit/features/settings/theme_scheme_page.dart';
+import 'package:orbit/features/settings/android_widget_settings_page.dart';
+import 'package:orbit/models/android_widget_text.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -95,6 +97,22 @@ class SettingsAppearanceSection extends ConsumerWidget {
                 ),
               ),
             ),
+            if (Platform.isAndroid)
+              PageModule(
+                child: ListTile(
+                  key: const Key('android-widget-settings'),
+                  leading: const Icon(Icons.widgets_outlined),
+                  title: Text(AndroidWidgetText.of(context).title),
+                  subtitle: Text(AndroidWidgetText.of(context).subtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AndroidWidgetSettingsPage(),
+                    ),
+                  ),
+                ),
+              ),
             SettingsChoiceTile(
               title: Text(l10n.themeStyleTitle),
               subtitle: Text(l10n.themeStyleSubtitle),

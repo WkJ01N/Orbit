@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_next_class_label">下一節課</string>
+    <string name="widget_next_class_description">顯示正在進行或下一節課程、考試及緊急 DDL。</string>
+    <string name="widget_today_schedule_label">今日課表</string>
+    <string name="widget_today_schedule_description">可捲動檢視今日全部課程、考試與近期未完成 DDL。</string>
+    <string name="widget_refresh_content_description">重新整理微件</string>
+</resources>

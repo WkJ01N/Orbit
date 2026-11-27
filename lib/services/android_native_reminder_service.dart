@@ -22,6 +22,22 @@ class NativeReminderScheduleResult {
   final bool usedInexactFallback;
 }
 
+class NativeReminderBatchScheduleResult {
+  const NativeReminderBatchScheduleResult({
+    required this.scheduled,
+    this.armed = 0,
+    required this.failed,
+    this.usedInexactFallback = false,
+    this.scheduledNotificationIds = const [],
+  });
+
+  final int scheduled;
+  final int armed;
+  final int failed;
+  final bool usedInexactFallback;
+  final List<int> scheduledNotificationIds;
+}
+
 class ReminderDiagnosticEvent {
   const ReminderDiagnosticEvent({
     required this.timestamp,
@@ -194,6 +210,72 @@ class AndroidNativeReminderService {
       debugPrint('$stackTrace');
       return const NativeReminderScheduleResult(scheduled: false);
     }
+  }
+
+  Future<NativeReminderBatchScheduleResult?> scheduleBatch(
+    List<ReminderAlarmSpec> specs, {
+    required NotificationCopy copy,
+    required bool exactPreferred,
+    required bool allowInexactFallback,
+    required bool restoreOnReboot,
+  }) async {
+    if (!Platform.isAndroid) return null;
+    if (specs.isEmpty) {
+      return const NativeReminderBatchScheduleResult(scheduled: 0, failed: 0);
+    }
+    await initialize();
+    try {
+      final raw = await _channel.invokeMapMethod<String, dynamic>(
+        'scheduleRemindersBatch',
+        buildBatchScheduleArguments(
+          specs,
+          copy: copy,
+          exactPreferred: exactPreferred,
+          allowInexactFallback: allowInexactFallback,
+          restoreOnReboot: restoreOnReboot,
+        ),
+      );
+      if (raw == null) return null;
+      return NativeReminderBatchScheduleResult(
+        scheduled: (raw['scheduled'] as num?)?.toInt() ?? 0,
+        armed: (raw['armed'] as num?)?.toInt() ?? 0,
+        failed: (raw['failed'] as num?)?.toInt() ?? 0,
+        usedInexactFallback: raw['usedInexactFallback'] == true,
+        scheduledNotificationIds:
+            (raw['scheduledNotificationIds'] as List? ?? const [])
+                .map((id) => (id as num).toInt())
+                .toList(growable: false),
+      );
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (error, stackTrace) {
+      debugPrint('Native batch reminder schedule failed: $error');
+      debugPrint('$stackTrace');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> buildBatchScheduleArguments(
+    List<ReminderAlarmSpec> specs, {
+    required NotificationCopy copy,
+    required bool exactPreferred,
+    required bool allowInexactFallback,
+    required bool restoreOnReboot,
+  }) {
+    return {
+      'items': [
+        for (final spec in specs)
+          buildScheduleArguments(
+            spec,
+            copy: copy,
+            exactPreferred: exactPreferred,
+            allowInexactFallback: allowInexactFallback,
+            restoreOnReboot: restoreOnReboot,
+          ),
+      ],
+      'exactPreferred': exactPreferred,
+      'allowInexactFallback': allowInexactFallback,
+    };
   }
 
   Map<String, dynamic> buildScheduleArguments(

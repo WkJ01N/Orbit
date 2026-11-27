@@ -188,16 +188,26 @@ Future<void> exportScheduleIcs(BuildContext context, WidgetRef ref) async {
     final sessions = await ref
         .read(scheduleRepositoryProvider)
         .getAllSessions();
+    final deadlines = (await ref.read(appDatabaseProvider).getDeadlines())
+        .where((d) => !d.deleted && !d.completed)
+        .toList();
+    final reminder = await ref.read(settingsServiceProvider).load();
     if (!context.mounted) {
       return;
     }
-    if (sessions.isEmpty) {
+    if (sessions.isEmpty && deadlines.isEmpty) {
       _showSnackBar(context, l10n.exportNothingToExport);
       return;
     }
 
     final bytes = Uint8List.fromList(
-      utf8.encode(const CalendarExportService().build(sessions)),
+      utf8.encode(
+        const CalendarExportService().build(
+          sessions,
+          defaultLeadMinutes: reminder.enabled ? reminder.leadMinutes : null,
+          deadlines: deadlines,
+        ),
+      ),
     );
     final path = await FilePicker.platform.saveFile(
       dialogTitle: l10n.exportScheduleIcs,
@@ -215,7 +225,10 @@ Future<void> exportScheduleIcs(BuildContext context, WidgetRef ref) async {
     }
 
     if (context.mounted) {
-      _showSnackBar(context, l10n.exportDone(sessions.length));
+      _showSnackBar(
+        context,
+        l10n.exportDone(sessions.length + deadlines.length),
+      );
     }
   } catch (e) {
     if (context.mounted) {

@@ -6,6 +6,7 @@ function getJson(url, redirects = 0) {
   return new Promise((resolve,reject) => {
     const request = https.get(url, { headers: { 'User-Agent':'Orbit-updates', Accept:'application/vnd.github+json' } }, (response) => {
       if ([301,302,303,307,308].includes(response.statusCode)) { response.resume(); getJson(new URL(response.headers.location,url).href, redirects+1).then(resolve,reject); return; }
+      if (response.statusCode === 404) { response.resume(); const missing = new Error('GitHub metadata unavailable'); missing.code = 'NOT_FOUND'; reject(missing); return; }
       if (response.statusCode !== 200) { response.resume(); reject(new Error('GitHub metadata unavailable')); return; }
       let bytes = 0; const chunks = [];
       response.on('data', (chunk) => { bytes += chunk.length; if (bytes > 3*1024*1024) { response.destroy(); reject(new Error('Metadata too large')); } else chunks.push(chunk); });

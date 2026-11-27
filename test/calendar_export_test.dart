@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/models/course_session.dart';
+import 'package:orbit/models/deadline.dart';
 import 'package:orbit/services/calendar_export_service.dart';
 
 CourseSession _session({
@@ -112,5 +113,64 @@ void main() {
     expect(ics, contains('BEGIN:VCALENDAR'));
     expect(ics, contains('END:VCALENDAR'));
     expect(ics, isNot(contains('BEGIN:VEVENT')));
+  });
+
+  test('alarms are added only when a lead time is supplied', () {
+    expect(service.build([_session()]), isNot(contains('VALARM')));
+    expect(
+      service.build([_session()], defaultLeadMinutes: 0),
+      isNot(contains('VALARM')),
+    );
+    final ics = service.build([_session()], defaultLeadMinutes: 15);
+    expect(ics, contains('BEGIN:VALARM\r\nACTION:DISPLAY\r\n'));
+    expect(ics, contains('TRIGGER:-PT15M\r\n'));
+  });
+
+  test('exams use their own lead time and respect a disabled reminder', () {
+    final exam = _session(
+      id: 'exam|one',
+    ).copyWith(kind: SessionKind.exam, examLeadMinutes: 45);
+    final silent = _session(
+      id: 'exam|two',
+    ).copyWith(kind: SessionKind.exam, examReminderEnabled: false);
+    final ics = service.build([exam, silent], defaultLeadMinutes: 15);
+    expect(ics, contains('TRIGGER:-PT45M\r\n'));
+    expect(ics, isNot(contains('TRIGGER:-PT15M')));
+    expect('BEGIN:VALARM'.allMatches(ics), hasLength(1));
+  });
+
+  test('open deadlines export as events with their enabled alarms', () {
+    final open = Deadline(
+      id: 'd1',
+      subject: 'Math',
+      title: 'Homework',
+      dueAt: DateTime.utc(2026, 4, 1, 12),
+      leadMinutes: const [60, 1440],
+      disabledReminderLeadMinutes: const [1440],
+    );
+    final done = Deadline(
+      id: 'd3',
+      subject: 'Math',
+      title: 'Finished',
+      dueAt: DateTime.utc(2026, 4, 3, 12),
+      leadMinutes: const [60],
+      completedAt: DateTime.utc(2026, 3, 30),
+    );
+    final removed = Deadline(
+      id: 'd2',
+      subject: 'Math',
+      title: 'Removed',
+      dueAt: DateTime.utc(2026, 4, 2, 12),
+      leadMinutes: const [60],
+      deletedAt: DateTime.utc(2026, 3, 1),
+    );
+    final ics = service.build(const [], deadlines: [open, done, removed]);
+
+    expect('BEGIN:VEVENT'.allMatches(ics), hasLength(1));
+    expect(ics, contains('UID:ddl-d1@orbit\r\n'));
+    expect(ics, contains('SUMMARY:[DDL] Homework\r\n'));
+    expect(ics, contains('DTSTART:20260401T120000Z\r\n'));
+    expect(ics, contains('TRIGGER:-PT60M\r\n'));
+    expect(ics, isNot(contains('TRIGGER:-PT1440M')));
   });
 }

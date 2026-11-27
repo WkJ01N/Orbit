@@ -1,12 +1,18 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/models/account_sync.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/schedule_import.dart';
+import 'package:orbit/providers/account_sync_providers.dart';
+import 'package:orbit/providers/database_providers.dart';
+import 'package:orbit/providers/reminder_providers.dart';
 import 'package:orbit/services/account_sync_service.dart';
 import 'package:orbit/services/schedule_sync_coordinator.dart';
+import 'package:orbit/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 CourseSession _session({String id = 'course-1', String room = 'A101'}) {
@@ -581,6 +587,124 @@ void main() {
     expect(resolved['resolved_at'], isNotNull);
     expect(pending['resolved_at'], isNull);
   });
+
+  test(
+    'transient startup restore failure keeps stored signed-in account while session_invalid signs out',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      const stored = SyncAccount(uid: 'user-1', email: 'one@example.com');
+      await database.setActiveSyncAccount(stored);
+
+      final transientContainer = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          settingsServiceProvider.overrideWithValue(SettingsService()),
+          accountServiceProvider.overrideWithValue(
+            _FailingRestoreAccountService(
+              const AccountSyncException('http_502', 'upstream unavailable'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(transientContainer.dispose);
+
+      final transientStatus = await transientContainer.read(
+        accountSyncProvider.future,
+      );
+      expect(transientStatus.signedIn, isTrue);
+      expect(transientStatus.account?.uid, stored.uid);
+      expect(transientStatus.phase, SyncPhase.error);
+      expect((await database.activeSyncAccount())?.uid, stored.uid);
+
+      final invalidContainer = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          settingsServiceProvider.overrideWithValue(SettingsService()),
+          accountServiceProvider.overrideWithValue(
+            _FailingRestoreAccountService(
+              const AccountSyncException('session_invalid', 'revoked'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(invalidContainer.dispose);
+
+      final invalidStatus = await invalidContainer.read(
+        accountSyncProvider.future,
+      );
+      expect(invalidStatus.signedIn, isFalse);
+      expect(await database.activeSyncAccount(), isNull);
+    },
+  );
+
+  test(
+    'applyRemoteEntities targets explicit accountUid and does not leak statistics into guest',
+    () async {
+      await database.applyRemoteEntities([
+        SyncEntity(
+          type: SyncEntityType.statistic,
+          id: 'day|2026-09-21',
+          payload: {
+            'kind': 'day',
+            'date': '2026-09-21',
+            'updatedAt': '2026-09-21T08:00:00Z',
+          },
+        ),
+      ], accountUid: 'user-1');
+
+      expect(await database.statisticsRecords(owner: 'guest'), isEmpty);
+      expect(
+        (await database.statisticsRecords(owner: 'user-1')).single['id'],
+        'day|2026-09-21',
+      );
+    },
+  );
+}
+
+class _FailingRestoreAccountService implements AccountService {
+  _FailingRestoreAccountService(this.error);
+
+  final Object error;
+
+  @override
+  bool get configured => true;
+
+  @override
+  Future<SyncAccount?> restoreSession() async => throw error;
+
+  @override
+  Future<SyncAccount> refreshAccount() async => throw error;
+
+  @override
+  Future<SyncAccount> signIn(String email, String password) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<VerificationChallenge> signUp(
+    String email,
+    String password, {
+    String? username,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<PasswordResetChallenge> beginPasswordReset(String email) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<SyncAccount> updateProfile(
+    SyncAccount account, {
+    required String username,
+    AccountAvatarUpload? avatar,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<String?> avatarDownloadUrl(String? fileId) async => null;
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<void> deleteAccount(String password) async {}
 }
 
 class _BisectingBackend extends _MemoryBackend {

@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
     private var preview: android.media.MediaPlayer? = null
     private var reminderChannel: MethodChannel? = null
     private var pendingNotificationPayload: String? = null
+    private var dartHasConsumedLaunchPayload = false
     private val reminderStatusExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
@@ -61,6 +62,7 @@ class MainActivity : FlutterActivity() {
         handMotion = OrbitHandMotion(this, flutterEngine.dartExecutor.binaryMessenger)
         OrbitComponents.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         OrbitWemustLauncher.attach(this, flutterEngine.dartExecutor.binaryMessenger)
+        OrbitWidgets.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.must.orbit.orbit/files").setMethodCallHandler { call, result ->
             if (call.method != "exportFile") { result.notImplemented() }
             else if (exportResult != null) { result.error("busy", "Export already in progress", null) }
@@ -244,24 +246,52 @@ class MainActivity : FlutterActivity() {
                         OrbitStrongReminderService.stopTests(this)
                         result.success(null)
                     }
-                    "scheduleReminder" -> scheduleReminder(call.arguments, result)
+                    "scheduleReminder" -> scheduleReminderAsync(call.arguments, result)
+                    "scheduleRemindersBatch" -> scheduleRemindersBatchAsync(call.arguments, result)
                     "cancelReminder" -> {
-                        OrbitReminderManager.cancel(this, call.argument<Int>("alarmId") ?: -1)
-                        result.success(null)
+                        val alarmId = call.argument<Int>("alarmId") ?: -1
+                        reminderStatusExecutor.execute {
+                            try {
+                                OrbitReminderManager.cancel(this, alarmId)
+                                runOnUiThread { result.success(null) }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.error("cancel_failed", error.message, null) }
+                            }
+                        }
                     }
                     "cancelCourseReminders" -> {
-                        OrbitReminderManager.cancelCourseReminders(this)
-                        result.success(null)
+                        reminderStatusExecutor.execute {
+                            try {
+                                OrbitReminderManager.cancelCourseReminders(this)
+                                runOnUiThread { result.success(null) }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.error("cancel_failed", error.message, null) }
+                            }
+                        }
                     }
-                    "pendingCourseReminderCount" ->
-                        result.success(OrbitReminderManager.pendingCourseReminderCount(this))
-                    "containsReminder" -> result.success(
-                        OrbitReminderManager.contains(
-                            this,
-                            call.argument<Int>("alarmId") ?: -1,
-                        ),
-                    )
+                    "pendingCourseReminderCount" -> {
+                        reminderStatusExecutor.execute {
+                            try {
+                                val count = OrbitReminderManager.pendingCourseReminderCount(this)
+                                runOnUiThread { result.success(count) }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.error("pending_failed", error.message, null) }
+                            }
+                        }
+                    }
+                    "containsReminder" -> {
+                        val alarmId = call.argument<Int>("alarmId") ?: -1
+                        reminderStatusExecutor.execute {
+                            try {
+                                val contains = OrbitReminderManager.contains(this, alarmId)
+                                runOnUiThread { result.success(contains) }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.error("contains_failed", error.message, null) }
+                            }
+                        }
+                    }
                     "consumeLaunchPayload" -> {
+                        dartHasConsumedLaunchPayload = true
                         result.success(pendingNotificationPayload)
                         pendingNotificationPayload = null
                     }
@@ -271,39 +301,88 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun scheduleReminder(arguments: Any?, result: MethodChannel.Result) {
+    private fun parseReminderRecord(values: Map<*, *>): OrbitReminderRecord =
+        OrbitReminderRecord(
+            alarmId = (values["alarmId"] as Number).toInt(),
+            notificationId = (values["notificationId"] as Number).toInt(),
+            fireAtMillis = (values["fireAtMillis"] as Number).toLong(),
+            title = values["title"] as String,
+            body = values["body"] as String,
+            bigText = values["bigText"] as String?,
+            payload = values["payload"] as String,
+            channelName = values["channelName"] as String,
+            channelDescription = values["channelDescription"] as String,
+            restoreOnReboot = values["restoreOnReboot"] as? Boolean ?: true,
+            metadata = values["metadata"] as? String ?: "{}",
+        )
+
+    private fun scheduleReminderAsync(arguments: Any?, result: MethodChannel.Result) {
         val values = arguments as? Map<*, *> ?: run {
             result.error("invalid_arguments", "Reminder arguments are missing", null)
             return
         }
-        try {
-            val record = OrbitReminderRecord(
-                alarmId = (values["alarmId"] as Number).toInt(),
-                notificationId = (values["notificationId"] as Number).toInt(),
-                fireAtMillis = (values["fireAtMillis"] as Number).toLong(),
-                title = values["title"] as String,
-                body = values["body"] as String,
-                bigText = values["bigText"] as String?,
-                payload = values["payload"] as String,
-                channelName = values["channelName"] as String,
-                channelDescription = values["channelDescription"] as String,
-                restoreOnReboot = values["restoreOnReboot"] as? Boolean ?: true,
-                metadata = values["metadata"] as? String ?: "{}",
-            )
-            val scheduleResult = OrbitReminderManager.schedule(
-                this,
-                record,
-                exactPreferred = values["exactPreferred"] as? Boolean ?: true,
-                allowInexactFallback = values["allowInexactFallback"] as? Boolean ?: true,
-            )
-            result.success(
-                mapOf(
-                    "scheduled" to scheduleResult.scheduled,
-                    "usedInexactFallback" to scheduleResult.usedInexactFallback,
-                ),
-            )
-        } catch (error: Exception) {
-            result.error("schedule_failed", error.message, null)
+        reminderStatusExecutor.execute {
+            try {
+                val record = parseReminderRecord(values)
+                val scheduleResult = OrbitReminderManager.schedule(
+                    this,
+                    record,
+                    exactPreferred = values["exactPreferred"] as? Boolean ?: true,
+                    allowInexactFallback = values["allowInexactFallback"] as? Boolean ?: true,
+                )
+                runOnUiThread {
+                    result.success(
+                        mapOf(
+                            "scheduled" to scheduleResult.scheduled,
+                            "usedInexactFallback" to scheduleResult.usedInexactFallback,
+                        ),
+                    )
+                }
+            } catch (error: Exception) {
+                runOnUiThread { result.error("schedule_failed", error.message, null) }
+            }
+        }
+    }
+
+    private fun scheduleRemindersBatchAsync(arguments: Any?, result: MethodChannel.Result) {
+        val values = arguments as? Map<*, *> ?: run {
+            result.error("invalid_arguments", "Reminder batch arguments are missing", null)
+            return
+        }
+        val rawItems = values["items"] as? List<*> ?: run {
+            result.error("invalid_arguments", "Reminder batch items are missing", null)
+            return
+        }
+        val exactPreferred = values["exactPreferred"] as? Boolean ?: true
+        val allowInexactFallback = values["allowInexactFallback"] as? Boolean ?: true
+        reminderStatusExecutor.execute {
+            try {
+                val records = rawItems.map { item ->
+                    parseReminderRecord(
+                        item as? Map<*, *>
+                            ?: throw IllegalArgumentException("Invalid reminder item"),
+                    )
+                }
+                val batch = OrbitReminderManager.scheduleBatch(
+                    this,
+                    records,
+                    exactPreferred = exactPreferred,
+                    allowInexactFallback = allowInexactFallback,
+                )
+                runOnUiThread {
+                    result.success(
+                        mapOf(
+                            "scheduled" to batch.scheduled,
+                            "armed" to batch.armed,
+                            "failed" to batch.failed,
+                            "usedInexactFallback" to batch.usedInexactFallback,
+                            "scheduledNotificationIds" to batch.scheduledNotificationIds,
+                        ),
+                    )
+                }
+            } catch (error: Exception) {
+                runOnUiThread { result.error("schedule_batch_failed", error.message, null) }
+            }
         }
     }
 
@@ -325,10 +404,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun reminderReliabilityStatus(): Map<String, Any?> {
+        OrbitReminderManager.pruneExpiredRecords(this)
+        val now = System.currentTimeMillis()
         val records = OrbitReminderStore.load(this).values
-        val registered = records.count {
-            it.fireAtMillis > System.currentTimeMillis() &&
-                OrbitReminderManager.contains(this, it.alarmId)
+        val futureRecords = records.filter { it.fireAtMillis > now }
+        val registered = futureRecords.count {
+            OrbitReminderManager.hasPendingAlarm(this, it.alarmId)
         }
         val exit = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -345,7 +426,7 @@ class MainActivity : FlutterActivity() {
         } else false
         return mapOf(
             "enhancedMode" to OrbitReminderKeepAliveService.isEnabled(this),
-            "storedReminderCount" to records.count { it.fireAtMillis > System.currentTimeMillis() },
+            "storedReminderCount" to futureRecords.size,
             "registeredReminderCount" to registered,
             "forcedStopDetected" to forcedStop,
             "exitTimestamp" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) exit?.timestamp else null,
@@ -437,10 +518,13 @@ class MainActivity : FlutterActivity() {
 
     private fun captureNotificationPayload(intent: Intent?, notifyDart: Boolean) {
         val payload = intent?.getStringExtra(OrbitReminderManager.payloadExtra) ?: return
-        pendingNotificationPayload = payload
         intent.removeExtra(OrbitReminderManager.payloadExtra)
-        if (notifyDart) {
+        // Until Dart attaches, keep the latest launch intent for its startup
+        // read. After the handoff, a tap goes only to the live listener.
+        if (notifyDart && dartHasConsumedLaunchPayload) {
             reminderChannel?.invokeMethod("notificationTap", payload)
+        } else {
+            pendingNotificationPayload = payload
         }
     }
 

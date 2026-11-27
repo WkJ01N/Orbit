@@ -37,12 +37,21 @@ final upcomingSessionsProvider = FutureProvider<List<CourseSession>>((
 
 final deadlinesProvider = FutureProvider<List<Deadline>>((ref) async {
   ref.watch(scheduleRefreshProvider);
+  ref.watch(deadlinesRefreshProvider);
   return (await ref.read(appDatabaseProvider).getDeadlines())
       .where((d) => d.visible)
       .toList();
 });
 
 final scheduleRefreshProvider = StateProvider<int>((ref) => 0);
+
+/// DDL-only mutations bump this instead of [scheduleRefreshProvider], so the
+/// course sessions and week grid are not reloaded for a deadline edit.
+final deadlinesRefreshProvider = StateProvider<int>((ref) => 0);
+
+void refreshDeadlines(WidgetRef ref) {
+  ref.read(deadlinesRefreshProvider.notifier).state++;
+}
 
 /// A presentation commit waits for both queries; refreshes never replace a
 /// populated timetable with partial or empty loading values.

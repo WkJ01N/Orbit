@@ -249,4 +249,46 @@ void main() {
       2,
     );
   });
+
+  test('native reminder bridge builds batch schedule payload', () {
+    final copy = NotificationCopy.fromL10n(
+      lookupL10n(
+        const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans'),
+      ),
+    );
+    final specs = [
+      ReminderAlarmSpec(
+        alarmId: 1,
+        notificationId: 1,
+        title: 'First',
+        body: 'Body 1',
+        payload: 'course-1',
+        fireAt: DateTime(2026, 9, 1, 8, 0),
+      ),
+      ReminderAlarmSpec(
+        alarmId: 2,
+        notificationId: 2,
+        title: 'Second',
+        body: 'Body 2',
+        payload: 'course-2',
+        fireAt: DateTime(2026, 9, 1, 10, 0),
+      ),
+    ];
+
+    final args = AndroidNativeReminderService.instance
+        .buildBatchScheduleArguments(
+          specs,
+          copy: copy,
+          exactPreferred: true,
+          allowInexactFallback: true,
+          restoreOnReboot: true,
+        );
+
+    expect(args['exactPreferred'], isTrue);
+    expect(args['allowInexactFallback'], isTrue);
+    final items = args['items'] as List<dynamic>;
+    expect(items, hasLength(2));
+    expect((items.first as Map)['alarmId'], 1);
+    expect((items.last as Map)['alarmId'], 2);
+  });
 }

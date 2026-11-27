@@ -192,7 +192,11 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
           message: '$error',
         );
       }
-      return SyncStatus(phase: SyncPhase.error, message: '$error');
+      return SyncStatus(
+        phase: SyncPhase.error,
+        account: stored,
+        message: '$error',
+      );
     }
   }
 
@@ -348,10 +352,7 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
       ref.read(importConfigurationRefreshProvider.notifier).state++;
     } catch (error) {
       final message = '$error';
-      final offline =
-          message.contains('network') ||
-          message.contains('unreachable') ||
-          message.contains('SocketException');
+      final offline = isAccountNetworkError(error);
       state = AsyncData(
         current.copyWith(
           phase: offline ? SyncPhase.offline : SyncPhase.error,
@@ -416,7 +417,9 @@ class AccountSyncNotifier extends AsyncNotifier<SyncStatus> {
         throw const AccountSyncException('session_invalid');
       }
       await ref.read(appDatabaseProvider).setActiveSyncAccount(updated);
-      state = AsyncData(current.copyWith(account: updated));
+      final latest = state.value ?? current;
+      if (latest.account?.uid != updated.uid) return;
+      state = AsyncData(latest.copyWith(account: updated));
     } catch (error) {
       if (!isAccountSessionInvalid(error)) return;
       await ref.read(appDatabaseProvider).setActiveSyncAccount(null);

@@ -210,4 +210,38 @@ class OrbitCustomReminderTest {
             assertEquals("foreground:IllegalStateException", OrbitReminderStore.metadata(context)["strong_degraded"])
         } finally { controller.destroy() }
     }
+
+    @Test fun deliverDoesNotHoldWriteLockDuringPublish() {
+        db.execSQL("INSERT INTO reminder_schedule VALUES('r','s',1,9999999999999,'{}')")
+        var concurrentWriteSucceeded = false
+        val result = OrbitReminderLedger.deliver(context, record()) {
+            val writer = SQLiteDatabase.openDatabase(
+                context.getDatabasePath("ledger_test.db").path,
+                null,
+                SQLiteDatabase.OPEN_READWRITE,
+            )
+            writer.use { other ->
+                other.beginTransactionNonExclusive()
+                try {
+                    other.execSQL(
+                        "INSERT OR REPLACE INTO reminder_delivery(rule_id,session_id,processed_index) VALUES('other','session',1)",
+                    )
+                    other.setTransactionSuccessful()
+                    concurrentWriteSucceeded = true
+                } finally {
+                    other.endTransaction()
+                }
+            }
+            true
+        }
+        assertEquals(OrbitReminderDeliveryResult.DELIVERED, result)
+        assertTrue(concurrentWriteSucceeded)
+        db.rawQuery(
+            "SELECT processed_index FROM reminder_delivery WHERE rule_id='r' AND session_id='s'",
+            null,
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+    }
 }

@@ -7,6 +7,7 @@ import 'package:orbit/providers/app_providers.dart';
 
 final allDeadlinesProvider = FutureProvider<List<Deadline>>((ref) async {
   ref.watch(scheduleRefreshProvider);
+  ref.watch(deadlinesRefreshProvider);
   return ref.read(appDatabaseProvider).getDeadlines();
 });
 

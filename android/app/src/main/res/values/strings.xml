@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_next_class_label">Next class</string>
+    <string name="widget_next_class_description">Shows your ongoing or next class, exam, or urgent DDL.</string>
+    <string name="widget_today_schedule_label">Today\'s schedule</string>
+    <string name="widget_today_schedule_description">Scrollable list of today\'s classes, exams, and upcoming DDLs.</string>
+    <string name="widget_refresh_content_description">Refresh widget</string>
+</resources>

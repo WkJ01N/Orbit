@@ -167,7 +167,9 @@ extension BackupDatabase on AppDatabase {
               );
             }
           }
-          if (id.startsWith('course|') || id.startsWith('ddl|')) {
+          if (id.startsWith('course|') ||
+              id.startsWith('exam|') ||
+              id.startsWith('ddl|')) {
             await txn.insert('statistics_sources', {
               'id': id,
               'owner': owner,

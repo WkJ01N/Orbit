@@ -3,7 +3,6 @@ import 'package:orbit/data/database/app_database.dart';
 import 'package:orbit/features/grid/week_calendar_utils.dart';
 import 'package:orbit/models/course_session.dart';
 import 'package:orbit/models/archive_settings.dart';
-import 'package:orbit/models/deadline.dart';
 import 'package:orbit/models/batch_course.dart';
 import 'package:orbit/models/course_operation.dart';
 import 'package:orbit/models/portable_settings.dart';
@@ -55,11 +54,12 @@ class ScheduleRepository {
     if (sessions.isEmpty) {
       return {};
     }
-    final existing = await getAllSessions();
-    if (existing.isEmpty) {
+    final existingWeeks = (await _database.getActiveSessionDates())
+        .map(weekStartFor)
+        .toSet();
+    if (existingWeeks.isEmpty) {
       return {};
     }
-    final existingWeeks = existing.map((s) => weekStartFor(s.date)).toSet();
     final importWeeks = sessions.map((s) => weekStartFor(s.date)).toSet();
     return importWeeks.intersection(existingWeeks);
   }
@@ -123,20 +123,22 @@ class ScheduleRepository {
     DateTime? at,
   }) async {
     final now = at ?? DateTime.now();
-    final all = await getAllSessions();
-    final key = CourseSeriesKey.fromSession(selected);
-    final ids = all
-        .where(
-          (s) =>
-              !s.archived &&
-              !s.endAt.isAfter(now) &&
-              (wholeCourse
-                  ? CourseSeriesKey.fromSession(s) == key &&
-                        s.semester == selected.semester
-                  : s.id == selected.id),
-        )
-        .map((s) => s.id)
-        .toList();
+    final List<String> ids;
+    if (!wholeCourse) {
+      // updateArchive re-validates ended/unarchived state inside its transaction.
+      ids = [selected.id];
+    } else {
+      final key = CourseSeriesKey.fromSession(selected);
+      ids = (await _database.getSessionsBySemester(selected.semester))
+          .where(
+            (s) =>
+                !s.archived &&
+                !s.endAt.isAfter(now) &&
+                CourseSeriesKey.fromSession(s) == key,
+          )
+          .map((s) => s.id)
+          .toList();
+    }
     return _database.updateArchive(
       sessionIds: ids,
       action: ArchiveMutation.archive,
@@ -145,11 +147,8 @@ class ScheduleRepository {
     );
   }
 
-  Future<List<CourseSession>> getUnarchivedEndedSessions({DateTime? at}) async {
-    final now = at ?? DateTime.now();
-    return (await getAllSessions())
-        .where((session) => !session.archived && !session.endAt.isAfter(now))
-        .toList();
+  Future<List<CourseSession>> getUnarchivedEndedSessions({DateTime? at}) {
+    return _database.getUnarchivedEndedSessions(at ?? DateTime.now());
   }
 
   /// Optional IDs keep a confirmation limited to the displayed snapshot.
@@ -160,11 +159,7 @@ class ScheduleRepository {
     DateTime? at,
   }) async {
     final now = at ?? DateTime.now();
-    final ids =
-        sessionIds ??
-        (await getUnarchivedEndedSessions(
-          at: now,
-        )).map((session) => session.id).toList();
+    final ids = sessionIds ?? await _database.getUnarchivedEndedSessionIds(now);
     return _database.updateArchive(
       sessionIds: ids,
       action: ArchiveMutation.archive,
@@ -176,35 +171,17 @@ class ScheduleRepository {
   Future<int> runAutoArchive(ArchiveSettings settings, {DateTime? at}) async {
     if (!settings.autoCourses && !settings.autoDeadlines) return 0;
     final now = at ?? DateTime.now();
-    final sessions = settings.autoCourses
-        ? await getAllSessions()
-        : <CourseSession>[];
-    final deadlines = settings.autoDeadlines
-        ? await _database.getDeadlines()
-        : <Deadline>[];
-    final courseIds = sessions
-        .where(
-          (s) =>
-              !s.archived &&
-              !s.autoArchivePaused &&
-              !s.endAt
-                  .add(Duration(days: settings.courseDelayDays))
-                  .isAfter(now),
-        )
-        .map((s) => s.id)
-        .toList();
-    final deadlineIds = deadlines
-        .where(
-          (d) =>
-              !d.archived &&
-              !d.autoArchivePaused &&
-              d.completed &&
-              !d.completedAt!
-                  .add(Duration(days: settings.deadlineDelayDays))
-                  .isAfter(now),
-        )
-        .map((d) => d.id)
-        .toList();
+    final courseIds = settings.autoCourses
+        ? await _database.getUnarchivedEndedSessionIds(
+            now.subtract(Duration(days: settings.courseDelayDays)),
+            excludeAutoArchivePaused: true,
+          )
+        : <String>[];
+    final deadlineIds = settings.autoDeadlines
+        ? await _database.getAutoArchivableDeadlineIds(
+            now.subtract(Duration(days: settings.deadlineDelayDays)),
+          )
+        : <String>[];
     final courses = await _database.updateArchive(
       sessionIds: courseIds,
       action: ArchiveMutation.archive,
@@ -234,15 +211,15 @@ class ScheduleRepository {
   ) async {
     if (scope == CourseOperationScope.single) return [selected];
     final key = CourseSeriesKey.fromSession(selected);
-    final sessions = await getAllSessions();
-    return sessions.where((session) {
-      if (CourseSeriesKey.fromSession(session) != key ||
-          session.semester != selected.semester) {
-        return false;
-      }
-      return scope != CourseOperationScope.fromSelected ||
-          !session.startAt.isBefore(selected.startAt);
-    }).toList();
+    final sessions = await _database.getSessionsBySemester(
+      selected.semester,
+      startFrom: scope == CourseOperationScope.fromSelected
+          ? selected.startAt
+          : null,
+    );
+    return sessions
+        .where((session) => CourseSeriesKey.fromSession(session) == key)
+        .toList();
   }
 
   Future<CourseOperationPreview> previewCourseSeriesUpdate({

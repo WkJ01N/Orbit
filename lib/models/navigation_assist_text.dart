@@ -25,10 +25,11 @@ class NavigationAssistText {
   };
   String get openTimetable =>
       pick('Open WeMust timetable', '打开 WeMust 课表', '開啟 WeMust 課表');
-  String get fallback => pick(
-    'Not at the timetable? Open WeMust',
-    '未到课表？打开 WeMust',
-    '未到課表？開啟 WeMust',
+  String get openApp => pick('Open WeMust', '打开 WeMust', '開啟 WeMust');
+  String get timetableUnavailable => pick(
+    'This version of WeMust could not open the timetable link.',
+    '此版本的 WeMust 无法打开课表链接。',
+    '此版本的 WeMust 無法開啟課表連結。',
   );
   String get manualPath => pick(
     'In WeMust, open Class Timetable. Sign in there if needed, then complete check-in.',

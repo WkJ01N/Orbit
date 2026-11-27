@@ -153,10 +153,10 @@ class ScheduleSyncCoordinator {
       );
     }
     for (final entity in preview.remoteOnly) {
-      coursesChanged |= await _applyRemote(entity);
+      coursesChanged |= await _applyRemote(entity, accountUid: account.uid);
     }
     for (final entity in preview.identical) {
-      coursesChanged |= await _applyRemote(entity);
+      coursesChanged |= await _applyRemote(entity, accountUid: account.uid);
     }
     for (final conflict in preview.conflicts) {
       if (useLocalForConflict[conflict.id] == true) {
@@ -164,7 +164,10 @@ class ScheduleSyncCoordinator {
         await _database.resolveSyncConflict(conflict, useLocal: true);
       } else {
         await _database.discardPendingSyncEntity(conflict.remote);
-        coursesChanged |= await _applyRemote(conflict.remote);
+        coursesChanged |= await _applyRemote(
+          conflict.remote,
+          accountUid: account.uid,
+        );
       }
     }
     if (resetState && _scope != null) {
@@ -217,7 +220,7 @@ class ScheduleSyncCoordinator {
         };
         for (final entity in pulled.entities) {
           if (!_allows(entity) || conflicts.contains(_key(entity))) continue;
-          coursesChanged |= await _applyRemote(entity);
+          coursesChanged |= await _applyRemote(entity, accountUid: account.uid);
         }
         cursor = pulled.cursor;
         hasMore = pulled.hasMore;
@@ -319,7 +322,9 @@ class ScheduleSyncCoordinator {
       );
     } on AccountSyncException catch (error) {
       return (await status()).copyWith(
-        phase: SyncPhase.error,
+        phase: isAccountNetworkError(error)
+            ? SyncPhase.offline
+            : SyncPhase.error,
         message: error.code,
       );
     } catch (error) {
@@ -364,7 +369,11 @@ class ScheduleSyncCoordinator {
   Future<void> resolveConflict(SyncConflict conflict, bool useLocal) async {
     await _database.resolveSyncConflict(conflict, useLocal: useLocal);
     if (!useLocal) {
-      final coursesChanged = await _applyRemote(conflict.remote);
+      final accountUid = (await _database.activeSyncAccount())?.uid;
+      final coursesChanged = await _applyRemote(
+        conflict.remote,
+        accountUid: accountUid,
+      );
       if (coursesChanged) await _onCoursesChanged();
     }
   }
@@ -435,7 +444,7 @@ class ScheduleSyncCoordinator {
           ),
       ];
 
-  Future<bool> _applyRemote(SyncEntity entity) async {
+  Future<bool> _applyRemote(SyncEntity entity, {String? accountUid}) async {
     if (entity.type == SyncEntityType.settingGroup) {
       if (_settings != null && !entity.deleted) {
         var incoming = entity;
@@ -458,7 +467,7 @@ class ScheduleSyncCoordinator {
           incoming,
         );
         await _settings.importPortableSettings(value);
-        final uid = (await _database.activeSyncAccount())?.uid;
+        final uid = accountUid ?? (await _database.activeSyncAccount())?.uid;
         if (uid != null) {
           final hashes = await _settings.loadLocalJson('sync_settings_$uid');
           hashes[entity.id] = canonicalSyncPayload(
@@ -467,13 +476,13 @@ class ScheduleSyncCoordinator {
           await _settings.saveLocalJson('sync_settings_$uid', hashes);
         }
       }
-      await _database.applyRemoteEntities([entity]);
+      await _database.applyRemoteEntities([entity], accountUid: accountUid);
       return true;
     }
     if (entity.type == SyncEntityType.statistic ||
         entity.type == SyncEntityType.courseSession ||
         entity.type == SyncEntityType.deadline) {
-      await _database.applyRemoteEntities([entity]);
+      await _database.applyRemoteEntities([entity], accountUid: accountUid);
       return true;
     }
     final current = await _loadConfiguration();
@@ -505,7 +514,7 @@ class ScheduleSyncCoordinator {
         throw StateError('Handled above');
     }
     await _saveConfiguration(next);
-    await _database.applyRemoteEntities([entity]);
+    await _database.applyRemoteEntities([entity], accountUid: accountUid);
     return false;
   }
 
